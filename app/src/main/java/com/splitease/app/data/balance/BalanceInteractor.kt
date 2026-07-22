@@ -5,9 +5,11 @@ import com.splitease.app.domain.balance.DebtSimplifier
 import com.splitease.app.domain.balance.DebtTransfer
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -90,9 +92,10 @@ data class OverallBalancesUi(
 )
 
 /**
- * Observes Room expenses/splits and derives balance UI models.
+ * Observes Room expenses/splits/payments and derives balance UI models.
  *
  * @property expenseRepository Local expenses.
+ * @property paymentRepository Local settlements.
  * @property friendRepository Friends for labels and pairwise scope.
  * @property groupRepository Groups and membership.
  * @property userRepository Display-name lookup.
@@ -102,6 +105,7 @@ class BalanceInteractor
     @Inject
     constructor(
         private val expenseRepository: ExpenseRepository,
+        private val paymentRepository: PaymentRepository,
         private val friendRepository: FriendRepository,
         private val groupRepository: GroupRepository,
         private val userRepository: UserRepository,
@@ -118,14 +122,19 @@ class BalanceInteractor
             groupId: String,
             viewerUserId: String,
         ): Flow<GroupBalanceUi> =
-            expenseRepository.observeExpenses(groupId).flatMapLatest { expenses ->
+            combine(
+                expenseRepository.observeExpenses(groupId),
+                paymentRepository.observePayments(groupId),
+            ) { expenses, payments ->
+                expenses to payments
+            }.flatMapLatest { (expenses, payments) ->
                 flow {
-                    emit(buildGroupBalance(groupId, viewerUserId, expenses))
+                    emit(buildGroupBalance(groupId, viewerUserId, expenses, payments = payments))
                 }
             }
 
         /**
-         * Observes 1:1 net between viewer and a friend (non-group expenses only).
+         * Observes 1:1 net between viewer and a friend (non-group expenses + payments).
          *
          * @param viewerUserId Signed-in user.
          * @param friendUserId Friend user id.
@@ -138,10 +147,11 @@ class BalanceInteractor
         ): Flow<FriendBalanceUi> =
             combine(
                 expenseRepository.observeBetweenUsers(viewerUserId, friendUserId),
+                paymentRepository.observeBetweenUsers(viewerUserId, friendUserId),
                 friendRepository.observeFriends(viewerUserId),
-            ) { expenses, friends ->
-                expenses to friends
-            }.flatMapLatest { (expenses, friends) ->
+            ) { expenses, payments, friends ->
+                Triple(expenses, payments, friends)
+            }.flatMapLatest { (expenses, payments, friends) ->
                 flow {
                     val splits = loadSplits(expenses)
                     val nets =
@@ -150,6 +160,7 @@ class BalanceInteractor
                             otherUserId = friendUserId,
                             expenses = expenses,
                             splitsByExpenseId = splits,
+                            payments = payments,
                         )
                     val label =
                         friends.firstOrNull { it.friendUserId == friendUserId }?.displayNameSnapshot
@@ -175,14 +186,19 @@ class BalanceInteractor
         fun observeOverallBalances(viewerUserId: String): Flow<OverallBalancesUi> =
             combine(
                 expenseRepository.observeInvolvingUser(viewerUserId),
+                paymentRepository.observeInvolvingUser(viewerUserId),
                 friendRepository.observeFriends(viewerUserId),
                 groupRepository.observeGroupsForUser(viewerUserId),
-            ) { expenses, friends, groups ->
-                Triple(expenses, friends, groups)
-            }.flatMapLatest { (expenses, friends, groups) ->
+            ) { expenses, payments, friends, groups ->
+                OverallInputs(expenses, payments, friends, groups)
+            }.flatMapLatest { inputs ->
                 flow {
-                    val splits = loadSplits(expenses)
-                    val allNets = BalanceCalculator.netBalancesByCurrency(expenses, splits)
+                    val splits = loadSplits(inputs.expenses)
+                    val allNets =
+                        BalanceCalculator.applyPayments(
+                            BalanceCalculator.netBalancesByCurrency(inputs.expenses, splits),
+                            inputs.payments,
+                        )
                     val myNets =
                         allNets.mapNotNull { (currency, nets) ->
                             val mine = nets[viewerUserId] ?: return@mapNotNull null
@@ -195,13 +211,20 @@ class BalanceInteractor
                             .mapValues { (_, v) -> v.abs() }
 
                     val friendBalances =
-                        friends.map { friend ->
+                        inputs.friends.map { friend ->
+                            val friendPayments =
+                                inputs.payments.filter { payment ->
+                                    payment.groupId == null &&
+                                        setOf(payment.fromUserId, payment.toUserId) ==
+                                        setOf(viewerUserId, friend.friendUserId)
+                                }
                             val nets =
                                 BalanceCalculator.pairwiseNetByCurrency(
                                     viewerUserId = viewerUserId,
                                     otherUserId = friend.friendUserId,
-                                    expenses = expenses,
+                                    expenses = inputs.expenses,
                                     splitsByExpenseId = splits,
+                                    payments = friendPayments,
                                 )
                             FriendBalanceUi(
                                 friendUserId = friend.friendUserId,
@@ -211,18 +234,27 @@ class BalanceInteractor
                         }.filter { it.netByCurrency.isNotEmpty() }
 
                     val groupBalances =
-                        groups.map { group ->
-                            val groupExpenses = expenses.filter { it.groupId == group.id }
-                            buildGroupBalance(group.id, viewerUserId, groupExpenses, group.name)
+                        inputs.groups.map { group ->
+                            val groupExpenses = inputs.expenses.filter { it.groupId == group.id }
+                            val groupPayments = inputs.payments.filter { it.groupId == group.id }
+                            buildGroupBalance(
+                                group.id,
+                                viewerUserId,
+                                groupExpenses,
+                                group.name,
+                                groupPayments,
+                            )
                         }
 
-                    val nonGroupExpenses = expenses.filter { it.groupId == null }
+                    val nonGroupExpenses = inputs.expenses.filter { it.groupId == null }
+                    val nonGroupPayments = inputs.payments.filter { it.groupId == null }
                     val nonGroupBalance =
                         buildGroupBalance(
                             groupId = "",
                             viewerUserId = viewerUserId,
                             expenses = nonGroupExpenses,
                             knownName = "Non-group expenses",
+                            payments = nonGroupPayments,
                         )
 
                     emit(
@@ -232,9 +264,10 @@ class BalanceInteractor
                             friendBalances = friendBalances,
                             groupBalances = groupBalances,
                             nonGroupMyNetByCurrency = nonGroupBalance.myNetByCurrency,
-                            nonGroupDebts = nonGroupBalance.simplifiedDebts.filter { debt ->
-                                debt.fromUserId == viewerUserId || debt.toUserId == viewerUserId
-                            },
+                            nonGroupDebts =
+                                nonGroupBalance.simplifiedDebts.filter { debt ->
+                                    debt.fromUserId == viewerUserId || debt.toUserId == viewerUserId
+                                },
                         ),
                     )
                 }
@@ -245,9 +278,14 @@ class BalanceInteractor
             viewerUserId: String,
             expenses: List<Expense>,
             knownName: String? = null,
+            payments: List<Payment> = emptyList(),
         ): GroupBalanceUi {
             val splits = loadSplits(expenses)
-            val byCurrency = BalanceCalculator.netBalancesByCurrency(expenses, splits)
+            val byCurrency =
+                BalanceCalculator.applyPayments(
+                    BalanceCalculator.netBalancesByCurrency(expenses, splits),
+                    payments,
+                )
             val transfers = DebtSimplifier.simplifyAll(byCurrency)
             val name =
                 knownName
@@ -308,6 +346,13 @@ class BalanceInteractor
                 amount = amount,
                 currencyCode = currencyCode,
             )
+
+        private data class OverallInputs(
+            val expenses: List<Expense>,
+            val payments: List<Payment>,
+            val friends: List<com.splitease.app.domain.model.Friend>,
+            val groups: List<com.splitease.app.domain.model.Group>,
+        )
 
         companion object {
             private val ZERO = BigDecimal.ZERO.setScale(2)

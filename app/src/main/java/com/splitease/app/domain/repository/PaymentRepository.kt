@@ -16,6 +16,21 @@ interface PaymentRepository {
     fun observePayments(groupId: String? = null): Flow<List<Payment>>
 
     /**
+     * Observes non-group payments between two users.
+     *
+     * @param userId First user.
+     * @param otherUserId Second user.
+     */
+    fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<Payment>>
+
+    /**
+     * Observes payments involving [userId] as payer or payee.
+     *
+     * @param userId User id.
+     */
+    fun observeInvolvingUser(userId: String): Flow<List<Payment>>
+
+    /**
      * Loads a payment by id.
      *
      * @param id Local UUID.
@@ -36,4 +51,9 @@ interface PaymentRepository {
      * @param id Local UUID.
      */
     suspend fun deleteById(id: String)
+
+    /**
+     * Loads payments that still need cloud sync.
+     */
+    suspend fun getPendingSync(): List<Payment>
 }

@@ -105,6 +105,51 @@ interface ExpenseDao {
     fun observeInvolvingUser(userId: String): Flow<List<ExpenseEntity>>
 
     /**
+     * Searches expenses by description or notes (case-insensitive).
+     *
+     * @param query Substring; empty returns newest expenses.
+     */
+    @Query(
+        """
+        SELECT * FROM expenses
+        WHERE :query = ''
+           OR description LIKE '%' || :query || '%' COLLATE NOCASE
+           OR IFNULL(notes, '') LIKE '%' || :query || '%' COLLATE NOCASE
+        ORDER BY expenseDateEpochMs DESC
+        LIMIT 200
+        """,
+    )
+    fun search(query: String): Flow<List<ExpenseEntity>>
+
+    /**
+     * Expenses awaiting cloud upload.
+     */
+    @Query(
+        """
+        SELECT * FROM expenses
+        WHERE syncStatus = 'PENDING' OR syncStatus = 'LOCAL_ONLY'
+        ORDER BY updatedAtEpochMs ASC
+        """,
+    )
+    suspend fun getPendingSync(): List<ExpenseEntity>
+
+    /**
+     * Expenses in an inclusive date window.
+     *
+     * @param fromEpochMs Inclusive start.
+     * @param toEpochMs Inclusive end.
+     */
+    @Query(
+        """
+        SELECT * FROM expenses
+        WHERE expenseDateEpochMs >= :fromEpochMs
+          AND expenseDateEpochMs <= :toEpochMs
+        ORDER BY expenseDateEpochMs DESC
+        """,
+    )
+    fun observeInPeriod(fromEpochMs: Long, toEpochMs: Long): Flow<List<ExpenseEntity>>
+
+    /**
      * Remaps split participant ids (invite placeholder → real user).
      *
      * @param fromUserId Old user id.
@@ -121,6 +166,23 @@ interface ExpenseDao {
      */
     @Query("UPDATE expenses SET paidByUserId = :toUserId WHERE paidByUserId = :fromUserId")
     suspend fun remapPaidByUserId(fromUserId: String, toUserId: String)
+
+    /**
+     * Recurring templates due for generation.
+     *
+     * @param nowEpochMs Current wall clock.
+     */
+    @Query(
+        """
+        SELECT * FROM expenses
+        WHERE isRecurring = 1
+          AND recurrenceFrequency != 'NONE'
+          AND nextOccurrenceEpochMs IS NOT NULL
+          AND nextOccurrenceEpochMs <= :nowEpochMs
+        ORDER BY nextOccurrenceEpochMs ASC
+        """,
+    )
+    suspend fun getDueRecurringTemplates(nowEpochMs: Long): List<ExpenseEntity>
 
     /**
      * Replaces an expense and its splits atomically.

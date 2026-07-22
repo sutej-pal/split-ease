@@ -130,6 +130,52 @@ presentation/balances
 - Debt simplification: greedy debtor/creditor matching to minimize transfers.
 - Settlements (`payments`) not applied until Phase 6.
 
+## Settlements & recurring (Phase 6)
+
+```
+domain/balance.applyPayments + domain/recurrence/RecurrenceScheduler
+data/payment/PaymentInteractor
+data/recurring/RecurringExpenseWorker   # WorkManager + HiltWorker
+presentation/settlements
+```
+
+- Room **v4**: `nextOccurrenceEpochMs`, `recurringTemplateId` on expenses.
+- Payments: fromUser +amount / toUser −amount on nets before simplify.
+- Recurring templates generate one-off instances via daily WorkManager job.
+- Apply `docs/sql/phase-6-payments.sql` in Supabase (payments + optional recurrence columns).
+- Cloud payment sync remains local-first until Phase 7 queue.
+
+## Search, categories, currency, sync (Phase 7)
+
+```
+domain/spending/SpendingTotalsCalculator
+domain/settings/AppCurrencies          # 100+ ISO codes
+data/sync/SyncInteractor + SyncWorker
+data/spending/SpendingInteractor
+data/remote/PaymentRemoteDataSource
+presentation/search|spending + Account sync
+```
+
+- Search: Room `LIKE` on description/notes; Groups home search icon.
+- Categories: picker + custom upsert on Add Expense.
+- Spending: viewer owed amounts by category × currency × period.
+- Sync: flush PENDING/LOCAL_ONLY expenses (with splits) and payments; periodic WorkManager + Sync now.
+- FX still not applied; balances remain per-currency buckets.
+
+## Stretch features (Phase 8)
+
+```
+domain/payment/PaymentDeepLinks
+domain/imports/CsvTransactionParser
+data/imports/TransactionImportInteractor
+presentation/imports + settle-up pay buttons
+presentation/spending/SpendingCategoryChart  # Vico 2.1
+```
+
+- Settle up (when you are the payer): open UPI / PayPal / Venmo or share a payment request, then record settlement.
+- CSV import creates viewer-only equal-split expenses (optional category match/create).
+- Spending screen shows a Vico column chart above the category list.
+
 ## App settings (currency)
 
 ```
@@ -140,7 +186,7 @@ presentation/settings
 
 - Single app-wide currency chosen in Settings; new expenses/groups use it automatically.
 - No per-expense or per-group currency pickers on create/edit screens.
-- Full 100+ currency catalog remains Phase 7.
+- Catalog: 100+ ISO codes with filter in Settings (`AppCurrencies`).
 
 ## Design system (UI kit)
 

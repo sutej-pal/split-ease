@@ -68,6 +68,7 @@ fun GroupsHomeScreen(
     onCreateGroup: () -> Unit,
     onAddExpenseForGroup: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
     viewModel: GroupsHomeViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
@@ -101,7 +102,7 @@ fun GroupsHomeScreen(
             SeTopBar(
                 title = "",
                 actions = {
-                    IconButton(onClick = { /* search Phase 7 */ }) {
+                    IconButton(onClick = onOpenSearch) {
                         Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.cd_search))
                     }
                     IconButton(onClick = onAddFriend) {

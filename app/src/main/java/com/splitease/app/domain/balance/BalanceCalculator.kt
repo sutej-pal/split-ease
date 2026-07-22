@@ -2,6 +2,7 @@ package com.splitease.app.domain.balance
 
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.Payment
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -11,6 +12,9 @@ import java.math.RoundingMode
  * **Convention:** net > 0 ⇒ user is owed money; net < 0 ⇒ user owes money.
  * Per expense: payer is credited [Expense.amount]; each split participant is
  * debited their [ExpenseSplit.owedAmount].
+ *
+ * Settlements ([Payment]): [Payment.fromUserId] gains +amount (debt reduced);
+ * [Payment.toUserId] gains −amount (credit reduced).
  *
  * Multi-currency: nets are computed separately per [Expense.currencyCode]
  * (no FX conversion).
@@ -77,6 +81,7 @@ object BalanceCalculator {
         otherUserId: String,
         expenses: List<Expense>,
         splitsByExpenseId: Map<String, List<ExpenseSplit>>,
+        payments: List<Payment> = emptyList(),
     ): Map<String, BigDecimal> {
         val shared =
             expenses.filter { expense ->
@@ -87,10 +92,47 @@ object BalanceCalculator {
                     }
                 viewerUserId in participants && otherUserId in participants
             }
-        return netBalancesByCurrency(shared, splitsByExpenseId)
+        val pairPayments =
+            payments.filter { payment ->
+                val pair = setOf(payment.fromUserId, payment.toUserId)
+                pair == setOf(viewerUserId, otherUserId)
+            }
+        return applyPayments(netBalancesByCurrency(shared, splitsByExpenseId), pairPayments)
             .mapNotNull { (currency, nets) ->
                 val net = nets[viewerUserId] ?: return@mapNotNull null
                 if (net.compareTo(ZERO) == 0) null else currency to net
             }.toMap()
+    }
+
+    /**
+     * Applies settlements on top of expense nets.
+     *
+     * @param netsByCurrency Expense-derived nets by currency.
+     * @param payments Settlements to apply (already scoped by caller).
+     * @return Adjusted nets; zero entries omitted.
+     */
+    fun applyPayments(
+        netsByCurrency: Map<String, Map<String, BigDecimal>>,
+        payments: List<Payment>,
+    ): Map<String, Map<String, BigDecimal>> {
+        if (payments.isEmpty()) return netsByCurrency
+        val mutable =
+            netsByCurrency
+                .mapValues { (_, nets) -> nets.toMutableMap() }
+                .toMutableMap()
+        payments.forEach { payment ->
+            val amount = payment.amount.setScale(2, RoundingMode.HALF_UP)
+            val bucket = mutable.getOrPut(payment.currencyCode) { mutableMapOf() }
+            bucket[payment.fromUserId] =
+                bucket.getOrDefault(payment.fromUserId, ZERO).add(amount)
+            bucket[payment.toUserId] =
+                bucket.getOrDefault(payment.toUserId, ZERO).subtract(amount)
+        }
+        return mutable
+            .mapValues { (_, nets) ->
+                nets
+                    .mapValues { (_, v) -> v.setScale(2, RoundingMode.HALF_UP) }
+                    .filterValues { it.compareTo(ZERO) != 0 }
+            }.filterValues { it.isNotEmpty() }
     }
 }

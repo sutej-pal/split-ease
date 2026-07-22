@@ -8,6 +8,7 @@ import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
+import com.splitease.app.domain.recurrence.RecurrenceScheduler
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.split.SplitCalculator
 import java.math.BigDecimal
@@ -30,6 +31,9 @@ import javax.inject.Singleton
  * @property shares For [SplitType.SHARES].
  * @property notes Optional notes.
  * @property categoryId Optional category.
+ * @property recurrenceFrequency Recurrence cadence; [RecurrenceFrequency.NONE] for one-off.
+ * @property expenseDateEpochMs Optional business date (defaults to now).
+ * @property recurringTemplateId When generating an instance, the parent template id.
  */
 data class CreateExpenseInput(
     val description: String,
@@ -44,6 +48,9 @@ data class CreateExpenseInput(
     val shares: Map<String, Int> = emptyMap(),
     val notes: String? = null,
     val categoryId: String? = null,
+    val recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
+    val expenseDateEpochMs: Long? = null,
+    val recurringTemplateId: String? = null,
 )
 
 /**
@@ -80,6 +87,16 @@ class ExpenseInteractor
                     )
 
                 val now = System.currentTimeMillis()
+                val expenseDate = input.expenseDateEpochMs ?: now
+                val isRecurring =
+                    input.recurrenceFrequency != RecurrenceFrequency.NONE &&
+                        input.recurringTemplateId == null
+                val nextOccurrence =
+                    if (isRecurring) {
+                        RecurrenceScheduler.nextOccurrenceAfter(expenseDate, input.recurrenceFrequency)
+                    } else {
+                        null
+                    }
                 val expenseId = UUID.randomUUID().toString()
                 val expense =
                     Expense(
@@ -90,10 +107,13 @@ class ExpenseInteractor
                         categoryId = input.categoryId,
                         paidByUserId = input.paidByUserId,
                         groupId = input.groupId,
-                        expenseDateEpochMs = now,
+                        expenseDateEpochMs = expenseDate,
                         splitType = input.splitType,
-                        isRecurring = false,
-                        recurrenceFrequency = RecurrenceFrequency.NONE,
+                        isRecurring = isRecurring,
+                        recurrenceFrequency =
+                            if (isRecurring) input.recurrenceFrequency else RecurrenceFrequency.NONE,
+                        nextOccurrenceEpochMs = nextOccurrence,
+                        recurringTemplateId = input.recurringTemplateId,
                         notes = input.notes?.trim()?.ifBlank { null },
                         remoteId = null,
                         createdAtEpochMs = now,
@@ -130,6 +150,78 @@ class ExpenseInteractor
                 }
                 synced
             }
+
+        /**
+         * Materializes due recurring templates into one-off expense instances and advances schedules.
+         *
+         * @param nowEpochMs Current time (injectable for tests).
+         * @return Number of instances created.
+         */
+        suspend fun generateDueRecurringExpenses(nowEpochMs: Long = System.currentTimeMillis()): Int {
+            val due = expenseRepository.getDueRecurringTemplates(nowEpochMs)
+            var created = 0
+            due.forEach { template ->
+                val occurrenceAt = template.nextOccurrenceEpochMs ?: return@forEach
+                val templateSplits = expenseRepository.getSplits(template.id)
+                if (templateSplits.isEmpty()) return@forEach
+                val result =
+                    createExpense(
+                        CreateExpenseInput(
+                            description = template.description,
+                            amount = template.amount,
+                            currencyCode = template.currencyCode,
+                            paidByUserId = template.paidByUserId,
+                            participantIds = templateSplits.map { it.userId },
+                            splitType = template.splitType,
+                            groupId = template.groupId,
+                            unequalAmounts =
+                                if (template.splitType == SplitType.UNEQUAL) {
+                                    templateSplits.associate { it.userId to it.owedAmount }
+                                } else {
+                                    emptyMap()
+                                },
+                            percentages =
+                                if (template.splitType == SplitType.PERCENTAGE) {
+                                    templateSplits.mapNotNull { split ->
+                                        split.percentage?.let { split.userId to it }
+                                    }.toMap()
+                                } else {
+                                    emptyMap()
+                                },
+                            shares =
+                                if (template.splitType == SplitType.SHARES) {
+                                    templateSplits.mapNotNull { split ->
+                                        split.shares?.let { split.userId to it }
+                                    }.toMap()
+                                } else {
+                                    emptyMap()
+                                },
+                            notes = template.notes,
+                            categoryId = template.categoryId,
+                            recurrenceFrequency = RecurrenceFrequency.NONE,
+                            expenseDateEpochMs = occurrenceAt,
+                            recurringTemplateId = template.id,
+                        ),
+                    )
+                if (result.isSuccess) {
+                    created++
+                    val advanced =
+                        RecurrenceScheduler.catchUpNextOccurrence(
+                            fromEpochMs = occurrenceAt,
+                            frequency = template.recurrenceFrequency,
+                            nowEpochMs = nowEpochMs,
+                        )
+                    expenseRepository.upsertExpenseWithSplits(
+                        template.copy(
+                            nextOccurrenceEpochMs = advanced,
+                            updatedAtEpochMs = nowEpochMs,
+                        ),
+                        templateSplits,
+                    )
+                }
+            }
+            return created
+        }
 
         /**
          * Pulls remote expenses for a group into Room.

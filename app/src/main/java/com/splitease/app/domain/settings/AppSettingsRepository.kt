@@ -29,26 +29,3 @@ interface AppSettingsRepository {
      */
     suspend fun setCurrencyCode(code: String)
 }
-
-/**
- * Curated currency options for Settings (full catalog is Phase 7).
- */
-object AppCurrencies {
-    /** Default when the user has not chosen yet. */
-    const val DEFAULT = "INR"
-
-    /** Display options: code → short label. */
-    val OPTIONS: List<Pair<String, String>> =
-        listOf(
-            "INR" to "Indian Rupee",
-            "USD" to "US Dollar",
-            "EUR" to "Euro",
-            "GBP" to "British Pound",
-            "AED" to "UAE Dirham",
-            "SGD" to "Singapore Dollar",
-            "AUD" to "Australian Dollar",
-            "CAD" to "Canadian Dollar",
-            "JPY" to "Japanese Yen",
-            "CHF" to "Swiss Franc",
-        )
-}

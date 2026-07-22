@@ -53,6 +53,8 @@ data class ExpenseEntity(
     val splitType: SplitType,
     val isRecurring: Boolean = false,
     val recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
+    val nextOccurrenceEpochMs: Long? = null,
+    val recurringTemplateId: String? = null,
     val notes: String? = null,
     val remoteId: String? = null,
     val createdAtEpochMs: Long,

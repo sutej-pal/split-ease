@@ -61,6 +61,7 @@ import com.splitease.app.presentation.ui.SeFab
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
@@ -248,13 +249,24 @@ fun GroupDetailScreen(
     groupId: String,
     onBack: () -> Unit,
     onAddExpense: () -> Unit,
+    onSettleDebt: (
+        fromUserId: String,
+        toUserId: String,
+        amount: String,
+        currency: String,
+        counterpartyLabel: String,
+    ) -> Unit,
     viewModel: GroupsViewModel = hiltViewModel(),
     expensesViewModel: com.splitease.app.presentation.expenses.ExpensesViewModel = hiltViewModel(),
+    balancesViewModel: com.splitease.app.presentation.balances.BalancesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val members by viewModel.observeMembers(groupId).collectAsStateWithLifecycle()
     val expenses by remember(groupId) { expensesViewModel.observeGroupExpenses(groupId) }
+        .collectAsStateWithLifecycle()
+    val categories by expensesViewModel.categories.collectAsStateWithLifecycle()
+    val groupBalance by remember(groupId) { balancesViewModel.observeGroupBalance(groupId) }
         .collectAsStateWithLifecycle()
     var group by remember { mutableStateOf<Group?>(null) }
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -333,6 +345,33 @@ fun GroupDetailScreen(
 
                 SeSectionHeader(text = stringResource(R.string.balances_title))
                 GroupBalanceHeader(groupId = groupId)
+                val me = expensesViewModel.currentUserId()
+                groupBalance?.simplifiedDebts
+                    ?.filter { debt ->
+                        me != null && (debt.fromUserId == me || debt.toUserId == me)
+                    }?.forEach { debt ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SeOutlinedButton(
+                            text =
+                                stringResource(
+                                    R.string.balances_debt_line,
+                                    debt.fromLabel,
+                                    debt.toLabel,
+                                    "${debt.currencyCode} ${debt.amount.toPlainString()}",
+                                ) + " · " + stringResource(R.string.action_settle_up),
+                            onClick = {
+                                val label =
+                                    if (me == debt.fromUserId) debt.toLabel else debt.fromLabel
+                                onSettleDebt(
+                                    debt.fromUserId,
+                                    debt.toUserId,
+                                    debt.amount.toPlainString(),
+                                    debt.currencyCode,
+                                    label,
+                                )
+                            },
+                        )
+                    }
                 Spacer(modifier = Modifier.height(16.dp))
 
                 SeSectionHeader(text = stringResource(R.string.label_members))
@@ -380,6 +419,7 @@ fun GroupDetailScreen(
                 com.splitease.app.presentation.expenses.ExpenseListSection(
                     expenses = expenses,
                     emptyText = stringResource(R.string.expenses_empty),
+                    categoryNames = categories.associate { it.id to it.name },
                 )
 
                 uiState.errorMessage?.let {

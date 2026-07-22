@@ -90,4 +90,32 @@ interface ExpenseRepository {
      * @param toUserId Real auth user id.
      */
     suspend fun remapUserId(fromUserId: String, toUserId: String)
+
+    /**
+     * Loads recurring templates whose next occurrence is due.
+     *
+     * @param nowEpochMs Current time.
+     * @return Due template expenses.
+     */
+    suspend fun getDueRecurringTemplates(nowEpochMs: Long): List<Expense>
+
+    /**
+     * Observes expenses matching [query] in description or notes.
+     *
+     * @param query Search substring.
+     */
+    fun search(query: String): Flow<List<Expense>>
+
+    /**
+     * Observes expenses in a date window.
+     *
+     * @param fromEpochMs Inclusive start.
+     * @param toEpochMs Inclusive end.
+     */
+    fun observeInPeriod(fromEpochMs: Long, toEpochMs: Long): Flow<List<Expense>>
+
+    /**
+     * Loads expenses that still need cloud sync.
+     */
+    suspend fun getPendingSync(): List<Expense>
 }

@@ -2,6 +2,7 @@ package com.splitease.app.domain.balance
 
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -82,6 +83,59 @@ class BalanceCalculatorTest {
         assertEquals(BigDecimal("30.00"), pair["INR"])
         assertTrue(!pair.containsKey("USD"))
     }
+
+    @Test
+    fun payment_settles_equal_split_debt() {
+        val expense = expense(id = "e1", amount = "100.00", paidBy = "a", currency = "INR")
+        val splits =
+            mapOf(
+                "e1" to
+                    listOf(
+                        split("e1", "a", "50.00"),
+                        split("e1", "b", "50.00"),
+                    ),
+            )
+        val expenseNets = BalanceCalculator.netBalancesByCurrency(listOf(expense), splits)
+        val settled =
+            BalanceCalculator.applyPayments(
+                expenseNets,
+                listOf(payment(from = "b", to = "a", amount = "50.00", currency = "INR")),
+            )
+        assertTrue(settled.isEmpty())
+    }
+
+    @Test
+    fun pairwise_includes_settlement() {
+        val expense = expense(id = "e1", amount = "60.00", paidBy = "a", currency = "INR")
+        val splits =
+            mapOf("e1" to listOf(split("e1", "a", "30.00"), split("e1", "b", "30.00")))
+        val pair =
+            BalanceCalculator.pairwiseNetByCurrency(
+                viewerUserId = "a",
+                otherUserId = "b",
+                expenses = listOf(expense),
+                splitsByExpenseId = splits,
+                payments = listOf(payment(from = "b", to = "a", amount = "30.00", currency = "INR")),
+            )
+        assertTrue(pair.isEmpty())
+    }
+
+    private fun payment(
+        from: String,
+        to: String,
+        amount: String,
+        currency: String,
+    ) = Payment(
+        id = "p-$from-$to",
+        fromUserId = from,
+        toUserId = to,
+        amount = BigDecimal(amount),
+        currencyCode = currency,
+        paidAtEpochMs = 0L,
+        createdAtEpochMs = 0L,
+        updatedAtEpochMs = 0L,
+        syncStatus = SyncStatus.LOCAL_ONLY,
+    )
 
     private fun expense(
         id: String,

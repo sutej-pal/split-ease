@@ -5,9 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.splitease.app.data.expense.CreateExpenseInput
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
+import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.AuthRepository
+import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
@@ -27,6 +31,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.util.UUID
 import javax.inject.Inject
 
 data class ExpensesUiState(
@@ -52,6 +57,7 @@ class ExpensesViewModel
         private val groupRepository: GroupRepository,
         private val friendRepository: FriendRepository,
         private val userRepository: UserRepository,
+        private val categoryRepository: CategoryRepository,
         private val appSettingsRepository: AppSettingsRepository,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
@@ -61,6 +67,11 @@ class ExpensesViewModel
 
         private val _uiState = MutableStateFlow(ExpensesUiState())
         val uiState: StateFlow<ExpensesUiState> = _uiState.asStateFlow()
+
+        val categories: StateFlow<List<Category>> =
+            categoryRepository
+                .observeCategories()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         fun currentUserId(): String? = userId.value
 
@@ -117,6 +128,8 @@ class ExpensesViewModel
             unequalAmounts: Map<String, BigDecimal> = emptyMap(),
             percentages: Map<String, BigDecimal> = emptyMap(),
             shares: Map<String, Int> = emptyMap(),
+            recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
+            categoryId: String? = null,
             onSuccess: () -> Unit,
         ) {
             viewModelScope.launch {
@@ -142,6 +155,8 @@ class ExpensesViewModel
                             unequalAmounts = unequalAmounts,
                             percentages = percentages,
                             shares = shares,
+                            recurrenceFrequency = recurrenceFrequency,
+                            categoryId = categoryId,
                         ),
                     )
                 _uiState.update {
@@ -152,6 +167,24 @@ class ExpensesViewModel
                     )
                 }
                 if (result.isSuccess) onSuccess()
+            }
+        }
+
+        fun addCustomCategory(name: String, onCreated: (String) -> Unit) {
+            val trimmed = name.trim()
+            if (trimmed.isBlank()) return
+            viewModelScope.launch {
+                val id = UUID.randomUUID().toString()
+                categoryRepository.upsert(
+                    Category(
+                        id = id,
+                        name = trimmed,
+                        iconKey = "category_custom",
+                        isDefault = false,
+                        syncStatus = SyncStatus.LOCAL_ONLY,
+                    ),
+                )
+                onCreated(id)
             }
         }
 

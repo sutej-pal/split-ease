@@ -18,6 +18,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed currency fields from Add Expense, Create Group, and Edit Group screens
 - Global theme switched to light Apzo-inspired blue SaaS look; screens migrate onto `Se*` components
 
+## [0.9.0] - 2026-07-22 — phase-8
+
+### Added
+- Region-aware settle-up pay actions (UPI / PayPal / Venmo / share)
+- CSV transaction import (Account → Import) with preview and expense creation
+- Vico column chart on Spending totals
+- Unit tests for payment deep links and CSV parser
+
+## [0.8.0] - 2026-07-22 — phase-7
+
+### Added
+- Expense search screen (description / notes)
+- Category picker + custom categories on Add Expense; category on expense rows
+- Spending totals by category / period (Account → Spending)
+- 100+ ISO currency catalog with Settings search/filter
+- Durable PENDING flush for expenses + payments (`SyncInteractor`, WorkManager, Account Sync now)
+
+### Changed
+- Payments created as `PENDING` (were `LOCAL_ONLY`) for cloud upload retries
+
+## [0.7.0] - 2026-07-22 — phase-6
+
+### Added
+- Settle up / record payment (Room `payments`) applied to derived balances
+- Recurring expense frequency on create; WorkManager daily generator; Room v4 schedule fields
+- Supabase SQL [phase-6-payments.sql](docs/sql/phase-6-payments.sql)
+- Unit tests for payment application and recurrence scheduling
+
+### Changed
+- Balances now subtract settlements before debt simplification
+
 
 ## [0.6.0] - 2026-07-22 — phase-5
 

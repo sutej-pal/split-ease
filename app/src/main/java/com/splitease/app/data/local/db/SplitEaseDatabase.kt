@@ -22,7 +22,7 @@ import com.splitease.app.data.local.entity.PaymentEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 3 — group type).
+ * Offline-first Room database for SplitEase (version 4 — recurring schedule fields).
  */
 @Database(
     entities = [
@@ -36,7 +36,7 @@ import com.splitease.app.data.local.entity.UserEntity
         PaymentEntity::class,
         InviteEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)

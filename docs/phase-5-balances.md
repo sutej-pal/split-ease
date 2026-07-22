@@ -64,7 +64,7 @@ Derive per-friend and per-group net balances from existing expenses/splits, show
 
 ## Known Issues / TODOs
 
-- Settlements (`payments`) not subtracted yet — Phase 6.
+- Settlements (`payments`) are now applied in Phase 6 (v0.7.0).
 - Mixed currencies shown separately; no conversion.
 - Capture screenshot into `docs/screenshots/phase-5.png`.
 

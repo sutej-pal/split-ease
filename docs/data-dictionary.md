@@ -100,6 +100,8 @@ Unique index: `(groupId, userId)`.
 | splitType | TEXT | no | `EQUAL` / `UNEQUAL` / `PERCENTAGE` / `SHARES` |
 | isRecurring | INTEGER (boolean) | no | Recurring flag |
 | recurrenceFrequency | TEXT | no | `NONE` / `WEEKLY` / `MONTHLY` / `YEARLY` |
+| nextOccurrenceEpochMs | INTEGER | yes | Next generate-at for templates (Room v4) |
+| recurringTemplateId | TEXT | yes | Parent template id for generated instances |
 | notes | TEXT | yes | Free-form note |
 | remoteId | TEXT | yes | Cloud id when synced |
 | createdAtEpochMs | INTEGER | no | Created-at UTC millis |
@@ -107,7 +109,6 @@ Unique index: `(groupId, userId)`.
 | syncStatus | TEXT | no | Sync bookmark |
 
 ### `expense_splits`
-
 | Column | Type | Nullable | Description |
 |---|---|---|---|
 | id | TEXT (PK) | no | Local UUID |
@@ -120,9 +121,9 @@ Unique index: `(groupId, userId)`.
 
 Unique index: `(expenseId, userId)`.
 
-**Derived balances (Phase 5):** Not stored. Nets and simplified debts are computed in
-`domain.balance` from `expenses` + `expense_splits`. Convention: net > 0 ⇒ is owed;
-net < 0 ⇒ owes. Per-currency only (no FX). `payments` are unused until Phase 6.
+**Derived balances (Phase 5+6):** Not stored. Nets and simplified debts are computed in
+`domain.balance` from `expenses` + `expense_splits`, then [Payment] settlements are applied
+(`fromUser` +amount, `toUser` −amount) before simplification. Per-currency only (no FX).
 
 ### `payments`
 
@@ -192,3 +193,8 @@ net < 0 ⇒ owes. Per-currency only (no FX). `payments` are unused until Phase 6
 | expense_splits | owed_amount | TEXT | no | Plain decimal |
 | expense_splits | percentage | TEXT | yes | Optional % |
 | expense_splits | shares | INTEGER | yes | Optional shares |
+| payments | id | UUID (PK) | no | Settlement id (see [phase-6-payments.sql](sql/phase-6-payments.sql)) |
+| payments | from_user_id / to_user_id | UUID | no | Payer / payee |
+| payments | amount / currency_code | TEXT | no | Settlement amount |
+| payments | group_id | UUID | yes | Optional group context |
+| expenses | is_recurring / recurrence_frequency / next_occurrence_epoch_ms / recurring_template_id | mixed | yes/no | Recurring metadata (Phase 6) |

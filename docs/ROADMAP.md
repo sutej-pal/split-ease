@@ -13,15 +13,15 @@ Product feature list mapped onto development phases. Implement only the **curren
 | Unlimited expenses | **4** (+ product rule thereafter) | Done |
 | Calculate total balances | **5** — Balances & Debt Simplification | Done |
 | Simplify debts | **5** | Done |
-| Recurring expenses | **6** — Settlements & Recurring Expenses | Not started |
-| Manual settlements / mark paid | **6** | Not started |
-| Offline mode (hardened) | **7** — Search, Categories, Multi-Currency, Offline Sync | Not started¹ |
-| Cloud sync (full queue + conflicts) | **7** | Not started² |
-| Spending totals | **7** | Not started |
-| Categorize expenses | **7** | Not started |
-| 100+ currencies | **7** | Not started |
-| Payment integrations | **8** — Stretch / Pro-like Features | Not started |
-| Transaction import | **8** | Not started |
+| Recurring expenses | **6** — Settlements & Recurring Expenses | Done |
+| Manual settlements / mark paid | **6** | Done |
+| Offline mode (hardened) | **7** — Search, Categories, Multi-Currency, Offline Sync | Done |
+| Cloud sync (full queue + conflicts) | **7** | Done² |
+| Spending totals | **7** | Done |
+| Categorize expenses | **7** | Done |
+| 100+ currencies | **7** | Done |
+| Payment integrations | **8** — Stretch / Pro-like Features | Done |
+| Transaction import | **8** | Done |
 | 7+ languages | **9** — Polish, Testing, and Release Prep | Not started |
 
 ¹ Room offline-first cache exists from Phase 1; friends/groups already write locally first. Phase 7 adds a durable sync queue, conflict policy, and reliable offline UX for expenses/balances.  
@@ -62,7 +62,7 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | “Who owes whom” lists | Recurring (Phase 6) |
 | Debt simplification (minimize transactions) | Multi-currency FX (Phase 7) |
 
-### Phase 6 — Settlements & Recurring Expenses
+### Phase 6 — Settlements & Recurring Expenses *(done)*
 **Covers:** Recurring expenses · record / settle debts  
 
 | In | Out |
@@ -71,7 +71,7 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | Recurring expense templates + schedule (WorkManager) | Payment gateway deep links (Phase 8) |
 | Generated instances feed Phase 4 expense model | |
 
-### Phase 7 — Search, Categories, Multi-Currency, Offline Sync
+### Phase 7 — Search, Categories, Multi-Currency, Offline Sync *(done)*
 **Covers:** Offline mode · Cloud sync · Spending totals · Categorize expenses · 100+ currencies  
 
 | In | Out |
@@ -81,7 +81,7 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | Currency catalog (100+), per-expense/group currency display | Live FX rates may be stubbed then refined |
 | Durable offline write queue, pull sync, conflict policy | Payment integrations (Phase 8) |
 
-### Phase 8 — Stretch / Pro-like Features
+### Phase 8 — Stretch / Pro-like Features *(done)*
 **Covers:** Payment integrations · Transaction import  
 
 | In | Out |

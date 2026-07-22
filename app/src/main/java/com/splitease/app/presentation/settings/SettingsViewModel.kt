@@ -22,8 +22,6 @@ class SettingsViewModel
                 .observeCurrencyCode()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppCurrencies.DEFAULT)
 
-        val currencyOptions: List<Pair<String, String>> = AppCurrencies.OPTIONS
-
         fun setCurrency(code: String) {
             viewModelScope.launch {
                 appSettingsRepository.setCurrencyCode(code)

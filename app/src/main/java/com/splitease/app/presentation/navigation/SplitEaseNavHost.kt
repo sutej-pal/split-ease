@@ -37,7 +37,11 @@ import com.splitease.app.presentation.friends.FriendsListScreen
 import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
 import com.splitease.app.presentation.home.GroupsHomeScreen
+import com.splitease.app.presentation.imports.ImportTransactionsScreen
+import com.splitease.app.presentation.search.SearchScreen
 import com.splitease.app.presentation.settings.SettingsScreen
+import com.splitease.app.presentation.settlements.SettleUpScreen
+import com.splitease.app.presentation.spending.SpendingTotalsScreen
 import com.splitease.app.presentation.welcome.WelcomeScreen
 
 /** Navigation route constants. */
@@ -53,11 +57,16 @@ object Routes {
     const val TAB_ACCOUNT = "tab_account"
 
     const val SETTINGS = "settings"
+    const val SEARCH = "search"
+    const val SPENDING = "spending"
+    const val IMPORT = "import_transactions"
     const val ADD_FRIEND = "add_friend"
     const val FRIEND_DETAIL = "friend_detail/{friendUserId}"
     const val CREATE_GROUP = "create_group"
     const val GROUP_DETAIL = "group_detail/{groupId}"
     const val ADD_EXPENSE = "add_expense?groupId={groupId}&friendUserId={friendUserId}"
+    const val SETTLE_UP =
+        "settle_up?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}&groupId={groupId}&label={label}"
 
     fun groupDetail(groupId: String) = "group_detail/$groupId"
 
@@ -68,6 +77,18 @@ object Routes {
 
     fun addExpenseForFriend(friendUserId: String) =
         "add_expense?groupId=&friendUserId=$friendUserId"
+
+    fun settleUp(
+        fromUserId: String,
+        toUserId: String,
+        amount: String,
+        currency: String,
+        groupId: String? = null,
+        label: String,
+    ): String {
+        val encodedLabel = android.net.Uri.encode(label)
+        return "settle_up?fromUserId=$fromUserId&toUserId=$toUserId&amount=$amount&currency=$currency&groupId=${groupId.orEmpty()}&label=$encodedLabel"
+    }
 }
 
 private val tabRoutes =
@@ -206,6 +227,7 @@ private fun SignedInNavHost(
                         navController.navigate(Routes.addExpenseForGroup(id))
                     },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                    onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 )
             }
             composable(Routes.TAB_FRIENDS) {
@@ -223,11 +245,25 @@ private fun SignedInNavHost(
                 AccountScreen(
                     displayName = displayName,
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                    onOpenSpending = { navController.navigate(Routes.SPENDING) },
+                    onOpenImport = { navController.navigate(Routes.IMPORT) },
                     onSignOut = onSignOut,
                 )
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.SEARCH) {
+                SearchScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.SPENDING) {
+                SpendingTotalsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.IMPORT) {
+                ImportTransactionsScreen(
+                    onBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack() },
+                )
             }
             composable(Routes.ADD_FRIEND) {
                 AddFriendScreen(
@@ -245,6 +281,17 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onAddExpense = {
                         navController.navigate(Routes.addExpenseForFriend(friendUserId))
+                    },
+                    onSettleUp = { from, to, amount, currency, label ->
+                        navController.navigate(
+                            Routes.settleUp(
+                                fromUserId = from,
+                                toUserId = to,
+                                amount = amount,
+                                currency = currency,
+                                label = label,
+                            ),
+                        )
                     },
                 )
             }
@@ -268,6 +315,18 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onAddExpense = {
                         navController.navigate(Routes.addExpenseForGroup(groupId))
+                    },
+                    onSettleDebt = { from, to, amount, currency, label ->
+                        navController.navigate(
+                            Routes.settleUp(
+                                fromUserId = from,
+                                toUserId = to,
+                                amount = amount,
+                                currency = currency,
+                                groupId = groupId,
+                                label = label,
+                            ),
+                        )
                     },
                 )
             }
@@ -293,6 +352,43 @@ private fun SignedInNavHost(
                 AddExpenseScreen(
                     groupId = groupId,
                     friendUserId = friendUserId,
+                    onBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Routes.SETTLE_UP,
+                arguments =
+                    listOf(
+                        navArgument("fromUserId") { type = NavType.StringType },
+                        navArgument("toUserId") { type = NavType.StringType },
+                        navArgument("amount") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("currency") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("label") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
+                SettleUpScreen(
+                    fromUserId = entry.arguments?.getString("fromUserId").orEmpty(),
+                    toUserId = entry.arguments?.getString("toUserId").orEmpty(),
+                    counterpartyLabel =
+                        android.net.Uri.decode(entry.arguments?.getString("label").orEmpty())
+                            .ifBlank { "friend" },
+                    amountPrefill = entry.arguments?.getString("amount").orEmpty(),
+                    currencyCode = entry.arguments?.getString("currency").orEmpty(),
+                    groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null },
                     onBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() },
                 )

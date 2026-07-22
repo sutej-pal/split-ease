@@ -72,4 +72,16 @@ class RoomExpenseRepository
             expenseDao.remapSplitUserId(fromUserId, toUserId)
             expenseDao.remapPaidByUserId(fromUserId, toUserId)
         }
+
+        override suspend fun getDueRecurringTemplates(nowEpochMs: Long): List<Expense> =
+            expenseDao.getDueRecurringTemplates(nowEpochMs).map { it.toDomain() }
+
+        override fun search(query: String): Flow<List<Expense>> =
+            expenseDao.search(query.trim()).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeInPeriod(fromEpochMs: Long, toEpochMs: Long): Flow<List<Expense>> =
+            expenseDao.observeInPeriod(fromEpochMs, toEpochMs).map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun getPendingSync(): List<Expense> =
+            expenseDao.getPendingSync().map { it.toDomain() }
     }

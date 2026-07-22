@@ -18,6 +18,8 @@ import java.math.BigDecimal
  * @property splitType How participant shares were computed.
  * @property isRecurring Whether a recurrence rule applies.
  * @property recurrenceFrequency Cadence when [isRecurring] is true.
+ * @property nextOccurrenceEpochMs Next generate-at for templates; null when not recurring.
+ * @property recurringTemplateId Parent template id for generated instances.
  * @property notes Optional free-form note.
  * @property remoteId Cloud id when synced.
  * @property createdAtEpochMs Creation timestamp.
@@ -36,6 +38,8 @@ data class Expense(
     val splitType: SplitType,
     val isRecurring: Boolean = false,
     val recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
+    val nextOccurrenceEpochMs: Long? = null,
+    val recurringTemplateId: String? = null,
     val notes: String? = null,
     val remoteId: String? = null,
     val createdAtEpochMs: Long,

@@ -33,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
@@ -41,6 +42,7 @@ import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import java.math.BigDecimal
 
@@ -53,9 +55,13 @@ fun AddExpenseScreen(
     viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     var description by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var splitType by rememberSaveable { mutableStateOf(SplitType.EQUAL.name) }
+    var recurrence by rememberSaveable { mutableStateOf(RecurrenceFrequency.NONE.name) }
+    var categoryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var customCategory by rememberSaveable { mutableStateOf("") }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var paidBy by rememberSaveable { mutableStateOf("") }
     var participants by remember { mutableStateOf<List<ParticipantOption>>(emptyList()) }
@@ -113,6 +119,88 @@ fun AddExpenseScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     enabled = !uiState.isSubmitting,
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SeSectionHeader(text = stringResource(R.string.label_category))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    categories.chunked(3).forEach { rowCats ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowCats.forEach { cat ->
+                                FilterChip(
+                                    selected = categoryId == cat.id,
+                                    onClick = {
+                                        categoryId = if (categoryId == cat.id) null else cat.id
+                                    },
+                                    label = { Text(cat.name) },
+                                    enabled = !uiState.isSubmitting,
+                                    colors =
+                                        FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = SplitEaseColors.Primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                            containerColor = SplitEaseColors.Surface,
+                                            labelColor = SplitEaseColors.Navy,
+                                        ),
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                SeTextField(
+                    value = customCategory,
+                    onValueChange = { customCategory = it },
+                    label = stringResource(R.string.label_custom_category),
+                    enabled = !uiState.isSubmitting,
+                )
+                if (customCategory.isNotBlank()) {
+                    SeTextButton(
+                        text = stringResource(R.string.action_add_category),
+                        onClick = {
+                            viewModel.addCustomCategory(customCategory) { id ->
+                                categoryId = id
+                                customCategory = ""
+                            }
+                        },
+                        enabled = !uiState.isSubmitting,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SeSectionHeader(text = stringResource(R.string.label_recurrence))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    RecurrenceFrequency.entries.chunked(2).forEach { rowTypes ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowTypes.forEach { freq ->
+                                FilterChip(
+                                    selected = recurrence == freq.name,
+                                    onClick = { recurrence = freq.name },
+                                    label = {
+                                        Text(
+                                            when (freq) {
+                                                RecurrenceFrequency.NONE ->
+                                                    stringResource(R.string.recurrence_none)
+                                                RecurrenceFrequency.WEEKLY ->
+                                                    stringResource(R.string.recurrence_weekly)
+                                                RecurrenceFrequency.MONTHLY ->
+                                                    stringResource(R.string.recurrence_monthly)
+                                                RecurrenceFrequency.YEARLY ->
+                                                    stringResource(R.string.recurrence_yearly)
+                                            },
+                                        )
+                                    },
+                                    enabled = !uiState.isSubmitting,
+                                    colors =
+                                        FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = SplitEaseColors.Primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                            containerColor = SplitEaseColors.Surface,
+                                            labelColor = SplitEaseColors.Navy,
+                                        ),
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 SeSectionHeader(text = stringResource(R.string.label_split_type))
@@ -199,6 +287,9 @@ fun AddExpenseScreen(
                 }
 
                 val mode = runCatching { SplitType.valueOf(splitType) }.getOrDefault(SplitType.EQUAL)
+                val recurrenceMode =
+                    runCatching { RecurrenceFrequency.valueOf(recurrence) }
+                        .getOrDefault(RecurrenceFrequency.NONE)
                 if (mode == SplitType.UNEQUAL) {
                     Spacer(modifier = Modifier.height(12.dp))
                     SeSectionHeader(text = stringResource(R.string.label_unequal_amounts))
@@ -268,6 +359,8 @@ fun AddExpenseScreen(
                             unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
                             percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
                             shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
+                            recurrenceFrequency = recurrenceMode,
+                            categoryId = categoryId,
                             onSuccess = onDone,
                         )
                     },
@@ -290,15 +383,18 @@ fun AddExpenseScreen(
 fun ExpenseListSection(
     expenses: List<Expense>,
     emptyText: String,
+    categoryNames: Map<String, String> = emptyMap(),
 ) {
     if (expenses.isEmpty()) {
         SeEmptyState(message = emptyText)
     } else {
         expenses.forEach { expense ->
+            val categoryLabel =
+                expense.categoryId?.let { categoryNames[it] }?.let { " · $it" }.orEmpty()
             SeListRow(
                 title = expense.description,
                 subtitle =
-                    "${expense.currencyCode} ${expense.amount.toPlainString()} · ${expense.splitType.name.lowercase()}",
+                    "${expense.currencyCode} ${expense.amount.toPlainString()} · ${expense.splitType.name.lowercase()}$categoryLabel",
             )
         }
     }
