@@ -1,0 +1,55 @@
+package com.splitease.app.data.repository
+
+import com.splitease.app.data.local.dao.ExpenseDao
+import com.splitease.app.data.local.mapper.toDomain
+import com.splitease.app.data.local.mapper.toEntity
+import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.repository.ExpenseRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Room-backed [ExpenseRepository].
+ *
+ * @property expenseDao Local expenses DAO.
+ */
+@Singleton
+class RoomExpenseRepository
+    @Inject
+    constructor(
+        private val expenseDao: ExpenseDao,
+    ) : ExpenseRepository {
+        override fun observeExpenses(groupId: String?): Flow<List<Expense>> {
+            val source = if (groupId == null) {
+                expenseDao.observeAll()
+            } else {
+                expenseDao.observeByGroup(groupId)
+            }
+            return source.map { rows -> rows.map { it.toDomain() } }
+        }
+
+        override suspend fun getExpenseById(id: String): Expense? = expenseDao.getById(id)?.toDomain()
+
+        override suspend fun upsertExpenseWithSplits(
+            expense: Expense,
+            splits: List<ExpenseSplit>,
+        ) {
+            expenseDao.upsertExpenseWithSplits(
+                expense = expense.toEntity(),
+                splits = splits.map { it.toEntity() },
+            )
+        }
+
+        override suspend fun deleteExpenseById(id: String) {
+            expenseDao.deleteById(id)
+        }
+
+        override fun observeSplits(expenseId: String): Flow<List<ExpenseSplit>> =
+            expenseDao.observeSplits(expenseId).map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun getSplits(expenseId: String): List<ExpenseSplit> =
+            expenseDao.getSplits(expenseId).map { it.toDomain() }
+    }

@@ -1,0 +1,46 @@
+---
+description: SplitEase project working agreement — phases, stack, docs, money math
+alwaysApply: true
+---
+
+# SplitEase — Cursor Working Agreement
+
+## Identity
+
+Build **SplitEase**, a native Android expense-sharing app inspired by Splitwise's *feature set* (not assets, branding, or copy). Package: `com.splitease.app`.
+
+## Session start
+
+1. Read `PROGRESS.md` first.
+2. Work only on the next incomplete phase.
+3. Do not skip phases. Do not start the next phase until the current phase doc has a complete Outcome section.
+
+## Tech stack (mandatory)
+
+- Kotlin 100%, Jetpack Compose Material 3 (no XML layouts)
+- MVVM + Clean Architecture (`data` / `domain` / `presentation`)
+- Hilt, Room (offline-first), Coroutines + Flow, Navigation Compose
+- Firebase (Auth + Firestore + Storage) by default → **overridden: Supabase** (Phase 2+)
+- Coil, Vico (charts later), JUnit5, Turbine, MockK, Compose UI Test
+- Gradle Kotlin DSL + `libs.versions.toml`
+- minSdk 26, targetSdk latest stable
+
+## Documentation (first-class)
+
+For each phase:
+
+1. Create `docs/phase-<N>-<short-name>.md` **before** implementation with a Plan section.
+2. Update with Outcome at phase end. Never delete prior phase docs.
+3. Required sections: Phase Goal, Scope (In/Out), Architecture Decisions, Data Model Changes, Files Added/Modified, Screens/UI Added, How to Test, Known Issues/TODOs, Screenshots placeholder.
+4. Keep `PROGRESS.md`, `CHANGELOG.md` (Keep a Changelog), `ARCHITECTURE.md`, and `docs/data-dictionary.md` current.
+5. KDoc on public `domain` and `data` APIs.
+
+## Money & libraries
+
+- Financial math: `BigDecimal` only — never `Float`/`Double`. Unit-test rounding (e.g. ₹100 / 3).
+- Ask before adding third-party libraries not listed in the project tech stack.
+- Flag Firebase free-tier / cost risks in phase Known Issues when relevant.
+
+## Commits
+
+Prefer small reviewable diffs; suggest a commit message per logical unit. Do not commit unless the user asks.

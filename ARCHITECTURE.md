@@ -1,0 +1,93 @@
+# SplitEase Architecture
+
+Living design document. Update (do not recreate) when a new architectural layer or major pattern is introduced.
+
+## Overview
+
+SplitEase is a native Android expense-sharing app (Kotlin, Jetpack Compose) that follows **MVVM + Clean Architecture** with an offline-first Room cache and **Supabase** as the cloud backend (Auth now; PostgREST/Storage in later phases). Original plans mentioned Firebase; Phase 2 switched to Supabase per project credentials.
+
+## Layers
+
+```
+presentation/   # Compose UI, ViewModels, Navigation
+domain/         # Models, repository interfaces, pure business logic
+data/           # Room, Supabase, repository implementations, DTOs
+```
+
+Package root: `com.splitease.app`
+
+## Module Structure
+
+- Single Gradle module `:app` for MVP speed.
+- Layer packages live under `com.splitease.app.{presentation,domain,data}`.
+- Multi-module split may be reconsidered after Phase 5 if build times or boundaries warrant it.
+
+## Offline-first data layer (Phase 1)
+
+```
+domain/model          # User, Friend, Group, Expense, …
+domain/repository     # Interfaces only (no Android deps)
+data/local/entity     # Room rows
+data/local/dao        # Queries + @Transaction helpers
+data/local/db         # SplitEaseDatabase (v1)
+data/repository       # Room*Repository implementations
+data/di               # DatabaseModule + RepositoryModule (Hilt)
+```
+
+**Money:** domain and Room entities use `java.math.BigDecimal`; persisted as TEXT plain strings via `SplitEaseTypeConverters`.
+
+**IDs:** string UUIDs locally; `remoteId` stores the Supabase auth user id when synced.
+
+**Sync bookmarks:** `syncStatus` (`LOCAL_ONLY` | `PENDING` | `SYNCED`) + `updatedAtEpochMs` — write path only for now; conflict/queue logic in Phase 7.
+
+**Schema source of truth:** `docs/data-dictionary.md` and exported JSON under `app/schemas/`.
+
+## Tech Stack
+
+| Concern | Choice |
+|---|---|
+| UI | Jetpack Compose, Material 3 |
+| DI | Hilt |
+| Local DB | Room (offline-first source of truth from Phase 1) |
+| Async | Coroutines + Flow |
+| Navigation | Navigation Compose |
+| Backend | **Supabase** (Auth Phase 2; PostgREST/Storage later) |
+| Images | Coil + Supabase Storage (later) |
+| Charts | Vico (Phase 8) |
+| Money math | `BigDecimal` only (never Float/Double) |
+
+## Conventions
+
+- Domain and data public APIs carry KDoc.
+- Financial calculations are pure Kotlin in `domain`, unit-tested with rounding edge cases.
+- Documentation for each phase lives under `docs/phase-<N>-*.md`; schema in `docs/data-dictionary.md`.
+
+## Phase 0 Notes
+
+Foundations only: Gradle/Compose/Hilt/Room classpath, theme, Welcome screen. No domain entities or cloud wiring yet.
+
+**As shipped (0.1.0):**
+- Single `:app` module; packages under `com.splitease.app.{presentation,domain,data}`
+- Entry: `SplitEaseApplication` (`@HiltAndroidApp`) → `MainActivity` → `SplitEaseNavHost` → `WelcomeScreen`
+- Style gate: ktlint (`./gradlew ktlintCheck`); Compose function naming allowed via `.editorconfig`
+- SDKs: min 26 / target & compile 36
+
+## Phase 1 Notes
+
+Local persistence is live: repositories inject Room DAOs. Auth (Phase 2) upserts the signed-in user and calls `CategoryRepository.ensureDefaults()` after sign-in/sign-up.
+
+## Authentication (Phase 2)
+
+```
+domain/repository/AuthRepository
+data/repository/SupabaseAuthRepository
+data/di/SupabaseModule          # createSupabaseClient + Auth plugin
+presentation/auth/*             # screens + AuthViewModel
+```
+
+- Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.properties` → `BuildConfig`.
+- **Never** ship the database password in the Android app.
+- Session Flow from `supabase.auth.sessionStatus` gates Welcome/auth vs Home.
+- Google OAuth is stubbed pending Supabase provider + deep-link setup.
+- **MVP: email confirmation skipped** — keep Confirm email disabled in Supabase Dashboard.  
+  **TODO (pre-production):** re-enable confirmation + in-app verify-email flow before release.
