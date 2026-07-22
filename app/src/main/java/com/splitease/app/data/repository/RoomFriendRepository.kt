@@ -26,6 +26,9 @@ class RoomFriendRepository
 
         override suspend fun getById(id: String): Friend? = friendDao.getById(id)?.toDomain()
 
+        override suspend fun getByOwnerAndEmail(ownerUserId: String, email: String): Friend? =
+            friendDao.getByOwnerAndEmail(ownerUserId, email)?.toDomain()
+
         override suspend fun upsert(friend: Friend) {
             friendDao.upsert(friend.toEntity())
         }

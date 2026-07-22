@@ -23,11 +23,12 @@ class RoomExpenseRepository
         private val expenseDao: ExpenseDao,
     ) : ExpenseRepository {
         override fun observeExpenses(groupId: String?): Flow<List<Expense>> {
-            val source = if (groupId == null) {
-                expenseDao.observeAll()
-            } else {
-                expenseDao.observeByGroup(groupId)
-            }
+            val source =
+                if (groupId == null) {
+                    expenseDao.observeAll()
+                } else {
+                    expenseDao.observeByGroup(groupId)
+                }
             return source.map { rows -> rows.map { it.toDomain() } }
         }
 
@@ -52,4 +53,13 @@ class RoomExpenseRepository
 
         override suspend fun getSplits(expenseId: String): List<ExpenseSplit> =
             expenseDao.getSplits(expenseId).map { it.toDomain() }
+
+        override fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<Expense>> =
+            expenseDao.observeBetweenUsers(userId, otherUserId).map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun remapUserId(fromUserId: String, toUserId: String) {
+            if (fromUserId == toUserId) return
+            expenseDao.remapSplitUserId(fromUserId, toUserId)
+            expenseDao.remapPaidByUserId(fromUserId, toUserId)
+        }
     }

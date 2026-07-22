@@ -57,4 +57,21 @@ interface ExpenseRepository {
      * @return Current split rows.
      */
     suspend fun getSplits(expenseId: String): List<ExpenseSplit>
+
+    /**
+     * Observes 1:1 (non-group) expenses between two users.
+     *
+     * @param userId First user.
+     * @param otherUserId Second user.
+     * @return Cold [Flow] of expenses.
+     */
+    fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<Expense>>
+
+    /**
+     * Remaps payer and split participant ids after an invite placeholder becomes a real user.
+     *
+     * @param fromUserId Placeholder user id.
+     * @param toUserId Real auth user id.
+     */
+    suspend fun remapUserId(fromUserId: String, toUserId: String)
 }

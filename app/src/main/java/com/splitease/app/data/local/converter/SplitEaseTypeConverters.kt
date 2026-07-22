@@ -1,6 +1,8 @@
 package com.splitease.app.data.local.converter
 
 import androidx.room.TypeConverter
+import com.splitease.app.domain.model.InviteKind
+import com.splitease.app.domain.model.InviteStatus
 import com.splitease.app.domain.model.MemberRole
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
@@ -62,4 +64,20 @@ class SplitEaseTypeConverters {
     /** @param value Stored name. @return [RecurrenceFrequency]. */
     @TypeConverter
     fun toRecurrenceFrequency(value: String): RecurrenceFrequency = RecurrenceFrequency.valueOf(value)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
+    fun fromInviteKind(value: InviteKind): String = value.name
+
+    /** @param value Stored name. @return [InviteKind]. */
+    @TypeConverter
+    fun toInviteKind(value: String): InviteKind = InviteKind.valueOf(value)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
+    fun fromInviteStatus(value: InviteStatus): String = value.name
+
+    /** @param value Stored name. @return [InviteStatus]. */
+    @TypeConverter
+    fun toInviteStatus(value: String): InviteStatus = InviteStatus.valueOf(value)
 }

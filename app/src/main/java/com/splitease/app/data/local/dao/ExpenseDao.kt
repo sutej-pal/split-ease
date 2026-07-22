@@ -56,6 +56,64 @@ interface ExpenseDao {
     suspend fun getSplits(expenseId: String): List<ExpenseSplitEntity>
 
     /**
+     * Observes non-group expenses shared between [userId] and [otherUserId].
+     *
+     * @param userId First participant.
+     * @param otherUserId Second participant.
+     * @return Flow of matching expenses newest-first.
+     */
+    @Query(
+        """
+        SELECT e.* FROM expenses e
+        WHERE e.groupId IS NULL
+          AND EXISTS (
+            SELECT 1 FROM expense_splits s1
+            WHERE s1.expenseId = e.id AND s1.userId = :userId
+          )
+          AND EXISTS (
+            SELECT 1 FROM expense_splits s2
+            WHERE s2.expenseId = e.id AND s2.userId = :otherUserId
+          )
+        ORDER BY e.expenseDateEpochMs DESC
+        """,
+    )
+    fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<ExpenseEntity>>
+
+    /**
+     * Observes expenses where [userId] is payer or a split participant.
+     *
+     * @param userId User id.
+     * @return Flow of expenses newest-first.
+     */
+    @Query(
+        """
+        SELECT DISTINCT e.* FROM expenses e
+        LEFT JOIN expense_splits s ON s.expenseId = e.id
+        WHERE e.paidByUserId = :userId OR s.userId = :userId
+        ORDER BY e.expenseDateEpochMs DESC
+        """,
+    )
+    fun observeInvolvingUser(userId: String): Flow<List<ExpenseEntity>>
+
+    /**
+     * Remaps split participant ids (invite placeholder → real user).
+     *
+     * @param fromUserId Old user id.
+     * @param toUserId New user id.
+     */
+    @Query("UPDATE expense_splits SET userId = :toUserId WHERE userId = :fromUserId")
+    suspend fun remapSplitUserId(fromUserId: String, toUserId: String)
+
+    /**
+     * Remaps payer ids (invite placeholder → real user).
+     *
+     * @param fromUserId Old user id.
+     * @param toUserId New user id.
+     */
+    @Query("UPDATE expenses SET paidByUserId = :toUserId WHERE paidByUserId = :fromUserId")
+    suspend fun remapPaidByUserId(fromUserId: String, toUserId: String)
+
+    /**
      * Replaces an expense and its splits atomically.
      *
      * @param expense Parent row.

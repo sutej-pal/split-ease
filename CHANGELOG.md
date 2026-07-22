@@ -7,8 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- (nothing yet — next: Phase 5 balances)
+
+## [0.5.0] - 2026-07-22 — phase-4
+
+### Added
+- Expense create/list for groups and 1:1 friends (equal, unequal, %, shares)
+- `SplitCalculator` with BigDecimal remainder rules + unit tests
+- Supabase `expenses` / `expense_splits` sync; invite accept remaps placeholder split ids
+- Invited (pending) users can be expense participants immediately
+
+## [0.4.1] - 2026-07-22 — phase-3 invites
+
+### Added
+- Email invites for non-users (friends + groups): Room `invites`, Supabase `invites` + `accept_pending_invites()`
+- Share-sheet invite link when the recipient is not on SplitEase yet
+- Auto-claim pending invites on sign-up / sign-in
+
 ### Changed
-- Documented MVP decision to skip Supabase signup email confirmation; marked re-enable as pre-production TODO
+- Add-friend / group-member by email no longer requires an existing SplitEase account
+
+## [0.4.0] - 2026-07-22 — phase-3
+
+### Added
+- Friends list + add friend by email (Room + Supabase PostgREST)
+- Groups list, create/edit, detail with members and expenses placeholder
+- `profiles` / `friends` / `groups` / `group_members` SQL schema + RLS
+- Home hub navigation into Friends and Groups
+- Profile upsert on sign-in/sign-up for email lookup
 
 ## [0.3.0] - 2026-07-22 — phase-2
 

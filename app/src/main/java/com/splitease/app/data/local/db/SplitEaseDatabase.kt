@@ -8,6 +8,7 @@ import com.splitease.app.data.local.dao.CategoryDao
 import com.splitease.app.data.local.dao.ExpenseDao
 import com.splitease.app.data.local.dao.FriendDao
 import com.splitease.app.data.local.dao.GroupDao
+import com.splitease.app.data.local.dao.InviteDao
 import com.splitease.app.data.local.dao.PaymentDao
 import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.entity.CategoryEntity
@@ -16,11 +17,12 @@ import com.splitease.app.data.local.entity.ExpenseSplitEntity
 import com.splitease.app.data.local.entity.FriendEntity
 import com.splitease.app.data.local.entity.GroupEntity
 import com.splitease.app.data.local.entity.GroupMemberEntity
+import com.splitease.app.data.local.entity.InviteEntity
 import com.splitease.app.data.local.entity.PaymentEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 1).
+ * Offline-first Room database for SplitEase (version 2 — invites).
  */
 @Database(
     entities = [
@@ -32,8 +34,9 @@ import com.splitease.app.data.local.entity.UserEntity
         ExpenseEntity::class,
         ExpenseSplitEntity::class,
         PaymentEntity::class,
+        InviteEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)
@@ -55,6 +58,9 @@ abstract class SplitEaseDatabase : RoomDatabase() {
 
     /** @return DAO for payments. */
     abstract fun paymentDao(): PaymentDao
+
+    /** @return DAO for invites. */
+    abstract fun inviteDao(): InviteDao
 
     companion object {
         /** On-disk database file name. */

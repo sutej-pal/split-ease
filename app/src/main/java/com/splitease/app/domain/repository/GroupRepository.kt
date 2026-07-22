@@ -9,6 +9,14 @@ import kotlinx.coroutines.flow.Flow
  */
 interface GroupRepository {
     /**
+     * Observes groups the given user belongs to.
+     *
+     * @param userId Member user id.
+     * @return Cold [Flow] of groups ordered by name.
+     */
+    fun observeGroupsForUser(userId: String): Flow<List<Group>>
+
+    /**
      * Observes all locally cached groups.
      *
      * @return Cold [Flow] of groups ordered by name.
@@ -58,4 +66,21 @@ interface GroupRepository {
      * @param memberId Local UUID of the membership row.
      */
     suspend fun deleteMemberById(memberId: String)
+
+    /**
+     * Remaps membership user ids after invite accept.
+     *
+     * @param fromUserId Placeholder id.
+     * @param toUserId Real user id.
+     */
+    suspend fun remapMemberUserId(fromUserId: String, toUserId: String)
+
+    /**
+     * Loads a membership if present.
+     *
+     * @param groupId Group id.
+     * @param userId Member user id.
+     * @return Membership or null.
+     */
+    suspend fun getMember(groupId: String, userId: String): GroupMember?
 }

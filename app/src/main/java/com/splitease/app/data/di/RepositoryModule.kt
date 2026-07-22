@@ -4,6 +4,7 @@ import com.splitease.app.data.repository.RoomCategoryRepository
 import com.splitease.app.data.repository.RoomExpenseRepository
 import com.splitease.app.data.repository.RoomFriendRepository
 import com.splitease.app.data.repository.RoomGroupRepository
+import com.splitease.app.data.repository.RoomInviteRepository
 import com.splitease.app.data.repository.RoomPaymentRepository
 import com.splitease.app.data.repository.RoomUserRepository
 import com.splitease.app.data.repository.SupabaseAuthRepository
@@ -12,6 +13,7 @@ import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.InviteRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import dagger.Binds
@@ -40,6 +42,11 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindFriendRepository(impl: RoomFriendRepository): FriendRepository
+
+    /** Binds [InviteRepository] to [RoomInviteRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindInviteRepository(impl: RoomInviteRepository): InviteRepository
 
     /** Binds [GroupRepository] to [RoomGroupRepository]. */
     @Binds

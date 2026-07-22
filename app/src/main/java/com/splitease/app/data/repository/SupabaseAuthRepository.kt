@@ -1,5 +1,8 @@
 package com.splitease.app.data.repository
 
+import com.splitease.app.data.remote.SocialRemoteDataSource
+import com.splitease.app.data.remote.dto.ProfileDto
+import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SyncStatus
@@ -17,14 +20,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import javax.inject.Inject
+import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
- * Supabase-backed [AuthRepository] that also upserts the local Room [User].
- *
- * @property supabase Supabase client.
- * @property userRepository Local user cache.
- * @property categoryRepository Used to seed default categories after first sign-in.
+ * Supabase-backed [AuthRepository] that upserts local Room [User] and remote `profiles`.
  */
 @Singleton
 class SupabaseAuthRepository
@@ -33,6 +33,8 @@ class SupabaseAuthRepository
         private val supabase: SupabaseClient,
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
+        private val socialRemote: SocialRemoteDataSource,
+        private val socialInteractor: Provider<SocialInteractor>,
     ) : AuthRepository {
         override fun observeSession(): Flow<AuthSession> =
             supabase.auth.sessionStatus.map { status ->
@@ -67,6 +69,7 @@ class SupabaseAuthRepository
                 }
                 persistCurrentUser()
                 categoryRepository.ensureDefaults()
+                claimInvitesAndExpenses()
             }
 
         override suspend fun signIn(email: String, password: String): Result<Unit> =
@@ -77,6 +80,7 @@ class SupabaseAuthRepository
                 }
                 persistCurrentUser()
                 categoryRepository.ensureDefaults()
+                claimInvitesAndExpenses()
             }
 
         override suspend fun sendPasswordReset(email: String): Result<Unit> =
@@ -88,6 +92,15 @@ class SupabaseAuthRepository
             runCatching {
                 supabase.auth.signOut()
             }
+
+        private suspend fun claimInvitesAndExpenses() {
+            val userId = supabase.auth.currentUserOrNull()?.id ?: return
+            runCatching {
+                socialInteractor.get().acceptPendingInvitesForCurrentUser(userId)
+            }.onFailure {
+                runCatching { socialRemote.acceptPendingInvites() }
+            }
+        }
 
         private suspend fun persistCurrentUser() {
             val info = supabase.auth.currentUserOrNull() ?: return
@@ -106,6 +119,17 @@ class SupabaseAuthRepository
                     syncStatus = SyncStatus.SYNCED,
                 ),
             )
+            runCatching {
+                socialRemote.upsertProfile(
+                    ProfileDto(
+                        id = authUser.userId,
+                        email = authUser.email,
+                        displayName = authUser.displayName,
+                        photoUrl = existing?.photoUrl,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+            }
         }
     }
 

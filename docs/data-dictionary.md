@@ -33,6 +33,21 @@ Canonical schema reference for Room entities and Firestore collections. Updated 
 
 Unique index: `(ownerUserId, friendUserId)`.
 
+### `invites`
+
+| Column | Type | Nullable | Description |
+|---|---|---|---|
+| id | TEXT (PK) | no | Local/remote UUID |
+| token | TEXT (unique) | no | Opaque token in invite URL |
+| inviterUserId | TEXT | no | Sender user id |
+| email | TEXT | no | Recipient email |
+| kind | TEXT | no | `FRIEND` / `GROUP` |
+| groupId | TEXT | yes | Target group when kind is GROUP |
+| friendRowId | TEXT | yes | Related friendship row |
+| status | TEXT | no | `PENDING` / `ACCEPTED` / `CANCELLED` |
+| createdAtEpochMs | INTEGER | no | Created-at UTC millis |
+| syncStatus | TEXT | no | Sync bookmark |
+
 ### `groups`
 
 | Column | Type | Nullable | Description |
@@ -127,4 +142,48 @@ Unique index: `(expenseId, userId)`.
 |---|---|---|---|---|
 | auth.users (Supabase managed) | id | UUID | no | Auth user id (mirrored to Room `users.id`) |
 | auth.users | email | TEXT | yes | Account email |
-| — app tables — | — | — | — | PostgREST app schema starts Phase 3 |
+| profiles | id | UUID (PK) | no | Same as auth user id |
+| profiles | email | TEXT | no | Lookup email |
+| profiles | display_name | TEXT | no | Display name |
+| profiles | photo_url | TEXT | yes | Avatar |
+| profiles | updated_at_epoch_ms | BIGINT | no | Last update |
+| friends | id | UUID (PK) | no | Friendship id |
+| friends | owner_user_id | UUID | no | Owner |
+| friends | friend_user_id | UUID | no | Friend user |
+| friends | email_snapshot | TEXT | no | Cached email |
+| friends | display_name_snapshot | TEXT | no | Cached name |
+| friends | updated_at_epoch_ms | BIGINT | no | Last update |
+| groups | id | UUID (PK) | no | Group id |
+| groups | name | TEXT | no | Group name |
+| groups | default_currency_code | TEXT | no | ISO currency |
+| groups | created_by_user_id | UUID | no | Creator |
+| groups | updated_at_epoch_ms | BIGINT | no | Last update |
+| group_members | id | UUID (PK) | no | Membership id |
+| group_members | group_id | UUID | no | Parent group |
+| group_members | user_id | UUID | no | Member |
+| group_members | role | TEXT | no | OWNER / MEMBER |
+| group_members | joined_at_epoch_ms | BIGINT | no | Join time |
+| invites | id | UUID (PK) | no | Invite id |
+| invites | token | TEXT | no | Unique invite token |
+| invites | inviter_user_id | UUID | no | Sender |
+| invites | email | TEXT | no | Recipient email |
+| invites | kind | TEXT | no | FRIEND / GROUP |
+| invites | group_id | UUID | yes | Target group |
+| invites | friend_row_id | UUID | yes | Related friends row |
+| invites | status | TEXT | no | PENDING / ACCEPTED / CANCELLED |
+| invites | created_at_epoch_ms | BIGINT | no | Created time |
+| expenses | id | UUID (PK) | no | Expense id |
+| expenses | description | TEXT | no | Title |
+| expenses | amount | TEXT | no | Plain decimal |
+| expenses | currency_code | TEXT | no | ISO currency |
+| expenses | paid_by_user_id | UUID | no | Payer (may be placeholder until accept) |
+| expenses | group_id | UUID | yes | Group or null for 1:1 |
+| expenses | expense_date_epoch_ms | BIGINT | no | Business date |
+| expenses | split_type | TEXT | no | EQUAL / UNEQUAL / PERCENTAGE / SHARES |
+| expenses | updated_at_epoch_ms | BIGINT | no | Last update |
+| expense_splits | id | UUID (PK) | no | Split id |
+| expense_splits | expense_id | UUID | no | Parent expense |
+| expense_splits | user_id | UUID | no | Participant (no auth FK — placeholders allowed) |
+| expense_splits | owed_amount | TEXT | no | Plain decimal |
+| expense_splits | percentage | TEXT | yes | Optional % |
+| expense_splits | shares | INTEGER | yes | Optional shares |

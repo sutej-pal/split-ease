@@ -6,6 +6,7 @@ import com.splitease.app.data.local.dao.CategoryDao
 import com.splitease.app.data.local.dao.ExpenseDao
 import com.splitease.app.data.local.dao.FriendDao
 import com.splitease.app.data.local.dao.GroupDao
+import com.splitease.app.data.local.dao.InviteDao
 import com.splitease.app.data.local.dao.PaymentDao
 import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.db.SplitEaseDatabase
@@ -63,4 +64,8 @@ object DatabaseModule {
     /** @param db Database. @return [PaymentDao]. */
     @Provides
     fun providePaymentDao(db: SplitEaseDatabase): PaymentDao = db.paymentDao()
+
+    /** @param db Database. @return [InviteDao]. */
+    @Provides
+    fun provideInviteDao(db: SplitEaseDatabase): InviteDao = db.inviteDao()
 }

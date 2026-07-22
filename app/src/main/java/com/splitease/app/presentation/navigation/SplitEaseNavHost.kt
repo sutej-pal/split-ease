@@ -13,15 +13,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.auth.ForgotPasswordScreen
 import com.splitease.app.presentation.auth.LoginScreen
 import com.splitease.app.presentation.auth.SignUpScreen
+import com.splitease.app.presentation.expenses.AddExpenseScreen
+import com.splitease.app.presentation.expenses.FriendDetailScreen
+import com.splitease.app.presentation.friends.AddFriendScreen
+import com.splitease.app.presentation.friends.FriendsListScreen
+import com.splitease.app.presentation.groups.CreateGroupScreen
+import com.splitease.app.presentation.groups.GroupDetailScreen
+import com.splitease.app.presentation.groups.GroupsListScreen
 import com.splitease.app.presentation.home.HomeScreen
 import com.splitease.app.presentation.welcome.WelcomeScreen
 
@@ -32,6 +41,23 @@ object Routes {
     const val SIGN_UP = "sign_up"
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
+    const val FRIENDS = "friends"
+    const val ADD_FRIEND = "add_friend"
+    const val FRIEND_DETAIL = "friend_detail/{friendUserId}"
+    const val GROUPS = "groups"
+    const val CREATE_GROUP = "create_group"
+    const val GROUP_DETAIL = "group_detail/{groupId}"
+    const val ADD_EXPENSE = "add_expense?groupId={groupId}&friendUserId={friendUserId}"
+
+    fun groupDetail(groupId: String) = "group_detail/$groupId"
+
+    fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
+
+    fun addExpenseForGroup(groupId: String) =
+        "add_expense?groupId=$groupId&friendUserId="
+
+    fun addExpenseForFriend(friendUserId: String) =
+        "add_expense?groupId=&friendUserId=$friendUserId"
 }
 
 /**
@@ -43,7 +69,6 @@ fun SplitEaseNavHost(
 ) {
     val session by authViewModel.session.collectAsStateWithLifecycle()
     val formState by authViewModel.formState.collectAsStateWithLifecycle()
-    val navController = rememberNavController()
     val context = LocalContext.current
     val googleSoon = stringResource(R.string.google_sign_in_soon)
     val resetSent = stringResource(R.string.reset_sent)
@@ -55,6 +80,7 @@ fun SplitEaseNavHost(
             }
         }
         AuthSession.SignedOut -> {
+            val navController = rememberNavController()
             NavHost(
                 navController = navController,
                 startDestination = Routes.WELCOME,
@@ -112,9 +138,115 @@ fun SplitEaseNavHost(
             LaunchedEffect(current.user.userId) {
                 authViewModel.clearMessages()
             }
-            HomeScreen(
+            SignedInNavHost(
                 displayName = current.user.displayName,
                 onSignOut = authViewModel::signOut,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SignedInNavHost(
+    displayName: String,
+    onSignOut: () -> Unit,
+) {
+    val navController = rememberNavController()
+    NavHost(
+        navController = navController,
+        startDestination = Routes.HOME,
+    ) {
+        composable(Routes.HOME) {
+            HomeScreen(
+                displayName = displayName,
+                onOpenFriends = { navController.navigate(Routes.FRIENDS) },
+                onOpenGroups = { navController.navigate(Routes.GROUPS) },
+                onSignOut = onSignOut,
+            )
+        }
+        composable(Routes.FRIENDS) {
+            FriendsListScreen(
+                onBack = { navController.popBackStack() },
+                onAddFriend = { navController.navigate(Routes.ADD_FRIEND) },
+                onOpenFriend = { friendUserId ->
+                    navController.navigate(Routes.friendDetail(friendUserId))
+                },
+            )
+        }
+        composable(Routes.ADD_FRIEND) {
+            AddFriendScreen(
+                onBack = { navController.popBackStack() },
+                onDone = {
+                    navController.popBackStack()
+                },
+            )
+        }
+        composable(
+            route = Routes.FRIEND_DETAIL,
+            arguments = listOf(navArgument("friendUserId") { type = NavType.StringType }),
+        ) { entry ->
+            val friendUserId = entry.arguments?.getString("friendUserId").orEmpty()
+            FriendDetailScreen(
+                friendUserId = friendUserId,
+                onBack = { navController.popBackStack() },
+                onAddExpense = {
+                    navController.navigate(Routes.addExpenseForFriend(friendUserId))
+                },
+            )
+        }
+        composable(Routes.GROUPS) {
+            GroupsListScreen(
+                onBack = { navController.popBackStack() },
+                onCreateGroup = { navController.navigate(Routes.CREATE_GROUP) },
+                onOpenGroup = { id -> navController.navigate(Routes.groupDetail(id)) },
+            )
+        }
+        composable(Routes.CREATE_GROUP) {
+            CreateGroupScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { id ->
+                    navController.navigate(Routes.groupDetail(id)) {
+                        popUpTo(Routes.GROUPS)
+                    }
+                },
+            )
+        }
+        composable(
+            route = Routes.GROUP_DETAIL,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
+        ) { entry ->
+            val groupId = entry.arguments?.getString("groupId").orEmpty()
+            GroupDetailScreen(
+                groupId = groupId,
+                onBack = { navController.popBackStack() },
+                onAddExpense = {
+                    navController.navigate(Routes.addExpenseForGroup(groupId))
+                },
+            )
+        }
+        composable(
+            route = Routes.ADD_EXPENSE,
+            arguments =
+                listOf(
+                    navArgument("groupId") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                        nullable = false
+                    },
+                    navArgument("friendUserId") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                        nullable = false
+                    },
+                ),
+        ) { entry ->
+            val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+            val friendUserId = entry.arguments?.getString("friendUserId").orEmpty().ifBlank { null }
+            AddExpenseScreen(
+                groupId = groupId,
+                friendUserId = friendUserId,
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
             )
         }
     }

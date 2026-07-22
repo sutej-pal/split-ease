@@ -4,7 +4,9 @@ Native Android expense-sharing app (Kotlin + Jetpack Compose). Inspired by Split
 
 ## Status
 
-See [PROGRESS.md](PROGRESS.md). Current deliverable: Phase 0 foundations (Welcome screen).
+See [PROGRESS.md](PROGRESS.md) for phase status and [docs/ROADMAP.md](docs/ROADMAP.md) for the full feature → phase map.
+
+**Next:** Phase 4 — Expense Creation & Splitting Logic.
 
 ## Requirements
 
@@ -23,6 +25,8 @@ On Windows: `gradlew.bat :app:assembleDebug`
 
 ## Docs
 
+- [PROGRESS.md](PROGRESS.md) — phase checklist
+- [docs/ROADMAP.md](docs/ROADMAP.md) — feature distribution across phases
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [CHANGELOG.md](CHANGELOG.md)
 - [docs/](docs/)

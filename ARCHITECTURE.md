@@ -81,7 +81,7 @@ Local persistence is live: repositories inject Room DAOs. Auth (Phase 2) upserts
 ```
 domain/repository/AuthRepository
 data/repository/SupabaseAuthRepository
-data/di/SupabaseModule          # createSupabaseClient + Auth plugin
+data/di/SupabaseModule          # createSupabaseClient + Auth + Postgrest
 presentation/auth/*             # screens + AuthViewModel
 ```
 
@@ -91,3 +91,28 @@ presentation/auth/*             # screens + AuthViewModel
 - Google OAuth is stubbed pending Supabase provider + deep-link setup.
 - **MVP: email confirmation skipped** — keep Confirm email disabled in Supabase Dashboard.  
   **TODO (pre-production):** re-enable confirmation + in-app verify-email flow before release.
+
+## Friends & groups (Phase 3)
+
+```
+data/remote/SocialRemoteDataSource   # PostgREST
+data/social/SocialInteractor         # Room-first + sync
+presentation/friends|groups|home
+```
+
+- Apply `docs/sql/phase-3-schema.sql` and `docs/sql/phase-3b-invites.sql` once in Supabase SQL Editor.
+- Offline: Room remains source of truth; remote upsert is best-effort (`PENDING` → `SYNCED`).
+- Non-users: pending `invites` + shareable link; on auth, `accept_pending_invites()` claims friendships/group memberships.
+- Soft local group membership for invited users so they can be expense participants immediately.
+
+## Expenses (Phase 4)
+
+```
+domain/split/SplitCalculator
+data/expense/ExpenseInteractor
+data/remote/ExpenseRemoteDataSource
+presentation/expenses
+```
+
+- Apply `docs/sql/phase-4-expenses.sql` (expenses, splits, RLS, accept remap).
+- Invited placeholders allowed on split `user_id` until accept remaps to auth uid.
