@@ -1,9 +1,11 @@
 package com.splitease.app.presentation.groups
 
 import android.content.Intent
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,35 +14,34 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -51,9 +52,23 @@ import com.splitease.app.R
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupMember
+import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.balances.GroupBalanceHeader
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeEmptyState
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeFab
+import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.ui.SeTopBar
+import com.splitease.app.presentation.ui.SeTypeChip
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupsListScreen(
     onBack: () -> Unit,
@@ -64,163 +79,170 @@ fun GroupsListScreen(
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.groups_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+    SeScreen(
+        title = stringResource(R.string.groups_title),
+        onBack = onBack,
+        floatingActionButton = {
+            SeFab(
+                onClick = onCreateGroup,
+                contentDescription = stringResource(R.string.action_create_group),
+                icon = Icons.Filled.Add,
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onCreateGroup) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_create_group))
-            }
-        },
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            uiState.errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-            }
-            if (groups.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.groups_empty),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(24.dp),
-                )
-            } else {
-                LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-                    items(groups, key = { it.id }) { group ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onOpenGroup(group.id) }
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
-                        ) {
-                            Text(group.name, style = MaterialTheme.typography.titleMedium)
+        content = { padding ->
+            Column(modifier = Modifier.fillMaxSize().padding(padding.values)) {
+                uiState.errorMessage?.let {
+                    SeErrorText(it, modifier = Modifier.padding(16.dp))
+                }
+                if (groups.isEmpty()) {
+                    SeEmptyState(
+                        message = stringResource(R.string.groups_empty),
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        actionLabel = stringResource(R.string.action_create_group),
+                        onAction = onCreateGroup,
+                    )
+                } else {
+                    LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
+                        items(groups, key = { it.id }) { group ->
+                            SeListRow(
+                                title = group.name,
+                                leading = {
+                                    SeIconTile(
+                                        icon = group.groupType.icon(),
+                                        tint = group.groupType.tint(),
+                                        size = 48,
+                                    )
+                                },
+                                onClick = { onOpenGroup(group.id) },
+                            )
                         }
-                        HorizontalDivider()
                     }
                 }
             }
-        }
-    }
+        },
+    )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGroupScreen(
     onBack: () -> Unit,
     onCreated: (String) -> Unit,
     viewModel: GroupsViewModel = hiltViewModel(),
 ) {
-    val friends by viewModel.friends.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var name by rememberSaveable { mutableStateOf("") }
-    var selected by remember { mutableStateOf(setOf<String>()) }
+    var groupType by rememberSaveable { mutableStateOf(GroupType.OTHER.name) }
+    val selectedType = runCatching { GroupType.valueOf(groupType) }.getOrDefault(GroupType.OTHER)
+    val canDone = name.isNotBlank() && !uiState.isSubmitting
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.action_create_group)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+            SeTopBar(
+                title = stringResource(R.string.create_group_title),
+                onClose = onBack,
+                centered = true,
+                actions = {
+                    SeTextButton(
+                        text = stringResource(R.string.action_done),
+                        onClick = {
+                            viewModel.createGroup(
+                                name = name,
+                                groupType = selectedType,
+                                onSuccess = onCreated,
+                            )
+                        },
+                        enabled = canDone,
+                    )
                 },
             )
         },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_group_name)) },
-                singleLine = true,
-                enabled = !uiState.isSubmitting,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(stringResource(R.string.label_add_members), style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            if (friends.isEmpty()) {
-                Text(stringResource(R.string.no_friends_yet), style = MaterialTheme.typography.bodyMedium)
-            } else {
-                val addableFriends =
-                    friends.filter { !it.displayNameSnapshot.contains("(invited)", ignoreCase = true) }
-                if (addableFriends.isEmpty()) {
-                    Text(stringResource(R.string.no_friends_yet), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                        items(addableFriends, key = { it.id }) { friend ->
-                            FriendCheckRow(
-                                friend = friend,
-                                checked = selected.contains(friend.friendUserId),
-                                onToggle = {
-                                    selected =
-                                        if (selected.contains(friend.friendUserId)) {
-                                            selected - friend.friendUserId
-                                        } else {
-                                            selected + friend.friendUserId
-                                        }
-                                },
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(
+                                width = 1.dp,
+                                color = SplitEaseColors.OutlineStrong,
+                                shape = RoundedCornerShape(14.dp),
                             )
-                        }
-                    }
+                            .background(SplitEaseColors.Surface)
+                            .clickable { /* photo later */ },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AddAPhoto,
+                        contentDescription = stringResource(R.string.cd_group_photo),
+                        tint = SplitEaseColors.Primary,
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                SeTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = stringResource(R.string.label_group_name),
+                    modifier = Modifier.weight(1f),
+                    enabled = !uiState.isSubmitting,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+            SeSectionHeader(text = stringResource(R.string.label_group_type))
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GroupType.entries.forEach { type ->
+                    SeTypeChip(
+                        label = stringResource(type.labelRes()),
+                        icon = type.icon(),
+                        selected = selectedType == type,
+                        onClick = { groupType = type.name },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    viewModel.createGroup(name, selected.toList(), onCreated)
-                },
-                enabled = !uiState.isSubmitting,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.action_create_group))
-            }
+
             uiState.errorMessage?.let {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(16.dp))
+                SeErrorText(it)
             }
         }
     }
 }
 
-@Composable
-private fun FriendCheckRow(
-    friend: Friend,
-    checked: Boolean,
-    onToggle: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onToggle)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = checked, onCheckedChange = { onToggle() })
-        Column {
-            Text(friend.displayNameSnapshot, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                friend.emailSnapshot,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
-        }
+private fun GroupType.icon() =
+    when (this) {
+        GroupType.FRIENDS -> Icons.Filled.Group
+        GroupType.HOME -> Icons.Filled.Home
+        GroupType.OTHER -> Icons.AutoMirrored.Filled.List
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun GroupType.tint() =
+    when (this) {
+        GroupType.FRIENDS -> SplitEaseColors.IconFriends
+        GroupType.HOME -> SplitEaseColors.IconHome
+        GroupType.OTHER -> SplitEaseColors.IconOther
+    }
+
+private fun GroupType.labelRes() =
+    when (this) {
+        GroupType.FRIENDS -> R.string.group_type_friends
+        GroupType.HOME -> R.string.group_type_home
+        GroupType.OTHER -> R.string.group_type_other
+    }
+
 @Composable
 fun GroupDetailScreen(
     groupId: String,
@@ -260,131 +282,117 @@ fun GroupDetailScreen(
         viewModel.consumeShareText()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(group?.name ?: stringResource(R.string.groups_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    TextButton(onClick = { editing = !editing }) {
-                        Text(if (editing) stringResource(R.string.action_done) else stringResource(R.string.action_edit))
-                    }
-                },
+    SeScreen(
+        title = group?.name ?: stringResource(R.string.groups_title),
+        onBack = onBack,
+        actions = {
+            SeTextButton(
+                text =
+                    if (editing) {
+                        stringResource(R.string.action_done)
+                    } else {
+                        stringResource(R.string.action_edit)
+                    },
+                onClick = { editing = !editing },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddExpense) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add_expense))
-            }
+            SeFab(
+                onClick = onAddExpense,
+                contentDescription = stringResource(R.string.action_add_expense),
+                icon = Icons.Filled.Add,
+            )
         },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-        ) {
-            if (editing && group != null) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.label_group_name)) },
-                    singleLine = true,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
+            ) {
+                if (editing && group != null) {
+                    SeTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = stringResource(R.string.label_group_name),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SePrimaryButton(
+                        text = stringResource(R.string.action_save),
+                        onClick = {
+                            val current = group ?: return@SePrimaryButton
+                            viewModel.updateGroup(current.copy(name = name.trim()))
+                            editing = false
+                            group = current.copy(name = name.trim())
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                SeSectionHeader(text = stringResource(R.string.balances_title))
+                GroupBalanceHeader(groupId = groupId)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SeSectionHeader(text = stringResource(R.string.label_members))
+                members.forEach { member ->
+                    MemberRow(member = member, friends = friends)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SeSectionHeader(text = stringResource(R.string.invite_by_email))
+                var inviteEmail by rememberSaveable { mutableStateOf("") }
+                SeTextField(
+                    value = inviteEmail,
+                    onValueChange = { inviteEmail = it },
+                    label = stringResource(R.string.label_email),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    enabled = !uiState.isSubmitting,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(
+                SePrimaryButton(
+                    text = stringResource(R.string.action_send_invite),
                     onClick = {
-                        val current = group ?: return@Button
-                        viewModel.updateGroup(
-                            current.copy(name = name.trim()),
-                        )
-                        editing = false
-                        group = current.copy(name = name.trim())
+                        viewModel.inviteMemberByEmail(groupId, inviteEmail)
+                        inviteEmail = ""
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.action_save))
-                }
+                    enabled = !uiState.isSubmitting && inviteEmail.isNotBlank(),
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            Text(stringResource(R.string.balances_title), style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            GroupBalanceHeader(groupId = groupId)
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(stringResource(R.string.label_members), style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            members.forEach { member ->
-                MemberRow(member = member, friends = friends)
-                HorizontalDivider()
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(stringResource(R.string.invite_by_email), style = MaterialTheme.typography.titleSmall)
-            Spacer(modifier = Modifier.height(8.dp))
-            var inviteEmail by rememberSaveable { mutableStateOf("") }
-            OutlinedTextField(
-                value = inviteEmail,
-                onValueChange = { inviteEmail = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_email)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                enabled = !uiState.isSubmitting,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    viewModel.inviteMemberByEmail(groupId, inviteEmail)
-                    inviteEmail = ""
-                },
-                enabled = !uiState.isSubmitting && inviteEmail.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.action_send_invite))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(stringResource(R.string.add_member_from_friends), style = MaterialTheme.typography.titleSmall)
-            val memberIds = members.map { it.userId }.toSet()
-            friends
-                .filter {
-                    it.friendUserId !in memberIds &&
-                        !it.displayNameSnapshot.contains("(invited)", ignoreCase = true)
-                }.forEach { friend ->
-                    TextButton(
-                        onClick = { viewModel.addMember(groupId, friend.friendUserId) },
-                        enabled = !uiState.isSubmitting,
-                    ) {
-                        Text("+ ${friend.displayNameSnapshot}")
+                SeSectionHeader(text = stringResource(R.string.add_member_from_friends))
+                val memberIds = members.map { it.userId }.toSet()
+                friends
+                    .filter {
+                        it.friendUserId !in memberIds &&
+                            !it.displayNameSnapshot.contains("(invited)", ignoreCase = true)
+                    }.forEach { friend ->
+                        SeTextButton(
+                            text = "+ ${friend.displayNameSnapshot}",
+                            onClick = { viewModel.addMember(groupId, friend.friendUserId) },
+                            enabled = !uiState.isSubmitting,
+                        )
                     }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SeSectionHeader(text = stringResource(R.string.expenses_title))
+                com.splitease.app.presentation.expenses.ExpenseListSection(
+                    expenses = expenses,
+                    emptyText = stringResource(R.string.expenses_empty),
+                )
+
+                uiState.errorMessage?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeErrorText(it)
                 }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(stringResource(R.string.expenses_title), style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            com.splitease.app.presentation.expenses.ExpenseListSection(
-                expenses = expenses,
-                emptyText = stringResource(R.string.expenses_empty),
-            )
-
-            uiState.errorMessage?.let {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
+                uiState.infoMessage?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeInfoText(it)
+                }
             }
-            uiState.infoMessage?.let {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -392,12 +400,10 @@ private fun MemberRow(member: GroupMember, friends: List<Friend>) {
     val label =
         friends.firstOrNull { it.friendUserId == member.userId }?.displayNameSnapshot
             ?: member.userId.take(8)
-    Column(modifier = Modifier.padding(vertical = 10.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            member.role.name,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-        )
-    }
+    SeListRow(
+        title = label,
+        subtitle = member.role.name,
+        leading = { SeIconTile(Icons.Filled.Group, SplitEaseColors.IconOther, size = 40) },
+        showDivider = true,
+    )
 }

@@ -141,3 +141,14 @@ presentation/settings
 - Single app-wide currency chosen in Settings; new expenses/groups use it automatically.
 - No per-expense or per-group currency pickers on create/edit screens.
 - Full 100+ currency catalog remains Phase 7.
+
+## Design system (UI kit)
+
+Theme inspired by [Apzo SaaS](https://demo.goodlayers.com/apzo/saas/): electric blue primary (`#2F57EF`), soft gray background, navy copy.
+
+```
+presentation/theme/          # SplitEaseColors, Theme, Typography
+presentation/ui/             # Shared Se* components + @Preview
+```
+
+Reusable components (`SePrimaryButton`, `SeTextField`, `SeTopBar`, `SeListRow`, `SeTypeChip`, `SeMoneyText`, …) wrap Material 3 with brand tokens. Screens should prefer these over raw Material widgets for consistency.

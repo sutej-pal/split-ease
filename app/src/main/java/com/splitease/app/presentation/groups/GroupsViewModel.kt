@@ -7,6 +7,7 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupMember
+import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
@@ -96,14 +97,22 @@ class GroupsViewModel
 
         fun createGroup(
             name: String,
-            memberIds: List<String>,
+            groupType: GroupType,
+            memberIds: List<String> = emptyList(),
             onSuccess: (String) -> Unit,
         ) {
             val id = userId.value ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
                 val currency = appSettingsRepository.getCurrencyCode()
-                val result = socialInteractor.createGroup(id, name, currency, memberIds)
+                val result =
+                    socialInteractor.createGroup(
+                        creatorUserId = id,
+                        name = name,
+                        currencyCode = currency,
+                        groupType = groupType,
+                        memberFriendUserIds = memberIds,
+                    )
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,

@@ -26,6 +26,15 @@ enum class MemberRole {
 }
 
 /**
+ * Category / vibe for a group (UI + local icon).
+ */
+enum class GroupType {
+    FRIENDS,
+    HOME,
+    OTHER,
+}
+
+/**
  * Local sync bookmark for offline-first rows (cloud sync arrives Phase 7).
  */
 enum class SyncStatus {

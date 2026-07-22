@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Settings screen with app-wide currency (SharedPreferences); applied to new expenses/groups
+- Bottom navigation (Groups, Friends, Activity, Account) and Groups home UI with balances + Add expense FAB
+- Create group screen redesign with Friends / Home / Other types (Room v3 `groupType`)
+- Shared `presentation/ui` design system (Apzo SaaS–inspired palette) with Compose `@Preview`s
+- App-wide migration onto `Se*` components (screens, lists, buttons, fields, money, feedback)
 
 ### Changed
 - Removed currency fields from Add Expense, Create Group, and Edit Group screens
+- Global theme switched to light Apzo-inspired blue SaaS look; screens migrate onto `Se*` components
+
 
 ## [0.6.0] - 2026-07-22 — phase-5
 

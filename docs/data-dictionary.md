@@ -55,6 +55,7 @@ Unique index: `(ownerUserId, friendUserId)`.
 | id | TEXT (PK) | no | Local UUID |
 | name | TEXT | no | Group display name |
 | defaultCurrencyCode | TEXT | no | ISO 4217 default for new expenses |
+| groupType | TEXT | no | `FRIENDS` / `HOME` / `OTHER` (local UI category; Room v3) |
 | createdByUserId | TEXT | no | Creator user id |
 | remoteId | TEXT | yes | Cloud id when synced |
 | createdAtEpochMs | INTEGER | no | Created-at UTC millis |

@@ -8,16 +8,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -31,9 +23,13 @@ import com.splitease.app.data.balance.FriendBalanceUi
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.data.balance.OverallBalancesUi
+import com.splitease.app.presentation.ui.SeEmptyState
+import com.splitease.app.presentation.ui.SeMoneyText
+import com.splitease.app.presentation.ui.SeMoneyTone
+import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeSectionHeader
 import java.math.BigDecimal
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BalancesScreen(
     onBack: () -> Unit,
@@ -41,37 +37,31 @@ fun BalancesScreen(
 ) {
     val overall by viewModel.overall.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.balances_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    SeScreen(
+        title = stringResource(R.string.balances_title),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
+            ) {
+                when (val snapshot = overall) {
+                    null -> {
+                        Text(
+                            stringResource(R.string.balances_loading),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-        ) {
-            when (val snapshot = overall) {
-                null -> {
-                    Text(
-                        stringResource(R.string.balances_loading),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
+                    else -> OverallBalancesContent(snapshot)
                 }
-                else -> OverallBalancesContent(snapshot)
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -82,38 +72,29 @@ private fun OverallBalancesContent(snapshot: OverallBalancesUi) {
             snapshot.friendBalances.isEmpty() &&
             snapshot.groupBalances.isEmpty()
     if (empty) {
-        Text(
-            stringResource(R.string.balances_empty),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-        )
+        SeEmptyState(message = stringResource(R.string.balances_empty))
         return
     }
 
-    Text(stringResource(R.string.balances_summary), style = MaterialTheme.typography.titleMedium)
-    Spacer(modifier = Modifier.height(8.dp))
+    SeSectionHeader(text = stringResource(R.string.balances_summary))
     CurrencyTotalsBlock(
         owedToMe = snapshot.totalOwedToMeByCurrency,
         iOwe = snapshot.totalIOweByCurrency,
     )
 
     if (snapshot.friendBalances.isNotEmpty()) {
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(stringResource(R.string.balances_friends), style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        SeSectionHeader(text = stringResource(R.string.balances_friends))
         snapshot.friendBalances.forEach { row ->
             FriendBalanceRow(row)
-            HorizontalDivider()
         }
     }
 
     if (snapshot.groupBalances.isNotEmpty()) {
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(stringResource(R.string.balances_groups), style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        SeSectionHeader(text = stringResource(R.string.balances_groups))
         snapshot.groupBalances.forEach { group ->
             GroupBalanceSummaryBlock(group, showSimplified = true)
-            HorizontalDivider()
         }
     }
 }
@@ -141,12 +122,13 @@ fun GroupBalanceHeader(
 @Composable
 private fun FriendBalanceRow(row: FriendBalanceUi) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Text(row.displayName, style = MaterialTheme.typography.bodyLarge)
+        Text(row.displayName, style = MaterialTheme.typography.titleMedium)
         row.netByCurrency.toSortedMap().forEach { (currency, net) ->
-            Text(
-                text = formatViewerNet(net, currency),
-                style = MaterialTheme.typography.bodyMedium,
-                color = netColor(net),
+            SeMoneyText(
+                amount = net.abs(),
+                currencyCode = currency,
+                tone = netTone(net),
+                prefix = moneyPrefix(net),
             )
         }
     }
@@ -157,20 +139,26 @@ private fun GroupBalanceSummaryBlock(
     group: GroupBalanceUi,
     showSimplified: Boolean,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Text(group.groupName, style = MaterialTheme.typography.bodyLarge)
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(
+            group.groupName,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
         if (group.myNetByCurrency.isEmpty()) {
-            Text(
-                stringResource(R.string.balances_settled_up),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            SeMoneyText(
+                amount = BigDecimal.ZERO,
+                currencyCode = "",
+                tone = SeMoneyTone.SETTLED,
+                prefix = stringResource(R.string.balances_settled_up),
             )
         } else {
             group.myNetByCurrency.toSortedMap().forEach { (currency, net) ->
-                Text(
-                    text = formatViewerNet(net, currency),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = netColor(net),
+                SeMoneyText(
+                    amount = net.abs(),
+                    currencyCode = currency,
+                    tone = netTone(net),
+                    prefix = moneyPrefix(net),
                 )
             }
         }
@@ -179,6 +167,7 @@ private fun GroupBalanceSummaryBlock(
             Text(
                 stringResource(R.string.balances_who_owes_whom),
                 style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(4.dp))
             group.simplifiedDebts.forEach { debt ->
@@ -199,7 +188,7 @@ private fun DebtLine(debt: LabeledDebt) {
                 formatMoney(debt.amount, debt.currencyCode),
             ),
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(vertical = 2.dp),
     )
 }
@@ -210,43 +199,44 @@ private fun CurrencyTotalsBlock(
     iOwe: Map<String, BigDecimal>,
 ) {
     if (owedToMe.isEmpty() && iOwe.isEmpty()) {
-        Text(
-            stringResource(R.string.balances_settled_up),
-            style = MaterialTheme.typography.bodyLarge,
+        SeMoneyText(
+            amount = BigDecimal.ZERO,
+            currencyCode = "",
+            tone = SeMoneyTone.SETTLED,
+            prefix = stringResource(R.string.balances_settled_up),
         )
         return
     }
     owedToMe.toSortedMap().forEach { (currency, amount) ->
-        Text(
-            text = stringResource(R.string.balances_owed_to_you, formatMoney(amount, currency)),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary,
+        SeMoneyText(
+            amount = amount,
+            currencyCode = currency,
+            tone = SeMoneyTone.OWED_TO_YOU,
+            prefix = "You are owed",
         )
     }
     iOwe.toSortedMap().forEach { (currency, amount) ->
-        Text(
-            text = stringResource(R.string.balances_you_owe, formatMoney(amount, currency)),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.error,
+        SeMoneyText(
+            amount = amount,
+            currencyCode = currency,
+            tone = SeMoneyTone.YOU_OWE,
+            prefix = "You owe",
         )
     }
 }
 
-@Composable
-private fun netColor(net: BigDecimal) =
+private fun netTone(net: BigDecimal): SeMoneyTone =
     when {
-        net > BigDecimal.ZERO -> MaterialTheme.colorScheme.primary
-        net < BigDecimal.ZERO -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.onSurface
+        net > BigDecimal.ZERO -> SeMoneyTone.OWED_TO_YOU
+        net < BigDecimal.ZERO -> SeMoneyTone.YOU_OWE
+        else -> SeMoneyTone.SETTLED
     }
 
 @Composable
-private fun formatViewerNet(net: BigDecimal, currency: String): String =
+private fun moneyPrefix(net: BigDecimal): String? =
     when {
-        net > BigDecimal.ZERO ->
-            stringResource(R.string.balances_owed_to_you, formatMoney(net, currency))
-        net < BigDecimal.ZERO ->
-            stringResource(R.string.balances_you_owe, formatMoney(net.abs(), currency))
+        net > BigDecimal.ZERO -> "you are owed"
+        net < BigDecimal.ZERO -> "you owe"
         else -> stringResource(R.string.balances_settled_up)
     }
 

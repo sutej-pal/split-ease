@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SplitEaseTheme {
+            SplitEaseTheme(darkTheme = false, dynamicColor = false) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SplitEaseNavHost()
                 }

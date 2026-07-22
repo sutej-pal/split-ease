@@ -11,60 +11,75 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// Brand palette: teal/emerald — distinct from purple-on-white AI defaults and Splitwise green clone.
-private val BrandPrimary = Color(0xFF0F766E)
-private val BrandOnPrimary = Color(0xFFFFFFFF)
-private val BrandPrimaryContainer = Color(0xFFCCFBF1)
-private val BrandOnPrimaryContainer = Color(0xFF134E4A)
-private val BrandSecondary = Color(0xFF0E7490)
-private val BrandOnSecondary = Color(0xFFFFFFFF)
-private val BrandTertiary = Color(0xFF047857)
-private val BrandBackgroundLight = Color(0xFFF0FDFA)
-private val BrandSurfaceLight = Color(0xFFFAFFFE)
-private val BrandBackgroundDark = Color(0xFF042F2E)
-private val BrandSurfaceDark = Color(0xFF0A3D3B)
+private val LightColorScheme =
+    lightColorScheme(
+        primary = SplitEaseColors.Primary,
+        onPrimary = Color.White,
+        primaryContainer = SplitEaseColors.PrimarySoft,
+        onPrimaryContainer = SplitEaseColors.PrimaryDark,
+        secondary = SplitEaseColors.Secondary,
+        onSecondary = Color.White,
+        secondaryContainer = SplitEaseColors.PrimarySoft,
+        onSecondaryContainer = SplitEaseColors.Navy,
+        tertiary = SplitEaseColors.Accent,
+        onTertiary = Color.White,
+        tertiaryContainer = SplitEaseColors.AccentSoft,
+        onTertiaryContainer = Color(0xFF5C1A12),
+        background = SplitEaseColors.Background,
+        onBackground = SplitEaseColors.Navy,
+        surface = SplitEaseColors.Surface,
+        onSurface = SplitEaseColors.Navy,
+        surfaceVariant = SplitEaseColors.SurfaceMuted,
+        onSurfaceVariant = SplitEaseColors.NavyMuted,
+        outline = SplitEaseColors.OutlineStrong,
+        outlineVariant = SplitEaseColors.Outline,
+        error = SplitEaseColors.YouOwe,
+        onError = Color.White,
+    )
 
-private val LightColorScheme = lightColorScheme(
-    primary = BrandPrimary,
-    onPrimary = BrandOnPrimary,
-    primaryContainer = BrandPrimaryContainer,
-    onPrimaryContainer = BrandOnPrimaryContainer,
-    secondary = BrandSecondary,
-    onSecondary = BrandOnSecondary,
-    tertiary = BrandTertiary,
-    background = BrandBackgroundLight,
-    surface = BrandSurfaceLight,
-)
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF5EEAD4),
-    onPrimary = Color(0xFF134E4A),
-    primaryContainer = Color(0xFF0F766E),
-    onPrimaryContainer = Color(0xFFCCFBF1),
-    secondary = Color(0xFF67E8F9),
-    onSecondary = Color(0xFF083344),
-    tertiary = Color(0xFF6EE7B7),
-    background = BrandBackgroundDark,
-    surface = BrandSurfaceDark,
-)
+private val DarkColorScheme =
+    darkColorScheme(
+        primary = Color(0xFF8FA3FF),
+        onPrimary = Color(0xFF0A1A5C),
+        primaryContainer = Color(0xFF2F57EF),
+        onPrimaryContainer = Color.White,
+        secondary = Color(0xFFAAB4FF),
+        onSecondary = Color(0xFF121833),
+        tertiary = Color(0xFFFF8F84),
+        onTertiary = Color(0xFF3E0E08),
+        background = SplitEaseColors.ShellBackground,
+        onBackground = Color(0xFFF4F6FC),
+        surface = SplitEaseColors.ShellSurface,
+        onSurface = Color(0xFFF4F6FC),
+        surfaceVariant = Color(0xFF222842),
+        onSurfaceVariant = Color(0xFFB4BAD0),
+        outline = Color(0xFF8FA3FF),
+        outlineVariant = Color(0xFF2E3550),
+        error = Color(0xFFFF8A80),
+        onError = Color(0xFF3B0906),
+    )
 
 /**
- * SplitEase Material 3 theme with dynamic color on API 31+ and a teal brand fallback.
+ * SplitEase Material 3 theme based on the Apzo SaaS light palette.
+ *
+ * @param darkTheme When true, uses the dark counterpart of the same brand.
+ * @param dynamicColor Android 12+ dynamic color (off by default to keep brand consistent).
  */
 @Composable
 fun SplitEaseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme =
+        when {
+            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                val context = LocalContext.current
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            }
+            darkTheme -> DarkColorScheme
+            else -> LightColorScheme
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
 
     MaterialTheme(
         colorScheme = colorScheme,

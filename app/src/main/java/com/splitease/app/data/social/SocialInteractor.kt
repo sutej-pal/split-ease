@@ -191,6 +191,7 @@ class SocialInteractor
          * @param creatorUserId Current user id.
          * @param name Group name.
          * @param currencyCode Default currency.
+         * @param groupType Friends / Home / Other.
          * @param memberFriendUserIds Optional friend user ids to add as members.
          * @return Created [Group].
          */
@@ -198,6 +199,8 @@ class SocialInteractor
             creatorUserId: String,
             name: String,
             currencyCode: String,
+            groupType: com.splitease.app.domain.model.GroupType =
+                com.splitease.app.domain.model.GroupType.OTHER,
             memberFriendUserIds: List<String> = emptyList(),
         ): Result<Group> =
             runCatching {
@@ -209,6 +212,7 @@ class SocialInteractor
                         id = groupId,
                         name = name.trim(),
                         defaultCurrencyCode = currencyCode.trim().ifBlank { "INR" }.uppercase(),
+                        groupType = groupType,
                         createdByUserId = creatorUserId,
                         remoteId = null,
                         createdAtEpochMs = now,
@@ -351,14 +355,16 @@ class SocialInteractor
 
             groupIds.forEach { groupId ->
                 val dto = remote.fetchGroup(groupId) ?: return@forEach
+                val existing = groupRepository.getGroupById(dto.id)
                 groupRepository.upsertGroup(
                     Group(
                         id = dto.id,
                         name = dto.name,
                         defaultCurrencyCode = dto.defaultCurrencyCode,
+                        groupType = existing?.groupType ?: com.splitease.app.domain.model.GroupType.OTHER,
                         createdByUserId = dto.createdByUserId,
                         remoteId = dto.id,
-                        createdAtEpochMs = dto.updatedAtEpochMs,
+                        createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
                         updatedAtEpochMs = dto.updatedAtEpochMs,
                         syncStatus = SyncStatus.SYNCED,
                     ),

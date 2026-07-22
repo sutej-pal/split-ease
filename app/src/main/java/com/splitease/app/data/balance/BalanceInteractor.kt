@@ -76,13 +76,17 @@ data class FriendBalanceUi(
  * @property totalOwedToMeByCurrency Currencies where viewer net is positive.
  * @property totalIOweByCurrency Absolute values where viewer net is negative.
  * @property friendBalances Per-friend pairwise nets across shared expenses.
- * @property groupBalances Per-group summaries.
+ * @property groupBalances Per-group summaries (includes settled groups).
+ * @property nonGroupMyNetByCurrency Net for 1:1 (non-group) expenses only.
+ * @property nonGroupDebts Simplified debts for non-group expenses involving the viewer.
  */
 data class OverallBalancesUi(
     val totalOwedToMeByCurrency: Map<String, BigDecimal>,
     val totalIOweByCurrency: Map<String, BigDecimal>,
     val friendBalances: List<FriendBalanceUi>,
     val groupBalances: List<GroupBalanceUi>,
+    val nonGroupMyNetByCurrency: Map<String, BigDecimal> = emptyMap(),
+    val nonGroupDebts: List<LabeledDebt> = emptyList(),
 )
 
 /**
@@ -210,9 +214,16 @@ class BalanceInteractor
                         groups.map { group ->
                             val groupExpenses = expenses.filter { it.groupId == group.id }
                             buildGroupBalance(group.id, viewerUserId, groupExpenses, group.name)
-                        }.filter {
-                            it.myNetByCurrency.isNotEmpty() || it.simplifiedDebts.isNotEmpty()
                         }
+
+                    val nonGroupExpenses = expenses.filter { it.groupId == null }
+                    val nonGroupBalance =
+                        buildGroupBalance(
+                            groupId = "",
+                            viewerUserId = viewerUserId,
+                            expenses = nonGroupExpenses,
+                            knownName = "Non-group expenses",
+                        )
 
                     emit(
                         OverallBalancesUi(
@@ -220,6 +231,10 @@ class BalanceInteractor
                             totalIOweByCurrency = iOwe,
                             friendBalances = friendBalances,
                             groupBalances = groupBalances,
+                            nonGroupMyNetByCurrency = nonGroupBalance.myNetByCurrency,
+                            nonGroupDebts = nonGroupBalance.simplifiedDebts.filter { debt ->
+                                debt.fromUserId == viewerUserId || debt.toUserId == viewerUserId
+                            },
                         ),
                     )
                 }

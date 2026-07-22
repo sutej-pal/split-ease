@@ -1,6 +1,7 @@
 package com.splitease.app.data.local.converter
 
 import androidx.room.TypeConverter
+import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.model.InviteKind
 import com.splitease.app.domain.model.InviteStatus
 import com.splitease.app.domain.model.MemberRole
@@ -48,6 +49,15 @@ class SplitEaseTypeConverters {
     /** @param value Stored name. @return [MemberRole]. */
     @TypeConverter
     fun toMemberRole(value: String): MemberRole = MemberRole.valueOf(value)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
+    fun fromGroupType(value: GroupType): String = value.name
+
+    /** @param value Stored name. @return [GroupType]. */
+    @TypeConverter
+    fun toGroupType(value: String): GroupType =
+        runCatching { GroupType.valueOf(value) }.getOrDefault(GroupType.OTHER)
 
     /** @param value Enum to store. @return Name string. */
     @TypeConverter

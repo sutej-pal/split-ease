@@ -22,7 +22,7 @@ import com.splitease.app.data.local.entity.PaymentEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 2 — invites).
+ * Offline-first Room database for SplitEase (version 3 — group type).
  */
 @Database(
     entities = [
@@ -36,7 +36,7 @@ import com.splitease.app.data.local.entity.UserEntity
         PaymentEntity::class,
         InviteEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)

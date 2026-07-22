@@ -12,20 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,9 +34,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.SplitType
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeEmptyState
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextField
 import java.math.BigDecimal
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseScreen(
     groupId: String?,
@@ -82,214 +80,210 @@ fun AddExpenseScreen(
             }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.action_add_expense)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.Top,
-        ) {
-            Text(
-                text = stringResource(R.string.add_expense_hint),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_description)) },
-                singleLine = true,
-                enabled = !uiState.isSubmitting,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_amount)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                enabled = !uiState.isSubmitting,
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(stringResource(R.string.label_split_type), style = MaterialTheme.typography.titleSmall)
-            Spacer(modifier = Modifier.height(8.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                SplitType.entries.chunked(2).forEach { rowTypes ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rowTypes.forEach { type ->
-                            FilterChip(
-                                selected = splitType == type.name,
-                                onClick = { splitType = type.name },
-                                label = {
-                                    Text(type.name.lowercase().replaceFirstChar { it.uppercase() })
-                                },
-                                enabled = !uiState.isSubmitting,
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(stringResource(R.string.label_participants), style = MaterialTheme.typography.titleSmall)
-            participants.forEach { option ->
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !uiState.isSubmitting) {
-                                selected =
-                                    if (selected.contains(option.userId)) {
-                                        selected - option.userId
-                                    } else {
-                                        selected + option.userId
-                                    }
-                            }
-                            .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(
-                        checked = selected.contains(option.userId),
-                        onCheckedChange = { checked ->
-                            selected =
-                                if (checked) selected + option.userId else selected - option.userId
-                        },
-                        enabled = !uiState.isSubmitting,
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(option.label)
-                        if (option.isPendingInvite) {
-                            Text(
-                                stringResource(R.string.invite_pending_label),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(stringResource(R.string.label_paid_by), style = MaterialTheme.typography.titleSmall)
-            participants.filter { it.userId in selected }.forEach { option ->
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { paidBy = option.userId }
-                            .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = if (paidBy == option.userId) "● ${option.label}" else "○ ${option.label}",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            }
-
-            val mode = runCatching { SplitType.valueOf(splitType) }.getOrDefault(SplitType.EQUAL)
-            if (mode == SplitType.UNEQUAL) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(stringResource(R.string.label_unequal_amounts), style = MaterialTheme.typography.titleSmall)
-                selected.forEach { id ->
-                    val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
-                    OutlinedTextField(
-                        value = unequalTexts[id].orEmpty(),
-                        onValueChange = { unequalTexts = unequalTexts + (id to it) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        label = { Text(label) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    )
-                }
-            }
-            if (mode == SplitType.PERCENTAGE) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(stringResource(R.string.label_percentages), style = MaterialTheme.typography.titleSmall)
-                selected.forEach { id ->
-                    val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
-                    OutlinedTextField(
-                        value = percentTexts[id].orEmpty(),
-                        onValueChange = { percentTexts = percentTexts + (id to it) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        label = { Text("$label %") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    )
-                }
-            }
-            if (mode == SplitType.SHARES) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(stringResource(R.string.label_shares), style = MaterialTheme.typography.titleSmall)
-                selected.forEach { id ->
-                    val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
-                    OutlinedTextField(
-                        value = shareTexts[id].orEmpty(),
-                        onValueChange = { shareTexts = shareTexts + (id to it) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        label = { Text(label) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    val unequal =
-                        selected.associateWith { id ->
-                            BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
-                        }
-                    val percents =
-                        selected.associateWith { id ->
-                            BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
-                        }
-                    val sharesMap =
-                        selected.associateWith { id ->
-                            shareTexts[id]?.trim()?.toIntOrNull() ?: 1
-                        }
-                    viewModel.createExpense(
-                        description = description,
-                        amountText = amount,
-                        paidByUserId = paidBy,
-                        participantIds = selected.toList(),
-                        splitType = mode,
-                        groupId = groupId,
-                        unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
-                        percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
-                        shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
-                        onSuccess = onDone,
-                    )
-                },
-                enabled = !uiState.isSubmitting && description.isNotBlank() && amount.isNotBlank() && selected.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
+    SeScreen(
+        title = stringResource(R.string.action_add_expense),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Top,
             ) {
-                Text(stringResource(R.string.action_save_expense))
-            }
-            uiState.errorMessage?.let {
+                Text(
+                    text = stringResource(R.string.add_expense_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
+                SeTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = stringResource(R.string.label_description),
+                    enabled = !uiState.isSubmitting,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SeTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = stringResource(R.string.label_amount),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    enabled = !uiState.isSubmitting,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SeSectionHeader(text = stringResource(R.string.label_split_type))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    SplitType.entries.chunked(2).forEach { rowTypes ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowTypes.forEach { type ->
+                                FilterChip(
+                                    selected = splitType == type.name,
+                                    onClick = { splitType = type.name },
+                                    label = {
+                                        Text(type.name.lowercase().replaceFirstChar { it.uppercase() })
+                                    },
+                                    enabled = !uiState.isSubmitting,
+                                    colors =
+                                        FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = SplitEaseColors.Primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                            containerColor = SplitEaseColors.Surface,
+                                            labelColor = SplitEaseColors.Navy,
+                                        ),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SeSectionHeader(text = stringResource(R.string.label_participants))
+                participants.forEach { option ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !uiState.isSubmitting) {
+                                    selected =
+                                        if (selected.contains(option.userId)) {
+                                            selected - option.userId
+                                        } else {
+                                            selected + option.userId
+                                        }
+                                }
+                                .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = selected.contains(option.userId),
+                            onCheckedChange = { checked ->
+                                selected =
+                                    if (checked) selected + option.userId else selected - option.userId
+                            },
+                            enabled = !uiState.isSubmitting,
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(option.label)
+                            if (option.isPendingInvite) {
+                                Text(
+                                    stringResource(R.string.invite_pending_label),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SplitEaseColors.Primary,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                SeSectionHeader(text = stringResource(R.string.label_paid_by))
+                participants.filter { it.userId in selected }.forEach { option ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { paidBy = option.userId }
+                                .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (paidBy == option.userId) "● ${option.label}" else "○ ${option.label}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                }
+
+                val mode = runCatching { SplitType.valueOf(splitType) }.getOrDefault(SplitType.EQUAL)
+                if (mode == SplitType.UNEQUAL) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeSectionHeader(text = stringResource(R.string.label_unequal_amounts))
+                    selected.forEach { id ->
+                        val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
+                        SeTextField(
+                            value = unequalTexts[id].orEmpty(),
+                            onValueChange = { unequalTexts = unequalTexts + (id to it) },
+                            label = label,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        )
+                    }
+                }
+                if (mode == SplitType.PERCENTAGE) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeSectionHeader(text = stringResource(R.string.label_percentages))
+                    selected.forEach { id ->
+                        val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
+                        SeTextField(
+                            value = percentTexts[id].orEmpty(),
+                            onValueChange = { percentTexts = percentTexts + (id to it) },
+                            label = "$label %",
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        )
+                    }
+                }
+                if (mode == SplitType.SHARES) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeSectionHeader(text = stringResource(R.string.label_shares))
+                    selected.forEach { id ->
+                        val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
+                        SeTextField(
+                            value = shareTexts[id].orEmpty(),
+                            onValueChange = { shareTexts = shareTexts + (id to it) },
+                            label = label,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SePrimaryButton(
+                    text = stringResource(R.string.action_save_expense),
+                    onClick = {
+                        val unequal =
+                            selected.associateWith { id ->
+                                BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                            }
+                        val percents =
+                            selected.associateWith { id ->
+                                BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                            }
+                        val sharesMap =
+                            selected.associateWith { id ->
+                                shareTexts[id]?.trim()?.toIntOrNull() ?: 1
+                            }
+                        viewModel.createExpense(
+                            description = description,
+                            amountText = amount,
+                            paidByUserId = paidBy,
+                            participantIds = selected.toList(),
+                            splitType = mode,
+                            groupId = groupId,
+                            unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
+                            percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
+                            shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
+                            onSuccess = onDone,
+                        )
+                    },
+                    enabled =
+                        !uiState.isSubmitting &&
+                            description.isNotBlank() &&
+                            amount.isNotBlank() &&
+                            selected.isNotEmpty(),
+                )
+                uiState.errorMessage?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeErrorText(it)
+                }
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -298,22 +292,14 @@ fun ExpenseListSection(
     emptyText: String,
 ) {
     if (expenses.isEmpty()) {
-        Text(
-            text = emptyText,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-        )
+        SeEmptyState(message = emptyText)
     } else {
         expenses.forEach { expense ->
-            Column(modifier = Modifier.padding(vertical = 10.dp)) {
-                Text(expense.description, style = MaterialTheme.typography.titleMedium)
-                Text(
+            SeListRow(
+                title = expense.description,
+                subtitle =
                     "${expense.currencyCode} ${expense.amount.toPlainString()} · ${expense.splitType.name.lowercase()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                )
-            }
-            HorizontalDivider()
+            )
         }
     }
 }

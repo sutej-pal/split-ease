@@ -1,31 +1,21 @@
 package com.splitease.app.presentation.friends
 
-import androidx.compose.foundation.clickable
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,93 +31,84 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.model.Friend
-import android.content.Intent
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeEmptyState
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeFab
+import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeTextField
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsListScreen(
-    onBack: () -> Unit,
     onAddFriend: () -> Unit,
     onOpenFriend: (String) -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.friends_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+    SeScreen(
+        title = stringResource(R.string.friends_title),
+        onBack = onBack,
+        floatingActionButton = {
+            SeFab(
+                onClick = onAddFriend,
+                contentDescription = stringResource(R.string.action_add_friend),
+                icon = Icons.Filled.Add,
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAddFriend) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add_friend))
-            }
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            uiState.errorMessage?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
-            if (friends.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.friends_empty),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(24.dp),
-                )
-            } else {
-                LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
-                    items(friends, key = { it.id }) { friend ->
-                        FriendRow(friend = friend, onClick = { onOpenFriend(friend.friendUserId) })
-                        HorizontalDivider()
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values),
+            ) {
+                uiState.errorMessage?.let {
+                    SeErrorText(it, modifier = Modifier.padding(16.dp))
+                }
+                if (friends.isEmpty()) {
+                    SeEmptyState(
+                        message = stringResource(R.string.friends_empty),
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        actionLabel = stringResource(R.string.action_add_friend),
+                        onAction = onAddFriend,
+                    )
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    ) {
+                        items(friends, key = { it.id }) { friend ->
+                            FriendRow(friend = friend, onClick = { onOpenFriend(friend.friendUserId) })
+                        }
                     }
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
 private fun FriendRow(friend: Friend, onClick: () -> Unit) {
     val pending = friend.displayNameSnapshot.contains("(invited)", ignoreCase = true)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-    ) {
-        Text(friend.displayNameSnapshot, style = MaterialTheme.typography.titleMedium)
-        Text(
-            friend.emailSnapshot,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-        )
-        if (pending) {
-            Text(
-                text = stringResource(R.string.invite_pending_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
+    SeListRow(
+        title = friend.displayNameSnapshot,
+        subtitle =
+            if (pending) {
+                "${friend.emailSnapshot} · ${stringResource(R.string.invite_pending_label)}"
+            } else {
+                friend.emailSnapshot
+            },
+        leading = { SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 48) },
+        onClick = onClick,
+    )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFriendScreen(
     onBack: () -> Unit,
@@ -151,57 +132,46 @@ fun AddFriendScreen(
         onDone()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.action_add_friend)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Top,
-        ) {
-            Text(
-                text = stringResource(R.string.add_friend_hint),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_email)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                enabled = !uiState.isSubmitting,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    viewModel.addFriend(email) { onDone() }
-                },
-                enabled = !uiState.isSubmitting,
-                modifier = Modifier.fillMaxWidth(),
+    SeScreen(
+        title = stringResource(R.string.action_add_friend),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .padding(24.dp),
+                verticalArrangement = Arrangement.Top,
             ) {
-                Text(stringResource(R.string.action_add_friend))
+                Text(
+                    text = stringResource(R.string.add_friend_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                SeTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = stringResource(R.string.label_email),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    enabled = !uiState.isSubmitting,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                SePrimaryButton(
+                    text = stringResource(R.string.action_add_friend),
+                    onClick = { viewModel.addFriend(email) { onDone() } },
+                    enabled = !uiState.isSubmitting,
+                )
+                uiState.errorMessage?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeErrorText(it)
+                }
+                uiState.infoMessage?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeInfoText(it)
+                }
             }
-            uiState.errorMessage?.let {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
-            }
-            uiState.infoMessage?.let {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-    }
+        },
+    )
 }

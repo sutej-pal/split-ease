@@ -6,14 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,7 +22,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
-import com.splitease.app.presentation.theme.SplitEaseTheme
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeOutlinedButton
+import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePrimaryButton
 
 /**
  * Launch screen with auth entry points.
@@ -36,19 +36,22 @@ fun WelcomeScreen(
     onLogIn: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.surface,
-        ),
-    )
+    val gradient =
+        Brush.verticalGradient(
+            colors =
+                listOf(
+                    SplitEaseColors.PrimarySoft,
+                    SplitEaseColors.Background,
+                    SplitEaseColors.Surface,
+                ),
+        )
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(gradient)
-            .padding(24.dp),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(gradient)
+                .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -56,10 +59,11 @@ fun WelcomeScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             Box(
-                modifier = Modifier
-                    .size(88.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                modifier =
+                    Modifier
+                        .size(88.dp)
+                        .clip(CircleShape)
+                        .background(SplitEaseColors.Primary),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -72,30 +76,26 @@ fun WelcomeScreen(
             Text(
                 text = stringResource(R.string.welcome_title),
                 style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = SplitEaseColors.Primary,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.welcome_tagline),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                color = SplitEaseColors.NavyMuted,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(36.dp))
-            Button(
+            SePrimaryButton(
+                text = stringResource(R.string.action_get_started),
                 onClick = onGetStarted,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.action_get_started))
-            }
+            )
             Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
+            SeOutlinedButton(
+                text = stringResource(R.string.action_log_in),
                 onClick = onLogIn,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.action_log_in))
-            }
+            )
         }
     }
 }
@@ -103,7 +103,7 @@ fun WelcomeScreen(
 @Preview(showBackground = true)
 @Composable
 private fun WelcomeScreenPreview() {
-    SplitEaseTheme {
+    SePreview {
         WelcomeScreen(onGetStarted = {}, onLogIn = {})
     }
 }

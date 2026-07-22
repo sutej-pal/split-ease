@@ -5,22 +5,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,8 +27,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
+import com.splitease.app.presentation.ui.SeOutlinedButton
+import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTextField
 
 @Composable
 fun LoginScreen(
@@ -52,47 +53,42 @@ fun LoginScreen(
         formState = formState,
         modifier = modifier,
     ) {
-        OutlinedTextField(
+        SeTextField(
             value = email,
             onValueChange = { email = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.label_email)) },
-            singleLine = true,
+            label = stringResource(R.string.label_email),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             enabled = !formState.isLoading,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        PasswordOutlinedTextField(
+        PasswordSeTextField(
             value = password,
             onValueChange = { password = it },
             enabled = !formState.isLoading,
         )
-        TextButton(
+        SeTextButton(
+            text = stringResource(R.string.action_forgot_password),
             onClick = onNavigateForgot,
             enabled = !formState.isLoading,
             modifier = Modifier.align(Alignment.End),
-        ) {
-            Text(stringResource(R.string.action_forgot_password))
-        }
+        )
         Spacer(modifier = Modifier.height(8.dp))
-        Button(
+        SePrimaryButton(
+            text = stringResource(R.string.action_log_in),
             onClick = { onSignIn(email.trim(), password) },
             enabled = !formState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.action_log_in))
-        }
+        )
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(
+        SeOutlinedButton(
+            text = "Continue with Google",
             onClick = onGoogleStub,
             enabled = !formState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Continue with Google")
-        }
-        TextButton(onClick = onNavigateSignUp, enabled = !formState.isLoading) {
-            Text(stringResource(R.string.action_sign_up))
-        }
+        )
+        SeTextButton(
+            text = stringResource(R.string.action_sign_up),
+            onClick = onNavigateSignUp,
+            enabled = !formState.isLoading,
+        )
     }
 }
 
@@ -112,41 +108,37 @@ fun SignUpScreen(
         formState = formState,
         modifier = modifier,
     ) {
-        OutlinedTextField(
+        SeTextField(
             value = displayName,
             onValueChange = { displayName = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.label_display_name)) },
-            singleLine = true,
+            label = stringResource(R.string.label_display_name),
             enabled = !formState.isLoading,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        SeTextField(
             value = email,
             onValueChange = { email = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.label_email)) },
-            singleLine = true,
+            label = stringResource(R.string.label_email),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             enabled = !formState.isLoading,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        PasswordOutlinedTextField(
+        PasswordSeTextField(
             value = password,
             onValueChange = { password = it },
             enabled = !formState.isLoading,
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(
+        SePrimaryButton(
+            text = stringResource(R.string.action_sign_up),
             onClick = { onSignUp(email.trim(), password, displayName.trim()) },
             enabled = !formState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.action_sign_up))
-        }
-        TextButton(onClick = onNavigateLogin, enabled = !formState.isLoading) {
-            Text(stringResource(R.string.action_log_in))
-        }
+        )
+        SeTextButton(
+            text = stringResource(R.string.action_log_in),
+            onClick = onNavigateLogin,
+            enabled = !formState.isLoading,
+        )
     }
 }
 
@@ -165,59 +157,49 @@ fun ForgotPasswordScreen(
         formState = formState,
         modifier = modifier,
     ) {
-        OutlinedTextField(
+        SeTextField(
             value = email,
             onValueChange = { email = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.label_email)) },
-            singleLine = true,
+            label = stringResource(R.string.label_email),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             enabled = !formState.isLoading,
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(
+        SePrimaryButton(
+            text = stringResource(R.string.action_send_reset),
             onClick = { onSendReset(email.trim()) },
             enabled = !formState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.action_send_reset))
-        }
-        TextButton(onClick = onNavigateBack, enabled = !formState.isLoading) {
-            Text("Back to login")
-        }
+        )
+        SeTextButton(
+            text = "Back to login",
+            onClick = onNavigateBack,
+            enabled = !formState.isLoading,
+        )
     }
 }
 
 @Composable
-private fun PasswordOutlinedTextField(
+private fun PasswordSeTextField(
     value: String,
     onValueChange: (String) -> Unit,
     enabled: Boolean,
-    modifier: Modifier = Modifier,
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
-
-    OutlinedTextField(
+    SeTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
-        label = { Text(stringResource(R.string.label_password)) },
-        singleLine = true,
+        label = stringResource(R.string.label_password),
         enabled = enabled,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         visualTransformation =
             if (passwordVisible) {
                 VisualTransformation.None
             } else {
                 PasswordVisualTransformation()
             },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         trailingIcon = {
             val icon =
-                if (passwordVisible) {
-                    Icons.Filled.VisibilityOff
-                } else {
-                    Icons.Filled.Visibility
-                }
+                if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
             val description =
                 if (passwordVisible) {
                     stringResource(R.string.cd_hide_password)
@@ -253,7 +235,7 @@ private fun AuthScaffold(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
@@ -270,5 +252,19 @@ private fun AuthScaffold(
             Spacer(modifier = Modifier.height(12.dp))
             Text(text = message, color = MaterialTheme.colorScheme.primary)
         }
+    }
+}
+
+@Preview(showBackground = true, heightDp = 640)
+@Composable
+private fun LoginScreenPreview() {
+    SePreview {
+        LoginScreen(
+            formState = AuthFormState(),
+            onSignIn = { _, _ -> },
+            onNavigateSignUp = {},
+            onNavigateForgot = {},
+            onGoogleStub = {},
+        )
     }
 }
