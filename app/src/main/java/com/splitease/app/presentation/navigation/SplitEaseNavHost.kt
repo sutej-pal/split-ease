@@ -2,6 +2,7 @@ package com.splitease.app.presentation.navigation
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,9 +37,13 @@ import com.splitease.app.presentation.friends.AddFriendScreen
 import com.splitease.app.presentation.friends.FriendsListScreen
 import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
+import com.splitease.app.presentation.groups.GroupSettingsScreen
 import com.splitease.app.presentation.home.GroupsHomeScreen
 import com.splitease.app.presentation.imports.ImportTransactionsScreen
 import com.splitease.app.presentation.search.SearchScreen
+import com.splitease.app.presentation.settings.AppearanceSettingsScreen
+import com.splitease.app.presentation.settings.CurrencySettingsScreen
+import com.splitease.app.presentation.settings.SecuritySettingsScreen
 import com.splitease.app.presentation.settings.SettingsScreen
 import com.splitease.app.presentation.settlements.SettleUpScreen
 import com.splitease.app.presentation.spending.SpendingTotalsScreen
@@ -57,6 +62,9 @@ object Routes {
     const val TAB_ACCOUNT = "tab_account"
 
     const val SETTINGS = "settings"
+    const val APPEARANCE_SETTINGS = "appearance_settings"
+    const val SECURITY_SETTINGS = "security_settings"
+    const val CURRENCY_SETTINGS = "currency_settings"
     const val SEARCH = "search"
     const val SPENDING = "spending"
     const val IMPORT = "import_transactions"
@@ -64,11 +72,14 @@ object Routes {
     const val FRIEND_DETAIL = "friend_detail/{friendUserId}"
     const val CREATE_GROUP = "create_group"
     const val GROUP_DETAIL = "group_detail/{groupId}"
+    const val GROUP_SETTINGS = "group_settings/{groupId}"
     const val ADD_EXPENSE = "add_expense?groupId={groupId}&friendUserId={friendUserId}"
     const val SETTLE_UP =
         "settle_up?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}&groupId={groupId}&label={label}"
 
     fun groupDetail(groupId: String) = "group_detail/$groupId"
+
+    fun groupSettings(groupId: String) = "group_settings/$groupId"
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
 
@@ -196,6 +207,8 @@ private fun SignedInNavHost(
     val showBottomBar = currentRoute in tabRoutes
 
     Scaffold(
+        // Child screens own status-bar insets via their TopAppBars; only reserve bottom-bar space here.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
                 SplitEaseBottomBar(
@@ -221,7 +234,6 @@ private fun SignedInNavHost(
             composable(Routes.TAB_GROUPS) {
                 GroupsHomeScreen(
                     onOpenGroup = { id -> navController.navigate(Routes.groupDetail(id)) },
-                    onAddFriend = { navController.navigate(Routes.ADD_FRIEND) },
                     onCreateGroup = { navController.navigate(Routes.CREATE_GROUP) },
                     onAddExpenseForGroup = { id ->
                         navController.navigate(Routes.addExpenseForGroup(id))
@@ -236,10 +248,13 @@ private fun SignedInNavHost(
                     onOpenFriend = { friendUserId ->
                         navController.navigate(Routes.friendDetail(friendUserId))
                     },
+                    onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 )
             }
             composable(Routes.TAB_ACTIVITY) {
-                ActivityScreen()
+                ActivityScreen(
+                    onOpenSearch = { navController.navigate(Routes.SEARCH) },
+                )
             }
             composable(Routes.TAB_ACCOUNT) {
                 AccountScreen(
@@ -251,7 +266,21 @@ private fun SignedInNavHost(
                 )
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen(onBack = { navController.popBackStack() })
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
+                    onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
+                    onOpenCurrency = { navController.navigate(Routes.CURRENCY_SETTINGS) },
+                )
+            }
+            composable(Routes.APPEARANCE_SETTINGS) {
+                AppearanceSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.SECURITY_SETTINGS) {
+                SecuritySettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.CURRENCY_SETTINGS) {
+                CurrencySettingsScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.SEARCH) {
                 SearchScreen(onBack = { navController.popBackStack() })
@@ -300,7 +329,8 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onCreated = { id ->
                         navController.navigate(Routes.groupDetail(id)) {
-                            popUpTo(Routes.TAB_GROUPS)
+                            popUpTo(Routes.TAB_GROUPS) { inclusive = false }
+                            launchSingleTop = true
                         }
                     },
                 )
@@ -313,9 +343,11 @@ private fun SignedInNavHost(
                 GroupDetailScreen(
                     groupId = groupId,
                     onBack = { navController.popBackStack() },
+                    onOpenSettings = { navController.navigate(Routes.groupSettings(groupId)) },
                     onAddExpense = {
                         navController.navigate(Routes.addExpenseForGroup(groupId))
                     },
+                    onOpenSpending = { navController.navigate(Routes.SPENDING) },
                     onSettleDebt = { from, to, amount, currency, label ->
                         navController.navigate(
                             Routes.settleUp(
@@ -327,6 +359,19 @@ private fun SignedInNavHost(
                                 label = label,
                             ),
                         )
+                    },
+                )
+            }
+            composable(
+                route = Routes.GROUP_SETTINGS,
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty()
+                GroupSettingsScreen(
+                    groupId = groupId,
+                    onBack = { navController.popBackStack() },
+                    onLeftOrDeleted = {
+                        navController.popBackStack(Routes.TAB_GROUPS, inclusive = false)
                     },
                 )
             }
@@ -354,6 +399,12 @@ private fun SignedInNavHost(
                     friendUserId = friendUserId,
                     onBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() },
+                    onEditGroupMembers =
+                        groupId?.let { id ->
+                            {
+                                navController.navigate(Routes.groupSettings(id))
+                            }
+                        },
                 )
             }
             composable(

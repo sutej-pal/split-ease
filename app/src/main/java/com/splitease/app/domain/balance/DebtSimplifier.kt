@@ -1,5 +1,8 @@
 package com.splitease.app.domain.balance
 
+import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.Payment
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -71,6 +74,81 @@ object DebtSimplifier {
      */
     fun simplifyAll(netsByCurrency: Map<String, Map<String, BigDecimal>>): List<DebtTransfer> =
         netsByCurrency.flatMap { (currency, nets) -> simplify(nets, currency) }
+
+    /**
+     * Builds who-owes-whom from individual expenses (no cross-member simplification).
+     *
+     * Each split participant owes the payer their share. Opposing edges for the same
+     * pair+currency are netted. Settlements adjust the pairwise bags.
+     *
+     * @param expenses Group (or scoped) expenses.
+     * @param splitsByExpenseId Split lines keyed by expense id.
+     * @param payments Settlements in the same scope.
+     * @return Pairwise transfers sorted by currency then from/to ids.
+     */
+    fun fromExpenses(
+        expenses: List<Expense>,
+        splitsByExpenseId: Map<String, List<ExpenseSplit>>,
+        payments: List<Payment> = emptyList(),
+    ): List<DebtTransfer> {
+        val bags = mutableMapOf<PairKey, BigDecimal>()
+        expenses.forEach { expense ->
+            val payer = expense.paidByUserId
+            splitsByExpenseId[expense.id].orEmpty().forEach { split ->
+                if (split.userId == payer) return@forEach
+                val amount = split.owedAmount.setScale(2, RoundingMode.HALF_UP)
+                if (amount.compareTo(ZERO) == 0) return@forEach
+                addEdge(bags, split.userId, payer, expense.currencyCode, amount)
+            }
+        }
+        payments.forEach { payment ->
+            val amount = payment.amount.setScale(2, RoundingMode.HALF_UP)
+            // fromUser paid toUser ⇒ reduces from→to debt (or creates to→from credit)
+            addEdge(bags, payment.toUserId, payment.fromUserId, payment.currencyCode, amount)
+        }
+        return bags
+            .mapNotNull { (key, amount) ->
+                val net = amount.setScale(2, RoundingMode.HALF_UP)
+                when {
+                    net > ZERO ->
+                        DebtTransfer(key.fromUserId, key.toUserId, net, key.currencyCode)
+                    net < ZERO ->
+                        DebtTransfer(key.toUserId, key.fromUserId, net.abs(), key.currencyCode)
+                    else -> null
+                }
+            }.sortedWith(
+                compareBy<DebtTransfer> { it.currencyCode }
+                    .thenBy { it.fromUserId }
+                    .thenBy { it.toUserId },
+            )
+    }
+
+    private data class PairKey(
+        val fromUserId: String,
+        val toUserId: String,
+        val currencyCode: String,
+    )
+
+    /** Canonicalizes undirected pair storage so A→B and B→A share one bag. */
+    private fun addEdge(
+        bags: MutableMap<PairKey, BigDecimal>,
+        fromUserId: String,
+        toUserId: String,
+        currencyCode: String,
+        amount: BigDecimal,
+    ) {
+        if (fromUserId == toUserId) return
+        val (low, high, sign) =
+            if (fromUserId < toUserId) {
+                Triple(fromUserId, toUserId, BigDecimal.ONE)
+            } else {
+                Triple(toUserId, fromUserId, BigDecimal.ONE.negate())
+            }
+        val key = PairKey(low, high, currencyCode)
+        // Positive bag value means low owes high.
+        val delta = amount.multiply(sign).setScale(2, RoundingMode.HALF_UP)
+        bags[key] = bags.getOrDefault(key, ZERO).add(delta)
+    }
 
     private class MutableAmount(var value: BigDecimal)
 

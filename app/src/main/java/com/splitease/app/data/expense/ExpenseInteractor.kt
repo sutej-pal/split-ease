@@ -8,8 +8,10 @@ import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
+import com.splitease.app.domain.model.User
 import com.splitease.app.domain.recurrence.RecurrenceScheduler
 import com.splitease.app.domain.repository.ExpenseRepository
+import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.split.SplitCalculator
 import java.math.BigDecimal
 import java.util.UUID
@@ -61,6 +63,7 @@ class ExpenseInteractor
     @Inject
     constructor(
         private val expenseRepository: ExpenseRepository,
+        private val userRepository: UserRepository,
         private val remote: ExpenseRemoteDataSource,
     ) {
         /**
@@ -85,6 +88,11 @@ class ExpenseInteractor
                         percentages = input.percentages,
                         shares = input.shares,
                     )
+
+                // Room FKs require local user rows for payer + every split participant.
+                (input.participantIds + input.paidByUserId).distinct().forEach { id ->
+                    ensureLocalUserExists(id)
+                }
 
                 val now = System.currentTimeMillis()
                 val expenseDate = input.expenseDateEpochMs ?: now
@@ -315,6 +323,23 @@ class ExpenseInteractor
                         shares = split.shares,
                     )
                 },
+            )
+        }
+
+        private suspend fun ensureLocalUserExists(userId: String) {
+            if (userId.isBlank() || userRepository.getUserById(userId) != null) return
+            val now = System.currentTimeMillis()
+            userRepository.upsert(
+                User(
+                    id = userId,
+                    email = "",
+                    displayName = userId.take(8),
+                    photoUrl = null,
+                    remoteId = null,
+                    createdAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                    syncStatus = SyncStatus.LOCAL_ONLY,
+                ),
             )
         }
     }

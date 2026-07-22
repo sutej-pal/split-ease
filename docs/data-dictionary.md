@@ -62,6 +62,12 @@ Unique index: `(ownerUserId, friendUserId)`.
 | updatedAtEpochMs | INTEGER | no | Last mutation UTC millis |
 | syncStatus | TEXT | no | Sync bookmark |
 
+**Local preference (not a Room column):** per-group `simplify_debts_{groupId}` in SharedPreferences — when off, balances use expense-level pairwise debts instead of minimized transfers.
+
+**Local Security preferences (SharedPreferences `splitease_settings`):**
+- `biometric_lock_enabled` — require biometric / device credential to open the app
+- `auth_timeout` — idle grace period before re-auth (`IMMEDIATE`, `FIVE_SECONDS`, …)
+
 ### `group_members`
 
 | Column | Type | Nullable | Description |

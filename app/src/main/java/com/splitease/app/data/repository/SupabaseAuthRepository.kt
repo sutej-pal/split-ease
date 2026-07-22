@@ -93,6 +93,12 @@ class SupabaseAuthRepository
                 supabase.auth.signOut()
             }
 
+        override suspend fun ensureLocalProfile(): Result<Unit> =
+            runCatching {
+                persistCurrentUser()
+                categoryRepository.ensureDefaults()
+            }
+
         private suspend fun claimInvitesAndExpenses() {
             val userId = supabase.auth.currentUserOrNull()?.id ?: return
             runCatching {

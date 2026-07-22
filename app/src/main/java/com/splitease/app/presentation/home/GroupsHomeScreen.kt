@@ -15,8 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
@@ -64,7 +64,6 @@ import java.math.BigDecimal
 @Composable
 fun GroupsHomeScreen(
     onOpenGroup: (String) -> Unit,
-    onAddFriend: () -> Unit,
     onCreateGroup: () -> Unit,
     onAddExpenseForGroup: (String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -105,8 +104,8 @@ fun GroupsHomeScreen(
                     IconButton(onClick = onOpenSearch) {
                         Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.cd_search))
                     }
-                    IconButton(onClick = onAddFriend) {
-                        Icon(Icons.Filled.PersonAdd, contentDescription = stringResource(R.string.action_add_friend))
+                    IconButton(onClick = onCreateGroup) {
+                        Icon(Icons.Filled.GroupAdd, contentDescription = stringResource(R.string.action_create_group))
                     }
                 },
             )

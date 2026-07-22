@@ -63,7 +63,7 @@ class ExpensesViewModel
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
         private val _uiState = MutableStateFlow(ExpensesUiState())
         val uiState: StateFlow<ExpensesUiState> = _uiState.asStateFlow()
@@ -73,7 +73,15 @@ class ExpensesViewModel
                 .observeCategories()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+        val currencyCode: StateFlow<String> =
+            appSettingsRepository
+                .observeCurrencyCode()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "INR")
+
         fun currentUserId(): String? = userId.value
+
+        /** Reactive signed-in user id for Compose collectors. */
+        val signedInUserId: StateFlow<String?> = userId
 
         fun observeGroupExpenses(groupId: String): StateFlow<List<Expense>> =
             expenseRepository
@@ -130,10 +138,21 @@ class ExpensesViewModel
             shares: Map<String, Int> = emptyMap(),
             recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
             categoryId: String? = null,
+            notes: String? = null,
+            expenseDateEpochMs: Long? = null,
             onSuccess: () -> Unit,
         ) {
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                if (paidByUserId.isBlank() || participantIds.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = "Wait for your account to load, then try again.",
+                        )
+                    }
+                    return@launch
+                }
                 val amount =
                     runCatching { BigDecimal(amountText.trim()) }.getOrElse {
                         _uiState.update {
@@ -157,6 +176,8 @@ class ExpensesViewModel
                             shares = shares,
                             recurrenceFrequency = recurrenceFrequency,
                             categoryId = categoryId,
+                            notes = notes,
+                            expenseDateEpochMs = expenseDateEpochMs,
                         ),
                     )
                 _uiState.update {

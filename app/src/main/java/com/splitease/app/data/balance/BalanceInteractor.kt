@@ -11,6 +11,7 @@ import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppSettingsRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -109,6 +110,7 @@ class BalanceInteractor
         private val friendRepository: FriendRepository,
         private val groupRepository: GroupRepository,
         private val userRepository: UserRepository,
+        private val appSettingsRepository: AppSettingsRepository,
     ) {
         /**
          * Observes balance summary for a group.
@@ -125,11 +127,20 @@ class BalanceInteractor
             combine(
                 expenseRepository.observeExpenses(groupId),
                 paymentRepository.observePayments(groupId),
-            ) { expenses, payments ->
-                expenses to payments
-            }.flatMapLatest { (expenses, payments) ->
+                appSettingsRepository.observeSimplifyGroupDebts(groupId),
+            ) { expenses, payments, simplify ->
+                Triple(expenses, payments, simplify)
+            }.flatMapLatest { (expenses, payments, simplify) ->
                 flow {
-                    emit(buildGroupBalance(groupId, viewerUserId, expenses, payments = payments))
+                    emit(
+                        buildGroupBalance(
+                            groupId = groupId,
+                            viewerUserId = viewerUserId,
+                            expenses = expenses,
+                            payments = payments,
+                            simplifyDebts = simplify,
+                        ),
+                    )
                 }
             }
 
@@ -189,8 +200,9 @@ class BalanceInteractor
                 paymentRepository.observeInvolvingUser(viewerUserId),
                 friendRepository.observeFriends(viewerUserId),
                 groupRepository.observeGroupsForUser(viewerUserId),
-            ) { expenses, payments, friends, groups ->
-                OverallInputs(expenses, payments, friends, groups)
+                appSettingsRepository.observeSimplifyGroupDebtsMap(),
+            ) { expenses, payments, friends, groups, simplifyMap ->
+                OverallInputs(expenses, payments, friends, groups, simplifyMap)
             }.flatMapLatest { inputs ->
                 flow {
                     val splits = loadSplits(inputs.expenses)
@@ -238,11 +250,12 @@ class BalanceInteractor
                             val groupExpenses = inputs.expenses.filter { it.groupId == group.id }
                             val groupPayments = inputs.payments.filter { it.groupId == group.id }
                             buildGroupBalance(
-                                group.id,
-                                viewerUserId,
-                                groupExpenses,
-                                group.name,
-                                groupPayments,
+                                groupId = group.id,
+                                viewerUserId = viewerUserId,
+                                expenses = groupExpenses,
+                                knownName = group.name,
+                                payments = groupPayments,
+                                simplifyDebts = inputs.simplifyMap[group.id] ?: true,
                             )
                         }
 
@@ -255,6 +268,7 @@ class BalanceInteractor
                             expenses = nonGroupExpenses,
                             knownName = "Non-group expenses",
                             payments = nonGroupPayments,
+                            simplifyDebts = true,
                         )
 
                     emit(
@@ -279,6 +293,7 @@ class BalanceInteractor
             expenses: List<Expense>,
             knownName: String? = null,
             payments: List<Payment> = emptyList(),
+            simplifyDebts: Boolean = true,
         ): GroupBalanceUi {
             val splits = loadSplits(expenses)
             val byCurrency =
@@ -286,7 +301,12 @@ class BalanceInteractor
                     BalanceCalculator.netBalancesByCurrency(expenses, splits),
                     payments,
                 )
-            val transfers = DebtSimplifier.simplifyAll(byCurrency)
+            val transfers =
+                if (simplifyDebts) {
+                    DebtSimplifier.simplifyAll(byCurrency)
+                } else {
+                    DebtSimplifier.fromExpenses(expenses, splits, payments)
+                }
             val name =
                 knownName
                     ?: groupRepository.getGroupById(groupId)?.name
@@ -352,6 +372,7 @@ class BalanceInteractor
             val payments: List<Payment>,
             val friends: List<com.splitease.app.domain.model.Friend>,
             val groups: List<com.splitease.app.domain.model.Group>,
+            val simplifyMap: Map<String, Boolean>,
         )
 
         companion object {

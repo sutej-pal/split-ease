@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -38,16 +39,17 @@ data class GroupsUiState(
 class GroupsViewModel
     @Inject
     constructor(
-        authRepository: AuthRepository,
+        private val authRepository: AuthRepository,
         private val groupRepository: GroupRepository,
         friendRepository: FriendRepository,
         private val socialInteractor: SocialInteractor,
         private val appSettingsRepository: AppSettingsRepository,
     ) : ViewModel() {
+        /** Eager so Create Group (which only collects [uiState]) still has a signed-in user id. */
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
         @OptIn(ExperimentalCoroutinesApi::class)
         val groups: StateFlow<List<Group>> =
@@ -78,18 +80,20 @@ class GroupsViewModel
             _uiState.update { it.copy(pendingShareText = null) }
         }
 
+        /** Queues a system share sheet with [shareText]. */
+        fun shareGroupLink(shareText: String) {
+            _uiState.update { it.copy(pendingShareText = shareText) }
+        }
+
         fun refresh() {
-            val id = userId.value ?: return
             viewModelScope.launch {
-                _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
+                val id = requireUserId() ?: return@launch
+                _uiState.update { it.copy(isRefreshing = true) }
+                // Soft-fail: missing Supabase tables / offline must not block local create UI.
                 runCatching {
                     socialInteractor.refreshGroups(id)
                     socialInteractor.refreshFriends(id)
                     socialInteractor.refreshSentInvites(id)
-                }.onFailure { err ->
-                    _uiState.update {
-                        it.copy(errorMessage = err.message ?: "Could not refresh groups.")
-                    }
                 }
                 _uiState.update { it.copy(isRefreshing = false) }
             }
@@ -101,9 +105,15 @@ class GroupsViewModel
             memberIds: List<String> = emptyList(),
             onSuccess: (String) -> Unit,
         ) {
-            val id = userId.value ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val id = requireUserId()
+                if (id == null) {
+                    _uiState.update {
+                        it.copy(isSubmitting = false, errorMessage = "Not signed in.")
+                    }
+                    return@launch
+                }
                 val currency = appSettingsRepository.getCurrencyCode()
                 val result =
                     socialInteractor.createGroup(
@@ -113,13 +123,21 @@ class GroupsViewModel
                         groupType = groupType,
                         memberFriendUserIds = memberIds,
                     )
+                val created = result.getOrNull()
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage =
+                            if (created == null) {
+                                userFacingError(result.exceptionOrNull())
+                            } else {
+                                null
+                            },
                     )
                 }
-                result.getOrNull()?.let { onSuccess(it.id) }
+                if (created != null) {
+                    onSuccess(created.id)
+                }
             }
         }
 
@@ -142,6 +160,17 @@ class GroupsViewModel
                 .observeMembers(groupId)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+        fun observeSimplifyDebts(groupId: String): StateFlow<Boolean> =
+            appSettingsRepository
+                .observeSimplifyGroupDebts(groupId)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+        fun setSimplifyDebts(groupId: String, enabled: Boolean) {
+            viewModelScope.launch {
+                appSettingsRepository.setSimplifyGroupDebts(groupId, enabled)
+            }
+        }
+
         fun addMember(groupId: String, userId: String) {
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
@@ -157,10 +186,19 @@ class GroupsViewModel
         }
 
         fun inviteMemberByEmail(groupId: String, email: String) {
-            val ownerId = userId.value ?: return
             viewModelScope.launch {
+                val ownerId = requireUserId()
+                if (ownerId == null) {
+                    _uiState.update { it.copy(errorMessage = "Not signed in.") }
+                    return@launch
+                }
                 _uiState.update {
-                    it.copy(isSubmitting = true, errorMessage = null, infoMessage = null, pendingShareText = null)
+                    it.copy(
+                        isSubmitting = true,
+                        errorMessage = null,
+                        infoMessage = null,
+                        pendingShareText = null,
+                    )
                 }
                 val result = socialInteractor.inviteToGroupByEmail(ownerId, groupId, email)
                 val outcome = result.getOrNull()
@@ -180,7 +218,67 @@ class GroupsViewModel
             }
         }
 
+        fun leaveGroup(groupId: String, onLeft: () -> Unit) {
+            viewModelScope.launch {
+                val id = requireUserId()
+                if (id == null) {
+                    _uiState.update { it.copy(errorMessage = "Not signed in.") }
+                    return@launch
+                }
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val result = socialInteractor.leaveGroup(groupId, id)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                    )
+                }
+                if (result.isSuccess) onLeft()
+            }
+        }
+
+        fun deleteGroup(groupId: String, onDeleted: () -> Unit) {
+            viewModelScope.launch {
+                val id = requireUserId()
+                if (id == null) {
+                    _uiState.update { it.copy(errorMessage = "Not signed in.") }
+                    return@launch
+                }
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val result = socialInteractor.deleteGroup(groupId, id)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                    )
+                }
+                if (result.isSuccess) onDeleted()
+            }
+        }
+
         suspend fun getGroup(groupId: String): Group? = groupRepository.getGroupById(groupId)
 
         fun currentUserId(): String? = userId.value
+
+        private suspend fun requireUserId(): String? {
+            userId.value?.let { return it }
+            val session = authRepository.observeSession().first { it !is AuthSession.Loading }
+            return (session as? AuthSession.SignedIn)?.user?.userId
+        }
+
+        private fun userFacingError(error: Throwable?): String {
+            val raw = error?.message.orEmpty()
+            return when {
+                raw.contains("group_members", ignoreCase = true) ||
+                    raw.contains("schema cache", ignoreCase = true) ->
+                    "Cloud tables are not set up yet. Group was not saved to the cloud — " +
+                        "run docs/sql/phase-3-schema.sql in the Supabase SQL Editor."
+                raw.contains("Authorization", ignoreCase = true) ||
+                    raw.contains("Bearer ", ignoreCase = true) ||
+                    raw.contains("apikey", ignoreCase = true) ->
+                    "Could not reach the cloud. Check your connection and Supabase setup."
+                raw.isNotBlank() && raw.length <= 160 -> raw
+                else -> "Something went wrong. Try again."
+            }
+        }
     }

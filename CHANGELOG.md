@@ -8,15 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Settings → Security: biometric / device-credential app lock with configurable timeout
 - Settings screen with app-wide currency (SharedPreferences); applied to new expenses/groups
+- Settings hub with Preferences (Appearance: Light / Dark / System default) and General (Currency) list sections
+- Group settings screen (edit name/type, add people, invite link, simplify-debts toggle, leave/delete)
 - Bottom navigation (Groups, Friends, Activity, Account) and Groups home UI with balances + Add expense FAB
 - Create group screen redesign with Friends / Home / Other types (Room v3 `groupType`)
 - Shared `presentation/ui` design system (Apzo SaaS–inspired palette) with Compose `@Preview`s
 - App-wide migration onto `Se*` components (screens, lists, buttons, fields, money, feedback)
 
 ### Changed
+- Settings Preferences section lists Appearance then Security
+- Group detail gear opens dedicated Group settings (instead of inline edit)
+- Status bar uses dark icons with the forced light theme; nested scaffold no longer double-pads the top inset
+- Search icon available on Groups, Friends, and Activity tabs (not on Settings / Account)
+- Activity tab lists expenses and settlements involving you (newest first)
+- Group detail redesigned: type header, Settle/Balances/Totals/Members chips, solo empty state, extended Add expense FAB
 - Removed currency fields from Add Expense, Create Group, and Edit Group screens
 - Global theme switched to light Apzo-inspired blue SaaS look; screens migrate onto `Se*` components
+- Groups home top-bar action uses GroupAdd → Create group (Friends still use add-friend)
 
 ## [0.9.0] - 2026-07-22 — phase-8
 

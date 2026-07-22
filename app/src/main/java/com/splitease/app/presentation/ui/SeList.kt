@@ -145,6 +145,41 @@ fun SeEmptyState(
 }
 
 @Composable
+fun SeActionChip(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    icon: ImageVector? = null,
+) {
+    val bg = if (selected) SplitEaseColors.PrimarySoft else SplitEaseColors.Surface
+    val content = if (selected) SplitEaseColors.PrimaryDark else SplitEaseColors.Navy
+    val border = if (selected) SplitEaseColors.Primary else SplitEaseColors.OutlineStrong
+    Row(
+        modifier =
+            modifier
+                .height(40.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(bg)
+                .border(1.dp, border, RoundedCornerShape(20.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = content,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
 fun SeTypeChip(
     label: String,
     icon: ImageVector,

@@ -47,4 +47,12 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun signOut(): Result<Unit>
+
+    /**
+     * Ensures the signed-in auth user exists in local Room (and remote profiles best-effort).
+     * Safe to call on every cold start / session restore.
+     *
+     * @return [Result] success or failure with message.
+     */
+    suspend fun ensureLocalProfile(): Result<Unit>
 }

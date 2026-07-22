@@ -133,6 +133,19 @@ class SocialRemoteDataSource
         }
 
         /**
+         * Deletes a group membership by id.
+         *
+         * @param memberId Membership row id.
+         */
+        suspend fun deleteGroupMember(memberId: String) {
+            supabase.from("group_members").delete {
+                filter {
+                    eq("id", memberId)
+                }
+            }
+        }
+
+        /**
          * Fetches members for a group.
          *
          * @param groupId Group id.

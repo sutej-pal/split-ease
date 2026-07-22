@@ -14,6 +14,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +49,7 @@ import com.splitease.app.presentation.ui.SeTextField
 fun FriendsListScreen(
     onAddFriend: () -> Unit,
     onOpenFriend: (String) -> Unit,
+    onOpenSearch: () -> Unit,
     onBack: (() -> Unit)? = null,
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
@@ -55,6 +59,15 @@ fun FriendsListScreen(
     SeScreen(
         title = stringResource(R.string.friends_title),
         onBack = onBack,
+        actions = {
+            IconButton(onClick = onOpenSearch) {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = stringResource(R.string.cd_search),
+                    tint = SplitEaseColors.Navy,
+                )
+            }
+        },
         floatingActionButton = {
             SeFab(
                 onClick = onAddFriend,

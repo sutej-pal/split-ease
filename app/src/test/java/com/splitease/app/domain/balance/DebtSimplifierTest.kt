@@ -1,5 +1,8 @@
 package com.splitease.app.domain.balance
 
+import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.SplitType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -66,5 +69,34 @@ class DebtSimplifierTest {
     @Test
     fun empty_nets_yield_no_transfers() {
         assertTrue(DebtSimplifier.simplify(emptyMap(), "INR").isEmpty())
+    }
+
+    @Test
+    fun from_expenses_keeps_pairwise_edges() {
+        val expense =
+            Expense(
+                id = "e1",
+                description = "Dinner",
+                amount = BigDecimal("90.00"),
+                currencyCode = "INR",
+                paidByUserId = "a",
+                expenseDateEpochMs = 0L,
+                splitType = SplitType.EQUAL,
+                createdAtEpochMs = 0L,
+                updatedAtEpochMs = 0L,
+            )
+        val splits =
+            mapOf(
+                "e1" to
+                    listOf(
+                        ExpenseSplit("s1", "e1", "a", BigDecimal("30.00")),
+                        ExpenseSplit("s2", "e1", "b", BigDecimal("30.00")),
+                        ExpenseSplit("s3", "e1", "c", BigDecimal("30.00")),
+                    ),
+            )
+        val transfers = DebtSimplifier.fromExpenses(listOf(expense), splits)
+        assertEquals(2, transfers.size)
+        assertTrue(transfers.any { it.fromUserId == "b" && it.toUserId == "a" && it.amount == BigDecimal("30.00") })
+        assertTrue(transfers.any { it.fromUserId == "c" && it.toUserId == "a" && it.amount == BigDecimal("30.00") })
     }
 }

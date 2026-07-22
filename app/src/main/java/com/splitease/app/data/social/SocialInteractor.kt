@@ -20,6 +20,7 @@ import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
 import com.splitease.app.domain.repository.UserRepository
+import kotlinx.coroutines.flow.first
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -205,6 +206,7 @@ class SocialInteractor
         ): Result<Group> =
             runCatching {
                 require(name.isNotBlank()) { "Group name is required." }
+                ensureLocalUserExists(creatorUserId)
                 val now = System.currentTimeMillis()
                 val groupId = UUID.randomUUID().toString()
                 val group =
@@ -234,6 +236,7 @@ class SocialInteractor
 
                 val extraMembers =
                     memberFriendUserIds.distinct().filter { it != creatorUserId }.map { friendId ->
+                        ensureLocalUserExists(friendId)
                         GroupMember(
                             id = UUID.randomUUID().toString(),
                             groupId = groupId,
@@ -344,17 +347,58 @@ class SocialInteractor
             }
 
         /**
+         * Removes the current user from a group. If they are the last member, deletes the group.
+         *
+         * @param groupId Group id.
+         * @param userId User leaving.
+         */
+        suspend fun leaveGroup(groupId: String, userId: String): Result<Unit> =
+            runCatching {
+                val member =
+                    groupRepository.getMember(groupId, userId)
+                        ?: error("You are not a member of this group.")
+                val members = groupRepository.observeMembers(groupId).first()
+                if (members.size <= 1) {
+                    deleteGroup(groupId, userId).getOrThrow()
+                    return@runCatching
+                }
+                groupRepository.deleteMemberById(member.id)
+                runCatching { remote.deleteGroupMember(member.id) }
+            }
+
+        /**
+         * Deletes a group locally and from the cloud when possible. Owner-only.
+         *
+         * @param groupId Group id.
+         * @param requesterId User requesting deletion.
+         */
+        suspend fun deleteGroup(groupId: String, requesterId: String): Result<Unit> =
+            runCatching {
+                val group =
+                    groupRepository.getGroupById(groupId)
+                        ?: error("Group not found.")
+                require(group.createdByUserId == requesterId) {
+                    "Only the group owner can delete this group."
+                }
+                groupRepository.deleteGroupById(groupId)
+                runCatching { remote.deleteGroup(groupId) }
+            }
+
+        /**
          * Pulls remote groups/memberships for [userId] into Room.
+         * No-ops when cloud tables are missing or the device is offline.
          *
          * @param userId Current user id.
          */
         suspend fun refreshGroups(userId: String) {
-            val memberships = remote.fetchMembershipsForUser(userId)
-            val created = remote.fetchGroupsCreatedBy(userId)
+            val memberships =
+                runCatching { remote.fetchMembershipsForUser(userId) }.getOrElse { return }
+            val created =
+                runCatching { remote.fetchGroupsCreatedBy(userId) }.getOrDefault(emptyList())
             val groupIds = (memberships.map { it.groupId } + created.map { it.id }).distinct()
 
             groupIds.forEach { groupId ->
-                val dto = remote.fetchGroup(groupId) ?: return@forEach
+                val dto = runCatching { remote.fetchGroup(groupId) }.getOrNull() ?: return@forEach
                 val existing = groupRepository.getGroupById(dto.id)
                 groupRepository.upsertGroup(
                     Group(
@@ -369,7 +413,8 @@ class SocialInteractor
                         syncStatus = SyncStatus.SYNCED,
                     ),
                 )
-                remote.fetchGroupMembers(groupId).forEach { memberDto ->
+                runCatching { remote.fetchGroupMembers(groupId) }.getOrDefault(emptyList()).forEach { memberDto ->
+                    ensureLocalUserExists(memberDto.userId)
                     groupRepository.upsertMember(
                         GroupMember(
                             id = memberDto.id,
@@ -382,6 +427,27 @@ class SocialInteractor
                     )
                 }
             }
+        }
+
+        /**
+         * Room FK on [GroupMember] requires a [User] row. Session restore / DB wipe can leave
+         * auth signed-in without a local user — insert a minimal stub when missing.
+         */
+        private suspend fun ensureLocalUserExists(userId: String) {
+            if (userRepository.getUserById(userId) != null) return
+            val now = System.currentTimeMillis()
+            userRepository.upsert(
+                User(
+                    id = userId,
+                    email = "",
+                    displayName = "You",
+                    photoUrl = null,
+                    remoteId = userId,
+                    createdAtEpochMs = now,
+                    updatedAtEpochMs = now,
+                    syncStatus = SyncStatus.LOCAL_ONLY,
+                ),
+            )
         }
 
         private suspend fun linkExistingFriend(

@@ -53,6 +53,16 @@ class AuthViewModel
         /** Form loading / error / info for auth screens. */
         val formState: StateFlow<AuthFormState> = _formState.asStateFlow()
 
+        init {
+            viewModelScope.launch {
+                session.collect { current ->
+                    if (current is AuthSession.SignedIn) {
+                        authRepository.ensureLocalProfile()
+                    }
+                }
+            }
+        }
+
         /** Clears transient form messages when navigating between auth screens. */
         fun clearMessages() {
             _formState.update { it.copy(errorMessage = null, infoMessage = null) }
