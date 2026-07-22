@@ -57,7 +57,6 @@ fun AddExpenseScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var description by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
-    var currency by rememberSaveable { mutableStateOf("INR") }
     var splitType by rememberSaveable { mutableStateOf(SplitType.EQUAL.name) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var paidBy by rememberSaveable { mutableStateOf("") }
@@ -125,15 +124,6 @@ fun AddExpenseScreen(
                 label = { Text(stringResource(R.string.label_amount)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                enabled = !uiState.isSubmitting,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = currency,
-                onValueChange = { currency = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_currency)) },
-                singleLine = true,
                 enabled = !uiState.isSubmitting,
             )
 
@@ -279,7 +269,6 @@ fun AddExpenseScreen(
                     viewModel.createExpense(
                         description = description,
                         amountText = amount,
-                        currency = currency,
                         paidByUserId = paidBy,
                         participantIds = selected.toList(),
                         splitType = mode,

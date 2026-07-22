@@ -8,7 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- (nothing yet — next: Phase 5 balances)
+- Settings screen with app-wide currency (SharedPreferences); applied to new expenses/groups
+
+### Changed
+- Removed currency fields from Add Expense, Create Group, and Edit Group screens
+
+## [0.6.0] - 2026-07-22 — phase-5
+
+### Added
+- Net balances from expenses/splits (`BalanceCalculator`) per currency
+- Debt simplification (`DebtSimplifier`) — minimize who-owes-whom transfers
+- Balances hub from Home; balance headers on group and friend detail
+- Unit tests for balance math and simplification
 
 ## [0.5.0] - 2026-07-22 — phase-4
 

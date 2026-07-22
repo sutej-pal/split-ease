@@ -119,6 +119,10 @@ Unique index: `(groupId, userId)`.
 
 Unique index: `(expenseId, userId)`.
 
+**Derived balances (Phase 5):** Not stored. Nets and simplified debts are computed in
+`domain.balance` from `expenses` + `expense_splits`. Convention: net > 0 ⇒ is owed;
+net < 0 ⇒ owes. Per-currency only (no FX). `payments` are unused until Phase 6.
+
 ### `payments`
 
 | Column | Type | Nullable | Description |

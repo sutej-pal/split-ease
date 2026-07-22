@@ -24,6 +24,7 @@ import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.auth.ForgotPasswordScreen
 import com.splitease.app.presentation.auth.LoginScreen
 import com.splitease.app.presentation.auth.SignUpScreen
+import com.splitease.app.presentation.balances.BalancesScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
 import com.splitease.app.presentation.friends.AddFriendScreen
@@ -32,6 +33,7 @@ import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
 import com.splitease.app.presentation.groups.GroupsListScreen
 import com.splitease.app.presentation.home.HomeScreen
+import com.splitease.app.presentation.settings.SettingsScreen
 import com.splitease.app.presentation.welcome.WelcomeScreen
 
 /** Navigation route constants. */
@@ -41,6 +43,8 @@ object Routes {
     const val SIGN_UP = "sign_up"
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
+    const val BALANCES = "balances"
+    const val SETTINGS = "settings"
     const val FRIENDS = "friends"
     const val ADD_FRIEND = "add_friend"
     const val FRIEND_DETAIL = "friend_detail/{friendUserId}"
@@ -159,9 +163,21 @@ private fun SignedInNavHost(
         composable(Routes.HOME) {
             HomeScreen(
                 displayName = displayName,
+                onOpenBalances = { navController.navigate(Routes.BALANCES) },
                 onOpenFriends = { navController.navigate(Routes.FRIENDS) },
                 onOpenGroups = { navController.navigate(Routes.GROUPS) },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onSignOut = onSignOut,
+            )
+        }
+        composable(Routes.BALANCES) {
+            BalancesScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.FRIENDS) {

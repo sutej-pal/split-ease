@@ -57,6 +57,16 @@ class RoomExpenseRepository
         override fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<Expense>> =
             expenseDao.observeBetweenUsers(userId, otherUserId).map { rows -> rows.map { it.toDomain() } }
 
+        override fun observeInvolvingUser(userId: String): Flow<List<Expense>> =
+            expenseDao.observeInvolvingUser(userId).map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun getSplitsForExpenses(expenseIds: List<String>): Map<String, List<ExpenseSplit>> {
+            if (expenseIds.isEmpty()) return emptyMap()
+            val rows = expenseDao.getSplitsForExpenses(expenseIds)
+            val grouped = rows.groupBy { it.expenseId }.mapValues { (_, list) -> list.map { it.toDomain() } }
+            return expenseIds.associateWith { id -> grouped[id].orEmpty() }
+        }
+
         override suspend fun remapUserId(fromUserId: String, toUserId: String) {
             if (fromUserId == toUserId) return
             expenseDao.remapSplitUserId(fromUserId, toUserId)

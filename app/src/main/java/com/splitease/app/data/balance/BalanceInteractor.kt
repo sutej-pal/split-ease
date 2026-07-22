@@ -1,0 +1,300 @@
+package com.splitease.app.data.balance
+
+import com.splitease.app.domain.balance.BalanceCalculator
+import com.splitease.app.domain.balance.DebtSimplifier
+import com.splitease.app.domain.balance.DebtTransfer
+import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.repository.ExpenseRepository
+import com.splitease.app.domain.repository.FriendRepository
+import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.UserRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import java.math.BigDecimal
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * A suggested settlement with display labels.
+ *
+ * @property fromUserId Debtor id.
+ * @property fromLabel Debtor display name.
+ * @property toUserId Creditor id.
+ * @property toLabel Creditor display name.
+ * @property amount Positive amount.
+ * @property currencyCode ISO 4217 code.
+ */
+data class LabeledDebt(
+    val fromUserId: String,
+    val fromLabel: String,
+    val toUserId: String,
+    val toLabel: String,
+    val amount: BigDecimal,
+    val currencyCode: String,
+)
+
+/**
+ * Net balances and simplified debts for one group.
+ *
+ * @property groupId Group id.
+ * @property groupName Group display name.
+ * @property myNetByCurrency Current user's net (positive = owed to me).
+ * @property memberNetsByCurrency All member nets by currency.
+ * @property simplifiedDebts Minimized who-owes-whom list.
+ */
+data class GroupBalanceUi(
+    val groupId: String,
+    val groupName: String,
+    val myNetByCurrency: Map<String, BigDecimal>,
+    val memberNetsByCurrency: Map<String, Map<String, BigDecimal>>,
+    val simplifiedDebts: List<LabeledDebt>,
+)
+
+/**
+ * Friend pairwise balance (viewer perspective).
+ *
+ * @property friendUserId Friend's user id.
+ * @property displayName Friend label.
+ * @property netByCurrency Positive = friend owes me; negative = I owe friend.
+ */
+data class FriendBalanceUi(
+    val friendUserId: String,
+    val displayName: String,
+    val netByCurrency: Map<String, BigDecimal>,
+)
+
+/**
+ * Overall balances hub snapshot.
+ *
+ * Totals come from the viewer's global nets (not friend+group sum) to avoid double-counting.
+ *
+ * @property totalOwedToMeByCurrency Currencies where viewer net is positive.
+ * @property totalIOweByCurrency Absolute values where viewer net is negative.
+ * @property friendBalances Per-friend pairwise nets across shared expenses.
+ * @property groupBalances Per-group summaries.
+ */
+data class OverallBalancesUi(
+    val totalOwedToMeByCurrency: Map<String, BigDecimal>,
+    val totalIOweByCurrency: Map<String, BigDecimal>,
+    val friendBalances: List<FriendBalanceUi>,
+    val groupBalances: List<GroupBalanceUi>,
+)
+
+/**
+ * Observes Room expenses/splits and derives balance UI models.
+ *
+ * @property expenseRepository Local expenses.
+ * @property friendRepository Friends for labels and pairwise scope.
+ * @property groupRepository Groups and membership.
+ * @property userRepository Display-name lookup.
+ */
+@Singleton
+class BalanceInteractor
+    @Inject
+    constructor(
+        private val expenseRepository: ExpenseRepository,
+        private val friendRepository: FriendRepository,
+        private val groupRepository: GroupRepository,
+        private val userRepository: UserRepository,
+    ) {
+        /**
+         * Observes balance summary for a group.
+         *
+         * @param groupId Group id.
+         * @param viewerUserId Signed-in user id.
+         * @return Cold [Flow] of [GroupBalanceUi].
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeGroupBalance(
+            groupId: String,
+            viewerUserId: String,
+        ): Flow<GroupBalanceUi> =
+            expenseRepository.observeExpenses(groupId).flatMapLatest { expenses ->
+                flow {
+                    emit(buildGroupBalance(groupId, viewerUserId, expenses))
+                }
+            }
+
+        /**
+         * Observes 1:1 net between viewer and a friend (non-group expenses only).
+         *
+         * @param viewerUserId Signed-in user.
+         * @param friendUserId Friend user id.
+         * @return Cold [Flow] of [FriendBalanceUi].
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeFriendBalance(
+            viewerUserId: String,
+            friendUserId: String,
+        ): Flow<FriendBalanceUi> =
+            combine(
+                expenseRepository.observeBetweenUsers(viewerUserId, friendUserId),
+                friendRepository.observeFriends(viewerUserId),
+            ) { expenses, friends ->
+                expenses to friends
+            }.flatMapLatest { (expenses, friends) ->
+                flow {
+                    val splits = loadSplits(expenses)
+                    val nets =
+                        BalanceCalculator.pairwiseNetByCurrency(
+                            viewerUserId = viewerUserId,
+                            otherUserId = friendUserId,
+                            expenses = expenses,
+                            splitsByExpenseId = splits,
+                        )
+                    val label =
+                        friends.firstOrNull { it.friendUserId == friendUserId }?.displayNameSnapshot
+                            ?: userRepository.getUserById(friendUserId)?.displayName
+                            ?: friendUserId.take(8)
+                    emit(
+                        FriendBalanceUi(
+                            friendUserId = friendUserId,
+                            displayName = label,
+                            netByCurrency = nets,
+                        ),
+                    )
+                }
+            }
+
+        /**
+         * Observes overall balances for the signed-in user.
+         *
+         * @param viewerUserId Signed-in user id.
+         * @return Cold [Flow] of [OverallBalancesUi].
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeOverallBalances(viewerUserId: String): Flow<OverallBalancesUi> =
+            combine(
+                expenseRepository.observeInvolvingUser(viewerUserId),
+                friendRepository.observeFriends(viewerUserId),
+                groupRepository.observeGroupsForUser(viewerUserId),
+            ) { expenses, friends, groups ->
+                Triple(expenses, friends, groups)
+            }.flatMapLatest { (expenses, friends, groups) ->
+                flow {
+                    val splits = loadSplits(expenses)
+                    val allNets = BalanceCalculator.netBalancesByCurrency(expenses, splits)
+                    val myNets =
+                        allNets.mapNotNull { (currency, nets) ->
+                            val mine = nets[viewerUserId] ?: return@mapNotNull null
+                            if (mine.compareTo(ZERO) == 0) null else currency to mine
+                        }.toMap()
+                    val owedToMe = myNets.filterValues { it > ZERO }
+                    val iOwe =
+                        myNets
+                            .filterValues { it < ZERO }
+                            .mapValues { (_, v) -> v.abs() }
+
+                    val friendBalances =
+                        friends.map { friend ->
+                            val nets =
+                                BalanceCalculator.pairwiseNetByCurrency(
+                                    viewerUserId = viewerUserId,
+                                    otherUserId = friend.friendUserId,
+                                    expenses = expenses,
+                                    splitsByExpenseId = splits,
+                                )
+                            FriendBalanceUi(
+                                friendUserId = friend.friendUserId,
+                                displayName = friend.displayNameSnapshot,
+                                netByCurrency = nets,
+                            )
+                        }.filter { it.netByCurrency.isNotEmpty() }
+
+                    val groupBalances =
+                        groups.map { group ->
+                            val groupExpenses = expenses.filter { it.groupId == group.id }
+                            buildGroupBalance(group.id, viewerUserId, groupExpenses, group.name)
+                        }.filter {
+                            it.myNetByCurrency.isNotEmpty() || it.simplifiedDebts.isNotEmpty()
+                        }
+
+                    emit(
+                        OverallBalancesUi(
+                            totalOwedToMeByCurrency = owedToMe,
+                            totalIOweByCurrency = iOwe,
+                            friendBalances = friendBalances,
+                            groupBalances = groupBalances,
+                        ),
+                    )
+                }
+            }
+
+        private suspend fun buildGroupBalance(
+            groupId: String,
+            viewerUserId: String,
+            expenses: List<Expense>,
+            knownName: String? = null,
+        ): GroupBalanceUi {
+            val splits = loadSplits(expenses)
+            val byCurrency = BalanceCalculator.netBalancesByCurrency(expenses, splits)
+            val transfers = DebtSimplifier.simplifyAll(byCurrency)
+            val name =
+                knownName
+                    ?: groupRepository.getGroupById(groupId)?.name
+                    ?: groupId.take(8)
+            val labels = resolveLabels(viewerUserId, byCurrency, transfers)
+            val myNets =
+                byCurrency.mapNotNull { (currency, nets) ->
+                    val mine = nets[viewerUserId] ?: return@mapNotNull null
+                    if (mine.compareTo(ZERO) == 0) null else currency to mine
+                }.toMap()
+            return GroupBalanceUi(
+                groupId = groupId,
+                groupName = name,
+                myNetByCurrency = myNets,
+                memberNetsByCurrency = byCurrency,
+                simplifiedDebts = transfers.map { it.toLabeled(labels) },
+            )
+        }
+
+        private suspend fun loadSplits(expenses: List<Expense>): Map<String, List<ExpenseSplit>> =
+            expenseRepository.getSplitsForExpenses(expenses.map { it.id })
+
+        private suspend fun resolveLabels(
+            viewerUserId: String,
+            byCurrency: Map<String, Map<String, BigDecimal>>,
+            transfers: List<DebtTransfer>,
+        ): Map<String, String> {
+            val ids =
+                buildSet {
+                    byCurrency.values.forEach { nets -> addAll(nets.keys) }
+                    transfers.forEach {
+                        add(it.fromUserId)
+                        add(it.toUserId)
+                    }
+                    add(viewerUserId)
+                }
+            val friendLabels =
+                friendRepository.observeFriends(viewerUserId).first()
+                    .associate { it.friendUserId to it.displayNameSnapshot }
+            return ids.associateWith { id ->
+                when (id) {
+                    viewerUserId -> "You"
+                    else ->
+                        friendLabels[id]
+                            ?: userRepository.getUserById(id)?.displayName
+                            ?: id.take(8)
+                }
+            }
+        }
+
+        private fun DebtTransfer.toLabeled(labels: Map<String, String>) =
+            LabeledDebt(
+                fromUserId = fromUserId,
+                fromLabel = labels[fromUserId] ?: fromUserId.take(8),
+                toUserId = toUserId,
+                toLabel = labels[toUserId] ?: toUserId.take(8),
+                amount = amount,
+                currencyCode = currencyCode,
+            )
+
+        companion object {
+            private val ZERO = BigDecimal.ZERO.setScale(2)
+        }
+    }

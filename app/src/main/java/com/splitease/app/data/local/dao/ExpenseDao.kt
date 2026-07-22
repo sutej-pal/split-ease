@@ -56,6 +56,15 @@ interface ExpenseDao {
     suspend fun getSplits(expenseId: String): List<ExpenseSplitEntity>
 
     /**
+     * Loads split rows for many expenses in one query.
+     *
+     * @param expenseIds Parent expense ids.
+     * @return Matching split rows (unordered).
+     */
+    @Query("SELECT * FROM expense_splits WHERE expenseId IN (:expenseIds)")
+    suspend fun getSplitsForExpenses(expenseIds: List<String>): List<ExpenseSplitEntity>
+
+    /**
      * Observes non-group expenses shared between [userId] and [otherUserId].
      *
      * @param userId First participant.

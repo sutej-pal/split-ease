@@ -12,6 +12,7 @@ import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +52,7 @@ class ExpensesViewModel
         private val groupRepository: GroupRepository,
         private val friendRepository: FriendRepository,
         private val userRepository: UserRepository,
+        private val appSettingsRepository: AppSettingsRepository,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
@@ -108,7 +110,6 @@ class ExpensesViewModel
         fun createExpense(
             description: String,
             amountText: String,
-            currency: String,
             paidByUserId: String,
             participantIds: List<String>,
             splitType: SplitType,
@@ -127,6 +128,7 @@ class ExpensesViewModel
                         }
                         return@launch
                     }
+                val currency = appSettingsRepository.getCurrencyCode()
                 val result =
                     expenseInteractor.createExpense(
                         CreateExpenseInput(

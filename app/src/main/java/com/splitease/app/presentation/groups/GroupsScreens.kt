@@ -51,6 +51,7 @@ import com.splitease.app.R
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupMember
+import com.splitease.app.presentation.balances.GroupBalanceHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,11 +101,6 @@ fun GroupsListScreen(
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
                         ) {
                             Text(group.name, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                group.defaultCurrencyCode,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            )
                         }
                         HorizontalDivider()
                     }
@@ -124,7 +120,6 @@ fun CreateGroupScreen(
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var name by rememberSaveable { mutableStateOf("") }
-    var currency by rememberSaveable { mutableStateOf("INR") }
     var selected by remember { mutableStateOf(setOf<String>()) }
 
     Scaffold(
@@ -150,15 +145,6 @@ fun CreateGroupScreen(
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.label_group_name)) },
-                singleLine = true,
-                enabled = !uiState.isSubmitting,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = currency,
-                onValueChange = { currency = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.label_currency)) },
                 singleLine = true,
                 enabled = !uiState.isSubmitting,
             )
@@ -194,7 +180,7 @@ fun CreateGroupScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    viewModel.createGroup(name, currency, selected.toList(), onCreated)
+                    viewModel.createGroup(name, selected.toList(), onCreated)
                 },
                 enabled = !uiState.isSubmitting,
                 modifier = Modifier.fillMaxWidth(),
@@ -251,7 +237,6 @@ fun GroupDetailScreen(
     var group by remember { mutableStateOf<Group?>(null) }
     var editing by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("") }
-    var currency by rememberSaveable { mutableStateOf("INR") }
     val context = LocalContext.current
 
     LaunchedEffect(groupId) {
@@ -259,7 +244,6 @@ fun GroupDetailScreen(
         group = loaded
         if (loaded != null) {
             name = loaded.name
-            currency = loaded.defaultCurrencyCode
         }
         expensesViewModel.refreshGroupExpenses(groupId)
     }
@@ -314,22 +298,14 @@ fun GroupDetailScreen(
                     singleLine = true,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = currency,
-                    onValueChange = { currency = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.label_currency)) },
-                    singleLine = true,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
                         val current = group ?: return@Button
                         viewModel.updateGroup(
-                            current.copy(name = name.trim(), defaultCurrencyCode = currency.trim().uppercase()),
+                            current.copy(name = name.trim()),
                         )
                         editing = false
-                        group = current.copy(name = name.trim(), defaultCurrencyCode = currency.trim().uppercase())
+                        group = current.copy(name = name.trim())
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -337,6 +313,11 @@ fun GroupDetailScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
+
+            Text(stringResource(R.string.balances_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            GroupBalanceHeader(groupId = groupId)
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(stringResource(R.string.label_members), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))

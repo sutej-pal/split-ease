@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.presentation.balances.FriendBalanceHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +75,10 @@ fun FriendDetailScreen(
                     .padding(24.dp)
                     .verticalScroll(rememberScrollState()),
         ) {
+            Text(stringResource(R.string.balances_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            FriendBalanceHeader(friendUserId = friendUserId)
+            Spacer(modifier = Modifier.height(24.dp))
             Text(stringResource(R.string.expenses_title), style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             ExpenseListSection(

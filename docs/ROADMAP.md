@@ -11,8 +11,8 @@ Product feature list mapped onto development phases. Implement only the **curren
 | Equal or unequal splits | **4** | Done |
 | Split by % or shares | **4** | Done |
 | Unlimited expenses | **4** (+ product rule thereafter) | Done |
-| Calculate total balances | **5** — Balances & Debt Simplification | Not started |
-| Simplify debts | **5** | Not started |
+| Calculate total balances | **5** — Balances & Debt Simplification | Done |
+| Simplify debts | **5** | Done |
 | Recurring expenses | **6** — Settlements & Recurring Expenses | Not started |
 | Manual settlements / mark paid | **6** | Not started |
 | Offline mode (hardened) | **7** — Search, Categories, Multi-Currency, Offline Sync | Not started¹ |
@@ -53,7 +53,7 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | Persist splits with `BigDecimal` rounding rules + unit tests | Categories UI beyond defaults (Phase 7) |
 | No artificial cap on expense count | Payment apps / CSV import (Phase 8) |
 
-### Phase 5 — Balances & Debt Simplification
+### Phase 5 — Balances & Debt Simplification *(done)*
 **Covers:** Calculate total balances · Simplify debts  
 
 | In | Out |

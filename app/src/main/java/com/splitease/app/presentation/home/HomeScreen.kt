@@ -22,14 +22,16 @@ import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 
 /**
- * Signed-in hub with shortcuts to Friends and Groups.
+ * Signed-in hub with shortcuts to Balances, Friends, Groups, and Settings.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     displayName: String,
+    onOpenBalances: () -> Unit,
     onOpenFriends: () -> Unit,
     onOpenGroups: () -> Unit,
+    onOpenSettings: () -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,6 +64,12 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(28.dp))
             HubRow(
+                title = stringResource(R.string.balances_title),
+                subtitle = stringResource(R.string.balances_hub_subtitle),
+                onClick = onOpenBalances,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            HubRow(
                 title = stringResource(R.string.friends_title),
                 subtitle = stringResource(R.string.friends_hub_subtitle),
                 onClick = onOpenFriends,
@@ -71,6 +79,12 @@ fun HomeScreen(
                 title = stringResource(R.string.groups_title),
                 subtitle = stringResource(R.string.groups_hub_subtitle),
                 onClick = onOpenGroups,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            HubRow(
+                title = stringResource(R.string.settings_title),
+                subtitle = stringResource(R.string.settings_hub_subtitle),
+                onClick = onOpenSettings,
             )
             Spacer(modifier = Modifier.height(32.dp))
             Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {

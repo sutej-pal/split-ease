@@ -68,6 +68,22 @@ interface ExpenseRepository {
     fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<Expense>>
 
     /**
+     * Observes expenses where [userId] is the payer or a split participant.
+     *
+     * @param userId User id.
+     * @return Cold [Flow] of expenses newest-first.
+     */
+    fun observeInvolvingUser(userId: String): Flow<List<Expense>>
+
+    /**
+     * Loads split rows for many expenses.
+     *
+     * @param expenseIds Parent expense ids.
+     * @return Map of expenseId → splits (missing ids map to empty lists).
+     */
+    suspend fun getSplitsForExpenses(expenseIds: List<String>): Map<String, List<ExpenseSplit>>
+
+    /**
      * Remaps payer and split participant ids after an invite placeholder becomes a real user.
      *
      * @param fromUserId Placeholder user id.

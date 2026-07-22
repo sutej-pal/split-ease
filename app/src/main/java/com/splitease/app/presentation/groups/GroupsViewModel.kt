@@ -10,6 +10,7 @@ import com.splitease.app.domain.model.GroupMember
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,7 @@ class GroupsViewModel
         private val groupRepository: GroupRepository,
         friendRepository: FriendRepository,
         private val socialInteractor: SocialInteractor,
+        private val appSettingsRepository: AppSettingsRepository,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
@@ -94,13 +96,13 @@ class GroupsViewModel
 
         fun createGroup(
             name: String,
-            currency: String,
             memberIds: List<String>,
             onSuccess: (String) -> Unit,
         ) {
             val id = userId.value ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val currency = appSettingsRepository.getCurrencyCode()
                 val result = socialInteractor.createGroup(id, name, currency, memberIds)
                 _uiState.update {
                     it.copy(

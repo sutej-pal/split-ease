@@ -116,3 +116,28 @@ presentation/expenses
 
 - Apply `docs/sql/phase-4-expenses.sql` (expenses, splits, RLS, accept remap).
 - Invited placeholders allowed on split `user_id` until accept remaps to auth uid.
+
+## Balances (Phase 5)
+
+```
+domain/balance/BalanceCalculator + DebtSimplifier
+data/balance/BalanceInteractor
+presentation/balances
+```
+
+- Balances are **derived** from Room expenses/splits (no balance tables).
+- Convention: net > 0 ⇒ is owed; net < 0 ⇒ owes. Per-currency buckets; no FX.
+- Debt simplification: greedy debtor/creditor matching to minimize transfers.
+- Settlements (`payments`) not applied until Phase 6.
+
+## App settings (currency)
+
+```
+domain/settings/AppSettingsRepository
+data/settings/SharedPreferencesAppSettingsRepository
+presentation/settings
+```
+
+- Single app-wide currency chosen in Settings; new expenses/groups use it automatically.
+- No per-expense or per-group currency pickers on create/edit screens.
+- Full 100+ currency catalog remains Phase 7.
