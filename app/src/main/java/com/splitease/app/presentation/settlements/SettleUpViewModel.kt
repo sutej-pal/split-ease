@@ -1,13 +1,16 @@
 package com.splitease.app.presentation.settlements
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.payment.RecordPaymentInput
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +34,7 @@ class SettleUpViewModel
         authRepository: AuthRepository,
         private val paymentInteractor: PaymentInteractor,
         private val appSettingsRepository: AppSettingsRepository,
+        @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
@@ -56,12 +60,18 @@ class SettleUpViewModel
                 val amount =
                     runCatching { BigDecimal(amountText.trim()) }.getOrElse {
                         _uiState.update {
-                            it.copy(isSubmitting = false, errorMessage = "Enter a valid amount.")
+                            it.copy(
+                                isSubmitting = false,
+                                errorMessage = appContext.getString(R.string.msg_enter_valid_amount),
+                            )
                         }
                         return@launch
                     }
                 val currency =
                     currencyCode.ifBlank { appSettingsRepository.getCurrencyCode() }
+                val resolvedNote =
+                    note?.trim()?.ifBlank { null }
+                        ?: appContext.getString(R.string.payment_completed_note)
                 val result =
                     paymentInteractor.recordPayment(
                         RecordPaymentInput(
@@ -70,7 +80,7 @@ class SettleUpViewModel
                             amount = amount,
                             currencyCode = currency,
                             groupId = groupId,
-                            note = note,
+                            note = resolvedNote,
                         ),
                     )
                 _uiState.update {

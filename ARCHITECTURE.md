@@ -89,8 +89,7 @@ presentation/auth/*             # screens + AuthViewModel
 - **Never** ship the database password in the Android app.
 - Session Flow from `supabase.auth.sessionStatus` gates Welcome/auth vs Home.
 - Google OAuth is stubbed pending Supabase provider + deep-link setup.
-- **MVP: email confirmation skipped** — keep Confirm email disabled in Supabase Dashboard.  
-  **TODO (pre-production):** re-enable confirmation + in-app verify-email flow before release.
+- **Email confirmation (Phase 9):** signup may return `SignUpResult.PendingEmailConfirmation`; deep link `splitease://auth-callback` (allow-list in Supabase Dashboard). Confirm email should be **ON** for production.
 
 ## Friends & groups (Phase 3)
 
@@ -159,8 +158,16 @@ presentation/search|spending + Account sync
 - Search: Room `LIKE` on description/notes; Groups home search icon.
 - Categories: picker + custom upsert on Add Expense.
 - Spending: viewer owed amounts by category × currency × period.
-- Sync: `syncForUser` flushes PENDING groups/members/expenses/payments then pulls friends/groups/expenses/payments; periodic WorkManager + Account Sync now + login/cold start.
+- Sync: `syncForUser` flushes PENDING groups/members/expenses/payments then **always** pulls friends/groups/expenses/payments; periodic WorkManager + Account Sync now + login/cold start.
+- Group detail on resume: full `syncForUser` + targeted group expense pull (see extras doc for push notifications).
 - FX still not applied; balances remain per-currency buckets.
+
+## Extras (post Phase 9)
+
+Out-of-roadmap work tracked in [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md):
+
+- Member push notifications on expense/payment changes (FCM + Edge Function — not started; needs library approval).
+- Stronger multi-device visibility when opening a group (MVP sync-on-open done).
 
 ## Stretch features (Phase 8)
 
@@ -175,6 +182,20 @@ presentation/spending/SpendingCategoryChart  # Vico 2.1
 - Settle up (when you are the payer): open UPI / PayPal / Venmo or share a payment request, then record settlement.
 - CSV import creates viewer-only equal-split expenses (optional category match/create).
 - Spending screen shows a Vico column chart above the category list.
+
+## Polish & release (Phase 9)
+
+```
+data/local/db/SplitEaseMigrations   # 1→2→3→4
+domain/settings/AppLocale
+presentation/settings/LanguageSettingsScreen
+presentation/auth/VerifyEmailScreen
+docs/release-checklist.md + docs/store-listing.md
+```
+
+- Room upgrades use explicit migrations (no destructive fallback).
+- Per-app language via `AppCompatDelegate.setApplicationLocales` (`values-es|fr|de|pt|hi|ja|it`).
+- Version **1.0.0**.
 
 ## App settings (currency)
 

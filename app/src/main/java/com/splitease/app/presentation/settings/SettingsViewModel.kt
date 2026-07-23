@@ -3,6 +3,7 @@ package com.splitease.app.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
@@ -39,6 +40,11 @@ class SettingsViewModel
                 .observeAuthTimeout()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AuthTimeout.DEFAULT)
 
+        val appLocale: StateFlow<AppLocale> =
+            appSettingsRepository
+                .observeAppLocale()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppLocale.DEFAULT)
+
         fun setCurrency(code: String) {
             viewModelScope.launch {
                 appSettingsRepository.setCurrencyCode(code)
@@ -60,6 +66,12 @@ class SettingsViewModel
         fun setAuthTimeout(timeout: AuthTimeout) {
             viewModelScope.launch {
                 appSettingsRepository.setAuthTimeout(timeout)
+            }
+        }
+
+        fun setAppLocale(locale: AppLocale) {
+            viewModelScope.launch {
+                appSettingsRepository.setAppLocale(locale)
             }
         }
     }

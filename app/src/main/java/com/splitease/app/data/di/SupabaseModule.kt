@@ -13,10 +13,20 @@ import javax.inject.Singleton
 
 /**
  * Provides the shared [SupabaseClient] configured for Auth + PostgREST.
+ *
+ * Deep-link scheme/host must match [com.splitease.app.MainActivity] intent filters and
+ * Supabase Dashboard → Authentication → URL configuration redirect allow-list:
+ * `splitease://auth-callback`
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object SupabaseModule {
+    /** Custom scheme for Auth email confirmation / recovery redirects. */
+    const val AUTH_DEEP_LINK_SCHEME = "splitease"
+
+    /** Host segment for Auth redirects. */
+    const val AUTH_DEEP_LINK_HOST = "auth-callback"
+
     /**
      * Builds a singleton Supabase client using BuildConfig credentials.
      *
@@ -35,7 +45,10 @@ object SupabaseModule {
             supabaseUrl = url,
             supabaseKey = key,
         ) {
-            install(Auth)
+            install(Auth) {
+                scheme = AUTH_DEEP_LINK_SCHEME
+                host = AUTH_DEEP_LINK_HOST
+            }
             install(Postgrest)
         }
     }

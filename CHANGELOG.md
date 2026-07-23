@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Find people screen (search friends + device contacts) and redesigned Add friend (name + phone/email); Group settings → Add people uses it
+- Extras backlog: [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md) (group member notifications + live ledger visibility)
+- Group detail resume refreshes via full `syncForUser` + targeted group expense pull so other members’ changes show up
 - Debug-only `clone` product flavor (`com.splitease.app.clone`) for side-by-side multi-device sync testing
 - Settings → Security: biometric / device-credential app lock with configurable timeout
 - Multi-device hydrate: login / cold start / Activity / Groups / Sync now flush PENDING groups+members+expenses+payments then pull from Supabase
@@ -20,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - App-wide migration onto `Se*` components (screens, lists, buttons, fields, money, feedback)
 
 ### Changed
+- `SyncInteractor.syncForUser` always pulls friends/groups/expenses/payments after flush (previously pull ran only when invite-accept failed)
 - `SyncInteractor` now flushes social PENDING (groups/members) before expenses/payments and pulls cloud data via `syncForUser`
 - Group create uploads owner membership even when extra member upserts fail (invite placeholders)
 - Settings Preferences section lists Appearance then Security
@@ -31,6 +35,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed currency fields from Add Expense, Create Group, and Edit Group screens
 - Global theme switched to light Apzo-inspired blue SaaS look; screens migrate onto `Se*` components
 - Groups home top-bar action uses GroupAdd → Create group (Friends still use add-friend)
+- Groups home **Add expense** FAB no longer opens Create group when the list is empty (shows picker / create CTA instead)
+
+## [1.0.0] - 2026-07-23 — phase-9
+
+### Added
+- Seven locale packs (`es`, `fr`, `de`, `pt`, `hi`, `ja`, `it`) plus Settings → Language
+- Room migrations 1→2→3→4 (invites, groupType, recurring columns)
+- Email confirmation UX (pending verify screen, resend) and `splitease://auth-callback` deep links
+- Compose Welcome smoke test + Room migration instrumented test
+- Release checklist and Play Store listing draft
+
+### Changed
+- Version **1.0.0** (`versionCode` 2)
+- Removed Room destructive migration fallback
+- Auth signup returns `SignUpResult` (session vs pending confirmation)
 
 ## [0.9.0] - 2026-07-22 — phase-8
 

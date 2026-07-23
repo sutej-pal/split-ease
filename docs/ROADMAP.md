@@ -90,7 +90,7 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | Import transactions (CSV / statement parse) | Store listing assets (Phase 9) |
 | Vico charts for spending totals enhancement | |
 
-### Phase 9 — Polish, Testing, and Release Prep
+### Phase 9 — Polish, Testing, and Release Prep *(done)*
 **Covers:** 7+ languages  
 
 | In | Out |
@@ -99,6 +99,12 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | Instrumentation + regression, release checklist | |
 | Email confirmation / production Auth hardening | |
 | Real Room migrations; store listing prep | |
+
+## Post-phase extras
+
+Features requested after Phase 9 that are **not** in the original phase matrix. Track in:
+
+- [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify all group members on expense/payment changes; open group → show latest cloud entries.
 
 ## Dependency order
 

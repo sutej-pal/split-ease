@@ -10,6 +10,7 @@ import com.splitease.app.data.local.dao.InviteDao
 import com.splitease.app.data.local.dao.PaymentDao
 import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.db.SplitEaseDatabase
+import com.splitease.app.data.local.db.SplitEaseMigrations
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,7 +39,7 @@ object DatabaseModule {
             context,
             SplitEaseDatabase::class.java,
             SplitEaseDatabase.NAME,
-        ).fallbackToDestructiveMigration(dropAllTables = true)
+        ).addMigrations(*SplitEaseMigrations.ALL)
             .build()
 
     /** @param db Database. @return [UserDao]. */

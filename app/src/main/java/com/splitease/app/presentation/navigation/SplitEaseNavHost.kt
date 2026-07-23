@@ -31,9 +31,11 @@ import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.auth.ForgotPasswordScreen
 import com.splitease.app.presentation.auth.LoginScreen
 import com.splitease.app.presentation.auth.SignUpScreen
+import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
 import com.splitease.app.presentation.friends.AddFriendScreen
+import com.splitease.app.presentation.friends.FindPeopleScreen
 import com.splitease.app.presentation.friends.FriendsListScreen
 import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
@@ -43,6 +45,7 @@ import com.splitease.app.presentation.imports.ImportTransactionsScreen
 import com.splitease.app.presentation.search.SearchScreen
 import com.splitease.app.presentation.settings.AppearanceSettingsScreen
 import com.splitease.app.presentation.settings.CurrencySettingsScreen
+import com.splitease.app.presentation.settings.LanguageSettingsScreen
 import com.splitease.app.presentation.settings.SecuritySettingsScreen
 import com.splitease.app.presentation.settings.SettingsScreen
 import com.splitease.app.presentation.settlements.SettleUpScreen
@@ -64,11 +67,14 @@ object Routes {
     const val SETTINGS = "settings"
     const val APPEARANCE_SETTINGS = "appearance_settings"
     const val SECURITY_SETTINGS = "security_settings"
+    const val LANGUAGE_SETTINGS = "language_settings"
     const val CURRENCY_SETTINGS = "currency_settings"
     const val SEARCH = "search"
     const val SPENDING = "spending"
     const val IMPORT = "import_transactions"
-    const val ADD_FRIEND = "add_friend"
+    const val ADD_FRIEND =
+        "add_friend?groupId={groupId}&name={name}&contact={contact}"
+    const val FIND_PEOPLE = "find_people?groupId={groupId}"
     const val FRIEND_DETAIL = "friend_detail/{friendUserId}"
     const val CREATE_GROUP = "create_group"
     const val GROUP_DETAIL = "group_detail/{groupId}"
@@ -82,6 +88,19 @@ object Routes {
     fun groupSettings(groupId: String) = "group_settings/$groupId"
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
+
+    fun findPeople(groupId: String? = null) =
+        "find_people?groupId=${groupId.orEmpty()}"
+
+    fun addFriend(
+        groupId: String? = null,
+        name: String = "",
+        contact: String = "",
+    ): String {
+        val n = android.net.Uri.encode(name)
+        val c = android.net.Uri.encode(contact)
+        return "add_friend?groupId=${groupId.orEmpty()}&name=$n&contact=$c"
+    }
 
     fun addExpenseForGroup(groupId: String) =
         "add_expense?groupId=$groupId&friendUserId="
@@ -130,6 +149,18 @@ fun SplitEaseNavHost(
             }
         }
         AuthSession.SignedOut -> {
+            val pendingEmail = formState.pendingConfirmationEmail
+            if (pendingEmail != null) {
+                VerifyEmailScreen(
+                    email = pendingEmail,
+                    formState = formState,
+                    onResend = { authViewModel.resendConfirmation(pendingEmail) },
+                    onBackToLogin = {
+                        authViewModel.clearPendingConfirmation()
+                        authViewModel.clearMessages()
+                    },
+                )
+            } else {
             val navController = rememberNavController()
             NavHost(
                 navController = navController,
@@ -182,6 +213,7 @@ fun SplitEaseNavHost(
                         },
                     )
                 }
+            }
             }
         }
         is AuthSession.SignedIn -> {
@@ -244,7 +276,7 @@ private fun SignedInNavHost(
             }
             composable(Routes.TAB_FRIENDS) {
                 FriendsListScreen(
-                    onAddFriend = { navController.navigate(Routes.ADD_FRIEND) },
+                    onAddFriend = { navController.navigate(Routes.findPeople()) },
                     onOpenFriend = { friendUserId ->
                         navController.navigate(Routes.friendDetail(friendUserId))
                     },
@@ -270,6 +302,7 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
                     onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
+                    onOpenLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
                     onOpenCurrency = { navController.navigate(Routes.CURRENCY_SETTINGS) },
                 )
             }
@@ -278,6 +311,9 @@ private fun SignedInNavHost(
             }
             composable(Routes.SECURITY_SETTINGS) {
                 SecuritySettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.LANGUAGE_SETTINGS) {
+                LanguageSettingsScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.CURRENCY_SETTINGS) {
                 CurrencySettingsScreen(onBack = { navController.popBackStack() })
@@ -294,10 +330,54 @@ private fun SignedInNavHost(
                     onDone = { navController.popBackStack() },
                 )
             }
-            composable(Routes.ADD_FRIEND) {
+            composable(
+                route = Routes.FIND_PEOPLE,
+                arguments =
+                    listOf(
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                FindPeopleScreen(
+                    groupId = groupId,
+                    onBack = { navController.popBackStack() },
+                    onAddNewContact = { name, contact ->
+                        navController.navigate(
+                            Routes.addFriend(groupId = groupId, name = name, contact = contact),
+                        )
+                    },
+                )
+            }
+            composable(
+                route = Routes.ADD_FRIEND,
+                arguments =
+                    listOf(
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("name") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("contact") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val name = entry.arguments?.getString("name").orEmpty()
+                val contact = entry.arguments?.getString("contact").orEmpty()
                 AddFriendScreen(
                     onBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() },
+                    groupId = groupId,
+                    prefillName = name,
+                    prefillContact = contact,
                 )
             }
             composable(
@@ -373,6 +453,7 @@ private fun SignedInNavHost(
                     onLeftOrDeleted = {
                         navController.popBackStack(Routes.TAB_GROUPS, inclusive = false)
                     },
+                    onAddPeople = { navController.navigate(Routes.findPeople(groupId)) },
                 )
             }
             composable(

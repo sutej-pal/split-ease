@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +46,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
 import com.splitease.app.presentation.security.authenticateWithBiometrics
@@ -65,12 +67,14 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenSecurity: () -> Unit,
+    onOpenLanguage: () -> Unit,
     onOpenCurrency: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val currency by viewModel.currencyCode.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val biometricLock by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    val appLocale by viewModel.appLocale.collectAsStateWithLifecycle()
     val currencyLabel = AppCurrencies.filter("").firstOrNull { it.first == currency }?.second ?: currency
 
     SeScreen(
@@ -139,6 +143,26 @@ fun SettingsScreen(
 
                 SeSectionHeader(text = stringResource(R.string.settings_general_section))
                 SeListRow(
+                    title = stringResource(R.string.settings_language),
+                    subtitle = appLocaleLabel(appLocale),
+                    leading = {
+                        SeIconTile(
+                            icon = Icons.Filled.Translate,
+                            tint = SplitEaseColors.IconOther,
+                            size = 40,
+                        )
+                    },
+                    trailing = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = SplitEaseColors.NavyMuted,
+                        )
+                    },
+                    onClick = onOpenLanguage,
+                    showDivider = true,
+                )
+                SeListRow(
                     title = stringResource(R.string.settings_currency_item),
                     subtitle = "$currency · $currencyLabel",
                     leading = {
@@ -162,6 +186,78 @@ fun SettingsScreen(
         },
     )
 }
+
+@Composable
+fun LanguageSettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val selected by viewModel.appLocale.collectAsStateWithLifecycle()
+
+    SeScreen(
+        title = stringResource(R.string.settings_language),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .padding(horizontal = 20.dp),
+            ) {
+                SeSectionHeader(text = stringResource(R.string.settings_language_section))
+                AppLocale.entries.forEachIndexed { index, locale ->
+                    LanguageRow(
+                        locale = locale,
+                        selected = selected == locale,
+                        onSelect = { viewModel.setAppLocale(locale) },
+                        showDivider = index < AppLocale.entries.lastIndex,
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun LanguageRow(
+    locale: AppLocale,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    showDivider: Boolean,
+) {
+    SeListRow(
+        title = appLocaleLabel(locale),
+        leading = {
+            RadioButton(
+                selected = selected,
+                onClick = onSelect,
+                colors =
+                    RadioButtonDefaults.colors(
+                        selectedColor = SplitEaseColors.Primary,
+                    ),
+            )
+        },
+        onClick = onSelect,
+        showDivider = showDivider,
+    )
+}
+
+@Composable
+private fun appLocaleLabel(locale: AppLocale): String =
+    stringResource(
+        when (locale) {
+            AppLocale.SYSTEM -> R.string.settings_language_system
+            AppLocale.ENGLISH -> R.string.settings_language_en
+            AppLocale.SPANISH -> R.string.settings_language_es
+            AppLocale.FRENCH -> R.string.settings_language_fr
+            AppLocale.GERMAN -> R.string.settings_language_de
+            AppLocale.PORTUGUESE -> R.string.settings_language_pt
+            AppLocale.HINDI -> R.string.settings_language_hi
+            AppLocale.JAPANESE -> R.string.settings_language_ja
+        },
+    )
+
 
 @Composable
 fun AppearanceSettingsScreen(

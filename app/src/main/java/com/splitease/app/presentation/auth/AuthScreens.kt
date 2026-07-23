@@ -80,7 +80,7 @@ fun LoginScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
         SeOutlinedButton(
-            text = "Continue with Google",
+            text = stringResource(R.string.action_continue_google),
             onClick = onGoogleStub,
             enabled = !formState.isLoading,
         )
@@ -171,8 +171,36 @@ fun ForgotPasswordScreen(
             enabled = !formState.isLoading,
         )
         SeTextButton(
-            text = "Back to login",
+            text = stringResource(R.string.action_back_to_login),
             onClick = onNavigateBack,
+            enabled = !formState.isLoading,
+        )
+    }
+}
+
+@Composable
+fun VerifyEmailScreen(
+    email: String,
+    formState: AuthFormState,
+    onResend: () -> Unit,
+    onBackToLogin: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AuthScaffold(
+        title = stringResource(R.string.verify_email_title),
+        subtitle = stringResource(R.string.verify_email_subtitle, email),
+        formState = formState,
+        modifier = modifier,
+    ) {
+        SePrimaryButton(
+            text = stringResource(R.string.action_resend_confirmation),
+            onClick = onResend,
+            enabled = !formState.isLoading,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        SeTextButton(
+            text = stringResource(R.string.action_back_to_login),
+            onClick = onBackToLogin,
             enabled = !formState.isLoading,
         )
     }

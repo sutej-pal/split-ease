@@ -158,9 +158,9 @@ class ActivityViewModel
         ): ActivityUiItem {
             val title =
                 when {
-                    fromUserId == me -> "You paid ${nameOf(toUserId)}"
-                    toUserId == me -> "${nameOf(fromUserId)} paid you"
-                    else -> "${nameOf(fromUserId)} paid ${nameOf(toUserId)}"
+                    fromUserId == me -> "Payment completed — you paid ${nameOf(toUserId)}"
+                    toUserId == me -> "Payment completed — ${nameOf(fromUserId)} paid you"
+                    else -> "Payment completed — ${nameOf(fromUserId)} paid ${nameOf(toUserId)}"
                 }
             val context = groupId?.let { groupNames[it] }
             val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(paidAtEpochMs))

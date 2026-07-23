@@ -1,5 +1,6 @@
 package com.splitease.app
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.fragment.app.FragmentActivity
@@ -13,6 +14,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import com.splitease.app.data.di.SupabaseModule
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
@@ -20,6 +23,9 @@ import com.splitease.app.presentation.navigation.SplitEaseNavHost
 import com.splitease.app.presentation.security.AppLockGate
 import com.splitease.app.presentation.theme.SplitEaseTheme
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.handleDeeplinks
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -30,8 +36,12 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var appSettingsRepository: AppSettingsRepository
 
+    @Inject
+    lateinit var supabase: SupabaseClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleAuthDeepLink(intent)
         enableEdgeToEdge()
         setContent {
             val themeMode by
@@ -77,6 +87,21 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthDeepLink(intent)
+    }
+
+    private fun handleAuthDeepLink(intent: Intent?) {
+        if (intent?.data == null) return
+        val host = intent.data?.host
+        if (host != SupabaseModule.AUTH_DEEP_LINK_HOST) return
+        lifecycleScope.launch {
+            runCatching { supabase.handleDeeplinks(intent) }
         }
     }
 }

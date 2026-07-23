@@ -123,4 +123,25 @@ interface AppSettingsRepository {
      * @param timeout Grace period before re-auth when returning to the app.
      */
     suspend fun setAuthTimeout(timeout: AuthTimeout)
+
+    /**
+     * Observes the in-app language preference.
+     *
+     * @return Cold [Flow]; defaults to [AppLocale.SYSTEM].
+     */
+    fun observeAppLocale(): Flow<AppLocale>
+
+    /**
+     * Reads the language preference once.
+     *
+     * @return Current [AppLocale].
+     */
+    suspend fun getAppLocale(): AppLocale
+
+    /**
+     * Persists the language preference and applies it process-wide.
+     *
+     * @param locale System or pinned BCP-47 language.
+     */
+    suspend fun setAppLocale(locale: AppLocale)
 }

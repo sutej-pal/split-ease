@@ -1,0 +1,386 @@
+package com.splitease.app.presentation.friends
+
+import android.Manifest
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.splitease.app.R
+import com.splitease.app.data.contacts.DeviceContact
+import com.splitease.app.domain.model.Friend
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeOutlinedButton
+import com.splitease.app.presentation.ui.SeSectionHeader
+
+/**
+ * Search friends and device contacts; optionally add them to a group.
+ *
+ * @param groupId When set, selecting a friend adds them to that group.
+ * @param onBack Navigate up.
+ * @param onAddNewContact Opens the Add friend form (manual name + email/phone).
+ */
+@Composable
+fun FindPeopleScreen(
+    groupId: String?,
+    onBack: () -> Unit,
+    onAddNewContact: (prefillName: String, prefillContact: String) -> Unit,
+    viewModel: FindPeopleViewModel = hiltViewModel(),
+) {
+    val friends by viewModel.friends.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var permissionRequested by rememberSaveable { mutableStateOf(false) }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { granted ->
+            viewModel.onContactsPermissionResult(granted)
+        }
+
+    LaunchedEffect(groupId) {
+        viewModel.setGroupId(groupId)
+        viewModel.clearMessages()
+    }
+
+    LaunchedEffect(uiState.contactsPermissionGranted, permissionRequested) {
+        if (!uiState.contactsPermissionGranted && !permissionRequested) {
+            permissionRequested = true
+            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
+    LaunchedEffect(uiState.pendingShareText) {
+        val text = uiState.pendingShareText ?: return@LaunchedEffect
+        val intent =
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.invite_email_subject))
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+        context.startActivity(
+            Intent.createChooser(intent, context.getString(R.string.action_share_invite)),
+        )
+        viewModel.consumeShareText()
+    }
+
+    val filteredFriends = viewModel.filteredFriends(friends)
+    val filteredContacts = viewModel.filteredContacts()
+    val isGroupMode = !groupId.isNullOrBlank()
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.cd_back),
+                        tint = SplitEaseColors.Navy,
+                    )
+                }
+                OutlinedTextField(
+                    value = uiState.query,
+                    onValueChange = viewModel::setQuery,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                    placeholder = {
+                        Text(stringResource(R.string.find_people_search_hint))
+                    },
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = SplitEaseColors.NavyMuted,
+                        )
+                    },
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SplitEaseColors.Primary,
+                            unfocusedBorderColor = SplitEaseColors.OutlineStrong,
+                            focusedContainerColor = SplitEaseColors.Surface,
+                            unfocusedContainerColor = SplitEaseColors.Surface,
+                            cursorColor = SplitEaseColors.Primary,
+                            focusedTextColor = SplitEaseColors.Navy,
+                            unfocusedTextColor = SplitEaseColors.Navy,
+                        ),
+                )
+            }
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
+            item {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onAddNewContact("", "") }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SeIconTile(
+                        icon = Icons.Filled.PersonAdd,
+                        tint = SplitEaseColors.Primary,
+                        size = 40,
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = stringResource(R.string.find_people_add_new_contact),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SplitEaseColors.Primary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+
+            uiState.errorMessage?.let { msg ->
+                item {
+                    SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+                }
+            }
+            uiState.infoMessage?.let { msg ->
+                item {
+                    SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+                }
+            }
+
+            item {
+                SeSectionHeader(
+                    text = stringResource(R.string.find_people_friends_section),
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+            }
+            if (filteredFriends.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.find_people_no_friends),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SplitEaseColors.NavyMuted,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+            } else {
+                items(filteredFriends, key = { it.id }) { friend ->
+                    val alreadyInGroup =
+                        isGroupMode && friend.friendUserId in uiState.memberUserIds
+                    FriendPickRow(
+                        friend = friend,
+                        alreadyInGroup = alreadyInGroup,
+                        enabled = !uiState.isSubmitting && (!isGroupMode || !alreadyInGroup),
+                        onClick = {
+                            if (isGroupMode && !alreadyInGroup) {
+                                viewModel.addFriendToGroup(friend.friendUserId) { }
+                            }
+                        },
+                    )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                SeSectionHeader(
+                    text = stringResource(R.string.find_people_contacts_section),
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+            }
+            when {
+                !uiState.contactsPermissionGranted -> {
+                    item {
+                        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                            Text(
+                                text = stringResource(R.string.find_people_contacts_permission),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = SplitEaseColors.NavyMuted,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SeOutlinedButton(
+                                text = stringResource(R.string.action_allow_contacts),
+                                onClick = {
+                                    permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                                },
+                            )
+                        }
+                    }
+                }
+                uiState.isLoadingContacts -> {
+                    item {
+                        Text(
+                            text = stringResource(R.string.find_people_loading_contacts),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SplitEaseColors.NavyMuted,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                filteredContacts.isEmpty() -> {
+                    item {
+                        Text(
+                            text = stringResource(R.string.find_people_no_contacts),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SplitEaseColors.NavyMuted,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                else -> {
+                    items(filteredContacts, key = { it.id }) { contact ->
+                        ContactPickRow(
+                            contact = contact,
+                            enabled = !uiState.isSubmitting,
+                            onClick = {
+                                viewModel.addContact(
+                                    contact = contact,
+                                    onNeedManualAdd = { name, value ->
+                                        onAddNewContact(name, value)
+                                    },
+                                    onDone = { },
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FriendPickRow(
+    friend: Friend,
+    alreadyInGroup: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 48)
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = friend.displayNameSnapshot,
+                style = MaterialTheme.typography.titleMedium,
+                color = SplitEaseColors.Navy,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (alreadyInGroup) {
+                Text(
+                    text = stringResource(R.string.find_people_already_in_group),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
+                )
+            } else if (friend.emailSnapshot.isNotBlank()) {
+                Text(
+                    text = friend.emailSnapshot,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
+                )
+            }
+        }
+        if (alreadyInGroup) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = null,
+                tint = SplitEaseColors.OutlineStrong,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ContactPickRow(
+    contact: DeviceContact,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val subtitle = contact.email ?: contact.phoneNumber
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SeIconTile(Icons.Filled.Phone, SplitEaseColors.IconOther, size = 48)
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = contact.displayName.ifBlank { subtitle.orEmpty() },
+                style = MaterialTheme.typography.titleMedium,
+                color = SplitEaseColors.Navy,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (!subtitle.isNullOrBlank() && subtitle != contact.displayName) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
+                )
+            }
+        }
+    }
+}

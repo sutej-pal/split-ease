@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.groups
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,23 +17,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,10 +50,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -57,11 +67,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.splitease.app.R
-import com.splitease.app.domain.model.Friend
+import com.splitease.app.data.balance.GroupBalanceUi
+import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.domain.model.Group
-import com.splitease.app.domain.model.GroupMember
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.balances.GroupBalanceHeader
+import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.expenses.ledgerEntries
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeEmptyState
@@ -71,6 +83,8 @@ import com.splitease.app.presentation.ui.SeFab
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeMoneyText
+import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
@@ -79,6 +93,7 @@ import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.SeTypeChip
+import java.math.BigDecimal
 
 @Composable
 fun GroupsListScreen(
@@ -202,7 +217,9 @@ fun CreateGroupScreen(
                     value = name,
                     onValueChange = { name = it },
                     label = stringResource(R.string.label_group_name),
-                    modifier = Modifier.weight(1f),
+                    // width(0) + weight lets the field shrink; OutlinedTextField's
+                    // intrinsic min width otherwise overflows the row.
+                    modifier = Modifier.weight(1f).width(0.dp),
                     enabled = !uiState.isSubmitting,
                 )
             }
@@ -257,7 +274,6 @@ private fun GroupType.labelRes() =
 private enum class GroupDetailPane {
     Expenses,
     Balances,
-    Members,
 }
 
 @Composable
@@ -279,14 +295,12 @@ fun GroupDetailScreen(
     balancesViewModel: com.splitease.app.presentation.balances.BalancesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val friends by viewModel.friends.collectAsStateWithLifecycle()
     val membersState by remember(groupId) { viewModel.observeMembers(groupId) }
         .collectAsStateWithLifecycle()
     val members = membersState.orEmpty()
     val membersReady = membersState != null
-    val expenses by remember(groupId) { expensesViewModel.observeGroupExpenses(groupId) }
+    val ledger by remember(groupId) { expensesViewModel.observeGroupLedger(groupId) }
         .collectAsStateWithLifecycle()
-    val categories by expensesViewModel.categories.collectAsStateWithLifecycle()
     val groupBalance by remember(groupId) { balancesViewModel.observeGroupBalance(groupId) }
         .collectAsStateWithLifecycle()
     val group by remember(groupId) { viewModel.observeGroup(groupId) }
@@ -299,11 +313,11 @@ fun GroupDetailScreen(
     val isSolo = membersReady && members.size <= 1
     val nothingToSettle = stringResource(R.string.group_nothing_to_settle)
     val lifecycleOwner = LocalLifecycleOwner.current
-    val categoryNames = remember(categories) { categories.associate { it.id to it.name } }
 
     LaunchedEffect(groupId, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            expensesViewModel.refreshGroupExpenses(groupId)
+            // Flush local writes + pull remote so other members' expense/payment edits show up.
+            expensesViewModel.refreshGroupFromCloud(groupId)
         }
     }
 
@@ -340,18 +354,8 @@ fun GroupDetailScreen(
         )
     }
 
-    SeScreen(
-        title = group?.name ?: stringResource(R.string.groups_title),
-        onBack = onBack,
-        actions = {
-            IconButton(onClick = onOpenSettings) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = stringResource(R.string.cd_group_settings),
-                    tint = SplitEaseColors.Navy,
-                )
-            }
-        },
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             SeExtendedFab(
                 text = stringResource(R.string.action_add_expense),
@@ -359,226 +363,364 @@ fun GroupDetailScreen(
                 icon = Icons.Filled.Receipt,
             )
         },
-        content = { padding ->
-            Column(
+    ) { padding ->
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = padding.calculateBottomPadding()),
+        ) {
+            GroupDetailBanner(
+                group = group,
+                onBack = onBack,
+                onOpenSettings = onOpenSettings,
+            )
+
+            if (!(isSolo && ledger.isEmpty())) {
+                GroupOverallBalanceBlock(
+                    balance = groupBalance,
+                    currencyFallback = group?.defaultCurrencyCode.orEmpty(),
+                )
+            }
+
+            Row(
                 modifier =
                     Modifier
-                        .fillMaxSize()
-                        .padding(padding.values),
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                GroupDetailHeader(
-                    group = group,
+                SeActionChip(
+                    label = stringResource(R.string.action_settle_up),
+                    onClick = { openSettle() },
                 )
+                SeActionChip(
+                    label = stringResource(R.string.group_chip_balances),
+                    selected = pane == GroupDetailPane.Balances,
+                    onClick = { paneName = GroupDetailPane.Balances.name },
+                )
+                SeActionChip(
+                    label = stringResource(R.string.group_chip_totals),
+                    onClick = onOpenSpending,
+                )
+            }
 
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    SeActionChip(
-                        label = stringResource(R.string.action_settle_up),
-                        onClick = { openSettle() },
-                    )
-                    SeActionChip(
-                        label = stringResource(R.string.group_chip_balances),
-                        selected = pane == GroupDetailPane.Balances,
-                        onClick = { paneName = GroupDetailPane.Balances.name },
-                    )
-                    SeActionChip(
-                        label = stringResource(R.string.group_chip_totals),
-                        onClick = onOpenSpending,
-                    )
-                    SeActionChip(
-                        label = stringResource(R.string.group_chip_members),
-                        selected = pane == GroupDetailPane.Members,
-                        onClick = { paneName = GroupDetailPane.Members.name },
-                    )
+            when (pane) {
+                GroupDetailPane.Expenses -> {
+                    LazyColumn(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    ) {
+                        if (isSolo && ledger.isEmpty()) {
+                            item {
+                                GroupSoloEmptyState(
+                                    onAddMembers = onOpenSettings,
+                                    onShareLink = {
+                                        viewModel.shareGroupLink(
+                                            context.getString(
+                                                R.string.group_share_placeholder,
+                                                group?.name.orEmpty(),
+                                            ),
+                                        )
+                                    },
+                                )
+                            }
+                        } else if (ledger.isEmpty()) {
+                            item {
+                                SeEmptyState(message = stringResource(R.string.ledger_empty))
+                            }
+                        } else {
+                            ledgerEntries(ledger)
+                        }
+                        uiState.errorMessage?.let { msg ->
+                            item {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeErrorText(msg)
+                            }
+                        }
+                        uiState.infoMessage?.let { msg ->
+                            item {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeInfoText(msg)
+                            }
+                        }
+                        item { Spacer(modifier = Modifier.height(88.dp)) }
+                    }
                 }
 
-                when (pane) {
-                    GroupDetailPane.Expenses -> {
-                        LazyColumn(
-                            modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                        ) {
-                            if (isSolo && expenses.isEmpty()) {
-                                item {
-                                    GroupSoloEmptyState(
-                                        onAddMembers = { paneName = GroupDetailPane.Members.name },
-                                        onShareLink = {
-                                            viewModel.shareGroupLink(
-                                                context.getString(
-                                                    R.string.group_share_placeholder,
-                                                    group?.name.orEmpty(),
-                                                ),
-                                            )
-                                        },
-                                    )
-                                }
-                            } else {
-                                item {
-                                    GroupBalanceHeader(
-                                        groupId = groupId,
-                                        balance = groupBalance,
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    SeSectionHeader(text = stringResource(R.string.expenses_title))
-                                }
-                                if (expenses.isEmpty()) {
-                                    item {
-                                        SeEmptyState(message = stringResource(R.string.expenses_empty))
-                                    }
-                                } else {
-                                    items(expenses, key = { it.id }) { expense ->
-                                        val categoryLabel =
-                                            expense.categoryId
-                                                ?.let { categoryNames[it] }
-                                                ?.let { " · $it" }
-                                                .orEmpty()
-                                        SeListRow(
-                                            title = expense.description,
-                                            subtitle =
-                                                "${expense.currencyCode} ${expense.amount.toPlainString()}" +
-                                                    " · ${expense.splitType.name.lowercase()}$categoryLabel",
+                GroupDetailPane.Balances -> {
+                    Column(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 20.dp)
+                                .padding(bottom = 88.dp),
+                    ) {
+                        SeSectionHeader(text = stringResource(R.string.balances_title))
+                        GroupBalanceHeader(
+                            groupId = groupId,
+                            balance = groupBalance,
+                        )
+                        val myDebts =
+                            groupBalance?.simplifiedDebts?.filter { debt ->
+                                me != null && (debt.fromUserId == me || debt.toUserId == me)
+                            }.orEmpty()
+                        if (myDebts.isEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SeInfoText(settleHint ?: nothingToSettle)
+                        } else {
+                            myDebts.forEach { debt ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                SeOutlinedButton(
+                                    text =
+                                        stringResource(
+                                            R.string.balances_debt_line,
+                                            debt.fromLabel,
+                                            debt.toLabel,
+                                            "${debt.currencyCode} ${debt.amount.toPlainString()}",
+                                        ) + " · " + stringResource(R.string.action_settle_up),
+                                    onClick = {
+                                        val label =
+                                            if (me == debt.fromUserId) {
+                                                debt.toLabel
+                                            } else {
+                                                debt.fromLabel
+                                            }
+                                        onSettleDebt(
+                                            debt.fromUserId,
+                                            debt.toUserId,
+                                            debt.amount.toPlainString(),
+                                            debt.currencyCode,
+                                            label,
                                         )
-                                    }
-                                }
+                                    },
+                                )
                             }
-                            uiState.errorMessage?.let { msg ->
-                                item {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    SeErrorText(msg)
-                                }
-                            }
-                            uiState.infoMessage?.let { msg ->
-                                item {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    SeInfoText(msg)
-                                }
-                            }
-                            item { Spacer(modifier = Modifier.height(88.dp)) }
                         }
-                    }
 
-                    else -> {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(horizontal = 20.dp)
-                                    .padding(bottom = 88.dp),
-                        ) {
-                            when (pane) {
-                                GroupDetailPane.Balances -> {
-                                    SeSectionHeader(text = stringResource(R.string.balances_title))
-                                    GroupBalanceHeader(
-                                        groupId = groupId,
-                                        balance = groupBalance,
-                                    )
-                                    val myDebts =
-                                        groupBalance?.simplifiedDebts?.filter { debt ->
-                                            me != null && (debt.fromUserId == me || debt.toUserId == me)
-                                        }.orEmpty()
-                                    if (myDebts.isEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        SeInfoText(settleHint ?: nothingToSettle)
-                                    } else {
-                                        myDebts.forEach { debt ->
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            SeOutlinedButton(
-                                                text =
-                                                    stringResource(
-                                                        R.string.balances_debt_line,
-                                                        debt.fromLabel,
-                                                        debt.toLabel,
-                                                        "${debt.currencyCode} ${debt.amount.toPlainString()}",
-                                                    ) + " · " + stringResource(R.string.action_settle_up),
-                                                onClick = {
-                                                    val label =
-                                                        if (me == debt.fromUserId) {
-                                                            debt.toLabel
-                                                        } else {
-                                                            debt.fromLabel
-                                                        }
-                                                    onSettleDebt(
-                                                        debt.fromUserId,
-                                                        debt.toUserId,
-                                                        debt.amount.toPlainString(),
-                                                        debt.currencyCode,
-                                                        label,
-                                                    )
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
-
-                                GroupDetailPane.Members -> {
-                                    GroupMembersSection(
-                                        groupId = groupId,
-                                        members = members,
-                                        friends = friends,
-                                        uiState = uiState,
-                                        viewModel = viewModel,
-                                    )
-                                }
-
-                                GroupDetailPane.Expenses -> Unit
-                            }
-
-                            uiState.errorMessage?.let {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeErrorText(it)
-                            }
-                            uiState.infoMessage?.let {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeInfoText(it)
-                            }
+                        uiState.errorMessage?.let {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeErrorText(it)
+                        }
+                        uiState.infoMessage?.let {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeInfoText(it)
                         }
                     }
                 }
             }
-        },
-    )
+        }
+    }
 }
 
 @Composable
-private fun GroupDetailHeader(
+private fun GroupDetailBanner(
     group: Group?,
+    onBack: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val type = group?.groupType ?: GroupType.OTHER
+    val bannerColor = lerp(type.tint(), SplitEaseColors.Navy, 0.28f)
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .background(bannerColor)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp, bottom = 20.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SeIconTile(icon = type.icon(), tint = type.tint(), size = 56)
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = group?.name.orEmpty(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = SplitEaseColors.Navy,
-                    maxLines = 1,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BannerCircleIconButton(
+                onClick = onBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.cd_back),
+            )
+            BannerCircleIconButton(
+                onClick = onOpenSettings,
+                imageVector = Icons.Filled.Settings,
+                contentDescription = stringResource(R.string.cd_group_settings),
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = group?.name ?: stringResource(R.string.groups_title),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun BannerCircleIconButton(
+    onClick: () -> Unit,
+    imageVector: ImageVector,
+    contentDescription: String,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = SplitEaseColors.Navy,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+@Composable
+private fun GroupOverallBalanceBlock(
+    balance: GroupBalanceUi?,
+    currencyFallback: String,
+) {
+    if (balance == null) return
+    var expanded by rememberSaveable { mutableStateOf(true) }
+    val myDebts =
+        balance.simplifiedDebts.filter { debt ->
+            debt.fromLabel == "You" || debt.toLabel == "You"
+        }
+    val nets = balance.myNetByCurrency
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(SplitEaseColors.Surface)
+                .clickable(enabled = myDebts.isNotEmpty()) { expanded = !expanded }
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                GroupOverallHeadline(
+                    nets = nets,
+                    currencyFallback = currencyFallback.ifBlank { "INR" },
                 )
-                Text(
-                    text = stringResource(type.labelRes()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
+            }
+            if (myDebts.isNotEmpty()) {
+                Icon(
+                    imageVector =
+                        if (expanded) {
+                            Icons.Filled.KeyboardArrowUp
+                        } else {
+                            Icons.Filled.KeyboardArrowDown
+                        },
+                    contentDescription = null,
+                    tint = SplitEaseColors.NavyMuted,
                 )
             }
         }
+        AnimatedVisibility(visible = expanded && myDebts.isNotEmpty()) {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                myDebts.forEach { debt ->
+                    GroupOverallDebtLine(debt)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupOverallHeadline(
+    nets: Map<String, BigDecimal>,
+    currencyFallback: String,
+) {
+    when {
+        nets.isEmpty() || nets.values.all { it.compareTo(BigDecimal.ZERO) == 0 } -> {
+            Text(
+                text = stringResource(R.string.balances_settled_overall),
+                style = MaterialTheme.typography.titleMedium,
+                color = SplitEaseColors.Settled,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        else -> {
+            val (currency, net) =
+                nets.entries.firstOrNull { it.value.compareTo(BigDecimal.ZERO) != 0 }
+                    ?: return
+            val code = currency.ifBlank { currencyFallback }
+            val money = MoneyFormat.format(net.abs(), code)
+            val youOwe = net < BigDecimal.ZERO
+            val accent = if (youOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou
+            val template =
+                if (youOwe) {
+                    stringResource(R.string.balances_you_owe_overall, money)
+                } else {
+                    stringResource(R.string.balances_you_are_owed_overall, money)
+                }
+            // Highlight the money substring inside the localized sentence.
+            Text(
+                text =
+                    buildAnnotatedString {
+                        val start = template.indexOf(money)
+                        if (start < 0) {
+                            append(template)
+                        } else {
+                            append(template.substring(0, start))
+                            withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Bold)) {
+                                append(money)
+                            }
+                            append(template.substring(start + money.length))
+                        }
+                    },
+                style = MaterialTheme.typography.titleMedium,
+                color = SplitEaseColors.Navy,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupOverallDebtLine(debt: LabeledDebt) {
+    val youOwe = debt.fromLabel == "You"
+    Row(
+        modifier = Modifier.padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .padding(end = 10.dp)
+                    .width(3.dp)
+                    .height(18.dp)
+                    .background(
+                        if (youOwe) SplitEaseColors.YouOwe.copy(alpha = 0.35f)
+                        else SplitEaseColors.OwedToYou.copy(alpha = 0.35f),
+                        RoundedCornerShape(2.dp),
+                    ),
+        )
+        SeMoneyText(
+            amount = debt.amount,
+            currencyCode = debt.currencyCode,
+            tone = if (youOwe) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU,
+            prefix =
+                if (youOwe) {
+                    stringResource(R.string.balances_you_owe_person, debt.toLabel)
+                } else {
+                    stringResource(R.string.balances_person_owes_you, debt.fromLabel)
+                },
+        )
     }
 }
 
@@ -611,72 +753,4 @@ private fun GroupSoloEmptyState(
             onClick = onShareLink,
         )
     }
-}
-
-@Composable
-private fun GroupMembersSection(
-    groupId: String,
-    members: List<GroupMember>,
-    friends: List<Friend>,
-    uiState: GroupsUiState,
-    viewModel: GroupsViewModel,
-) {
-    var inviteEmail by rememberSaveable { mutableStateOf("") }
-
-    SeSectionHeader(text = stringResource(R.string.label_members))
-    members.forEach { member ->
-        MemberRow(member = member, friends = friends)
-    }
-
-    Spacer(modifier = Modifier.height(16.dp))
-    SeSectionHeader(text = stringResource(R.string.invite_by_email))
-    SeTextField(
-        value = inviteEmail,
-        onValueChange = { inviteEmail = it },
-        label = stringResource(R.string.label_email),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        enabled = !uiState.isSubmitting,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    SePrimaryButton(
-        text = stringResource(R.string.action_send_invite),
-        onClick = {
-            viewModel.inviteMemberByEmail(groupId, inviteEmail)
-            inviteEmail = ""
-        },
-        enabled = !uiState.isSubmitting && inviteEmail.isNotBlank(),
-    )
-
-    Spacer(modifier = Modifier.height(16.dp))
-    SeSectionHeader(text = stringResource(R.string.add_member_from_friends))
-    val memberIds = members.map { it.userId }.toSet()
-    val addableFriends =
-        friends.filter {
-            it.friendUserId !in memberIds &&
-                !it.displayNameSnapshot.contains("(invited)", ignoreCase = true)
-        }
-    if (addableFriends.isEmpty()) {
-        SeInfoText(stringResource(R.string.no_friends_yet))
-    } else {
-        addableFriends.forEach { friend ->
-            SeTextButton(
-                text = "+ ${friend.displayNameSnapshot}",
-                onClick = { viewModel.addMember(groupId, friend.friendUserId) },
-                enabled = !uiState.isSubmitting,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MemberRow(member: GroupMember, friends: List<Friend>) {
-    val label =
-        friends.firstOrNull { it.friendUserId == member.userId }?.displayNameSnapshot
-            ?: member.userId.take(8)
-    SeListRow(
-        title = label,
-        subtitle = member.role.name,
-        leading = { SeIconTile(Icons.Filled.Group, SplitEaseColors.IconOther, size = 40) },
-        showDivider = true,
-    )
 }

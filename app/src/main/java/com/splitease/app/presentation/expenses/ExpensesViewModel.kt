@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.data.expense.CreateExpenseInput
 import com.splitease.app.data.expense.ExpenseInteractor
+import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
@@ -15,6 +18,7 @@ import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -31,6 +36,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.RoundingMode
+import java.text.DateFormat
+import java.util.Date
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -40,6 +48,32 @@ data class ExpensesUiState(
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
+)
+
+/**
+ * Whether the signed-in user lent or borrowed on an expense.
+ */
+enum class LedgerBalanceSide {
+    LENT,
+    BORROWED,
+}
+
+/**
+ * Unified expense/payment row for group and friend timelines.
+ */
+data class LedgerListItem(
+    val id: String,
+    val isPayment: Boolean,
+    val title: String,
+    val subtitle: String,
+    val sortEpochMs: Long,
+    val categoryIconKey: String? = null,
+    /** Display name of who paid (e.g. "You" or a friend). */
+    val payerLabel: String? = null,
+    val paidAmount: BigDecimal? = null,
+    val currencyCode: String = "INR",
+    val balanceSide: LedgerBalanceSide? = null,
+    val balanceAmount: BigDecimal? = null,
 )
 
 data class ParticipantOption(
@@ -55,10 +89,12 @@ class ExpensesViewModel
         authRepository: AuthRepository,
         private val expenseRepository: ExpenseRepository,
         private val expenseInteractor: ExpenseInteractor,
+        private val syncInteractor: SyncInteractor,
         private val groupRepository: GroupRepository,
         private val friendRepository: FriendRepository,
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
+        private val paymentRepository: PaymentRepository,
         private val appSettingsRepository: AppSettingsRepository,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
@@ -86,12 +122,52 @@ class ExpensesViewModel
 
         private val groupExpenseFlows = ConcurrentHashMap<String, StateFlow<List<Expense>>>()
         private val friendExpenseFlows = ConcurrentHashMap<String, StateFlow<List<Expense>>>()
+        private val groupLedgerFlows = ConcurrentHashMap<String, StateFlow<List<LedgerListItem>>>()
+        private val friendLedgerFlows = ConcurrentHashMap<String, StateFlow<List<LedgerListItem>>>()
 
         fun observeGroupExpenses(groupId: String): StateFlow<List<Expense>> =
             groupExpenseFlows.getOrPut(groupId) {
                 expenseRepository
                     .observeExpenses(groupId)
                     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            }
+
+        /**
+         * Expenses and settlement payments for a group, newest first.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeGroupLedger(groupId: String): StateFlow<List<LedgerListItem>> =
+            groupLedgerFlows.getOrPut(groupId) {
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(emptyList())
+                        } else {
+                            combine(
+                                expenseRepository.observeExpenses(groupId),
+                                paymentRepository.observePayments(groupId),
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                                categoryRepository.observeCategories(),
+                            ) { expenses, payments, users, friends, categories ->
+                                val categoryById = categories.associateBy { it.id }
+                                val userNames = users.associate { it.id to it.displayName }
+                                val friendNames =
+                                    friends.associate { it.friendUserId to it.displayNameSnapshot }
+                                val splits =
+                                    expenseRepository.getSplitsForExpenses(expenses.map { it.id })
+                                buildLedger(
+                                    expenses = expenses,
+                                    payments = payments,
+                                    me = me,
+                                    categoryById = categoryById,
+                                    friendNames = friendNames,
+                                    userNames = userNames,
+                                    splitsByExpenseId = splits,
+                                )
+                            }
+                        }
+                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
             }
 
         @OptIn(ExperimentalCoroutinesApi::class)
@@ -106,9 +182,169 @@ class ExpensesViewModel
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
             }
-        fun refreshGroupExpenses(groupId: String) {
+
+        /**
+         * Non-group expenses and payments between the signed-in user and [friendUserId].
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeFriendLedger(friendUserId: String): StateFlow<List<LedgerListItem>> =
+            friendLedgerFlows.getOrPut(friendUserId) {
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(emptyList())
+                        } else {
+                            combine(
+                                expenseRepository.observeBetweenUsers(me, friendUserId),
+                                paymentRepository.observeBetweenUsers(me, friendUserId),
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                                categoryRepository.observeCategories(),
+                            ) { expenses, payments, users, friends, categories ->
+                                val categoryById = categories.associateBy { it.id }
+                                val userNames = users.associate { it.id to it.displayName }
+                                val friendNames =
+                                    friends.associate { it.friendUserId to it.displayNameSnapshot }
+                                val splits =
+                                    expenseRepository.getSplitsForExpenses(expenses.map { it.id })
+                                buildLedger(
+                                    expenses = expenses,
+                                    payments = payments,
+                                    me = me,
+                                    categoryById = categoryById,
+                                    friendNames = friendNames,
+                                    userNames = userNames,
+                                    splitsByExpenseId = splits,
+                                )
+                            }
+                        }
+                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            }
+
+        private fun buildLedger(
+            expenses: List<Expense>,
+            payments: List<Payment>,
+            me: String?,
+            categoryById: Map<String, Category>,
+            friendNames: Map<String, String>,
+            userNames: Map<String, String>,
+            splitsByExpenseId: Map<String, List<ExpenseSplit>>,
+        ): List<LedgerListItem> {
+            fun nameOf(id: String): String =
+                nameOf(id, me, friendNames, userNames)
+
+            val expenseItems =
+                expenses.map { expense ->
+                    val category = expense.categoryId?.let { categoryById[it] }
+                    val categoryLabel = category?.name?.let { " · $it" }.orEmpty()
+                    val payerLabel = nameOf(expense.paidByUserId)
+                    val (balanceSide, balanceAmount) =
+                        viewerBalanceForExpense(
+                            me = me,
+                            expense = expense,
+                            splits = splitsByExpenseId[expense.id].orEmpty(),
+                        )
+                    LedgerListItem(
+                        id = "expense-${expense.id}",
+                        isPayment = false,
+                        title = expense.description,
+                        subtitle =
+                            "${expense.currencyCode} ${expense.amount.toPlainString()}" +
+                                " · ${expense.splitType.name.lowercase()}$categoryLabel",
+                        sortEpochMs = expense.expenseDateEpochMs.coerceAtLeast(expense.createdAtEpochMs),
+                        categoryIconKey = category?.iconKey ?: "category_general",
+                        payerLabel = payerLabel,
+                        paidAmount = expense.amount,
+                        currencyCode = expense.currencyCode,
+                        balanceSide = balanceSide,
+                        balanceAmount = balanceAmount,
+                    )
+                }
+            val paymentItems =
+                payments.map { payment ->
+                    val title =
+                        when (me) {
+                            payment.fromUserId ->
+                                "Payment completed — you paid ${nameOf(payment.toUserId)}"
+                            payment.toUserId ->
+                                "Payment completed — ${nameOf(payment.fromUserId)} paid you"
+                            else ->
+                                "Payment completed — ${nameOf(payment.fromUserId)} paid ${nameOf(payment.toUserId)}"
+                        }
+                    val date =
+                        DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(payment.paidAtEpochMs))
+                    val notePart =
+                        payment.note
+                            ?.takeIf { it.isNotBlank() && !it.equals("Payment completed", ignoreCase = true) }
+                            ?.let { " · $it" }
+                            .orEmpty()
+                    LedgerListItem(
+                        id = "payment-${payment.id}",
+                        isPayment = true,
+                        title = title,
+                        subtitle =
+                            "${payment.currencyCode} ${payment.amount.toPlainString()} · $date$notePart",
+                        sortEpochMs = payment.paidAtEpochMs.coerceAtLeast(payment.createdAtEpochMs),
+                        categoryIconKey = "category_payment",
+                        payerLabel = null,
+                        paidAmount = null,
+                        currencyCode = payment.currencyCode,
+                        balanceSide = null,
+                        balanceAmount = payment.amount,
+                    )
+                }
+            return (expenseItems + paymentItems).sortedByDescending { it.sortEpochMs }
+        }
+
+        /**
+         * Net for [me] on a single expense: positive ⇒ lent, negative ⇒ borrowed.
+         */
+        private fun viewerBalanceForExpense(
+            me: String?,
+            expense: Expense,
+            splits: List<ExpenseSplit>,
+        ): Pair<LedgerBalanceSide?, BigDecimal?> {
+            if (me == null) return null to null
+            val zero = BigDecimal.ZERO.setScale(2)
+            val myShare =
+                splits.firstOrNull { it.userId == me }
+                    ?.owedAmount
+                    ?.setScale(2, RoundingMode.HALF_UP)
+                    ?: zero
+            val total = expense.amount.setScale(2, RoundingMode.HALF_UP)
+            val net =
+                if (expense.paidByUserId == me) {
+                    total.subtract(myShare)
+                } else {
+                    myShare.negate()
+                }
+            return when {
+                net.compareTo(zero) > 0 -> LedgerBalanceSide.LENT to net
+                net.compareTo(zero) < 0 -> LedgerBalanceSide.BORROWED to net.abs()
+                else -> null to null
+            }
+        }
+
+        private fun nameOf(
+            userId: String,
+            me: String?,
+            friendNames: Map<String, String>,
+            userNames: Map<String, String>,
+        ): String =
+            when (userId) {
+                me -> "You"
+                else -> friendNames[userId] ?: userNames[userId] ?: userId.take(8)
+            }
+        /**
+         * Flushes local PENDING writes, pulls cloud data for the signed-in user, then
+         * re-fetches expenses for [groupId] so the open group shows other members' changes.
+         *
+         * @param groupId Group being viewed.
+         */
+        fun refreshGroupFromCloud(groupId: String) {
             viewModelScope.launch {
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
+                runCatching { syncInteractor.syncForUser(userId.value) }
                 runCatching { expenseInteractor.refreshGroupExpenses(groupId) }
                     .onFailure { err ->
                         _uiState.update {
@@ -117,6 +353,10 @@ class ExpensesViewModel
                     }
                 _uiState.update { it.copy(isRefreshing = false) }
             }
+        }
+
+        fun refreshGroupExpenses(groupId: String) {
+            refreshGroupFromCloud(groupId)
         }
 
         fun refreshMyExpenses() {

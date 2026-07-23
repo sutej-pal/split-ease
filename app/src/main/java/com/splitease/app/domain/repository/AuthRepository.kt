@@ -1,6 +1,7 @@
 package com.splitease.app.domain.repository
 
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.model.SignUpResult
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -20,9 +21,9 @@ interface AuthRepository {
      * @param email User email.
      * @param password Password (min length enforced by Supabase).
      * @param displayName Optional display name stored in user metadata.
-     * @return [Result] success or failure with message.
+     * @return [Result] of [SignUpResult] (session created vs pending email confirmation).
      */
-    suspend fun signUp(email: String, password: String, displayName: String): Result<Unit>
+    suspend fun signUp(email: String, password: String, displayName: String): Result<SignUpResult>
 
     /**
      * Signs in with email and password.
@@ -32,6 +33,14 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun signIn(email: String, password: String): Result<Unit>
+
+    /**
+     * Resends the signup confirmation email when Confirm email is enabled.
+     *
+     * @param email Account email.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun resendSignupConfirmation(email: String): Result<Unit>
 
     /**
      * Sends a password-reset email.

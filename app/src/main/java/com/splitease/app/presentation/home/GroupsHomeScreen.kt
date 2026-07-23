@@ -114,9 +114,9 @@ fun GroupsHomeScreen(
             SeExtendedFab(
                 text = stringResource(R.string.action_add_expense),
                 onClick = {
+                    val groups = ui.allGroups
                     when {
-                        ui.allGroups.isEmpty() -> onCreateGroup()
-                        ui.allGroups.size == 1 -> onAddExpenseForGroup(ui.allGroups.first().id)
+                        groups.size == 1 -> onAddExpenseForGroup(groups.first().id)
                         else -> showExpensePicker = true
                     }
                 },
@@ -201,19 +201,36 @@ fun GroupsHomeScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
-            ui.allGroups.forEach { group: Group ->
+            if (ui.allGroups.isEmpty()) {
                 Text(
-                    text = group.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                showExpensePicker = false
-                                onAddExpenseForGroup(group.id)
-                            }
-                            .padding(horizontal = 24.dp, vertical = 14.dp),
+                    text = stringResource(R.string.groups_empty_home),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 )
+                SeOutlinedButton(
+                    text = stringResource(R.string.action_create_group),
+                    onClick = {
+                        showExpensePicker = false
+                        onCreateGroup()
+                    },
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            } else {
+                ui.allGroups.forEach { group: Group ->
+                    Text(
+                        text = group.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showExpensePicker = false
+                                    onAddExpenseForGroup(group.id)
+                                }
+                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }

@@ -5,12 +5,14 @@ import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
+import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.UserRepository
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -57,19 +59,26 @@ class SupabaseAuthRepository
             email: String,
             password: String,
             displayName: String,
-        ): Result<Unit> =
+        ): Result<SignUpResult> =
             runCatching {
+                val trimmedEmail = email.trim()
                 supabase.auth.signUpWith(Email) {
-                    this.email = email.trim()
+                    this.email = trimmedEmail
                     this.password = password
                     data =
                         buildJsonObject {
                             put("display_name", displayName.trim())
                         }
                 }
-                persistCurrentUser()
-                categoryRepository.ensureDefaults()
-                hydrateCloudData()
+                val session = supabase.auth.currentSessionOrNull()
+                if (session == null) {
+                    SignUpResult.PendingEmailConfirmation(trimmedEmail)
+                } else {
+                    persistCurrentUser()
+                    categoryRepository.ensureDefaults()
+                    hydrateCloudData()
+                    SignUpResult.SignedIn
+                }
             }
 
         override suspend fun signIn(email: String, password: String): Result<Unit> =
@@ -81,6 +90,11 @@ class SupabaseAuthRepository
                 persistCurrentUser()
                 categoryRepository.ensureDefaults()
                 hydrateCloudData()
+            }
+
+        override suspend fun resendSignupConfirmation(email: String): Result<Unit> =
+            runCatching {
+                supabase.auth.resendEmail(OtpType.Email.SIGNUP, email.trim())
             }
 
         override suspend fun sendPasswordReset(email: String): Result<Unit> =
@@ -149,5 +163,6 @@ private fun UserInfo.toAuthUser(): AuthUser {
         userId = id,
         email = emailValue,
         displayName = metaName ?: fallback,
+        emailConfirmed = emailConfirmedAt != null,
     )
 }

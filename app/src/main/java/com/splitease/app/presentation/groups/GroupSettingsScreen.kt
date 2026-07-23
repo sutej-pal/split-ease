@@ -83,6 +83,7 @@ fun GroupSettingsScreen(
     groupId: String,
     onBack: () -> Unit,
     onLeftOrDeleted: () -> Unit,
+    onAddPeople: () -> Unit,
     viewModel: GroupsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -95,7 +96,6 @@ fun GroupSettingsScreen(
     val group by remember(groupId) { viewModel.observeGroup(groupId) }
         .collectAsStateWithLifecycle()
     var showEdit by rememberSaveable { mutableStateOf(false) }
-    var showAddPeople by rememberSaveable { mutableStateOf(false) }
     var showLeaveConfirm by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     var showSimplifyInfo by rememberSaveable { mutableStateOf(false) }
@@ -140,7 +140,7 @@ fun GroupSettingsScreen(
                 SettingsActionRow(
                     icon = Icons.Filled.PersonAdd,
                     title = stringResource(R.string.action_add_people_to_group),
-                    onClick = { showAddPeople = true },
+                    onClick = onAddPeople,
                 )
                 SettingsActionRow(
                     icon = Icons.Filled.Link,
@@ -262,17 +262,6 @@ fun GroupSettingsScreen(
                 viewModel.updateGroup(updated)
                 showEdit = false
             },
-        )
-    }
-
-    if (showAddPeople) {
-        AddPeopleSheet(
-            groupId = groupId,
-            members = members,
-            friends = friends,
-            uiState = uiState,
-            viewModel = viewModel,
-            onDismiss = { showAddPeople = false },
         )
     }
 
@@ -531,76 +520,6 @@ private fun EditGroupDialog(
             }
         },
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddPeopleSheet(
-    groupId: String,
-    members: List<GroupMember>,
-    friends: List<Friend>,
-    uiState: GroupsUiState,
-    viewModel: GroupsViewModel,
-    onDismiss: () -> Unit,
-) {
-    var inviteEmail by rememberSaveable { mutableStateOf("") }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.background,
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 32.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.action_add_people_to_group),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            SeSectionHeader(text = stringResource(R.string.invite_by_email))
-            SeTextField(
-                value = inviteEmail,
-                onValueChange = { inviteEmail = it },
-                label = stringResource(R.string.label_email),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                enabled = !uiState.isSubmitting,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            SePrimaryButton(
-                text = stringResource(R.string.action_send_invite),
-                onClick = {
-                    viewModel.inviteMemberByEmail(groupId, inviteEmail)
-                    inviteEmail = ""
-                },
-                enabled = !uiState.isSubmitting && inviteEmail.isNotBlank(),
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            SeSectionHeader(text = stringResource(R.string.add_member_from_friends))
-            val memberIds = members.map { it.userId }.toSet()
-            val addable =
-                friends.filter {
-                    it.friendUserId !in memberIds &&
-                        !it.displayNameSnapshot.contains("(invited)", ignoreCase = true)
-                }
-            if (addable.isEmpty()) {
-                SeInfoText(stringResource(R.string.no_friends_yet))
-            } else {
-                addable.forEach { friend ->
-                    SeTextButton(
-                        text = "+ ${friend.displayNameSnapshot}",
-                        onClick = { viewModel.addMember(groupId, friend.friendUserId) },
-                        enabled = !uiState.isSubmitting,
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable

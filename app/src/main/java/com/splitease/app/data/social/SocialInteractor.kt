@@ -49,11 +49,42 @@ class SocialInteractor
          * @return [Result] with [AddPersonOutcome] (share text when invite pending).
          */
         suspend fun addFriendByEmail(ownerUserId: String, email: String): Result<AddPersonOutcome> =
+            addFriendByContact(ownerUserId, contact = email, displayName = null, groupId = null)
+
+        /**
+         * Adds or invites a person by email or phone contact string.
+         *
+         * @param ownerUserId Current user id.
+         * @param contact Email or phone number.
+         * @param displayName Optional preferred name (used for pending invites).
+         * @param groupId When set, also invite into that group.
+         * @return [Result] with [AddPersonOutcome].
+         */
+        suspend fun addFriendByContact(
+            ownerUserId: String,
+            contact: String,
+            displayName: String? = null,
+            groupId: String? = null,
+        ): Result<AddPersonOutcome> =
             runCatching {
-                val normalized = email.trim()
-                require(normalized.isNotBlank()) { "Email is required." }
-                require(!normalized.equals(userRepository.getUserById(ownerUserId)?.email, ignoreCase = true)) {
+                val normalized = contact.trim()
+                require(normalized.isNotBlank()) { "Email or phone is required." }
+                val looksLikeEmail = normalized.contains("@")
+                require(looksLikeEmail || normalized.any { it.isDigit() }) {
+                    "Enter a valid email or phone number."
+                }
+                val selfEmail = userRepository.getUserById(ownerUserId)?.email
+                require(!normalized.equals(selfEmail, ignoreCase = true)) {
                     "You can't add yourself."
+                }
+
+                if (groupId != null) {
+                    return@runCatching inviteToGroupByContact(
+                        ownerUserId = ownerUserId,
+                        groupId = groupId,
+                        contact = normalized,
+                        displayName = displayName,
+                    )
                 }
 
                 friendRepository.getByOwnerAndEmail(ownerUserId, normalized)?.let { existing ->
@@ -74,13 +105,25 @@ class SocialInteractor
                     )
                 }
 
-                val profile = remote.findProfileByEmail(normalized)
-                if (profile != null) {
-                    require(profile.id != ownerUserId) { "You can't add yourself." }
-                    return@runCatching linkExistingFriend(ownerUserId, profile.id, profile.email, profile.displayName)
+                if (looksLikeEmail) {
+                    val profile = remote.findProfileByEmail(normalized)
+                    if (profile != null) {
+                        require(profile.id != ownerUserId) { "You can't add yourself." }
+                        return@runCatching linkExistingFriend(
+                            ownerUserId,
+                            profile.id,
+                            profile.email,
+                            displayName?.takeIf { it.isNotBlank() } ?: profile.displayName,
+                        )
+                    }
                 }
 
-                createPendingFriendInvite(ownerUserId, normalized, groupId = null)
+                createPendingFriendInvite(
+                    ownerUserId = ownerUserId,
+                    email = normalized,
+                    groupId = null,
+                    displayNameOverride = displayName,
+                )
             }
 
         /**
@@ -98,26 +141,52 @@ class SocialInteractor
             email: String,
         ): Result<AddPersonOutcome> =
             runCatching {
-                val normalized = email.trim()
-                require(normalized.isNotBlank()) { "Email is required." }
-                val group =
-                    groupRepository.getGroupById(groupId)
-                        ?: throw IllegalStateException("Group not found.")
-                require(!normalized.equals(userRepository.getUserById(ownerUserId)?.email, ignoreCase = true)) {
-                    "You can't invite yourself."
-                }
+                inviteToGroupByContact(ownerUserId, groupId, email, displayName = null)
+            }
 
+        private suspend fun inviteToGroupByContact(
+            ownerUserId: String,
+            groupId: String,
+            contact: String,
+            displayName: String?,
+        ): AddPersonOutcome {
+            val normalized = contact.trim()
+            val group =
+                groupRepository.getGroupById(groupId)
+                    ?: throw IllegalStateException("Group not found.")
+            require(
+                !normalized.equals(
+                    userRepository.getUserById(ownerUserId)?.email,
+                    ignoreCase = true,
+                ),
+            ) {
+                "You can't invite yourself."
+            }
+
+            if (normalized.contains("@")) {
                 val profile = remote.findProfileByEmail(normalized)
                 if (profile != null) {
                     require(profile.id != ownerUserId) { "You can't invite yourself." }
                     val friendOutcome =
-                        linkExistingFriend(ownerUserId, profile.id, profile.email, profile.displayName)
+                        linkExistingFriend(
+                            ownerUserId,
+                            profile.id,
+                            profile.email,
+                            displayName?.takeIf { it.isNotBlank() } ?: profile.displayName,
+                        )
                     addMemberToGroup(groupId, profile.id).getOrThrow()
-                    return@runCatching friendOutcome
+                    return friendOutcome
                 }
-
-                createPendingFriendInvite(ownerUserId, normalized, groupId = groupId, groupName = group.name)
             }
+
+            return createPendingFriendInvite(
+                ownerUserId = ownerUserId,
+                email = normalized,
+                groupId = groupId,
+                groupName = group.name,
+                displayNameOverride = displayName,
+            )
+        }
 
         /**
          * After sign-in/sign-up, claim any pending invites for this account's email.
@@ -535,11 +604,19 @@ class SocialInteractor
             email: String,
             groupId: String?,
             groupName: String? = null,
+            displayNameOverride: String? = null,
         ): AddPersonOutcome {
             val now = System.currentTimeMillis()
             val placeholderId = UUID.randomUUID().toString()
-            val localPart = email.substringBefore("@").ifBlank { "Friend" }
-            val displayName = "$localPart (invited)"
+            val localPart =
+                displayNameOverride?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: email.substringBefore("@").ifBlank { "Friend" }
+            val displayName =
+                if (localPart.contains("(invited)", ignoreCase = true)) {
+                    localPart
+                } else {
+                    "$localPart (invited)"
+                }
 
             userRepository.upsert(
                 User(

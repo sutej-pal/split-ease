@@ -1,7 +1,10 @@
 package com.splitease.app.data.settings
 
 import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
@@ -24,7 +27,7 @@ import javax.inject.Singleton
 class SharedPreferencesAppSettingsRepository
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @ApplicationContext private val context: Context,
     ) : AppSettingsRepository {
         private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         private val currencyFlow = MutableStateFlow(readCurrency())
@@ -32,6 +35,7 @@ class SharedPreferencesAppSettingsRepository
         private val themeModeFlow = MutableStateFlow(readThemeMode())
         private val biometricLockFlow = MutableStateFlow(readBiometricLock())
         private val authTimeoutFlow = MutableStateFlow(readAuthTimeout())
+        private val appLocaleFlow = MutableStateFlow(readAppLocale())
 
         override fun observeCurrencyCode(): Flow<String> = currencyFlow.asStateFlow()
 
@@ -112,6 +116,36 @@ class SharedPreferencesAppSettingsRepository
             authTimeoutFlow.value = timeout
         }
 
+        override fun observeAppLocale(): Flow<AppLocale> = appLocaleFlow.asStateFlow()
+
+        override suspend fun getAppLocale(): AppLocale =
+            withContext(Dispatchers.IO) {
+                readAppLocale()
+            }
+
+        override suspend fun setAppLocale(locale: AppLocale) {
+            withContext(Dispatchers.IO) {
+                prefs.edit().putString(KEY_APP_LOCALE, locale.name).apply()
+            }
+            appLocaleFlow.value = locale
+            applyAppLocale(locale)
+        }
+
+        /** Applies the stored locale at process start (before Compose). */
+        fun applyStoredLocale() {
+            applyAppLocale(readAppLocale())
+        }
+
+        private fun applyAppLocale(locale: AppLocale) {
+            val locales =
+                if (locale == AppLocale.SYSTEM || locale.tag.isBlank()) {
+                    LocaleListCompat.getEmptyLocaleList()
+                } else {
+                    LocaleListCompat.forLanguageTags(locale.tag)
+                }
+            AppCompatDelegate.setApplicationLocales(locales)
+        }
+
         private fun readCurrency(): String =
             prefs.getString(KEY_CURRENCY, AppCurrencies.DEFAULT)
                 ?.trim()
@@ -127,6 +161,9 @@ class SharedPreferencesAppSettingsRepository
         private fun readAuthTimeout(): AuthTimeout =
             AuthTimeout.fromStorage(prefs.getString(KEY_AUTH_TIMEOUT, AuthTimeout.DEFAULT.name))
 
+        private fun readAppLocale(): AppLocale =
+            AppLocale.fromStorage(prefs.getString(KEY_APP_LOCALE, AppLocale.DEFAULT.name))
+
         private fun readSimplifyMap(): Map<String, Boolean> =
             prefs.all
                 .mapNotNull { (key, value) ->
@@ -140,6 +177,7 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_THEME_MODE = "theme_mode"
             private const val KEY_BIOMETRIC_LOCK = "biometric_lock_enabled"
             private const val KEY_AUTH_TIMEOUT = "auth_timeout"
+            private const val KEY_APP_LOCALE = "app_locale"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
 
             private fun simplifyKey(groupId: String) = KEY_SIMPLIFY_PREFIX + groupId

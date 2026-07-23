@@ -1,13 +1,16 @@
 package com.splitease.app.presentation.friends
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +39,7 @@ class FriendsViewModel
         authRepository: AuthRepository,
         friendRepository: FriendRepository,
         private val socialInteractor: SocialInteractor,
+        @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
@@ -74,18 +78,33 @@ class FriendsViewModel
                     socialInteractor.refreshSentInvites(id)
                 }.onFailure { err ->
                     _uiState.update {
-                        it.copy(errorMessage = err.message ?: "Could not refresh friends.")
+                        it.copy(
+                            errorMessage =
+                                err.message
+                                    ?: appContext.getString(R.string.msg_could_not_refresh_friends),
+                        )
                     }
                 }
                 _uiState.update { it.copy(isRefreshing = false) }
             }
         }
 
-        fun addFriend(email: String, onLinked: () -> Unit) {
+        fun addFriend(
+            name: String,
+            contact: String,
+            groupId: String? = null,
+            onLinked: () -> Unit,
+        ) {
             val id = userId.value ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null, infoMessage = null) }
-                val result = socialInteractor.addFriendByEmail(id, email)
+                val result =
+                    socialInteractor.addFriendByContact(
+                        ownerUserId = id,
+                        contact = contact,
+                        displayName = name.trim().ifBlank { null },
+                        groupId = groupId?.takeIf { it.isNotBlank() },
+                    )
                 val outcome = result.getOrNull()
                 _uiState.update {
                     it.copy(
@@ -94,8 +113,9 @@ class FriendsViewModel
                         infoMessage =
                             when {
                                 outcome == null -> null
-                                outcome.isInvitePending -> "Invite ready — share the link so they can join."
-                                else -> "Friend added."
+                                outcome.isInvitePending ->
+                                    appContext.getString(R.string.msg_invite_ready)
+                                else -> appContext.getString(R.string.msg_friend_added)
                             },
                         pendingShareText = outcome?.inviteShareText,
                     )
@@ -105,4 +125,5 @@ class FriendsViewModel
                 }
             }
         }
+
     }

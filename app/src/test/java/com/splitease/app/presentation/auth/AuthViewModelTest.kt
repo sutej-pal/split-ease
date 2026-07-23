@@ -1,6 +1,9 @@
 package com.splitease.app.presentation.auth
 
+import android.content.Context
+import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.repository.AuthRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -26,14 +29,19 @@ class AuthViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val sessionFlow = MutableStateFlow<AuthSession>(AuthSession.SignedOut)
     private lateinit var repository: AuthRepository
+    private lateinit var context: Context
     private lateinit var viewModel: AuthViewModel
 
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = mockk(relaxed = true)
+        context = mockk(relaxed = true)
         every { repository.observeSession() } returns sessionFlow
-        viewModel = AuthViewModel(repository)
+        every { context.getString(R.string.error_generic) } returns "Something went wrong. Try again."
+        every { context.getString(R.string.verify_email_sent) } returns "Confirmation email sent."
+        every { context.getString(R.string.verify_email_resent) } returns "Confirmation email resent."
+        viewModel = AuthViewModel(repository, context)
     }
 
     @AfterEach
@@ -69,5 +77,16 @@ class AuthViewModelTest {
             viewModel.sendPasswordReset("a@b.com", "Check your email")
             advanceUntilIdle()
             assertEquals("Check your email", viewModel.formState.value.infoMessage)
+        }
+
+    @Test
+    fun `signUp pending confirmation exposes email`() =
+        runTest {
+            coEvery { repository.signUp(any(), any(), any()) } returns
+                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
+            viewModel.signUp("a@b.com", "secret1", "Ada")
+            advanceUntilIdle()
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals("Confirmation email sent.", viewModel.formState.value.infoMessage)
         }
 }

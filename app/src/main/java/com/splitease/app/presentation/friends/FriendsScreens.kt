@@ -1,11 +1,11 @@
 package com.splitease.app.presentation.friends
 
 import android.content.Intent
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -126,11 +128,17 @@ private fun FriendRow(friend: Friend, onClick: () -> Unit) {
 fun AddFriendScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
+    groupId: String? = null,
+    prefillName: String = "",
+    prefillContact: String = "",
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var email by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable(prefillName) { mutableStateOf(prefillName) }
+    var contact by rememberSaveable(prefillContact) { mutableStateOf(prefillContact) }
     val context = LocalContext.current
+    val canSubmit =
+        name.isNotBlank() && contact.isNotBlank() && !uiState.isSubmitting
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -140,7 +148,9 @@ fun AddFriendScreen(
                 putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.invite_email_subject))
                 putExtra(Intent.EXTRA_TEXT, text)
             }
-        context.startActivity(Intent.createChooser(intent, context.getString(R.string.action_share_invite)))
+        context.startActivity(
+            Intent.createChooser(intent, context.getString(R.string.action_share_invite)),
+        )
         viewModel.consumeShareText()
         onDone()
     }
@@ -148,33 +158,70 @@ fun AddFriendScreen(
     SeScreen(
         title = stringResource(R.string.action_add_friend),
         onBack = onBack,
+        actions = {
+            IconButton(
+                onClick = {
+                    viewModel.addFriend(
+                        name = name,
+                        contact = contact,
+                        groupId = groupId,
+                    ) { onDone() }
+                },
+                enabled = canSubmit,
+            ) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = stringResource(R.string.action_done),
+                    tint =
+                        if (canSubmit) {
+                            SplitEaseColors.Primary
+                        } else {
+                            SplitEaseColors.OutlineStrong
+                        },
+                )
+            }
+        },
         content = { padding ->
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(24.dp),
-                verticalArrangement = Arrangement.Top,
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.add_friend_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                SeTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = stringResource(R.string.label_name),
+                    enabled = !uiState.isSubmitting,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 SeTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = stringResource(R.string.label_email),
+                    value = contact,
+                    onValueChange = { contact = it },
+                    label = stringResource(R.string.label_phone_or_email),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     enabled = !uiState.isSubmitting,
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = stringResource(R.string.add_friend_review_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SplitEaseColors.NavyMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.weight(1f))
                 SePrimaryButton(
-                    text = stringResource(R.string.action_add_friend),
-                    onClick = { viewModel.addFriend(email) { onDone() } },
-                    enabled = !uiState.isSubmitting,
+                    text = stringResource(R.string.action_next),
+                    onClick = {
+                        viewModel.addFriend(
+                            name = name,
+                            contact = contact,
+                            groupId = groupId,
+                        ) { onDone() }
+                    },
+                    enabled = canSubmit,
                 )
                 uiState.errorMessage?.let {
                     Spacer(modifier = Modifier.height(12.dp))

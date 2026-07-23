@@ -172,12 +172,14 @@ class SyncInteractor
             runCatching {
                 socialInteractor.get().acceptPendingInvitesForCurrentUser(uid)
             }.onFailure {
+                // RPC may be missing on older projects; fall back to PostgREST accept.
                 runCatching { socialRemote.acceptPendingInvites() }
-                runCatching { socialInteractor.get().refreshFriends(uid) }
-                runCatching { socialInteractor.get().refreshGroups(uid) }
-                runCatching { socialInteractor.get().refreshSentInvites(uid) }
-                runCatching { expenseInteractor.get().refreshExpensesForUser(uid) }
             }
+            // Always hydrate after flush so other members' writes become visible.
+            runCatching { socialInteractor.get().refreshFriends(uid) }
+            runCatching { socialInteractor.get().refreshGroups(uid) }
+            runCatching { socialInteractor.get().refreshSentInvites(uid) }
+            runCatching { expenseInteractor.get().refreshExpensesForUser(uid) }
             runCatching { paymentInteractor.get().refreshPaymentsForUser(uid) }
             return flush
         }

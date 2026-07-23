@@ -1,10 +1,14 @@
 package com.splitease.app.presentation.auth
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,23 +24,27 @@ import javax.inject.Inject
  * @property isLoading True while a network auth call is in flight.
  * @property errorMessage User-visible error, if any.
  * @property infoMessage User-visible success/info, if any.
+ * @property pendingConfirmationEmail When set, show the verify-email screen.
  */
 data class AuthFormState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
+    val pendingConfirmationEmail: String? = null,
 )
 
 /**
  * Session-aware auth ViewModel for login, signup, reset, and sign-out.
  *
  * @property authRepository Supabase-backed auth operations.
+ * @property appContext Application context for string resources.
  */
 @HiltViewModel
 class AuthViewModel
     @Inject
     constructor(
         private val authRepository: AuthRepository,
+        @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         /** Live session used to gate navigation. */
         val session: StateFlow<AuthSession> =
@@ -58,6 +66,7 @@ class AuthViewModel
                 session.collect { current ->
                     if (current is AuthSession.SignedIn) {
                         authRepository.ensureLocalProfile()
+                        _formState.update { it.copy(pendingConfirmationEmail = null) }
                     }
                 }
             }
@@ -65,7 +74,14 @@ class AuthViewModel
 
         /** Clears transient form messages when navigating between auth screens. */
         fun clearMessages() {
-            _formState.update { it.copy(errorMessage = null, infoMessage = null) }
+            _formState.update {
+                it.copy(errorMessage = null, infoMessage = null)
+            }
+        }
+
+        /** Leaves the pending-confirmation screen without signing in. */
+        fun clearPendingConfirmation() {
+            _formState.update { it.copy(pendingConfirmationEmail = null) }
         }
 
         /**
@@ -81,18 +97,56 @@ class AuthViewModel
         }
 
         /**
-         * Creates an account and signs in when email confirmation is disabled (MVP).
-         *
-         * Email confirmation is intentionally skipped for now — keep Confirm email
-         * off in the Supabase Dashboard. TODO: re-enable before production.
+         * Creates an account. Navigates to verify-email when confirmation is required.
          *
          * @param email Account email.
          * @param password Account password.
          * @param displayName Preferred display name.
          */
         fun signUp(email: String, password: String, displayName: String) {
-            submit {
-                authRepository.signUp(email, password, displayName)
+            viewModelScope.launch {
+                _formState.update {
+                    it.copy(
+                        isLoading = true,
+                        errorMessage = null,
+                        infoMessage = null,
+                        pendingConfirmationEmail = null,
+                    )
+                }
+                val result = authRepository.signUp(email, password, displayName)
+                _formState.update {
+                    if (result.isFailure) {
+                        AuthFormState(
+                            isLoading = false,
+                            errorMessage =
+                                result.exceptionOrNull()?.localizedMessage
+                                    ?: appContext.getString(R.string.error_generic),
+                        )
+                    } else {
+                        when (val outcome = result.getOrThrow()) {
+                            SignUpResult.SignedIn ->
+                                AuthFormState(isLoading = false)
+                            is SignUpResult.PendingEmailConfirmation ->
+                                AuthFormState(
+                                    isLoading = false,
+                                    pendingConfirmationEmail = outcome.email,
+                                    infoMessage =
+                                        appContext.getString(R.string.verify_email_sent),
+                                )
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Resends the signup confirmation email for [email].
+         *
+         * @param email Pending confirmation email.
+         */
+        fun resendConfirmation(email: String) {
+            submit(successMessage = appContext.getString(R.string.verify_email_resent)) {
+                authRepository.resendSignupConfirmation(email)
             }
         }
 
@@ -126,13 +180,17 @@ class AuthViewModel
                 val result = block()
                 _formState.update {
                     if (result.isSuccess) {
-                        AuthFormState(isLoading = false, infoMessage = successMessage)
+                        it.copy(
+                            isLoading = false,
+                            infoMessage = successMessage,
+                            errorMessage = null,
+                        )
                     } else {
-                        AuthFormState(
+                        it.copy(
                             isLoading = false,
                             errorMessage =
                                 result.exceptionOrNull()?.localizedMessage
-                                    ?: "Something went wrong. Try again.",
+                                    ?: appContext.getString(R.string.error_generic),
                         )
                     }
                 }
