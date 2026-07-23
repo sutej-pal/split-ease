@@ -30,6 +30,9 @@ class RoomGroupRepository
 
         override suspend fun getGroupById(id: String): Group? = groupDao.getById(id)?.toDomain()
 
+        override fun observeGroupById(id: String): Flow<Group?> =
+            groupDao.observeById(id).map { rows -> rows.firstOrNull()?.toDomain() }
+
         override suspend fun upsertGroup(group: Group) {
             groupDao.upsert(group.toEntity())
         }

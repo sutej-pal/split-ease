@@ -87,9 +87,13 @@ fun GroupSettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
-    val members by viewModel.observeMembers(groupId).collectAsStateWithLifecycle()
-    val simplifyDebts by viewModel.observeSimplifyDebts(groupId).collectAsStateWithLifecycle()
-    var group by remember { mutableStateOf<Group?>(null) }
+    val membersState by remember(groupId) { viewModel.observeMembers(groupId) }
+        .collectAsStateWithLifecycle()
+    val members = membersState.orEmpty()
+    val simplifyDebts by remember(groupId) { viewModel.observeSimplifyDebts(groupId) }
+        .collectAsStateWithLifecycle()
+    val group by remember(groupId) { viewModel.observeGroup(groupId) }
+        .collectAsStateWithLifecycle()
     var showEdit by rememberSaveable { mutableStateOf(false) }
     var showAddPeople by rememberSaveable { mutableStateOf(false) }
     var showLeaveConfirm by rememberSaveable { mutableStateOf(false) }
@@ -99,10 +103,6 @@ fun GroupSettingsScreen(
     val context = LocalContext.current
     val me = viewModel.currentUserId()
     val isOwner = group?.createdByUserId == me
-
-    LaunchedEffect(groupId) {
-        group = viewModel.getGroup(groupId)
-    }
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -260,7 +260,6 @@ fun GroupSettingsScreen(
             onSave = { name, type ->
                 val updated = group!!.copy(name = name, groupType = type)
                 viewModel.updateGroup(updated)
-                group = updated
                 showEdit = false
             },
         )

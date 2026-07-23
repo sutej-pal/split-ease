@@ -1,10 +1,12 @@
 package com.splitease.app.presentation.balances
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -112,11 +114,20 @@ fun FriendBalanceHeader(
 @Composable
 fun GroupBalanceHeader(
     groupId: String,
+    balance: GroupBalanceUi? = null,
     viewModel: BalancesViewModel = hiltViewModel(),
 ) {
-    val balance by remember(groupId) { viewModel.observeGroupBalance(groupId) }
+    val observed by remember(groupId) { viewModel.observeGroupBalance(groupId) }
         .collectAsStateWithLifecycle()
-    balance?.let { GroupBalanceSummaryBlock(it, showSimplified = true) }
+    val resolved = balance ?: observed
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp),
+    ) {
+        resolved?.let { GroupBalanceSummaryBlock(it, showSimplified = true) }
+    }
 }
 
 @Composable

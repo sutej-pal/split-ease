@@ -249,27 +249,36 @@ class SocialInteractor
 
                 // Upload group + owner first so cloud FK exists even if extra members fail
                 // (e.g. invite placeholders that are not auth.users yet).
-                runCatching {
-                    remote.upsertGroup(
-                        GroupDto(
-                            id = group.id,
-                            name = group.name,
-                            defaultCurrencyCode = group.defaultCurrencyCode,
-                            createdByUserId = group.createdByUserId,
-                            updatedAtEpochMs = now,
-                        ),
+                val cloudError =
+                    runCatching {
+                        remote.upsertGroup(
+                            GroupDto(
+                                id = group.id,
+                                name = group.name,
+                                defaultCurrencyCode = group.defaultCurrencyCode,
+                                createdByUserId = group.createdByUserId,
+                                updatedAtEpochMs = now,
+                            ),
+                        )
+                        remote.upsertGroupMember(
+                            GroupMemberDto(
+                                id = ownerMember.id,
+                                groupId = ownerMember.groupId,
+                                userId = ownerMember.userId,
+                                role = ownerMember.role.name,
+                                joinedAtEpochMs = ownerMember.joinedAtEpochMs,
+                            ),
+                        )
+                        groupRepository.upsertGroup(group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED))
+                        groupRepository.upsertMember(ownerMember.copy(syncStatus = SyncStatus.SYNCED))
+                    }.exceptionOrNull()
+
+                if (cloudError != null) {
+                    android.util.Log.e(
+                        "SplitEaseSocial",
+                        "Group cloud upsert failed (kept locally as PENDING): ${cloudError.message}",
+                        cloudError,
                     )
-                    remote.upsertGroupMember(
-                        GroupMemberDto(
-                            id = ownerMember.id,
-                            groupId = ownerMember.groupId,
-                            userId = ownerMember.userId,
-                            role = ownerMember.role.name,
-                            joinedAtEpochMs = ownerMember.joinedAtEpochMs,
-                        ),
-                    )
-                    groupRepository.upsertGroup(group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED))
-                    groupRepository.upsertMember(ownerMember.copy(syncStatus = SyncStatus.SYNCED))
                 }
 
                 extraMembers.forEach { member ->
@@ -284,6 +293,12 @@ class SocialInteractor
                             ),
                         )
                         groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
+                    }.onFailure { err ->
+                        android.util.Log.e(
+                            "SplitEaseSocial",
+                            "Group member cloud upsert failed for ${member.userId}: ${err.message}",
+                            err,
+                        )
                     }
                 }
 

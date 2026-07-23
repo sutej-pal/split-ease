@@ -32,6 +32,14 @@ interface GroupRepository {
     suspend fun getGroupById(id: String): Group?
 
     /**
+     * Observes a single group by id.
+     *
+     * @param id Local UUID.
+     * @return Cold [Flow] emitting the group or null when missing.
+     */
+    fun observeGroupById(id: String): Flow<Group?>
+
+    /**
      * Inserts or replaces a group.
      *
      * @param group Domain group to persist.

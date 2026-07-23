@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 @HiltViewModel
@@ -30,6 +31,9 @@ class BalancesViewModel
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+        private val groupBalanceFlows = ConcurrentHashMap<String, StateFlow<GroupBalanceUi?>>()
+        private val friendBalanceFlows = ConcurrentHashMap<String, StateFlow<FriendBalanceUi?>>()
+
         @OptIn(ExperimentalCoroutinesApi::class)
         val overall: StateFlow<OverallBalancesUi?> =
             userId
@@ -43,23 +47,27 @@ class BalancesViewModel
 
         @OptIn(ExperimentalCoroutinesApi::class)
         fun observeGroupBalance(groupId: String): StateFlow<GroupBalanceUi?> =
-            userId
-                .flatMapLatest { me ->
-                    if (me == null) {
-                        flowOf(null)
-                    } else {
-                        balanceInteractor.observeGroupBalance(groupId, me)
-                    }
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            groupBalanceFlows.getOrPut(groupId) {
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(null)
+                        } else {
+                            balanceInteractor.observeGroupBalance(groupId, me)
+                        }
+                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            }
 
         @OptIn(ExperimentalCoroutinesApi::class)
         fun observeFriendBalance(friendUserId: String): StateFlow<FriendBalanceUi?> =
-            userId
-                .flatMapLatest { me ->
-                    if (me == null) {
-                        flowOf(null)
-                    } else {
-                        balanceInteractor.observeFriendBalance(me, friendUserId)
-                    }
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            friendBalanceFlows.getOrPut(friendUserId) {
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(null)
+                        } else {
+                            balanceInteractor.observeFriendBalance(me, friendUserId)
+                        }
+                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            }
     }

@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 data class GroupsUiState(
@@ -69,6 +70,10 @@ class GroupsViewModel
 
         private val _uiState = MutableStateFlow(GroupsUiState())
         val uiState: StateFlow<GroupsUiState> = _uiState.asStateFlow()
+
+        private val membersFlows = ConcurrentHashMap<String, StateFlow<List<GroupMember>?>>()
+        private val groupFlows = ConcurrentHashMap<String, StateFlow<Group?>>()
+        private val simplifyFlows = ConcurrentHashMap<String, StateFlow<Boolean>>()
 
         init {
             refresh()
@@ -122,20 +127,43 @@ class GroupsViewModel
                         memberFriendUserIds = memberIds,
                     )
                 val created = result.getOrNull()
+                if (created == null) {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = userFacingError(result.exceptionOrNull()),
+                        )
+                    }
+                    return@launch
+                }
+
+                var cloudOk =
+                    groupRepository.getGroupById(created.id)?.syncStatus ==
+                        com.splitease.app.domain.model.SyncStatus.SYNCED
+                var cloudDetail: String? = null
+                if (!cloudOk) {
+                    val flush = runCatching { syncInteractor.flushPending() }.getOrNull()
+                    cloudOk =
+                        groupRepository.getGroupById(created.id)?.syncStatus ==
+                            com.splitease.app.domain.model.SyncStatus.SYNCED
+                    cloudDetail = flush?.failures?.firstOrNull()
+                }
+
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
                         errorMessage =
-                            if (created == null) {
-                                userFacingError(result.exceptionOrNull())
-                            } else {
+                            if (cloudOk) {
                                 null
+                            } else {
+                                userFacingError(
+                                    cloudDetail?.let { msg -> IllegalStateException(msg) }
+                                        ?: IllegalStateException("schema cache"),
+                                )
                             },
                     )
                 }
-                if (created != null) {
-                    onSuccess(created.id)
-                }
+                onSuccess(created.id)
             }
         }
 
@@ -153,15 +181,40 @@ class GroupsViewModel
             }
         }
 
-        fun observeMembers(groupId: String): StateFlow<List<GroupMember>> =
-            groupRepository
-                .observeMembers(groupId)
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        /**
+         * Observes a group by id. Seeds from the in-memory groups list when available,
+         * otherwise loads once from Room so the detail header does not flash empty.
+         */
+        fun observeGroup(groupId: String): StateFlow<Group?> =
+            groupFlows.getOrPut(groupId) {
+                MutableStateFlow(groups.value.firstOrNull { it.id == groupId }).also { state ->
+                    viewModelScope.launch {
+                        if (state.value == null) {
+                            state.value = groupRepository.getGroupById(groupId)
+                        }
+                        groupRepository.observeGroupById(groupId).collect { state.value = it }
+                    }
+                }
+            }
+
+        /**
+         * Cached members flow. Initial value is `null` until Room emits so Compose can avoid
+         * treating "not loaded yet" as an empty/solo group (layout flicker).
+         */
+        fun observeMembers(groupId: String): StateFlow<List<GroupMember>?> =
+            membersFlows.getOrPut(groupId) {
+                groupRepository
+                    .observeMembers(groupId)
+                    .map<List<GroupMember>, List<GroupMember>?> { it }
+                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            }
 
         fun observeSimplifyDebts(groupId: String): StateFlow<Boolean> =
-            appSettingsRepository
-                .observeSimplifyGroupDebts(groupId)
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+            simplifyFlows.getOrPut(groupId) {
+                appSettingsRepository
+                    .observeSimplifyGroupDebts(groupId)
+                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+            }
 
         fun setSimplifyDebts(groupId: String, enabled: Boolean) {
             viewModelScope.launch {

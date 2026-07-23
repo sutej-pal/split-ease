@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
@@ -79,17 +80,23 @@ private fun ActivityRow(item: ActivityUiItem) {
         when (item.kind) {
             ActivityKind.EXPENSE -> Icons.Filled.Receipt to SplitEaseColors.Primary
             ActivityKind.PAYMENT -> Icons.Filled.Payments to SplitEaseColors.OwedToYou
+            ActivityKind.GROUP_CREATED -> Icons.Filled.Group to SplitEaseColors.IconFriends
         }
     SeListRow(
         title = item.title,
         subtitle = item.subtitle,
         leading = { SeIconTile(icon = icon, tint = tint, size = 44) },
-        trailing = {
-            Text(
-                text = item.amountLabel,
-                color = SplitEaseColors.Navy,
-            )
-        },
+        trailing =
+            if (item.amountLabel.isBlank()) {
+                null
+            } else {
+                {
+                    Text(
+                        text = item.amountLabel,
+                        color = SplitEaseColors.Navy,
+                    )
+                }
+            },
     )
 }
 
@@ -110,11 +117,11 @@ private fun ActivityScreenPreview() {
             )
             ActivityRow(
                 ActivityUiItem(
-                    id = "2",
-                    kind = ActivityKind.PAYMENT,
-                    title = "You paid Alex",
-                    subtitle = "Roommates · UPI · 20 Jul 2026",
-                    amountLabel = "INR 400.00",
+                    id = "3",
+                    kind = ActivityKind.GROUP_CREATED,
+                    title = "You created \"Trip\"",
+                    subtitle = "22 Jul 2026",
+                    amountLabel = "",
                     sortEpochMs = 0L,
                 ),
             )
@@ -127,7 +134,7 @@ private fun ActivityScreenPreview() {
 private fun ActivityEmptyPreview() {
     SePreview {
         SeEmptyState(
-            message = "No activity yet. Add an expense or record a payment to see it here.",
+            message = "No activity yet. Create a group, add an expense, or record a payment to see it here.",
             modifier = Modifier.padding(20.dp),
         )
     }

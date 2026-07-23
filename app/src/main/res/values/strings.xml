@@ -112,7 +112,7 @@
     <string name="groups_show_settled">Show %1$d settled-up groups</string>
     <string name="pick_group_for_expense">Choose a group</string>
     <string name="activity_placeholder">Activity feed is coming soon.</string>
-    <string name="activity_empty">No activity yet. Add an expense or record a payment to see it here.</string>
+    <string name="activity_empty">No activity yet. Create a group, add an expense, or record a payment to see it here.</string>
     <string name="balances_title">Balances</string>
     <string name="balances_hub_subtitle">Who owes whom across friends and groups</string>
     <string name="balances_loading">Calculating balances…</string>

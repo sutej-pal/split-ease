@@ -280,31 +280,26 @@ fun GroupDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
-    val members by viewModel.observeMembers(groupId).collectAsStateWithLifecycle()
+    val membersState by remember(groupId) { viewModel.observeMembers(groupId) }
+        .collectAsStateWithLifecycle()
+    val members = membersState.orEmpty()
+    val membersReady = membersState != null
     val expenses by remember(groupId) { expensesViewModel.observeGroupExpenses(groupId) }
         .collectAsStateWithLifecycle()
     val categories by expensesViewModel.categories.collectAsStateWithLifecycle()
     val groupBalance by remember(groupId) { balancesViewModel.observeGroupBalance(groupId) }
         .collectAsStateWithLifecycle()
-    var group by remember { mutableStateOf<Group?>(null) }
-    var name by rememberSaveable { mutableStateOf("") }
+    val group by remember(groupId) { viewModel.observeGroup(groupId) }
+        .collectAsStateWithLifecycle()
     var paneName by rememberSaveable { mutableStateOf(GroupDetailPane.Expenses.name) }
     val pane = runCatching { GroupDetailPane.valueOf(paneName) }.getOrDefault(GroupDetailPane.Expenses)
     var settleHint by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val me = expensesViewModel.currentUserId()
-    val isSolo = members.size <= 1
+    val isSolo = membersReady && members.size <= 1
     val nothingToSettle = stringResource(R.string.group_nothing_to_settle)
     val lifecycleOwner = LocalLifecycleOwner.current
     val categoryNames = remember(categories) { categories.associate { it.id to it.name } }
-
-    LaunchedEffect(groupId) {
-        val loaded = viewModel.getGroup(groupId)
-        group = loaded
-        if (loaded != null) {
-            name = loaded.name
-        }
-    }
 
     LaunchedEffect(groupId, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -373,10 +368,6 @@ fun GroupDetailScreen(
             ) {
                 GroupDetailHeader(
                     group = group,
-                    editing = false,
-                    name = name,
-                    onNameChange = { name = it },
-                    onSave = {},
                 )
 
                 Row(
@@ -432,7 +423,10 @@ fun GroupDetailScreen(
                                 }
                             } else {
                                 item {
-                                    GroupBalanceHeader(groupId = groupId)
+                                    GroupBalanceHeader(
+                                        groupId = groupId,
+                                        balance = groupBalance,
+                                    )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     SeSectionHeader(text = stringResource(R.string.expenses_title))
                                 }
@@ -485,7 +479,10 @@ fun GroupDetailScreen(
                             when (pane) {
                                 GroupDetailPane.Balances -> {
                                     SeSectionHeader(text = stringResource(R.string.balances_title))
-                                    GroupBalanceHeader(groupId = groupId)
+                                    GroupBalanceHeader(
+                                        groupId = groupId,
+                                        balance = groupBalance,
+                                    )
                                     val myDebts =
                                         groupBalance?.simplifiedDebts?.filter { debt ->
                                             me != null && (debt.fromUserId == me || debt.toUserId == me)
@@ -556,10 +553,6 @@ fun GroupDetailScreen(
 @Composable
 private fun GroupDetailHeader(
     group: Group?,
-    editing: Boolean,
-    name: String,
-    onNameChange: (String) -> Unit,
-    onSave: () -> Unit,
 ) {
     val type = group?.groupType ?: GroupType.OTHER
     Column(
@@ -572,30 +565,19 @@ private fun GroupDetailHeader(
             SeIconTile(icon = type.icon(), tint = type.tint(), size = 56)
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                if (editing) {
-                    SeTextField(
-                        value = name,
-                        onValueChange = onNameChange,
-                        label = stringResource(R.string.label_group_name),
-                    )
-                } else {
-                    Text(
-                        text = group?.name.orEmpty(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SplitEaseColors.Navy,
-                    )
-                    Text(
-                        text = stringResource(type.labelRes()),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SplitEaseColors.NavyMuted,
-                    )
-                }
+                Text(
+                    text = group?.name.orEmpty(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                    maxLines = 1,
+                )
+                Text(
+                    text = stringResource(type.labelRes()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SplitEaseColors.NavyMuted,
+                )
             }
-        }
-        if (editing) {
-            Spacer(modifier = Modifier.height(12.dp))
-            SePrimaryButton(text = stringResource(R.string.action_save), onClick = onSave)
         }
     }
 }

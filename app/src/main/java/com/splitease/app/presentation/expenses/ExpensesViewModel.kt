@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 data class ExpensesUiState(
@@ -83,22 +84,28 @@ class ExpensesViewModel
         /** Reactive signed-in user id for Compose collectors. */
         val signedInUserId: StateFlow<String?> = userId
 
+        private val groupExpenseFlows = ConcurrentHashMap<String, StateFlow<List<Expense>>>()
+        private val friendExpenseFlows = ConcurrentHashMap<String, StateFlow<List<Expense>>>()
+
         fun observeGroupExpenses(groupId: String): StateFlow<List<Expense>> =
-            expenseRepository
-                .observeExpenses(groupId)
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            groupExpenseFlows.getOrPut(groupId) {
+                expenseRepository
+                    .observeExpenses(groupId)
+                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            }
 
         @OptIn(ExperimentalCoroutinesApi::class)
         fun observeFriendExpenses(friendUserId: String): StateFlow<List<Expense>> =
-            userId
-                .flatMapLatest { me ->
-                    if (me == null) {
-                        flowOf(emptyList())
-                    } else {
-                        expenseRepository.observeBetweenUsers(me, friendUserId)
-                    }
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
+            friendExpenseFlows.getOrPut(friendUserId) {
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(emptyList())
+                        } else {
+                            expenseRepository.observeBetweenUsers(me, friendUserId)
+                        }
+                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            }
         fun refreshGroupExpenses(groupId: String) {
             viewModelScope.launch {
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }

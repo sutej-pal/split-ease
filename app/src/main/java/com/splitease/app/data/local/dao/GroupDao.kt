@@ -31,6 +31,10 @@ interface GroupDao {
     @Query("SELECT * FROM groups WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): GroupEntity?
 
+    /** @param id Local UUID. @return Flow of matching rows (0 or 1). */
+    @Query("SELECT * FROM groups WHERE id = :id LIMIT 1")
+    fun observeById(id: String): Flow<List<GroupEntity>>
+
     /** Inserts or replaces [group]. */
     @Upsert
     suspend fun upsert(group: GroupEntity)

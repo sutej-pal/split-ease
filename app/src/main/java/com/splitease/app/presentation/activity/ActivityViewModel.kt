@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
@@ -29,6 +30,7 @@ import javax.inject.Inject
 enum class ActivityKind {
     EXPENSE,
     PAYMENT,
+    GROUP_CREATED,
 }
 
 data class ActivityUiItem(
@@ -93,7 +95,12 @@ class ActivityViewModel
                                 payments.map { payment ->
                                     payment.toUi(me, groupNames, ::nameOf)
                                 }
-                            (expenseItems + paymentItems).sortedByDescending { it.sortEpochMs }
+                            val groupCreatedItems =
+                                groups
+                                    .filter { it.createdByUserId == me }
+                                    .map { it.toCreatedUi() }
+                            (expenseItems + paymentItems + groupCreatedItems)
+                                .sortedByDescending { it.sortEpochMs }
                         }
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -106,6 +113,18 @@ class ActivityViewModel
                     }
                 }
             }
+        }
+
+        private fun Group.toCreatedUi(): ActivityUiItem {
+            val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(createdAtEpochMs))
+            return ActivityUiItem(
+                id = "group-created-$id",
+                kind = ActivityKind.GROUP_CREATED,
+                title = "You created \"$name\"",
+                subtitle = date,
+                amountLabel = "",
+                sortEpochMs = createdAtEpochMs,
+            )
         }
 
         private fun Expense.toUi(
