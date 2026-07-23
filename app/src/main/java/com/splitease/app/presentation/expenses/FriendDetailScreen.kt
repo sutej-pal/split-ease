@@ -34,6 +34,7 @@ fun FriendDetailScreen(
     friendUserId: String,
     onBack: () -> Unit,
     onAddExpense: () -> Unit,
+    onOpenExpense: (expenseId: String) -> Unit,
     onSettleUp: (fromUserId: String, toUserId: String, amount: String, currency: String, label: String) -> Unit,
     viewModel: ExpensesViewModel = hiltViewModel(),
     balancesViewModel: BalancesViewModel = hiltViewModel(),
@@ -96,7 +97,7 @@ fun FriendDetailScreen(
                         SeEmptyState(message = stringResource(R.string.ledger_empty))
                     }
                 } else {
-                    ledgerEntries(ledger)
+                    ledgerEntries(ledger, onExpenseClick = onOpenExpense)
                 }
                 uiState.errorMessage?.let { msg ->
                     item {

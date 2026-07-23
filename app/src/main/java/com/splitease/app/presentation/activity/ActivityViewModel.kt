@@ -3,10 +3,15 @@ package com.splitease.app.presentation.activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.domain.model.ActivityEvent
+import com.splitease.app.domain.model.ActivityEventKind
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.Payment
+import com.splitease.app.domain.model.User
+import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
@@ -29,6 +34,8 @@ import javax.inject.Inject
 
 enum class ActivityKind {
     EXPENSE,
+    EXPENSE_UPDATED,
+    EXPENSE_DELETED,
     PAYMENT,
     GROUP_CREATED,
 }
@@ -40,6 +47,8 @@ data class ActivityUiItem(
     val subtitle: String,
     val amountLabel: String,
     val sortEpochMs: Long,
+    /** When set and the expense still exists, Activity can open expense details. */
+    val relatedExpenseId: String? = null,
 )
 
 @HiltViewModel
@@ -52,6 +61,7 @@ class ActivityViewModel
         private val groupRepository: GroupRepository,
         private val userRepository: UserRepository,
         private val friendRepository: FriendRepository,
+        private val activityEventRepository: ActivityEventRepository,
         private val syncInteractor: SyncInteractor,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
@@ -67,16 +77,27 @@ class ActivityViewModel
                         flowOf(emptyList())
                     } else {
                         combine(
-                            expenseRepository.observeInvolvingUser(me),
-                            paymentRepository.observeInvolvingUser(me),
-                            groupRepository.observeGroupsForUser(me),
-                            userRepository.observeUsers(),
-                            friendRepository.observeFriends(me),
-                        ) { expenses, payments, groups, users, friends ->
-                            val groupNames = groups.associate { it.id to it.name }
-                            val userNames = users.associate { it.id to it.displayName }
+                            combine(
+                                expenseRepository.observeInvolvingUser(me),
+                                paymentRepository.observeInvolvingUser(me),
+                                groupRepository.observeGroupsForUser(me),
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                            ) { expenses, payments, groups, users, friends ->
+                                ActivitySources(
+                                    expenses = expenses,
+                                    payments = payments,
+                                    groups = groups,
+                                    users = users,
+                                    friends = friends,
+                                )
+                            },
+                            activityEventRepository.observeForUser(me),
+                        ) { sources, events ->
+                            val groupNames = sources.groups.associate { it.id to it.name }
+                            val userNames = sources.users.associate { it.id to it.displayName }
                             val friendNames =
-                                friends.associate { it.friendUserId to it.displayNameSnapshot }
+                                sources.friends.associate { it.friendUserId to it.displayNameSnapshot }
 
                             fun nameOf(id: String): String =
                                 when (id) {
@@ -87,19 +108,24 @@ class ActivityViewModel
                                             ?: id.take(8)
                                 }
 
-                            val expenseItems =
-                                expenses.map { expense ->
-                                    expense.toUi(me, groupNames, ::nameOf)
-                                }
+                            val expenseIdsWithEvents =
+                                events.mapNotNull { it.relatedExpenseId }.toSet()
+                            val legacyExpenseItems =
+                                sources.expenses
+                                    .filter { it.id !in expenseIdsWithEvents }
+                                    .map { expense ->
+                                        expense.toUi(me, groupNames, ::nameOf)
+                                    }
+                            val eventItems = events.map { it.toUi() }
                             val paymentItems =
-                                payments.map { payment ->
+                                sources.payments.map { payment ->
                                     payment.toUi(me, groupNames, ::nameOf)
                                 }
                             val groupCreatedItems =
-                                groups
+                                sources.groups
                                     .filter { it.createdByUserId == me }
                                     .map { it.toCreatedUi() }
-                            (expenseItems + paymentItems + groupCreatedItems)
+                            (legacyExpenseItems + eventItems + paymentItems + groupCreatedItems)
                                 .sortedByDescending { it.sortEpochMs }
                         }
                     }
@@ -113,6 +139,25 @@ class ActivityViewModel
                     }
                 }
             }
+        }
+
+        private fun ActivityEvent.toUi(): ActivityUiItem {
+            val uiKind =
+                when (kind) {
+                    ActivityEventKind.EXPENSE_ADDED -> ActivityKind.EXPENSE
+                    ActivityEventKind.EXPENSE_UPDATED -> ActivityKind.EXPENSE_UPDATED
+                    ActivityEventKind.EXPENSE_DELETED -> ActivityKind.EXPENSE_DELETED
+                }
+            return ActivityUiItem(
+                id = "event-$id",
+                kind = uiKind,
+                title = title,
+                subtitle = subtitle,
+                amountLabel = amountLabel,
+                sortEpochMs = sortEpochMs,
+                relatedExpenseId =
+                    relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
+            )
         }
 
         private fun Group.toCreatedUi(): ActivityUiItem {
@@ -148,6 +193,7 @@ class ActivityViewModel
                 subtitle = "$context · $payer · $date",
                 amountLabel = "$currencyCode ${amount.toPlainString()}",
                 sortEpochMs = expenseDateEpochMs.coerceAtLeast(createdAtEpochMs),
+                relatedExpenseId = id,
             )
         }
 
@@ -180,3 +226,11 @@ class ActivityViewModel
             )
         }
     }
+
+private data class ActivitySources(
+    val expenses: List<Expense>,
+    val payments: List<Payment>,
+    val groups: List<Group>,
+    val users: List<User>,
+    val friends: List<Friend>,
+)

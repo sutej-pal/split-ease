@@ -4,7 +4,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Incremental Room migrations for [SplitEaseDatabase] (exported schemas 1–4).
+ * Incremental Room migrations for [SplitEaseDatabase] (exported schemas 1–5).
  *
  * Replaces destructive upgrade for users moving between historical versions.
  */
@@ -68,11 +68,44 @@ object SplitEaseMigrations {
             }
         }
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 4. */
+    /** Adds `activity_events` for expense create/update/delete feed entries. */
+    val MIGRATION_4_5 =
+        object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `activity_events` (
+                        `id` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `subtitle` TEXT NOT NULL,
+                        `amountLabel` TEXT NOT NULL,
+                        `actorUserId` TEXT NOT NULL,
+                        `relatedExpenseId` TEXT,
+                        `involvedUserIds` TEXT NOT NULL,
+                        `sortEpochMs` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_activity_events_sortEpochMs` ON `activity_events` (`sortEpochMs`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_activity_events_relatedExpenseId` ON `activity_events` (`relatedExpenseId`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_activity_events_actorUserId` ON `activity_events` (`actorUserId`)",
+                )
+            }
+        }
+
+    /** All migrations from version 1 through [SplitEaseDatabase] version 5. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
             MIGRATION_3_4,
+            MIGRATION_4_5,
         )
 }

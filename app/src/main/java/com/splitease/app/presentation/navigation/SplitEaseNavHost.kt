@@ -33,6 +33,7 @@ import com.splitease.app.presentation.auth.LoginScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
+import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
 import com.splitease.app.presentation.friends.AddFriendScreen
 import com.splitease.app.presentation.friends.FindPeopleScreen
@@ -79,7 +80,9 @@ object Routes {
     const val CREATE_GROUP = "create_group"
     const val GROUP_DETAIL = "group_detail/{groupId}"
     const val GROUP_SETTINGS = "group_settings/{groupId}"
-    const val ADD_EXPENSE = "add_expense?groupId={groupId}&friendUserId={friendUserId}"
+    const val ADD_EXPENSE =
+        "add_expense?groupId={groupId}&friendUserId={friendUserId}&expenseId={expenseId}"
+    const val EXPENSE_DETAIL = "expense_detail/{expenseId}"
     const val SETTLE_UP =
         "settle_up?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}&groupId={groupId}&label={label}"
 
@@ -88,6 +91,8 @@ object Routes {
     fun groupSettings(groupId: String) = "group_settings/$groupId"
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
+
+    fun expenseDetail(expenseId: String) = "expense_detail/$expenseId"
 
     fun findPeople(groupId: String? = null) =
         "find_people?groupId=${groupId.orEmpty()}"
@@ -103,10 +108,16 @@ object Routes {
     }
 
     fun addExpenseForGroup(groupId: String) =
-        "add_expense?groupId=$groupId&friendUserId="
+        "add_expense?groupId=$groupId&friendUserId=&expenseId="
 
     fun addExpenseForFriend(friendUserId: String) =
-        "add_expense?groupId=&friendUserId=$friendUserId"
+        "add_expense?groupId=&friendUserId=$friendUserId&expenseId="
+
+    fun editExpense(
+        expenseId: String,
+        groupId: String? = null,
+        friendUserId: String? = null,
+    ) = "add_expense?groupId=${groupId.orEmpty()}&friendUserId=${friendUserId.orEmpty()}&expenseId=$expenseId"
 
     fun settleUp(
         fromUserId: String,
@@ -128,6 +139,23 @@ private val tabRoutes =
         Routes.TAB_ACTIVITY,
         Routes.TAB_ACCOUNT,
     )
+
+/** Destinations that keep the main bottom navigation visible. */
+private val bottomBarRoutes =
+    tabRoutes +
+        setOf(
+            Routes.GROUP_DETAIL,
+        )
+
+/**
+ * Tab route used for bottom-bar selection highlighting.
+ * Nested screens (e.g. group detail) stay under their parent tab.
+ */
+private fun selectedTabRoute(currentRoute: String?): String? =
+    when (currentRoute) {
+        Routes.GROUP_DETAIL -> Routes.TAB_GROUPS
+        else -> currentRoute?.takeIf { it in tabRoutes }
+    }
 
 /**
  * Root navigation graph gated by [AuthSession].
@@ -236,7 +264,8 @@ private fun SignedInNavHost(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val showBottomBar = currentRoute in tabRoutes
+    val showBottomBar = currentRoute in bottomBarRoutes
+    val bottomBarSelectedRoute = selectedTabRoute(currentRoute)
 
     Scaffold(
         // Child screens own status-bar insets via their TopAppBars; only reserve bottom-bar space here.
@@ -244,7 +273,7 @@ private fun SignedInNavHost(
         bottomBar = {
             if (showBottomBar) {
                 SplitEaseBottomBar(
-                    currentRoute = currentRoute,
+                    currentRoute = bottomBarSelectedRoute,
                     onTabSelected = { tab ->
                         navController.navigate(tab.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -286,6 +315,7 @@ private fun SignedInNavHost(
             composable(Routes.TAB_ACTIVITY) {
                 ActivityScreen(
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
+                    onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
                 )
             }
             composable(Routes.TAB_ACCOUNT) {
@@ -391,6 +421,7 @@ private fun SignedInNavHost(
                     onAddExpense = {
                         navController.navigate(Routes.addExpenseForFriend(friendUserId))
                     },
+                    onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
                     onSettleUp = { from, to, amount, currency, label ->
                         navController.navigate(
                             Routes.settleUp(
@@ -427,6 +458,7 @@ private fun SignedInNavHost(
                     onAddExpense = {
                         navController.navigate(Routes.addExpenseForGroup(groupId))
                     },
+                    onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
                     onSettleDebt = { from, to, amount, currency, label ->
                         navController.navigate(
@@ -470,14 +502,22 @@ private fun SignedInNavHost(
                             defaultValue = ""
                             nullable = false
                         },
+                        navArgument("expenseId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                            nullable = false
+                        },
                     ),
             ) { entry ->
                 val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
                 val friendUserId =
                     entry.arguments?.getString("friendUserId").orEmpty().ifBlank { null }
+                val expenseId =
+                    entry.arguments?.getString("expenseId").orEmpty().ifBlank { null }
                 AddExpenseScreen(
                     groupId = groupId,
                     friendUserId = friendUserId,
+                    expenseId = expenseId,
                     onBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() },
                     onEditGroupMembers =
@@ -486,6 +526,20 @@ private fun SignedInNavHost(
                                 navController.navigate(Routes.groupSettings(id))
                             }
                         },
+                )
+            }
+            composable(
+                route = Routes.EXPENSE_DETAIL,
+                arguments = listOf(navArgument("expenseId") { type = NavType.StringType }),
+            ) { entry ->
+                val expenseId = entry.arguments?.getString("expenseId").orEmpty()
+                ExpenseDetailScreen(
+                    expenseId = expenseId,
+                    onBack = { navController.popBackStack() },
+                    onEdit = { id ->
+                        navController.navigate(Routes.editExpense(id))
+                    },
+                    onDeleted = { navController.popBackStack() },
                 )
             }
             composable(

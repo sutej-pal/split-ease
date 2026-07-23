@@ -282,6 +282,7 @@ fun GroupDetailScreen(
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     onAddExpense: () -> Unit,
+    onOpenExpense: (expenseId: String) -> Unit,
     onOpenSpending: () -> Unit,
     onSettleDebt: (
         fromUserId: String,
@@ -434,7 +435,7 @@ fun GroupDetailScreen(
                                 SeEmptyState(message = stringResource(R.string.ledger_empty))
                             }
                         } else {
-                            ledgerEntries(ledger)
+                            ledgerEntries(ledger, onExpenseClick = onOpenExpense)
                         }
                         uiState.errorMessage?.let { msg ->
                             item {

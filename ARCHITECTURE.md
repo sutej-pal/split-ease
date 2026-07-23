@@ -209,13 +209,44 @@ presentation/settings
 - No per-expense or per-group currency pickers on create/edit screens.
 - Catalog: 100+ ISO codes with filter in Settings (`AppCurrencies`).
 
+## Theming
+
+Hand-authored Material 3 `ColorScheme` from the app icon (indigo panels + amber divider). **Do not** use Material You dynamic color by default — brand identity is fixed; dynamic color may be an explicit settings opt-in later.
+
+Canonical tokens: [docs/design-tokens.md](docs/design-tokens.md) · code: `presentation/theme/Color.kt` → `Theme.kt` · phase: [docs/phase-0b-theme-system.md](docs/phase-0b-theme-system.md).
+
+### Light
+
+| Role | Hex | Use |
+|---|---|---|
+| Primary (indigo) | `#4F46E5` | Outlines, primary buttons, active states |
+| Accent (amber) | `#FFA008` | Divider, CTAs, highlights, pending |
+| Background | `#E8EAFE` | Screens, subtle fills |
+| Surface | `#FFFFFF` | Cards, sheets, inputs |
+| Text primary | `#1E1B4B` | Body / headings |
+
+### Dark
+
+| Role | Hex | Use |
+|---|---|---|
+| Primary (indigo) | `#818CF8` | Outlines, primary buttons, active states |
+| Accent (amber) | `#FFB020` | Divider, CTAs, highlights, pending |
+| Background | `#14121F` | Screens |
+| Surface | `#201C33` | Cards, sheets, inputs |
+| Text primary | `#ECEAFB` | Body / headings |
+| Text secondary | `#B4AFC7` | Captions, hints, muted labels |
+
+Mapping: `primary` → indigo, `tertiary` → amber, `background` / `surface` / `on*` → table above. Semantic "you owe" / "you're owed" colors are **placeholders** until design confirms them.
+
 ## Design system (UI kit)
 
-Theme inspired by [Apzo SaaS](https://demo.goodlayers.com/apzo/saas/): electric blue primary (`#2F57EF`), soft gray background, navy copy.
-
 ```
-presentation/theme/          # SplitEaseColors, Theme, Typography
+presentation/theme/          # Color.kt, Theme, SplitEaseColors aliases, Typography
 presentation/ui/             # Shared Se* components + @Preview
 ```
 
-Reusable components (`SePrimaryButton`, `SeTextField`, `SeTopBar`, `SeListRow`, `SeTypeChip`, `SeMoneyText`, …) wrap Material 3 with brand tokens. Screens should prefer these over raw Material widgets for consistency.
+Reusable components (`SePrimaryButton`, `SeTextField`, `SeTopBar`, `SeListRow`, `SeTypeChip`, `SeMoneyText`, …) wrap Material 3 with brand tokens. Prefer `MaterialTheme.colorScheme` (or `Se*` wrappers) over raw hex.
+
+## Activity feed
+
+Expense create / update / delete write local `activity_events` rows (Room v5). Activity tab merges those events with payments and group-created items. Events are device-local (not synced). See [docs/phase-10a-expense-details.md](docs/phase-10a-expense-details.md).

@@ -18,14 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,6 +52,7 @@ import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTopBar
 
 /**
  * Search friends and device contacts; optionally add them to a group.
@@ -113,27 +112,27 @@ fun FindPeopleScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.cd_back),
-                        tint = SplitEaseColors.Navy,
-                    )
-                }
+            SeTopBar(
+                title = stringResource(R.string.find_people_title),
+                onBack = onBack,
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
+            item {
                 OutlinedTextField(
                     value = uiState.query,
                     onValueChange = viewModel::setQuery,
                     modifier =
                         Modifier
-                            .weight(1f)
-                            .padding(end = 12.dp),
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
                     placeholder = {
                         Text(stringResource(R.string.find_people_search_hint))
                     },
@@ -157,37 +156,13 @@ fun FindPeopleScreen(
                         ),
                 )
             }
-        },
-    ) { padding ->
-        LazyColumn(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
-        ) {
+
             item {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onAddNewContact("", "") }
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SeIconTile(
-                        icon = Icons.Filled.PersonAdd,
-                        tint = SplitEaseColors.Primary,
-                        size = 40,
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.find_people_add_new_contact),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = SplitEaseColors.Primary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+                FindPeopleActionTile(
+                    icon = Icons.Filled.PersonAdd,
+                    label = stringResource(R.string.find_people_title),
+                    onClick = { onAddNewContact("", "") },
+                )
             }
 
             uiState.errorMessage?.let { msg ->
@@ -298,6 +273,35 @@ fun FindPeopleScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FindPeopleActionTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SeIconTile(
+            icon = icon,
+            tint = SplitEaseColors.Primary,
+            size = 40,
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = SplitEaseColors.Primary,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 

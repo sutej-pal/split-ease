@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
@@ -33,6 +35,7 @@ import com.splitease.app.presentation.ui.SeScreen
 @Composable
 fun ActivityScreen(
     onOpenSearch: () -> Unit = {},
+    onOpenExpense: (expenseId: String) -> Unit = {},
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
@@ -65,7 +68,13 @@ fun ActivityScreen(
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     ) {
                         items(items, key = { it.id }) { item ->
-                            ActivityRow(item = item)
+                            ActivityRow(
+                                item = item,
+                                onClick =
+                                    item.relatedExpenseId?.let { expenseId ->
+                                        { onOpenExpense(expenseId) }
+                                    },
+                            )
                         }
                     }
                 }
@@ -75,16 +84,22 @@ fun ActivityScreen(
 }
 
 @Composable
-private fun ActivityRow(item: ActivityUiItem) {
+private fun ActivityRow(
+    item: ActivityUiItem,
+    onClick: (() -> Unit)? = null,
+) {
     val (icon, tint) =
         when (item.kind) {
             ActivityKind.EXPENSE -> Icons.Filled.Receipt to SplitEaseColors.Primary
+            ActivityKind.EXPENSE_UPDATED -> Icons.Filled.Edit to SplitEaseColors.Primary
+            ActivityKind.EXPENSE_DELETED -> Icons.Filled.Delete to SplitEaseColors.YouOwe
             ActivityKind.PAYMENT -> Icons.Filled.Payments to SplitEaseColors.OwedToYou
             ActivityKind.GROUP_CREATED -> Icons.Filled.Group to SplitEaseColors.IconFriends
         }
     SeListRow(
         title = item.title,
         subtitle = item.subtitle,
+        onClick = onClick,
         leading = { SeIconTile(icon = icon, tint = tint, size = 44) },
         trailing =
             if (item.amountLabel.isBlank()) {
@@ -112,6 +127,16 @@ private fun ActivityScreenPreview() {
                     title = "Dinner",
                     subtitle = "Roommates · you paid · 22 Jul 2026",
                     amountLabel = "INR 1200.00",
+                    sortEpochMs = 0L,
+                ),
+            )
+            ActivityRow(
+                ActivityUiItem(
+                    id = "2",
+                    kind = ActivityKind.EXPENSE_UPDATED,
+                    title = "Updated: Dinner",
+                    subtitle = "Roommates · 22 Jul 2026",
+                    amountLabel = "INR 1400.00",
                     sortEpochMs = 0L,
                 ),
             )

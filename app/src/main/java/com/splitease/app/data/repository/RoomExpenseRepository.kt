@@ -7,6 +7,7 @@ import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.repository.ExpenseRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,6 +34,9 @@ class RoomExpenseRepository
         }
 
         override suspend fun getExpenseById(id: String): Expense? = expenseDao.getById(id)?.toDomain()
+
+        override fun observeExpenseById(id: String): Flow<Expense?> =
+            expenseDao.observeById(id).map { rows -> rows.firstOrNull()?.toDomain() }
 
         override suspend fun upsertExpenseWithSplits(
             expense: Expense,
@@ -65,6 +69,20 @@ class RoomExpenseRepository
             val rows = expenseDao.getSplitsForExpenses(expenseIds)
             val grouped = rows.groupBy { it.expenseId }.mapValues { (_, list) -> list.map { it.toDomain() } }
             return expenseIds.associateWith { id -> grouped[id].orEmpty() }
+        }
+
+        override fun observeSplitsByGroup(groupId: String): Flow<Map<String, List<ExpenseSplit>>> =
+            expenseDao.observeSplitsByGroup(groupId).map { rows ->
+                rows.groupBy { it.expenseId }.mapValues { (_, list) -> list.map { it.toDomain() } }
+            }
+
+        override fun observeSplitsForExpenses(expenseIds: List<String>): Flow<Map<String, List<ExpenseSplit>>> {
+            if (expenseIds.isEmpty()) return flowOf(emptyMap())
+            return expenseDao.observeSplitsForExpenses(expenseIds).map { rows ->
+                val grouped =
+                    rows.groupBy { it.expenseId }.mapValues { (_, list) -> list.map { it.toDomain() } }
+                expenseIds.associateWith { id -> grouped[id].orEmpty() }
+            }
         }
 
         override suspend fun remapUserId(fromUserId: String, toUserId: String) {

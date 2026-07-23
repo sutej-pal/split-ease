@@ -126,6 +126,19 @@ class ExpenseRemoteDataSource
                         eq("expense_id", expenseId)
                     }
                 }.decodeList()
+
+        /**
+         * Deletes an expense row (splits should be deleted first or via cascade).
+         *
+         * @param expenseId Expense id.
+         */
+        suspend fun deleteExpense(expenseId: String) {
+            supabase.from("expenses").delete {
+                filter {
+                    eq("id", expenseId)
+                }
+            }
+        }
     }
 
 @kotlinx.serialization.Serializable

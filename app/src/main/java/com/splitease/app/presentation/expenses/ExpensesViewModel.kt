@@ -9,10 +9,12 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
+import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
@@ -82,6 +84,29 @@ data class ParticipantOption(
     val isPendingInvite: Boolean = false,
 )
 
+data class ExpenseSplitLineUi(
+    val userId: String,
+    val participantLabel: String,
+    val owedAmount: BigDecimal,
+)
+
+data class ExpenseDetailUi(
+    val expense: Expense,
+    val splits: List<ExpenseSplitLineUi>,
+    val payerLabel: String,
+    val groupName: String?,
+    val viewerBalanceSide: LedgerBalanceSide? = null,
+    val viewerBalanceAmount: BigDecimal? = null,
+)
+
+private data class LedgerSource(
+    val expenses: List<Expense>,
+    val payments: List<Payment>,
+    val splitsByExpenseId: Map<String, List<ExpenseSplit>>,
+    val users: List<User>,
+    val friends: List<Friend>,
+)
+
 @HiltViewModel
 class ExpensesViewModel
     @Inject
@@ -120,10 +145,21 @@ class ExpensesViewModel
         /** Reactive signed-in user id for Compose collectors. */
         val signedInUserId: StateFlow<String?> = userId
 
+        /**
+         * True when [groupId] already has at least one expense or settlement payment.
+         * Used to skip the first-expense members confirm dialog on non-empty groups.
+         */
+        suspend fun groupHasLedgerEntries(groupId: String): Boolean {
+            val expenses = expenseRepository.observeExpenses(groupId).first()
+            if (expenses.isNotEmpty()) return true
+            return paymentRepository.observePayments(groupId).first().isNotEmpty()
+        }
+
         private val groupExpenseFlows = ConcurrentHashMap<String, StateFlow<List<Expense>>>()
-        private val friendExpenseFlows = ConcurrentHashMap<String, StateFlow<List<Expense>>>()
         private val groupLedgerFlows = ConcurrentHashMap<String, StateFlow<List<LedgerListItem>>>()
         private val friendLedgerFlows = ConcurrentHashMap<String, StateFlow<List<LedgerListItem>>>()
+        private val expenseDetailFlows = ConcurrentHashMap<String, StateFlow<ExpenseDetailUi?>>()
+        private val emptyExpenseDetail = MutableStateFlow<ExpenseDetailUi?>(null)
 
         fun observeGroupExpenses(groupId: String): StateFlow<List<Expense>> =
             groupExpenseFlows.getOrPut(groupId) {
@@ -146,39 +182,31 @@ class ExpensesViewModel
                             combine(
                                 expenseRepository.observeExpenses(groupId),
                                 paymentRepository.observePayments(groupId),
+                                expenseRepository.observeSplitsByGroup(groupId),
                                 userRepository.observeUsers(),
                                 friendRepository.observeFriends(me),
-                                categoryRepository.observeCategories(),
-                            ) { expenses, payments, users, friends, categories ->
-                                val categoryById = categories.associateBy { it.id }
-                                val userNames = users.associate { it.id to it.displayName }
-                                val friendNames =
-                                    friends.associate { it.friendUserId to it.displayNameSnapshot }
-                                val splits =
-                                    expenseRepository.getSplitsForExpenses(expenses.map { it.id })
-                                buildLedger(
+                            ) { expenses, payments, splitsByExpenseId, users, friends ->
+                                LedgerSource(
                                     expenses = expenses,
                                     payments = payments,
+                                    splitsByExpenseId = splitsByExpenseId,
+                                    users = users,
+                                    friends = friends,
+                                )
+                            }.combine(categoryRepository.observeCategories()) { source, categories ->
+                                buildLedger(
+                                    expenses = source.expenses,
+                                    payments = source.payments,
                                     me = me,
-                                    categoryById = categoryById,
-                                    friendNames = friendNames,
-                                    userNames = userNames,
-                                    splitsByExpenseId = splits,
+                                    categoryById = categories.associateBy { it.id },
+                                    friendNames =
+                                        source.friends.associate {
+                                            it.friendUserId to it.displayNameSnapshot
+                                        },
+                                    userNames = source.users.associate { it.id to it.displayName },
+                                    splitsByExpenseId = source.splitsByExpenseId,
                                 )
                             }
-                        }
-                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-            }
-
-        @OptIn(ExperimentalCoroutinesApi::class)
-        fun observeFriendExpenses(friendUserId: String): StateFlow<List<Expense>> =
-            friendExpenseFlows.getOrPut(friendUserId) {
-                userId
-                    .flatMapLatest { me ->
-                        if (me == null) {
-                            flowOf(emptyList())
-                        } else {
-                            expenseRepository.observeBetweenUsers(me, friendUserId)
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
             }
@@ -194,29 +222,40 @@ class ExpensesViewModel
                         if (me == null) {
                             flowOf(emptyList())
                         } else {
-                            combine(
-                                expenseRepository.observeBetweenUsers(me, friendUserId),
-                                paymentRepository.observeBetweenUsers(me, friendUserId),
-                                userRepository.observeUsers(),
-                                friendRepository.observeFriends(me),
-                                categoryRepository.observeCategories(),
-                            ) { expenses, payments, users, friends, categories ->
-                                val categoryById = categories.associateBy { it.id }
-                                val userNames = users.associate { it.id to it.displayName }
-                                val friendNames =
-                                    friends.associate { it.friendUserId to it.displayNameSnapshot }
-                                val splits =
-                                    expenseRepository.getSplitsForExpenses(expenses.map { it.id })
-                                buildLedger(
-                                    expenses = expenses,
-                                    payments = payments,
-                                    me = me,
-                                    categoryById = categoryById,
-                                    friendNames = friendNames,
-                                    userNames = userNames,
-                                    splitsByExpenseId = splits,
-                                )
-                            }
+                            expenseRepository
+                                .observeBetweenUsers(me, friendUserId)
+                                .flatMapLatest { expenses ->
+                                    val expenseIds = expenses.map { it.id }
+                                    combine(
+                                        flowOf(expenses),
+                                        paymentRepository.observeBetweenUsers(me, friendUserId),
+                                        expenseRepository.observeSplitsForExpenses(expenseIds),
+                                        userRepository.observeUsers(),
+                                        friendRepository.observeFriends(me),
+                                    ) { exp, payments, splitsByExpenseId, users, friends ->
+                                        LedgerSource(
+                                            expenses = exp,
+                                            payments = payments,
+                                            splitsByExpenseId = splitsByExpenseId,
+                                            users = users,
+                                            friends = friends,
+                                        )
+                                    }
+                                }.combine(categoryRepository.observeCategories()) { source, categories ->
+                                    buildLedger(
+                                        expenses = source.expenses,
+                                        payments = source.payments,
+                                        me = me,
+                                        categoryById = categories.associateBy { it.id },
+                                        friendNames =
+                                            source.friends.associate {
+                                                it.friendUserId to it.displayNameSnapshot
+                                            },
+                                        userNames =
+                                            source.users.associate { it.id to it.displayName },
+                                        splitsByExpenseId = source.splitsByExpenseId,
+                                    )
+                                }
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
             }
@@ -432,6 +471,157 @@ class ExpensesViewModel
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
                         infoMessage = if (result.isSuccess) "Expense added." else null,
+                    )
+                }
+                if (result.isSuccess) onSuccess()
+            }
+        }
+
+        /**
+         * Observes a single expense with labeled splits for the detail screen.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeExpenseDetail(expenseId: String): StateFlow<ExpenseDetailUi?> {
+            if (expenseId.isBlank()) return emptyExpenseDetail
+            return expenseDetailFlows.getOrPut(expenseId) {
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(null)
+                        } else {
+                            combine(
+                                expenseRepository.observeExpenseById(expenseId),
+                                expenseRepository.observeSplits(expenseId),
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                                groupRepository.observeGroupsForUser(me),
+                            ) { expense, splits, users, friends, groups ->
+                                if (expense == null) {
+                                    null
+                                } else {
+                                    val userNames = users.associate { it.id to it.displayName }
+                                    val friendNames =
+                                        friends.associate { it.friendUserId to it.displayNameSnapshot }
+                                    fun nameOf(id: String): String =
+                                        nameOf(id, me, friendNames, userNames)
+                                    val (balanceSide, balanceAmount) =
+                                        viewerBalanceForExpense(
+                                            me = me,
+                                            expense = expense,
+                                            splits = splits,
+                                        )
+                                    ExpenseDetailUi(
+                                        expense = expense,
+                                        splits =
+                                            splits.map { split ->
+                                                ExpenseSplitLineUi(
+                                                    userId = split.userId,
+                                                    participantLabel = nameOf(split.userId),
+                                                    owedAmount = split.owedAmount,
+                                                )
+                                            },
+                                        payerLabel = nameOf(expense.paidByUserId),
+                                        groupName =
+                                            expense.groupId?.let { gid ->
+                                                groups.firstOrNull { it.id == gid }?.name
+                                            },
+                                        viewerBalanceSide = balanceSide,
+                                        viewerBalanceAmount = balanceAmount,
+                                    )
+                                }
+                            }
+                        }
+                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            }
+        }
+
+        fun updateExpense(
+            expenseId: String,
+            description: String,
+            amountText: String,
+            paidByUserId: String,
+            participantIds: List<String>,
+            splitType: SplitType,
+            groupId: String?,
+            unequalAmounts: Map<String, BigDecimal> = emptyMap(),
+            percentages: Map<String, BigDecimal> = emptyMap(),
+            shares: Map<String, Int> = emptyMap(),
+            categoryId: String? = null,
+            notes: String? = null,
+            expenseDateEpochMs: Long? = null,
+            onSuccess: () -> Unit,
+        ) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                if (paidByUserId.isBlank() || participantIds.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = "Wait for your account to load, then try again.",
+                        )
+                    }
+                    return@launch
+                }
+                val amount =
+                    runCatching { BigDecimal(amountText.trim()) }.getOrElse {
+                        _uiState.update {
+                            it.copy(isSubmitting = false, errorMessage = "Enter a valid amount.")
+                        }
+                        return@launch
+                    }
+                val existing = expenseRepository.getExpenseById(expenseId)
+                if (existing == null) {
+                    _uiState.update {
+                        it.copy(isSubmitting = false, errorMessage = "Expense not found.")
+                    }
+                    return@launch
+                }
+                val result =
+                    expenseInteractor.updateExpense(
+                        expenseId = expenseId,
+                        input =
+                            CreateExpenseInput(
+                                description = description,
+                                amount = amount,
+                                currencyCode = existing.currencyCode,
+                                paidByUserId = paidByUserId,
+                                participantIds = participantIds,
+                                splitType = splitType,
+                                groupId = groupId ?: existing.groupId,
+                                unequalAmounts = unequalAmounts,
+                                percentages = percentages,
+                                shares = shares,
+                                recurrenceFrequency = existing.recurrenceFrequency,
+                                categoryId = categoryId ?: existing.categoryId,
+                                notes = notes,
+                                expenseDateEpochMs = expenseDateEpochMs ?: existing.expenseDateEpochMs,
+                                recurringTemplateId = existing.recurringTemplateId,
+                            ),
+                    )
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                        infoMessage = if (result.isSuccess) "Expense updated." else null,
+                    )
+                }
+                if (result.isSuccess) onSuccess()
+            }
+        }
+
+        fun deleteExpense(
+            expenseId: String,
+            onSuccess: () -> Unit,
+        ) {
+            val actor = userId.value.orEmpty()
+            viewModelScope.launch {
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val result = expenseInteractor.deleteExpense(expenseId, actorUserId = actor)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                        infoMessage = if (result.isSuccess) "Expense deleted." else null,
                     )
                 }
                 if (result.isSuccess) onSuccess()

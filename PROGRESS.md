@@ -7,6 +7,8 @@ Track development phases. Always check this file at the start of a session to de
 | Phase | Name | Features covered | Status | Doc |
 |---|---|---|---|---|
 | 0 | Project Setup & Foundations | — | Done | [phase-0-setup.md](docs/phase-0-setup.md) |
+| 0b | Brand Theme System | Light/dark Material 3 ColorScheme | Done | [phase-0b-theme-system.md](docs/phase-0b-theme-system.md) |
+| 10a | Expense Details | Edit/delete expense + Activity events | Done | [phase-10a-expense-details.md](docs/phase-10a-expense-details.md) |
 | 1 | Data Layer Foundations | Offline DB foundation | Done | [phase-1-data-layer.md](docs/phase-1-data-layer.md) |
 | 2 | Authentication (Supabase) | Cloud identity | Done | [phase-2-authentication.md](docs/phase-2-authentication.md) |
 | 3 | Friends & Groups | Add groups and friends | Done | [phase-3-friends-groups.md](docs/phase-3-friends-groups.md) |
@@ -17,11 +19,12 @@ Track development phases. Always check this file at the start of a session to de
 | 8 | Stretch / Pro-like Features | Payment integrations; transaction import; charts | Done | [phase-8-stretch.md](docs/phase-8-stretch.md) |
 | 9 | Polish, Testing, and Release Prep | 7+ languages; release hardening | Done | [phase-9-polish-release.md](docs/phase-9-polish-release.md) |
 
-**Current phase:** Complete through Phase 9 (2026-07-23)
+**Current phase:** Complete through Phase 9 (2026-07-23); Phase 0b theme inserted
 
-**Last completed:** Phase 9 on 2026-07-23
+**Last completed:** Phase 0b (brand theme) on 2026-07-23; Phase 9 on 2026-07-23
 
 ### Carried-forward TODOs
+- **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0b](docs/phase-0b-theme-system.md)).
 - **Apply Phase 3–6 SQL** — run in order: [phase-3-schema.sql](docs/sql/phase-3-schema.sql), [phase-3b-invites.sql](docs/sql/phase-3b-invites.sql), [phase-4-expenses.sql](docs/sql/phase-4-expenses.sql), [phase-6-payments.sql](docs/sql/phase-6-payments.sql).
 - **Invite email delivery** — MVP uses the system share sheet; automated send via Edge Function is still TODO.
 - **Invite deep links** — `https://splitease.app/invite/{token}` is a placeholder URL until App Links / web landing exist.

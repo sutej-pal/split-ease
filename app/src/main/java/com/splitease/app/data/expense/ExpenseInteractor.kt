@@ -3,6 +3,8 @@ package com.splitease.app.data.expense
 import com.splitease.app.data.remote.ExpenseRemoteDataSource
 import com.splitease.app.data.remote.dto.ExpenseDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
+import com.splitease.app.domain.model.ActivityEvent
+import com.splitease.app.domain.model.ActivityEventKind
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.RecurrenceFrequency
@@ -10,10 +12,14 @@ import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
 import com.splitease.app.domain.recurrence.RecurrenceScheduler
+import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.ExpenseRepository
+import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.split.SplitCalculator
 import java.math.BigDecimal
+import java.text.DateFormat
+import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -56,7 +62,7 @@ data class CreateExpenseInput(
 )
 
 /**
- * Creates and syncs expenses (Room first, then PostgREST).
+ * Creates, updates, deletes, and syncs expenses (Room first, then PostgREST).
  */
 @Singleton
 class ExpenseInteractor
@@ -64,6 +70,8 @@ class ExpenseInteractor
     constructor(
         private val expenseRepository: ExpenseRepository,
         private val userRepository: UserRepository,
+        private val groupRepository: GroupRepository,
+        private val activityEventRepository: ActivityEventRepository,
         private val remote: ExpenseRemoteDataSource,
     ) {
         /**
@@ -74,89 +82,71 @@ class ExpenseInteractor
          */
         suspend fun createExpense(input: CreateExpenseInput): Result<Expense> =
             runCatching {
-                require(input.description.isNotBlank()) { "Description is required." }
-                require(input.participantIds.contains(input.paidByUserId)) {
-                    "Payer must be included in participants."
-                }
-
-                val owed =
-                    SplitCalculator.calculate(
-                        total = input.amount,
-                        splitType = input.splitType,
-                        participantIds = input.participantIds,
-                        unequalAmounts = input.unequalAmounts,
-                        percentages = input.percentages,
-                        shares = input.shares,
-                    )
-
-                // Room FKs require local user rows for payer + every split participant.
-                (input.participantIds + input.paidByUserId).distinct().forEach { id ->
-                    ensureLocalUserExists(id)
-                }
-
-                val now = System.currentTimeMillis()
-                val expenseDate = input.expenseDateEpochMs ?: now
-                val isRecurring =
-                    input.recurrenceFrequency != RecurrenceFrequency.NONE &&
-                        input.recurringTemplateId == null
-                val nextOccurrence =
-                    if (isRecurring) {
-                        RecurrenceScheduler.nextOccurrenceAfter(expenseDate, input.recurrenceFrequency)
-                    } else {
-                        null
-                    }
-                val expenseId = UUID.randomUUID().toString()
-                val expense =
-                    Expense(
-                        id = expenseId,
-                        description = input.description.trim(),
-                        amount = input.amount,
-                        currencyCode = input.currencyCode.trim().ifBlank { "INR" }.uppercase(),
-                        categoryId = input.categoryId,
-                        paidByUserId = input.paidByUserId,
-                        groupId = input.groupId,
-                        expenseDateEpochMs = expenseDate,
-                        splitType = input.splitType,
-                        isRecurring = isRecurring,
-                        recurrenceFrequency =
-                            if (isRecurring) input.recurrenceFrequency else RecurrenceFrequency.NONE,
-                        nextOccurrenceEpochMs = nextOccurrence,
-                        recurringTemplateId = input.recurringTemplateId,
-                        notes = input.notes?.trim()?.ifBlank { null },
-                        remoteId = null,
-                        createdAtEpochMs = now,
-                        updatedAtEpochMs = now,
-                        syncStatus = SyncStatus.PENDING,
-                    )
-
-                val splits =
-                    owed.map { (userId, amount) ->
-                        ExpenseSplit(
-                            id = UUID.randomUUID().toString(),
-                            expenseId = expenseId,
-                            userId = userId,
-                            owedAmount = amount,
-                            percentage = input.percentages[userId],
-                            shares = input.shares[userId],
-                            syncStatus = SyncStatus.PENDING,
-                        )
-                    }
-
-                expenseRepository.upsertExpenseWithSplits(expense, splits)
-
-                val synced =
-                    runCatching {
-                        pushExpense(expense, splits)
-                        expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
-                    }.getOrDefault(expense)
-
-                if (synced.syncStatus == SyncStatus.SYNCED) {
-                    expenseRepository.upsertExpenseWithSplits(
-                        synced,
-                        splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
-                    )
-                }
+                val built = buildExpenseAndSplits(input = input, existing = null)
+                expenseRepository.upsertExpenseWithSplits(built.expense, built.splits)
+                val synced = pushOrKeepPending(built.expense, built.splits)
+                recordExpenseActivity(
+                    kind = ActivityEventKind.EXPENSE_ADDED,
+                    expense = synced,
+                    participantIds = built.splits.map { it.userId },
+                    actorUserId = synced.paidByUserId,
+                )
                 synced
+            }
+
+        /**
+         * Updates an existing expense (stable id) and best-effort cloud sync.
+         *
+         * @param expenseId Existing expense id.
+         * @param input Updated fields (same shape as create).
+         * @return Persisted [Expense].
+         */
+        suspend fun updateExpense(
+            expenseId: String,
+            input: CreateExpenseInput,
+        ): Result<Expense> =
+            runCatching {
+                val existing =
+                    expenseRepository.getExpenseById(expenseId)
+                        ?: error("Expense not found.")
+                val built = buildExpenseAndSplits(input = input, existing = existing)
+                expenseRepository.upsertExpenseWithSplits(built.expense, built.splits)
+                val synced = pushOrKeepPending(built.expense, built.splits)
+                recordExpenseActivity(
+                    kind = ActivityEventKind.EXPENSE_UPDATED,
+                    expense = synced,
+                    participantIds = built.splits.map { it.userId },
+                    actorUserId = synced.paidByUserId,
+                )
+                synced
+            }
+
+        /**
+         * Deletes an expense locally and best-effort remotely; writes a deleted activity event.
+         *
+         * @param expenseId Expense id.
+         * @param actorUserId User performing the delete (for the activity feed).
+         */
+        suspend fun deleteExpense(
+            expenseId: String,
+            actorUserId: String,
+        ): Result<Unit> =
+            runCatching {
+                val existing =
+                    expenseRepository.getExpenseById(expenseId)
+                        ?: error("Expense not found.")
+                val splits = expenseRepository.getSplits(expenseId)
+                recordExpenseActivity(
+                    kind = ActivityEventKind.EXPENSE_DELETED,
+                    expense = existing,
+                    participantIds = splits.map { it.userId },
+                    actorUserId = actorUserId.ifBlank { existing.paidByUserId },
+                )
+                runCatching {
+                    remote.deleteSplitsForExpense(expenseId)
+                    remote.deleteExpense(expenseId)
+                }
+                expenseRepository.deleteExpenseById(expenseId)
             }
 
         /**
@@ -258,6 +248,157 @@ class ExpenseInteractor
                 val dto = remote.fetchExpense(expenseId) ?: return@forEach
                 persistRemoteExpense(dto)
             }
+        }
+
+        private data class BuiltExpense(
+            val expense: Expense,
+            val splits: List<ExpenseSplit>,
+        )
+
+        private suspend fun buildExpenseAndSplits(
+            input: CreateExpenseInput,
+            existing: Expense?,
+        ): BuiltExpense {
+            require(input.description.isNotBlank()) { "Description is required." }
+            require(input.participantIds.contains(input.paidByUserId)) {
+                "Payer must be included in participants."
+            }
+
+            val owed =
+                SplitCalculator.calculate(
+                    total = input.amount,
+                    splitType = input.splitType,
+                    participantIds = input.participantIds,
+                    unequalAmounts = input.unequalAmounts,
+                    percentages = input.percentages,
+                    shares = input.shares,
+                )
+
+            (input.participantIds + input.paidByUserId).distinct().forEach { id ->
+                ensureLocalUserExists(id)
+            }
+
+            val now = System.currentTimeMillis()
+            val expenseDate = input.expenseDateEpochMs ?: existing?.expenseDateEpochMs ?: now
+            val isRecurring =
+                if (existing != null) {
+                    existing.isRecurring &&
+                        input.recurrenceFrequency != RecurrenceFrequency.NONE &&
+                        existing.recurringTemplateId == null
+                } else {
+                    input.recurrenceFrequency != RecurrenceFrequency.NONE &&
+                        input.recurringTemplateId == null
+                }
+            val recurrenceFrequency =
+                when {
+                    existing != null && !isRecurring -> existing.recurrenceFrequency
+                    isRecurring -> input.recurrenceFrequency
+                    else -> RecurrenceFrequency.NONE
+                }
+            val nextOccurrence =
+                if (isRecurring) {
+                    RecurrenceScheduler.nextOccurrenceAfter(expenseDate, recurrenceFrequency)
+                } else {
+                    existing?.nextOccurrenceEpochMs.takeIf { existing?.isRecurring == true }
+                }
+            val expenseId = existing?.id ?: UUID.randomUUID().toString()
+            val expense =
+                Expense(
+                    id = expenseId,
+                    description = input.description.trim(),
+                    amount = input.amount,
+                    currencyCode = input.currencyCode.trim().ifBlank { "INR" }.uppercase(),
+                    categoryId = input.categoryId,
+                    paidByUserId = input.paidByUserId,
+                    groupId = input.groupId ?: existing?.groupId,
+                    expenseDateEpochMs = expenseDate,
+                    splitType = input.splitType,
+                    isRecurring = isRecurring || (existing?.isRecurring == true && input.recurringTemplateId == null),
+                    recurrenceFrequency = recurrenceFrequency,
+                    nextOccurrenceEpochMs = nextOccurrence,
+                    recurringTemplateId = input.recurringTemplateId ?: existing?.recurringTemplateId,
+                    notes = input.notes?.trim()?.ifBlank { null },
+                    remoteId = existing?.remoteId,
+                    createdAtEpochMs = existing?.createdAtEpochMs ?: now,
+                    updatedAtEpochMs = now,
+                    syncStatus = SyncStatus.PENDING,
+                )
+
+            val existingSplits =
+                if (existing != null) {
+                    expenseRepository.getSplits(existing.id).associateBy { it.userId }
+                } else {
+                    emptyMap()
+                }
+            val splits =
+                owed.map { (userId, amount) ->
+                    ExpenseSplit(
+                        id = existingSplits[userId]?.id ?: UUID.randomUUID().toString(),
+                        expenseId = expenseId,
+                        userId = userId,
+                        owedAmount = amount,
+                        percentage = input.percentages[userId],
+                        shares = input.shares[userId],
+                        syncStatus = SyncStatus.PENDING,
+                    )
+                }
+            return BuiltExpense(expense, splits)
+        }
+
+        private suspend fun pushOrKeepPending(
+            expense: Expense,
+            splits: List<ExpenseSplit>,
+        ): Expense {
+            val synced =
+                runCatching {
+                    pushExpense(expense, splits)
+                    expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
+                }.getOrDefault(expense)
+
+            if (synced.syncStatus == SyncStatus.SYNCED) {
+                expenseRepository.upsertExpenseWithSplits(
+                    synced,
+                    splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
+                )
+            }
+            return synced
+        }
+
+        private suspend fun recordExpenseActivity(
+            kind: ActivityEventKind,
+            expense: Expense,
+            participantIds: List<String>,
+            actorUserId: String,
+        ) {
+            val groupName =
+                expense.groupId?.let { id -> groupRepository.getGroupById(id)?.name }
+            val context = groupName ?: "Non-group"
+            val date =
+                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(expense.expenseDateEpochMs))
+            val titlePrefix =
+                when (kind) {
+                    ActivityEventKind.EXPENSE_ADDED -> ""
+                    ActivityEventKind.EXPENSE_UPDATED -> "Updated: "
+                    ActivityEventKind.EXPENSE_DELETED -> "Deleted: "
+                }
+            val involved =
+                (participantIds + expense.paidByUserId + actorUserId)
+                    .distinct()
+                    .sorted()
+                    .joinToString(prefix = ",", postfix = ",", separator = ",")
+            activityEventRepository.upsert(
+                ActivityEvent(
+                    id = UUID.randomUUID().toString(),
+                    kind = kind,
+                    title = "$titlePrefix${expense.description}",
+                    subtitle = "$context · $date",
+                    amountLabel = "${expense.currencyCode} ${expense.amount.toPlainString()}",
+                    actorUserId = actorUserId,
+                    relatedExpenseId = expense.id,
+                    involvedUserIds = involved,
+                    sortEpochMs = System.currentTimeMillis(),
+                ),
+            )
         }
 
         private suspend fun persistRemoteExpense(dto: ExpenseDto) {

@@ -40,6 +40,6 @@ class SplitEaseMigrationsTest {
                 openHelper.writableDatabase
                 close()
             }
-        helper.runMigrationsAndValidate(dbName, 4, true, *SplitEaseMigrations.ALL)
+        helper.runMigrationsAndValidate(dbName, 5, true, *SplitEaseMigrations.ALL)
     }
 }

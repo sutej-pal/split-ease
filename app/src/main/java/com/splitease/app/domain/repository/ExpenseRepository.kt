@@ -25,6 +25,13 @@ interface ExpenseRepository {
     suspend fun getExpenseById(id: String): Expense?
 
     /**
+     * Observes a single expense by id.
+     *
+     * @param id Local UUID.
+     */
+    fun observeExpenseById(id: String): Flow<Expense?>
+
+    /**
      * Persists an expense together with its split lines in one transaction.
      *
      * @param expense Parent expense.
@@ -82,6 +89,22 @@ interface ExpenseRepository {
      * @return Map of expenseId → splits (missing ids map to empty lists).
      */
     suspend fun getSplitsForExpenses(expenseIds: List<String>): Map<String, List<ExpenseSplit>>
+
+    /**
+     * Observes splits for all expenses in [groupId].
+     *
+     * @param groupId Group filter.
+     * @return Flow of expenseId → splits.
+     */
+    fun observeSplitsByGroup(groupId: String): Flow<Map<String, List<ExpenseSplit>>>
+
+    /**
+     * Observes splits for [expenseIds]. Empty [expenseIds] emits an empty map.
+     *
+     * @param expenseIds Parent expense ids.
+     * @return Flow of expenseId → splits.
+     */
+    fun observeSplitsForExpenses(expenseIds: List<String>): Flow<Map<String, List<ExpenseSplit>>>
 
     /**
      * Remaps payer and split participant ids after an invite placeholder becomes a real user.

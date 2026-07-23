@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.expenses
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,8 +64,13 @@ private val CategoryPastels =
 
 /**
  * Inserts month headers + [LedgerEntryRow] items into a [LazyListScope].
+ *
+ * @param onExpenseClick Invoked with the raw expense id when an expense row is tapped.
  */
-fun LazyListScope.ledgerEntries(items: List<LedgerListItem>) {
+fun LazyListScope.ledgerEntries(
+    items: List<LedgerListItem>,
+    onExpenseClick: ((expenseId: String) -> Unit)? = null,
+) {
     val groups = items.groupByMonth()
     groups.forEach { (monthLabel, monthItems) ->
         item(key = "month-$monthLabel") {
@@ -76,7 +83,17 @@ fun LazyListScope.ledgerEntries(items: List<LedgerListItem>) {
             )
         }
         items(monthItems, key = { it.id }) { entry ->
-            LedgerEntryRow(item = entry)
+            LedgerEntryRow(
+                item = entry,
+                onClick =
+                    if (!entry.isPayment && onExpenseClick != null) {
+                        {
+                            onExpenseClick(entry.id.removePrefix("expense-"))
+                        }
+                    } else {
+                        null
+                    },
+            )
         }
     }
 }
@@ -85,6 +102,7 @@ fun LazyListScope.ledgerEntries(items: List<LedgerListItem>) {
 fun LedgerEntryRow(
     item: LedgerListItem,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val localDate =
@@ -109,6 +127,7 @@ fun LedgerEntryRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                 .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -185,7 +204,10 @@ private fun BalanceTrailing(item: LedgerListItem) {
     when {
         item.isPayment -> {
             val amount = item.balanceAmount ?: item.paidAmount ?: return
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                modifier = Modifier.widthIn(min = 88.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
                 Text(
                     text = MoneyFormat.format(amount, item.currencyCode),
                     style = MaterialTheme.typography.titleMedium,
@@ -206,13 +228,17 @@ private fun BalanceTrailing(item: LedgerListItem) {
                     LedgerBalanceSide.LENT -> stringResource(R.string.ledger_you_lent)
                     LedgerBalanceSide.BORROWED -> stringResource(R.string.ledger_you_borrowed)
                 }
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                modifier = Modifier.widthIn(min = 88.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = color,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.End,
+                    maxLines = 1,
                 )
                 Text(
                     text = MoneyFormat.format(item.balanceAmount, item.currencyCode),
@@ -220,6 +246,7 @@ private fun BalanceTrailing(item: LedgerListItem) {
                     fontWeight = FontWeight.Bold,
                     color = color,
                     textAlign = TextAlign.End,
+                    maxLines = 1,
                 )
             }
         }

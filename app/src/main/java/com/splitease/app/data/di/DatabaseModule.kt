@@ -2,6 +2,7 @@ package com.splitease.app.data.di
 
 import android.content.Context
 import androidx.room.Room
+import com.splitease.app.data.local.dao.ActivityEventDao
 import com.splitease.app.data.local.dao.CategoryDao
 import com.splitease.app.data.local.dao.ExpenseDao
 import com.splitease.app.data.local.dao.FriendDao
@@ -69,4 +70,8 @@ object DatabaseModule {
     /** @param db Database. @return [InviteDao]. */
     @Provides
     fun provideInviteDao(db: SplitEaseDatabase): InviteDao = db.inviteDao()
+
+    /** @param db Database. @return [ActivityEventDao]. */
+    @Provides
+    fun provideActivityEventDao(db: SplitEaseDatabase): ActivityEventDao = db.activityEventDao()
 }

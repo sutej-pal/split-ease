@@ -1,5 +1,6 @@
 package com.splitease.app.data.di
 
+import com.splitease.app.data.repository.RoomActivityEventRepository
 import com.splitease.app.data.repository.RoomCategoryRepository
 import com.splitease.app.data.repository.RoomExpenseRepository
 import com.splitease.app.data.repository.RoomFriendRepository
@@ -9,6 +10,7 @@ import com.splitease.app.data.repository.RoomPaymentRepository
 import com.splitease.app.data.repository.RoomUserRepository
 import com.splitease.app.data.repository.SupabaseAuthRepository
 import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
+import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
@@ -64,6 +66,11 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindExpenseRepository(impl: RoomExpenseRepository): ExpenseRepository
+
+    /** Binds [ActivityEventRepository] to [RoomActivityEventRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindActivityEventRepository(impl: RoomActivityEventRepository): ActivityEventRepository
 
     /** Binds [PaymentRepository] to [RoomPaymentRepository]. */
     @Binds

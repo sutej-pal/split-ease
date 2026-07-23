@@ -89,6 +89,7 @@ import java.util.TimeZone
 fun AddExpenseScreen(
     groupId: String?,
     friendUserId: String?,
+    expenseId: String? = null,
     onBack: () -> Unit,
     onDone: () -> Unit,
     onEditGroupMembers: (() -> Unit)? = null,
@@ -96,6 +97,9 @@ fun AddExpenseScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currencyCode by viewModel.currencyCode.collectAsStateWithLifecycle()
+    val editingExpense by
+        viewModel.observeExpenseDetail(expenseId.orEmpty()).collectAsStateWithLifecycle()
+    val isEdit = !expenseId.isNullOrBlank()
     var title by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
@@ -106,29 +110,77 @@ fun AddExpenseScreen(
     var unequalTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var percentTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var shareTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var membersConfirmed by rememberSaveable { mutableStateOf(false) }
+    var membersConfirmed by rememberSaveable { mutableStateOf(isEdit) }
+    // Only show the members confirm dialog for empty groups (no expenses/payments yet).
+    var membersDialogEligible by rememberSaveable { mutableStateOf(false) }
+    var membersEligibilityChecked by remember { mutableStateOf(groupId == null || isEdit) }
+    // Dismiss dialog window first, then leave the screen (avoids flash of previous route
+    // under a still-visible Dialog).
+    var exitAfterMembersDialog by remember { mutableStateOf(false) }
     var expenseDateMs by rememberSaveable { mutableLongStateOf(System.currentTimeMillis()) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var showPaidByPicker by rememberSaveable { mutableStateOf(false) }
     var showSplitPicker by rememberSaveable { mutableStateOf(false) }
+    var prefilled by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val me by viewModel.signedInUserId.collectAsStateWithLifecycle()
 
-    LaunchedEffect(groupId, friendUserId, me) {
-        val userId = me ?: return@LaunchedEffect
-        participants =
-            when {
-                groupId != null -> viewModel.resolveGroupParticipantOptions(groupId)
-                friendUserId != null -> viewModel.resolveFriendParticipantOptions(friendUserId)
-                else -> emptyList()
-            }
-        paidBy = userId
-        selected = participants.map { it.userId }.toSet()
+    LaunchedEffect(groupId, isEdit) {
+        if (groupId == null || isEdit) {
+            membersDialogEligible = false
+            membersEligibilityChecked = true
+            return@LaunchedEffect
+        }
+        val hasEntries = viewModel.groupHasLedgerEntries(groupId)
+        membersDialogEligible = !hasEntries
+        if (hasEntries) membersConfirmed = true
+        membersEligibilityChecked = true
     }
 
-    LaunchedEffect(groupId, membersConfirmed, lifecycleOwner) {
-        if (groupId == null || membersConfirmed) return@LaunchedEffect
+    LaunchedEffect(exitAfterMembersDialog) {
+        if (exitAfterMembersDialog) onBack()
+    }
+
+    LaunchedEffect(groupId, friendUserId, me, editingExpense) {
+        val userId = me ?: return@LaunchedEffect
+        val existing = editingExpense?.expense
+        participants =
+            when {
+                (groupId ?: existing?.groupId) != null ->
+                    viewModel.resolveGroupParticipantOptions(groupId ?: existing!!.groupId!!)
+                friendUserId != null -> viewModel.resolveFriendParticipantOptions(friendUserId)
+                existing != null ->
+                    editingExpense!!.splits.map {
+                        ParticipantOption(it.userId, it.participantLabel)
+                    }
+                else -> emptyList()
+            }
+        if (!isEdit || !prefilled) {
+            if (!isEdit) {
+                paidBy = userId
+                selected = participants.map { it.userId }.toSet()
+            }
+        }
+    }
+
+    LaunchedEffect(editingExpense, participants) {
+        val detail = editingExpense ?: return@LaunchedEffect
+        if (prefilled || participants.isEmpty()) return@LaunchedEffect
+        val expense = detail.expense
+        title = expense.description
+        amount = expense.amount.toPlainString()
+        notes = expense.notes.orEmpty()
+        splitType = expense.splitType.name
+        paidBy = expense.paidByUserId
+        selected = detail.splits.map { it.userId }.toSet()
+        expenseDateMs = expense.expenseDateEpochMs
+        unequalTexts = detail.splits.associate { it.userId to it.owedAmount.toPlainString() }
+        prefilled = true
+    }
+
+    LaunchedEffect(groupId, membersConfirmed, membersDialogEligible, lifecycleOwner) {
+        if (groupId == null || membersConfirmed || !membersDialogEligible) return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             val refreshed = viewModel.resolveGroupParticipantOptions(groupId)
             participants = refreshed
@@ -137,14 +189,31 @@ fun AddExpenseScreen(
         }
     }
 
-    if (groupId != null && !membersConfirmed) {
+    val showMembersDialog =
+        groupId != null &&
+            membersEligibilityChecked &&
+            membersDialogEligible &&
+            !membersConfirmed &&
+            !exitAfterMembersDialog
+
+    if (showMembersDialog) {
         GroupExpenseMembersConfirmDialog(
             memberCount = participants.size,
             onStartAddingExpenses = { membersConfirmed = true },
             onEditGroupMembers = { onEditGroupMembers?.invoke() },
-            onDismiss = onBack,
+            onDismiss = { exitAfterMembersDialog = true },
         )
     }
+
+    // Hide the form while the members gate applies (or while leaving after dismiss) so the
+    // Dialog window is removed before navigation — avoids the underlay popping first.
+    val blockingOnMembersGate =
+        groupId != null &&
+            !isEdit &&
+            (exitAfterMembersDialog ||
+                !membersEligibilityChecked ||
+                (membersDialogEligible && !membersConfirmed))
+    if (blockingOnMembersGate) return
 
     val mode = runCatching { SplitType.valueOf(splitType) }.getOrDefault(SplitType.EQUAL)
     val paidByLabel =
@@ -178,26 +247,48 @@ fun AddExpenseScreen(
             selected.associateWith { id ->
                 shareTexts[id]?.trim()?.toIntOrNull() ?: 1
             }
-        viewModel.createExpense(
-            description = title,
-            amountText = amount,
-            paidByUserId = paidBy,
-            participantIds = selected.toList(),
-            splitType = mode,
-            groupId = groupId,
-            unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
-            percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
-            shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
-            recurrenceFrequency = RecurrenceFrequency.NONE,
-            categoryId = null,
-            notes = notes.trim().ifBlank { null },
-            expenseDateEpochMs = expenseDateMs,
-            onSuccess = onDone,
-        )
+        if (isEdit && expenseId != null) {
+            viewModel.updateExpense(
+                expenseId = expenseId,
+                description = title,
+                amountText = amount,
+                paidByUserId = paidBy,
+                participantIds = selected.toList(),
+                splitType = mode,
+                groupId = groupId ?: editingExpense?.expense?.groupId,
+                unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
+                percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
+                shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
+                categoryId = editingExpense?.expense?.categoryId,
+                notes = notes.trim().ifBlank { null },
+                expenseDateEpochMs = expenseDateMs,
+                onSuccess = onDone,
+            )
+        } else {
+            viewModel.createExpense(
+                description = title,
+                amountText = amount,
+                paidByUserId = paidBy,
+                participantIds = selected.toList(),
+                splitType = mode,
+                groupId = groupId,
+                unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
+                percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
+                shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
+                recurrenceFrequency = RecurrenceFrequency.NONE,
+                categoryId = null,
+                notes = notes.trim().ifBlank { null },
+                expenseDateEpochMs = expenseDateMs,
+                onSuccess = onDone,
+            )
+        }
     }
 
     SeScreen(
-        title = stringResource(R.string.action_add_expense),
+        title =
+            stringResource(
+                if (isEdit) R.string.action_edit_expense else R.string.action_add_expense,
+            ),
         onBack = onBack,
         actions = {
             IconButton(

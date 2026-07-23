@@ -215,6 +215,12 @@ class SocialInteractor
                     expenseRepository.remapUserId(previous.friendUserId, dto.friendUserId)
                     groupRepository.remapMemberUserId(previous.friendUserId, dto.friendUserId)
                 }
+                // group_members FK requires a users row for friendUserId
+                ensureLocalUserExists(
+                    userId = dto.friendUserId,
+                    email = dto.emailSnapshot,
+                    displayName = dto.displayNameSnapshot,
+                )
                 friendRepository.upsert(
                     Friend(
                         id = dto.id,
@@ -275,7 +281,7 @@ class SocialInteractor
         ): Result<Group> =
             runCatching {
                 require(name.isNotBlank()) { "Group name is required." }
-                ensureLocalUserExists(creatorUserId)
+                ensureLocalUserExists(creatorUserId, displayName = "You")
                 val now = System.currentTimeMillis()
                 val groupId = UUID.randomUUID().toString()
                 val group =
@@ -305,7 +311,13 @@ class SocialInteractor
 
                 val extraMembers =
                     memberFriendUserIds.distinct().filter { it != creatorUserId }.map { friendId ->
-                        ensureLocalUserExists(friendId)
+                        val friend = friendRepository.getByFriendUserId(friendId)
+                        ensureLocalUserExists(
+                            userId = friendId,
+                            email = friend?.emailSnapshot.orEmpty(),
+                            displayName =
+                                friend?.displayNameSnapshot?.takeIf { it.isNotBlank() } ?: "Member",
+                        )
                         GroupMember(
                             id = UUID.randomUUID().toString(),
                             groupId = groupId,
@@ -408,6 +420,12 @@ class SocialInteractor
          */
         suspend fun addMemberToGroup(groupId: String, userId: String): Result<Unit> =
             runCatching {
+                val friend = friendRepository.getByFriendUserId(userId)
+                ensureLocalUserExists(
+                    userId = userId,
+                    email = friend?.emailSnapshot.orEmpty(),
+                    displayName = friend?.displayNameSnapshot?.takeIf { it.isNotBlank() } ?: "Member",
+                )
                 val now = System.currentTimeMillis()
                 val member =
                     GroupMember(
@@ -517,17 +535,25 @@ class SocialInteractor
         }
 
         /**
-         * Room FK on [GroupMember] requires a [User] row. Session restore / DB wipe can leave
-         * auth signed-in without a local user — insert a minimal stub when missing.
+         * Room FK on [GroupMember] requires a [User] row. Friends synced from the cloud may
+         * exist without a local user — insert a stub when missing.
+         *
+         * @param userId User id to ensure.
+         * @param email Optional email for the stub.
+         * @param displayName Optional display name for the stub.
          */
-        private suspend fun ensureLocalUserExists(userId: String) {
+        private suspend fun ensureLocalUserExists(
+            userId: String,
+            email: String = "",
+            displayName: String = "Member",
+        ) {
             if (userRepository.getUserById(userId) != null) return
             val now = System.currentTimeMillis()
             userRepository.upsert(
                 User(
                     id = userId,
-                    email = "",
-                    displayName = "You",
+                    email = email,
+                    displayName = displayName.ifBlank { "Member" },
                     photoUrl = null,
                     remoteId = userId,
                     createdAtEpochMs = now,

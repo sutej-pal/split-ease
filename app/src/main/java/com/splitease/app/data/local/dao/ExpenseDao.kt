@@ -31,6 +31,10 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ExpenseEntity?
 
+    /** @param id Local UUID. @return Flow of matching rows (0 or 1). */
+    @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
+    fun observeById(id: String): Flow<List<ExpenseEntity>>
+
     /** Inserts or replaces [expense]. */
     @Upsert
     suspend fun upsert(expense: ExpenseEntity)
@@ -63,6 +67,30 @@ interface ExpenseDao {
      */
     @Query("SELECT * FROM expense_splits WHERE expenseId IN (:expenseIds)")
     suspend fun getSplitsForExpenses(expenseIds: List<String>): List<ExpenseSplitEntity>
+
+    /**
+     * Observes all splits for expenses in [groupId].
+     *
+     * @param groupId Group filter.
+     * @return Flow of split rows (unordered).
+     */
+    @Query(
+        """
+        SELECT s.* FROM expense_splits s
+        INNER JOIN expenses e ON e.id = s.expenseId
+        WHERE e.groupId = :groupId
+        """,
+    )
+    fun observeSplitsByGroup(groupId: String): Flow<List<ExpenseSplitEntity>>
+
+    /**
+     * Observes splits for the given expense ids (reactive).
+     *
+     * @param expenseIds Parent expense ids.
+     * @return Flow of matching split rows (unordered).
+     */
+    @Query("SELECT * FROM expense_splits WHERE expenseId IN (:expenseIds)")
+    fun observeSplitsForExpenses(expenseIds: List<String>): Flow<List<ExpenseSplitEntity>>
 
     /**
      * Observes non-group expenses shared between [userId] and [otherUserId].

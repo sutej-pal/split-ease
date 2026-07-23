@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Expense detail screen with edit and delete; create/update/delete appear on Activity ([phase-10a](docs/phase-10a-expense-details.md))
+- Brand color system and Material 3 theme (light/dark) from icon indigo/amber tokens ([phase-0b](docs/phase-0b-theme-system.md), [design-tokens](docs/design-tokens.md))
 - Find people screen (search friends + device contacts) and redesigned Add friend (name + phone/email); Group settings → Add people uses it
 - Extras backlog: [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md) (group member notifications + live ledger visibility)
 - Group detail resume refreshes via full `syncForUser` + targeted group expense pull so other members’ changes show up
