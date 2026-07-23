@@ -1,5 +1,7 @@
 package com.splitease.app.data.payment
 
+import com.splitease.app.data.remote.PaymentRemoteDataSource
+import com.splitease.app.data.remote.dto.PaymentDto
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.PaymentRepository
@@ -29,13 +31,14 @@ data class RecordPaymentInput(
 )
 
 /**
- * Records settlements into Room (local-first).
+ * Records settlements into Room (local-first) and pulls remote payments.
  */
 @Singleton
 class PaymentInteractor
     @Inject
     constructor(
         private val paymentRepository: PaymentRepository,
+        private val remote: PaymentRemoteDataSource,
     ) {
         /**
          * Persists a settlement payment.
@@ -66,4 +69,35 @@ class PaymentInteractor
                 paymentRepository.upsert(payment)
                 payment
             }
+
+        /**
+         * Pulls remote payments involving [userId] into Room.
+         *
+         * @param userId Current user id.
+         */
+        suspend fun refreshPaymentsForUser(userId: String) {
+            remote.fetchInvolvingUser(userId).forEach { dto ->
+                persistRemotePayment(dto)
+            }
+        }
+
+        private suspend fun persistRemotePayment(dto: PaymentDto) {
+            val existing = paymentRepository.getById(dto.id)
+            paymentRepository.upsert(
+                Payment(
+                    id = dto.id,
+                    fromUserId = dto.fromUserId,
+                    toUserId = dto.toUserId,
+                    amount = BigDecimal(dto.amount),
+                    currencyCode = dto.currencyCode,
+                    groupId = dto.groupId,
+                    note = dto.note,
+                    paidAtEpochMs = dto.paidAtEpochMs,
+                    remoteId = dto.id,
+                    createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
+                    updatedAtEpochMs = dto.updatedAtEpochMs,
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            )
+        }
     }

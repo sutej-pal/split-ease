@@ -41,7 +41,7 @@ class AccountViewModel
         fun syncNow() {
             viewModelScope.launch {
                 _sync.update { it.copy(isSyncing = true, lastMessage = null) }
-                val result = syncInteractor.flushPending()
+                val result = syncInteractor.syncForUser()
                 val count = syncInteractor.pendingCount()
                 _sync.update {
                     it.copy(
@@ -55,6 +55,8 @@ class AccountViewModel
 
         private fun SyncFlushResult.toMessage(): String {
             val parts = mutableListOf<String>()
+            if (groupsSynced > 0) parts += "$groupsSynced groups"
+            if (membersSynced > 0) parts += "$membersSynced members"
             if (expensesSynced > 0) parts += "$expensesSynced expenses"
             if (paymentsSynced > 0) parts += "$paymentsSynced payments"
             return when {

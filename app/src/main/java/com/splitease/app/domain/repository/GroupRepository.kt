@@ -83,4 +83,18 @@ interface GroupRepository {
      * @return Membership or null.
      */
     suspend fun getMember(groupId: String, userId: String): GroupMember?
+
+    /**
+     * Groups that still need a cloud upsert.
+     *
+     * @return Pending / local-only groups, oldest first.
+     */
+    suspend fun getPendingGroups(): List<Group>
+
+    /**
+     * Memberships that still need a cloud upsert.
+     *
+     * @return Pending / local-only members, oldest first.
+     */
+    suspend fun getPendingMembers(): List<GroupMember>
 }

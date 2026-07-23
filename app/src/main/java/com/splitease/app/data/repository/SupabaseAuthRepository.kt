@@ -2,7 +2,7 @@ package com.splitease.app.data.repository
 
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ProfileDto
-import com.splitease.app.data.social.SocialInteractor
+import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SyncStatus
@@ -34,7 +34,7 @@ class SupabaseAuthRepository
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
         private val socialRemote: SocialRemoteDataSource,
-        private val socialInteractor: Provider<SocialInteractor>,
+        private val syncInteractor: Provider<SyncInteractor>,
     ) : AuthRepository {
         override fun observeSession(): Flow<AuthSession> =
             supabase.auth.sessionStatus.map { status ->
@@ -69,7 +69,7 @@ class SupabaseAuthRepository
                 }
                 persistCurrentUser()
                 categoryRepository.ensureDefaults()
-                claimInvitesAndExpenses()
+                hydrateCloudData()
             }
 
         override suspend fun signIn(email: String, password: String): Result<Unit> =
@@ -80,7 +80,7 @@ class SupabaseAuthRepository
                 }
                 persistCurrentUser()
                 categoryRepository.ensureDefaults()
-                claimInvitesAndExpenses()
+                hydrateCloudData()
             }
 
         override suspend fun sendPasswordReset(email: String): Result<Unit> =
@@ -97,15 +97,12 @@ class SupabaseAuthRepository
             runCatching {
                 persistCurrentUser()
                 categoryRepository.ensureDefaults()
+                hydrateCloudData()
             }
 
-        private suspend fun claimInvitesAndExpenses() {
+        private suspend fun hydrateCloudData() {
             val userId = supabase.auth.currentUserOrNull()?.id ?: return
-            runCatching {
-                socialInteractor.get().acceptPendingInvitesForCurrentUser(userId)
-            }.onFailure {
-                runCatching { socialRemote.acceptPendingInvites() }
-            }
+            runCatching { syncInteractor.get().syncForUser(userId) }
         }
 
         private suspend fun persistCurrentUser() {

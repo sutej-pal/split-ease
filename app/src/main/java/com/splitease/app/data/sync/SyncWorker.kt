@@ -26,7 +26,7 @@ class SyncWorker
     ) : CoroutineWorker(context, params) {
         override suspend fun doWork(): Result =
             runCatching {
-                syncInteractor.flushPending()
+                syncInteractor.syncForUser()
                 Result.success()
             }.getOrElse { Result.retry() }
 

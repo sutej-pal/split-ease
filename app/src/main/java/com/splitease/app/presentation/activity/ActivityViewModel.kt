@@ -2,6 +2,7 @@ package com.splitease.app.presentation.activity
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.Payment
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
@@ -48,6 +50,7 @@ class ActivityViewModel
         private val groupRepository: GroupRepository,
         private val userRepository: UserRepository,
         private val friendRepository: FriendRepository,
+        private val syncInteractor: SyncInteractor,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
@@ -94,6 +97,16 @@ class ActivityViewModel
                         }
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        init {
+            viewModelScope.launch {
+                userId.collect { me ->
+                    if (me != null) {
+                        runCatching { syncInteractor.syncForUser(me) }
+                    }
+                }
+            }
+        }
 
         private fun Expense.toUi(
             me: String,

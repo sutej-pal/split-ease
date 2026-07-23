@@ -159,7 +159,7 @@ presentation/search|spending + Account sync
 - Search: Room `LIKE` on description/notes; Groups home search icon.
 - Categories: picker + custom upsert on Add Expense.
 - Spending: viewer owed amounts by category × currency × period.
-- Sync: flush PENDING/LOCAL_ONLY expenses (with splits) and payments; periodic WorkManager + Sync now.
+- Sync: `syncForUser` flushes PENDING groups/members/expenses/payments then pulls friends/groups/expenses/payments; periodic WorkManager + Account Sync now + login/cold start.
 - FX still not applied; balances remain per-currency buckets.
 
 ## Stretch features (Phase 8)

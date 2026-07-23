@@ -69,4 +69,24 @@ interface GroupDao {
         """,
     )
     suspend fun getMember(groupId: String, userId: String): GroupMemberEntity?
+
+    /** @return Groups awaiting cloud upload. */
+    @Query(
+        """
+        SELECT * FROM groups
+        WHERE syncStatus IN ('PENDING', 'LOCAL_ONLY')
+        ORDER BY updatedAtEpochMs ASC
+        """,
+    )
+    suspend fun getPendingGroups(): List<GroupEntity>
+
+    /** @return Memberships awaiting cloud upload. */
+    @Query(
+        """
+        SELECT * FROM group_members
+        WHERE syncStatus IN ('PENDING', 'LOCAL_ONLY')
+        ORDER BY joinedAtEpochMs ASC
+        """,
+    )
+    suspend fun getPendingMembers(): List<GroupMemberEntity>
 }

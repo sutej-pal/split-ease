@@ -28,5 +28,5 @@ Track development phases. Always check this file at the start of a session to de
 - **Invite deep links** — `https://splitease.app/invite/{token}` is a placeholder URL until App Links / web landing exist.
 - **FX rates** — multi-currency remains per-bucket; live FX is still deferred.
 - **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
-- **Social PENDING flush** — still inline best-effort; not fully unified into SyncInteractor.
+- **Social PENDING flush** — groups/members are now flushed in `SyncInteractor` before expenses (still verify Supabase SQL is applied).
 - **Real Room migrations** — still destructive fallback (Phase 9).

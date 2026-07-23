@@ -56,4 +56,10 @@ class RoomGroupRepository
 
         override suspend fun getMember(groupId: String, userId: String): GroupMember? =
             groupDao.getMember(groupId, userId)?.toDomain()
+
+        override suspend fun getPendingGroups(): List<Group> =
+            groupDao.getPendingGroups().map { it.toDomain() }
+
+        override suspend fun getPendingMembers(): List<GroupMember> =
+            groupDao.getPendingMembers().map { it.toDomain() }
     }

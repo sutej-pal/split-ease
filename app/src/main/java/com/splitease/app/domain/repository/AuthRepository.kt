@@ -49,7 +49,8 @@ interface AuthRepository {
     suspend fun signOut(): Result<Unit>
 
     /**
-     * Ensures the signed-in auth user exists in local Room (and remote profiles best-effort).
+     * Ensures the signed-in auth user exists in local Room (and remote profiles best-effort),
+     * then flushes PENDING writes and pulls groups/expenses/payments from Supabase.
      * Safe to call on every cold start / session restore.
      *
      * @return [Result] success or failure with message.

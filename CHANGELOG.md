@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Debug-only `clone` product flavor (`com.splitease.app.clone`) for side-by-side multi-device sync testing
 - Settings → Security: biometric / device-credential app lock with configurable timeout
+- Multi-device hydrate: login / cold start / Activity / Groups / Sync now flush PENDING groups+members+expenses+payments then pull from Supabase
 - Settings screen with app-wide currency (SharedPreferences); applied to new expenses/groups
 - Settings hub with Preferences (Appearance: Light / Dark / System default) and General (Currency) list sections
 - Group settings screen (edit name/type, add people, invite link, simplify-debts toggle, leave/delete)
@@ -18,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - App-wide migration onto `Se*` components (screens, lists, buttons, fields, money, feedback)
 
 ### Changed
+- `SyncInteractor` now flushes social PENDING (groups/members) before expenses/payments and pulls cloud data via `syncForUser`
+- Group create uploads owner membership even when extra member upserts fail (invite placeholders)
 - Settings Preferences section lists Appearance then Security
 - Group detail gear opens dedicated Group settings (instead of inline edit)
 - Status bar uses dark icons with the forced light theme; nested scaffold no longer double-pads the top inset

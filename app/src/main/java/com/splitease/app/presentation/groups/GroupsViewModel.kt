@@ -3,6 +3,7 @@ package com.splitease.app.presentation.groups
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.data.social.SocialInteractor
+import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
@@ -43,6 +44,7 @@ class GroupsViewModel
         private val groupRepository: GroupRepository,
         friendRepository: FriendRepository,
         private val socialInteractor: SocialInteractor,
+        private val syncInteractor: SyncInteractor,
         private val appSettingsRepository: AppSettingsRepository,
     ) : ViewModel() {
         /** Eager so Create Group (which only collects [uiState]) still has a signed-in user id. */
@@ -90,11 +92,7 @@ class GroupsViewModel
                 val id = requireUserId() ?: return@launch
                 _uiState.update { it.copy(isRefreshing = true) }
                 // Soft-fail: missing Supabase tables / offline must not block local create UI.
-                runCatching {
-                    socialInteractor.refreshGroups(id)
-                    socialInteractor.refreshFriends(id)
-                    socialInteractor.refreshSentInvites(id)
-                }
+                runCatching { syncInteractor.syncForUser(id) }
                 _uiState.update { it.copy(isRefreshing = false) }
             }
         }

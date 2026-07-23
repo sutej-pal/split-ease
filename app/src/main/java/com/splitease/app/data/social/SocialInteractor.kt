@@ -247,6 +247,8 @@ class SocialInteractor
                         ).also { groupRepository.upsertMember(it) }
                     }
 
+                // Upload group + owner first so cloud FK exists even if extra members fail
+                // (e.g. invite placeholders that are not auth.users yet).
                 runCatching {
                     remote.upsertGroup(
                         GroupDto(
@@ -266,7 +268,12 @@ class SocialInteractor
                             joinedAtEpochMs = ownerMember.joinedAtEpochMs,
                         ),
                     )
-                    extraMembers.forEach { member ->
+                    groupRepository.upsertGroup(group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED))
+                    groupRepository.upsertMember(ownerMember.copy(syncStatus = SyncStatus.SYNCED))
+                }
+
+                extraMembers.forEach { member ->
+                    runCatching {
                         remote.upsertGroupMember(
                             GroupMemberDto(
                                 id = member.id,
@@ -276,15 +283,11 @@ class SocialInteractor
                                 joinedAtEpochMs = member.joinedAtEpochMs,
                             ),
                         )
+                        groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
                     }
-                    val synced = group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED)
-                    groupRepository.upsertGroup(synced)
-                    groupRepository.upsertMember(ownerMember.copy(syncStatus = SyncStatus.SYNCED))
-                    extraMembers.forEach {
-                        groupRepository.upsertMember(it.copy(syncStatus = SyncStatus.SYNCED))
-                    }
-                    synced
-                }.getOrDefault(group)
+                }
+
+                groupRepository.getGroupById(groupId) ?: group
             }
 
         /**

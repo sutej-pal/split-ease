@@ -42,6 +42,21 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProp("SUPABASE_ANON_KEY")}\"")
     }
 
+    // Side-by-side twin install for multi-device sync testing (debug only; not for release).
+    flavorDimensions += "install"
+    productFlavors {
+        create("standard") {
+            dimension = "install"
+            isDefault = true
+        }
+        create("clone") {
+            dimension = "install"
+            applicationIdSuffix = ".clone"
+            versionNameSuffix = "-clone"
+            resValue("string", "app_name", "SplitEase Clone")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -69,6 +84,15 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+// Disable cloneRelease — testing-only twin install.
+androidComponents {
+    beforeVariants { variant ->
+        if (variant.flavorName == "clone" && variant.buildType == "release") {
+            variant.enable = false
         }
     }
 }
