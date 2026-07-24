@@ -38,8 +38,8 @@ fun AccountScreen(
 
     SeScreen(
         title = stringResource(R.string.nav_account),
-        content = { padding ->
-            androidx.compose.foundation.layout.Column(
+    ) { padding ->
+        androidx.compose.foundation.layout.Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
@@ -90,8 +90,7 @@ fun AccountScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 SePrimaryButton(text = stringResource(R.string.action_sign_out), onClick = onSignOut)
             }
-        },
-    )
+    }
 }
 
 @Preview(showBackground = true, heightDp = 520)

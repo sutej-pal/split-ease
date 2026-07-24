@@ -1,7 +1,9 @@
 package com.splitease.app.presentation.activity
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
@@ -19,6 +21,7 @@ import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +58,7 @@ data class ActivityUiItem(
 class ActivityViewModel
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val expenseRepository: ExpenseRepository,
         private val paymentRepository: PaymentRepository,
@@ -165,7 +169,7 @@ class ActivityViewModel
             return ActivityUiItem(
                 id = "group-created-$id",
                 kind = ActivityKind.GROUP_CREATED,
-                title = "You created \"$name\"",
+                title = appContext.getString(R.string.activity_you_created, name),
                 subtitle = date,
                 amountLabel = "",
                 sortEpochMs = createdAtEpochMs,
@@ -178,7 +182,7 @@ class ActivityViewModel
             nameOf: (String) -> String,
         ): ActivityUiItem {
             val context =
-                groupId?.let { groupNames[it] } ?: "Non-group"
+                groupId?.let { groupNames[it] } ?: appContext.getString(R.string.non_group_expenses)
             val payer =
                 if (paidByUserId == me) {
                     "you paid"
@@ -204,9 +208,9 @@ class ActivityViewModel
         ): ActivityUiItem {
             val title =
                 when {
-                    fromUserId == me -> "Payment completed — you paid ${nameOf(toUserId)}"
-                    toUserId == me -> "Payment completed — ${nameOf(fromUserId)} paid you"
-                    else -> "Payment completed — ${nameOf(fromUserId)} paid ${nameOf(toUserId)}"
+                    fromUserId == me -> appContext.getString(R.string.payment_completed_you_paid, nameOf(toUserId))
+                    toUserId == me -> appContext.getString(R.string.payment_completed_they_paid, nameOf(fromUserId))
+                    else -> appContext.getString(R.string.payment_completed_other, nameOf(fromUserId), nameOf(toUserId))
                 }
             val context = groupId?.let { groupNames[it] }
             val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(paidAtEpochMs))

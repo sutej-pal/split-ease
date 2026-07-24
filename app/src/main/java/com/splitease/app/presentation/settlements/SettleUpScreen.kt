@@ -2,7 +2,6 @@ package com.splitease.app.presentation.settlements
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,7 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.net.toUri
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.payment.PayActionKind
@@ -63,6 +63,9 @@ fun SettleUpScreen(
         }
     val payActions = PaymentDeepLinks.actionsForCurrency(currencyCode)
 
+    val invalidAmountMsg = stringResource(R.string.pay_invalid_amount)
+    val sharePaymentMsg = stringResource(R.string.action_share_payment)
+    val appMissingMsg = stringResource(R.string.pay_app_missing)
     SeScreen(
         title = stringResource(R.string.action_settle_up),
         onBack = onBack,
@@ -126,7 +129,7 @@ fun SettleUpScreen(
                                 if (parsed == null || parsed <= BigDecimal.ZERO) {
                                     Toast.makeText(
                                         context,
-                                        context.getString(R.string.pay_invalid_amount),
+                                        invalidAmountMsg,
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                     return@SeOutlinedButton
@@ -138,6 +141,8 @@ fun SettleUpScreen(
                                     currencyCode = currencyCode,
                                     counterpartyLabel = counterpartyLabel,
                                     note = note,
+                                    sharePaymentMsg = sharePaymentMsg,
+                                    appMissingMsg = appMissingMsg,
                                 )
                             },
                             enabled = !uiState.isSubmitting && amount.isNotBlank(),
@@ -177,41 +182,40 @@ private fun launchPayAction(
     currencyCode: String,
     counterpartyLabel: String,
     note: String,
+    sharePaymentMsg: String,
+    appMissingMsg: String,
 ) {
     try {
         when (kind) {
             PayActionKind.UPI -> {
                 val uri =
-                    Uri.parse(
-                        PaymentDeepLinks.upiPayUri(
-                            amount = amount,
-                            currencyCode = currencyCode,
-                            payeeName = counterpartyLabel,
-                            note = note.ifBlank { "SplitEase settlement" },
-                        ),
-                    )
+                    PaymentDeepLinks.upiPayUri(
+                        amount = amount,
+                        currencyCode = currencyCode,
+                        payeeName = counterpartyLabel,
+                        note = note.ifBlank { "SplitEase settlement" },
+                    ).toUri()
                 context.startActivity(Intent(Intent.ACTION_VIEW, uri))
             }
+
             PayActionKind.PAYPAL -> {
                 val uri =
-                    Uri.parse(
-                        PaymentDeepLinks.paypalUri(
-                            amount = amount,
-                            currencyCode = currencyCode,
-                        ),
-                    )
+                    PaymentDeepLinks.paypalUri(
+                        amount = amount,
+                        currencyCode = currencyCode,
+                    ).toUri()
                 context.startActivity(Intent(Intent.ACTION_VIEW, uri))
             }
+
             PayActionKind.VENMO -> {
                 val uri =
-                    Uri.parse(
-                        PaymentDeepLinks.venmoUri(
-                            amount = amount,
-                            note = note.ifBlank { "SplitEase" },
-                        ),
-                    )
+                    PaymentDeepLinks.venmoUri(
+                        amount = amount,
+                        note = note.ifBlank { "SplitEase" },
+                    ).toUri()
                 context.startActivity(Intent(Intent.ACTION_VIEW, uri))
             }
+
             PayActionKind.SHARE -> {
                 val text =
                     PaymentDeepLinks.shareText(
@@ -226,11 +230,11 @@ private fun launchPayAction(
                         putExtra(Intent.EXTRA_TEXT, text)
                     }
                 context.startActivity(
-                    Intent.createChooser(intent, context.getString(R.string.action_share_payment)),
+                    Intent.createChooser(intent, sharePaymentMsg),
                 )
             }
         }
     } catch (_: ActivityNotFoundException) {
-        Toast.makeText(context, context.getString(R.string.pay_app_missing), Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, appMissingMsg, Toast.LENGTH_SHORT).show()
     }
 }

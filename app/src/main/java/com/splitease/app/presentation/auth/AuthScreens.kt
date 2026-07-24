@@ -182,22 +182,40 @@ fun ForgotPasswordScreen(
 fun VerifyEmailScreen(
     email: String,
     formState: AuthFormState,
+    onVerify: (code: String) -> Unit,
     onResend: () -> Unit,
     onBackToLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var code by rememberSaveable { mutableStateOf("") }
+
     AuthScaffold(
         title = stringResource(R.string.verify_email_title),
         subtitle = stringResource(R.string.verify_email_subtitle, email),
         formState = formState,
         modifier = modifier,
     ) {
+        SeTextField(
+            value = code,
+            onValueChange = { incoming ->
+                code = incoming.filter { it.isDigit() }.take(4)
+            },
+            label = stringResource(R.string.label_verification_code),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            enabled = !formState.isLoading,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         SePrimaryButton(
+            text = stringResource(R.string.action_verify_code),
+            onClick = { onVerify(code) },
+            enabled = !formState.isLoading && code.length == 4,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        SeTextButton(
             text = stringResource(R.string.action_resend_confirmation),
             onClick = onResend,
             enabled = !formState.isLoading,
         )
-        Spacer(modifier = Modifier.height(8.dp))
         SeTextButton(
             text = stringResource(R.string.action_back_to_login),
             onClick = onBackToLogin,

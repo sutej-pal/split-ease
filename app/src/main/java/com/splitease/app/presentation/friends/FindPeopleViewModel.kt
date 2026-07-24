@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -53,7 +54,7 @@ data class FindPeopleUiState(
 class FindPeopleViewModel
     @Inject
     constructor(
-        authRepository: AuthRepository,
+        private val authRepository: AuthRepository,
         friendRepository: FriendRepository,
         private val groupRepository: GroupRepository,
         private val socialInteractor: SocialInteractor,
@@ -63,7 +64,7 @@ class FindPeopleViewModel
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
         @OptIn(ExperimentalCoroutinesApi::class)
         val friends: StateFlow<List<Friend>> =
@@ -193,8 +194,19 @@ class FindPeopleViewModel
             contactValue: String,
             onDone: () -> Unit,
         ) {
-            val id = userId.value ?: return
             viewModelScope.launch {
+                val id =
+                    userId.value
+                        ?: (authRepository.observeSession().first { it !is AuthSession.Loading }
+                            as? AuthSession.SignedIn)
+                            ?.user
+                            ?.userId
+                if (id == null) {
+                    _uiState.update {
+                        it.copy(errorMessage = appContext.getString(R.string.msg_not_signed_in))
+                    }
+                    return@launch
+                }
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null, infoMessage = null) }
                 val result =
                     socialInteractor.addFriendByContact(

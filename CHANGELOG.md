@@ -8,36 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Signup email verification via **6-digit OTP** (in-app code entry; no deep link required) ([docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md))
 - Expense detail screen with edit and delete; create/update/delete appear on Activity ([phase-10a](docs/phase-10a-expense-details.md))
 - Brand color system and Material 3 theme (light/dark) from icon indigo/amber tokens ([phase-0b](docs/phase-0b-theme-system.md), [design-tokens](docs/design-tokens.md))
-- Find people screen (search friends + device contacts) and redesigned Add friend (name + phone/email); Group settings → Add people uses it
-- Extras backlog: [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md) (group member notifications + live ledger visibility)
-- Group detail resume refreshes via full `syncForUser` + targeted group expense pull so other members’ changes show up
-- Debug-only `clone` product flavor (`com.splitease.app.clone`) for side-by-side multi-device sync testing
-- Settings → Security: biometric / device-credential app lock with configurable timeout
-- Multi-device hydrate: login / cold start / Activity / Groups / Sync now flush PENDING groups+members+expenses+payments then pull from Supabase
-- Settings screen with app-wide currency (SharedPreferences); applied to new expenses/groups
-- Settings hub with Preferences (Appearance: Light / Dark / System default) and General (Currency) list sections
-- Group settings screen (edit name/type, add people, invite link, simplify-debts toggle, leave/delete)
-- Bottom navigation (Groups, Friends, Activity, Account) and Groups home UI with balances + Add expense FAB
-- Create group screen redesign with Friends / Home / Other types (Room v3 `groupType`)
-- Shared `presentation/ui` design system (Apzo SaaS–inspired palette) with Compose `@Preview`s
-- App-wide migration onto `Se*` components (screens, lists, buttons, fields, money, feedback)
+- Find people screen (search friends + device contacts); Group settings → Add people uses it
+- Extras backlog: [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)
+- Debug-only `clone` product flavor for side-by-side sync testing
+- Settings → Security: biometric / device-credential app lock with timeout
+- Settings hub (appearance, language, currency) and Group settings screen
+- Bottom navigation + Groups home UI; shared `Se*` design system
 
 ### Changed
-- `SyncInteractor.syncForUser` always pulls friends/groups/expenses/payments after flush (previously pull ran only when invite-accept failed)
-- `SyncInteractor` now flushes social PENDING (groups/members) before expenses/payments and pulls cloud data via `syncForUser`
-- Group create uploads owner membership even when extra member upserts fail (invite placeholders)
-- Settings Preferences section lists Appearance then Security
-- Group detail gear opens dedicated Group settings (instead of inline edit)
-- Status bar uses dark icons with the forced light theme; nested scaffold no longer double-pads the top inset
-- Search icon available on Groups, Friends, and Activity tabs (not on Settings / Account)
-- Activity tab lists expenses and settlements involving you (newest first)
-- Group detail redesigned: type header, Settle/Balances/Totals/Members chips, solo empty state, extended Add expense FAB
-- Removed currency fields from Add Expense, Create Group, and Edit Group screens
-- Global theme switched to light Apzo-inspired blue SaaS look; screens migrate onto `Se*` components
-- Groups home top-bar action uses GroupAdd → Create group (Friends still use add-friend)
-- Groups home **Add expense** FAB no longer opens Create group when the list is empty (shows picker / create CTA instead)
+- Auth signup OTP temporarily uses hardcoded **`1234`** (no email send); real emailed OTP marked TODO; mobile/phone onboarding marked TODO
+- Auth no longer blanks the UI on `SessionStatus.Initializing` after background (disabled Supabase lifecycle callbacks); loading gate times out to signed-out after 8s; refresh failures clear stale sessions
+- Verify-email screen: enter OTP + Verify / Resend code (replaces “open confirmation link” copy)
+- **Release size:** R8 minify + resource shrinking enabled; removed unused Coil/Espresso/JUnit4 deps; pruned dead string resources and orphan `commonMain` tree
+- ViewModels use string resources for user-facing messages (expenses, groups, sync, import, activity, spending)
+- Docs: refreshed README / `ARCHITECTURE.md`; added [docs/README.md](docs/README.md) index (phase docs retained)
+- `SyncInteractor.syncForUser` always pulls after flush; flushes social PENDING before expenses/payments
+- Group detail resume refreshes via full sync + targeted group expense pull
+- Splash/system `colors.xml` aligned to brand indigo background
 
 ## [1.0.0] - 2026-07-23 — phase-9
 

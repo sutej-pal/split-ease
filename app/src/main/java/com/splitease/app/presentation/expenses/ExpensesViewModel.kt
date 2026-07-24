@@ -1,7 +1,9 @@
 package com.splitease.app.presentation.expenses
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.data.expense.CreateExpenseInput
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.data.sync.SyncInteractor
@@ -24,6 +26,7 @@ import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -111,6 +114,7 @@ private data class LedgerSource(
 class ExpensesViewModel
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val expenseRepository: ExpenseRepository,
         private val expenseInteractor: ExpenseInteractor,
@@ -387,7 +391,7 @@ class ExpensesViewModel
                 runCatching { expenseInteractor.refreshGroupExpenses(groupId) }
                     .onFailure { err ->
                         _uiState.update {
-                            it.copy(errorMessage = err.message ?: "Could not refresh expenses.")
+                            it.copy(errorMessage = err.message ?: appContext.getString(R.string.msg_could_not_refresh_expenses))
                         }
                     }
                 _uiState.update { it.copy(isRefreshing = false) }
@@ -405,7 +409,7 @@ class ExpensesViewModel
                 runCatching { expenseInteractor.refreshExpensesForUser(id) }
                     .onFailure { err ->
                         _uiState.update {
-                            it.copy(errorMessage = err.message ?: "Could not refresh expenses.")
+                            it.copy(errorMessage = err.message ?: appContext.getString(R.string.msg_could_not_refresh_expenses))
                         }
                     }
                 _uiState.update { it.copy(isRefreshing = false) }
@@ -434,7 +438,7 @@ class ExpensesViewModel
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            errorMessage = "Wait for your account to load, then try again.",
+                            errorMessage = appContext.getString(R.string.msg_wait_for_account),
                         )
                     }
                     return@launch
@@ -442,7 +446,7 @@ class ExpensesViewModel
                 val amount =
                     runCatching { BigDecimal(amountText.trim()) }.getOrElse {
                         _uiState.update {
-                            it.copy(isSubmitting = false, errorMessage = "Enter a valid amount.")
+                            it.copy(isSubmitting = false, errorMessage = appContext.getString(R.string.msg_enter_valid_amount))
                         }
                         return@launch
                     }
@@ -470,7 +474,7 @@ class ExpensesViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) "Expense added." else null,
+                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_added) else null,
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -557,7 +561,7 @@ class ExpensesViewModel
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            errorMessage = "Wait for your account to load, then try again.",
+                            errorMessage = appContext.getString(R.string.msg_wait_for_account),
                         )
                     }
                     return@launch
@@ -565,14 +569,14 @@ class ExpensesViewModel
                 val amount =
                     runCatching { BigDecimal(amountText.trim()) }.getOrElse {
                         _uiState.update {
-                            it.copy(isSubmitting = false, errorMessage = "Enter a valid amount.")
+                            it.copy(isSubmitting = false, errorMessage = appContext.getString(R.string.msg_enter_valid_amount))
                         }
                         return@launch
                     }
                 val existing = expenseRepository.getExpenseById(expenseId)
                 if (existing == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, errorMessage = "Expense not found.")
+                        it.copy(isSubmitting = false, errorMessage = appContext.getString(R.string.expense_not_found))
                     }
                     return@launch
                 }
@@ -602,7 +606,7 @@ class ExpensesViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) "Expense updated." else null,
+                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_updated) else null,
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -621,7 +625,7 @@ class ExpensesViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) "Expense deleted." else null,
+                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_deleted) else null,
                     )
                 }
                 if (result.isSuccess) onSuccess()

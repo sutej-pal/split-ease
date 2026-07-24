@@ -170,6 +170,22 @@ fun SplitEaseNavHost(
     val googleSoon = stringResource(R.string.google_sign_in_soon)
     val resetSent = stringResource(R.string.reset_sent)
 
+    val pendingEmail = formState.pendingConfirmationEmail
+    // OTP gate after signup — shown even when Supabase already created a session.
+    if (pendingEmail != null && session !is AuthSession.Loading) {
+        VerifyEmailScreen(
+            email = pendingEmail,
+            formState = formState,
+            onVerify = { code -> authViewModel.verifySignupOtp(pendingEmail, code) },
+            onResend = { authViewModel.resendConfirmation(pendingEmail) },
+            onBackToLogin = {
+                authViewModel.clearPendingConfirmation()
+                authViewModel.clearMessages()
+            },
+        )
+        return
+    }
+
     when (val current = session) {
         AuthSession.Loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -177,18 +193,6 @@ fun SplitEaseNavHost(
             }
         }
         AuthSession.SignedOut -> {
-            val pendingEmail = formState.pendingConfirmationEmail
-            if (pendingEmail != null) {
-                VerifyEmailScreen(
-                    email = pendingEmail,
-                    formState = formState,
-                    onResend = { authViewModel.resendConfirmation(pendingEmail) },
-                    onBackToLogin = {
-                        authViewModel.clearPendingConfirmation()
-                        authViewModel.clearMessages()
-                    },
-                )
-            } else {
             val navController = rememberNavController()
             NavHost(
                 navController = navController,
@@ -241,7 +245,6 @@ fun SplitEaseNavHost(
                         },
                     )
                 }
-            }
             }
         }
         is AuthSession.SignedIn -> {

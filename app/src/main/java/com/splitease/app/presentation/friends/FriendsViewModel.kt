@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -36,16 +37,18 @@ data class FriendsUiState(
 class FriendsViewModel
     @Inject
     constructor(
-        authRepository: AuthRepository,
+        private val authRepository: AuthRepository,
         friendRepository: FriendRepository,
         private val socialInteractor: SocialInteractor,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
+        // Eagerly: AddFriendScreen only collects uiState, so WhileSubscribed left userId
+        // stuck at null and addFriend/tick/Next silently no-oped.
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
                 .map { session ->
                     (session as? AuthSession.SignedIn)?.user?.userId
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+                }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
         @OptIn(ExperimentalCoroutinesApi::class)
         val friends: StateFlow<List<Friend>> =
@@ -70,8 +73,8 @@ class FriendsViewModel
         }
 
         fun refresh() {
-            val id = userId.value ?: return
             viewModelScope.launch {
+                val id = requireUserId() ?: return@launch
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
                 runCatching {
                     socialInteractor.refreshFriends(id)
@@ -95,8 +98,17 @@ class FriendsViewModel
             groupId: String? = null,
             onLinked: () -> Unit,
         ) {
-            val id = userId.value ?: return
             viewModelScope.launch {
+                val id = requireUserId()
+                if (id == null) {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = appContext.getString(R.string.msg_not_signed_in),
+                        )
+                    }
+                    return@launch
+                }
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null, infoMessage = null) }
                 val result =
                     socialInteractor.addFriendByContact(
@@ -126,4 +138,10 @@ class FriendsViewModel
             }
         }
 
+        /** Waits past [AuthSession.Loading] so actions work even before StateFlow warms up. */
+        private suspend fun requireUserId(): String? {
+            userId.value?.let { return it }
+            val session = authRepository.observeSession().first { it !is AuthSession.Loading }
+            return (session as? AuthSession.SignedIn)?.user?.userId
+        }
     }

@@ -1,12 +1,15 @@
 package com.splitease.app.presentation.spending
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.data.spending.SpendingInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.spending.CategorySpending
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +33,7 @@ enum class SpendingPeriod {
 class SpendingTotalsViewModel
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val spendingInteractor: SpendingInteractor,
     ) : ViewModel() {
@@ -53,7 +57,7 @@ class SpendingTotalsViewModel
                             viewerUserId = me,
                             fromEpochMs = from,
                             toEpochMs = to,
-                            uncategorizedLabel = "Uncategorized",
+                            uncategorizedLabel = appContext.getString(R.string.uncategorized_label),
                         )
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

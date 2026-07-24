@@ -39,8 +39,12 @@ class AuthViewModelTest {
         context = mockk(relaxed = true)
         every { repository.observeSession() } returns sessionFlow
         every { context.getString(R.string.error_generic) } returns "Something went wrong. Try again."
-        every { context.getString(R.string.verify_email_sent) } returns "Confirmation email sent."
-        every { context.getString(R.string.verify_email_resent) } returns "Confirmation email resent."
+        every { context.getString(R.string.verify_email_sent) } returns
+            "Account created. Enter code 1234 to continue."
+        every { context.getString(R.string.verify_email_resent) } returns
+            "Email sending is paused. Use code 1234 for now."
+        every { context.getString(R.string.verify_email_invalid_code) } returns
+            "Enter code 1234 to continue."
         viewModel = AuthViewModel(repository, context)
     }
 
@@ -80,13 +84,41 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `signUp pending confirmation exposes email`() =
+    fun `signUp always gates on OTP screen`() =
         runTest {
             coEvery { repository.signUp(any(), any(), any()) } returns
-                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
+                Result.success(SignUpResult.SignedIn)
             viewModel.signUp("a@b.com", "secret1", "Ada")
             advanceUntilIdle()
             assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
-            assertEquals("Confirmation email sent.", viewModel.formState.value.infoMessage)
+            assertEquals(
+                "Account created. Enter code 1234 to continue.",
+                viewModel.formState.value.infoMessage,
+            )
+        }
+
+    @Test
+    fun `verifySignupOtp rejects wrong code`() =
+        runTest {
+            viewModel.verifySignupOtp("a@b.com", "9999")
+            advanceUntilIdle()
+            assertEquals("Enter code 1234 to continue.", viewModel.formState.value.errorMessage)
+            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
+        }
+
+    @Test
+    fun `verifySignupOtp with default code clears pending and signs in when needed`() =
+        runTest {
+            coEvery { repository.signUp(any(), any(), any()) } returns
+                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
+            coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
+            coEvery { repository.ensureLocalProfile() } returns Result.success(Unit)
+            viewModel.signUp("a@b.com", "secret1", "Ada")
+            advanceUntilIdle()
+            viewModel.verifySignupOtp("a@b.com", AuthViewModel.DEV_DEFAULT_OTP)
+            advanceUntilIdle()
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            coVerify(exactly = 1) { repository.signIn("a@b.com", "secret1") }
+            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
         }
 }

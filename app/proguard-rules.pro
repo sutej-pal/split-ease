@@ -1,8 +1,9 @@
-# Keep rules used by R8 when minify is enabled for release builds.
-# Phase 9: baseline keep rules for Hilt, Room, Supabase, and Kotlin serialization.
+# Keep rules used by R8 when minify + shrinkResources are enabled for release.
 
 -keepattributes Signature, InnerClasses, EnclosingMethod, RuntimeVisibleAnnotations, AnnotationDefault
 -keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
 # Hilt / Dagger
 -dontwarn dagger.**
@@ -16,13 +17,24 @@
 -dontwarn androidx.room.paging.**
 
 # Kotlin serialization / Supabase DTOs
--keepattributes RuntimeVisibleAnnotations
 -keepclassmembers class ** {
     @kotlinx.serialization.Serializable <fields>;
 }
 -keep,includedescriptorclasses class com.splitease.app.data.remote.dto.** { *; }
+-keepclassmembers class com.splitease.app.data.remote.** {
+    <init>(...);
+}
+
+# Supabase / Ktor
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.slf4j.**
+-dontwarn io.ktor.**
 
 # Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 -keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }
+
+# Enums used in Room / serialization
+-keepclassmembers enum com.splitease.app.domain.model.** { *; }

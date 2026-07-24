@@ -104,15 +104,18 @@ fun GroupSettingsScreen(
     val me = viewModel.currentUserId()
     val isOwner = group?.createdByUserId == me
 
+    val inviteSubject = stringResource(R.string.invite_email_subject)
+    val shareInvite = stringResource(R.string.action_share_invite)
+
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.invite_email_subject))
+                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
             }
-        context.startActivity(Intent.createChooser(intent, context.getString(R.string.action_share_invite)))
+        context.startActivity(Intent.createChooser(intent, shareInvite))
         viewModel.consumeShareText()
     }
 
@@ -142,16 +145,12 @@ fun GroupSettingsScreen(
                     title = stringResource(R.string.action_add_people_to_group),
                     onClick = onAddPeople,
                 )
+                val groupShareText = stringResource(R.string.group_share_placeholder, group?.name.orEmpty())
                 SettingsActionRow(
                     icon = Icons.Filled.Link,
                     title = stringResource(R.string.action_invite_via_link),
                     onClick = {
-                        viewModel.shareGroupLink(
-                            context.getString(
-                                R.string.group_share_placeholder,
-                                group?.name.orEmpty(),
-                            ),
-                        )
+                        viewModel.shareGroupLink(groupShareText)
                     },
                 )
                 members.forEach { member ->

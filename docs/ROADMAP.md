@@ -97,7 +97,7 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 |---|---|
 | `values-xx` string resources for 7+ locales | New core product features |
 | Instrumentation + regression, release checklist | |
-| Email confirmation / production Auth hardening | |
+| Email confirmation / production Auth hardening | Signup OTP verify in-app ([maintenance-email-otp-verification.md](maintenance-email-otp-verification.md)); dashboard template must include `{{ .Token }}` |
 | Real Room migrations; store listing prep | |
 
 ## Post-phase extras
@@ -105,6 +105,8 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 Features requested after Phase 9 that are **not** in the original phase matrix. Track in:
 
 - [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify all group members on expense/payment changes; open group → show latest cloud entries.
+- **TODO(auth-mobile-onboarding)** — onboard with mobile phone number (SMS OTP / phone auth) in addition to email ([PROGRESS.md](../PROGRESS.md)).
+- **TODO(auth-email-otp)** — restore real emailed OTP; remove hardcoded `1234` bypass.
 
 ## Dependency order
 

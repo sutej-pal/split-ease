@@ -140,16 +140,19 @@ fun AddFriendScreen(
     val canSubmit =
         name.isNotBlank() && contact.isNotBlank() && !uiState.isSubmitting
 
+    val inviteSubject = stringResource(R.string.invite_email_subject)
+    val shareInvite = stringResource(R.string.action_share_invite)
+
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.invite_email_subject))
+                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
             }
         context.startActivity(
-            Intent.createChooser(intent, context.getString(R.string.action_share_invite)),
+            Intent.createChooser(intent, shareInvite),
         )
         viewModel.consumeShareText()
         onDone()

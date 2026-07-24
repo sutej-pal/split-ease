@@ -14,9 +14,10 @@ import javax.inject.Singleton
 /**
  * Provides the shared [SupabaseClient] configured for Auth + PostgREST.
  *
- * Deep-link scheme/host must match [com.splitease.app.MainActivity] intent filters and
- * Supabase Dashboard → Authentication → URL configuration redirect allow-list:
- * `splitease://auth-callback`
+ * Auth deep-link scheme/host (`splitease://auth-callback`) remains for password-reset
+ * and other Auth redirects. Signup email confirmation uses an in-app 6-digit OTP and
+ * does not require this URI. Allow-list the redirect in Supabase Dashboard → Authentication
+ * → URL configuration when using link-based flows.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -48,6 +49,9 @@ object SupabaseModule {
             install(Auth) {
                 scheme = AUTH_DEEP_LINK_SCHEME
                 host = AUTH_DEEP_LINK_HOST
+                // Avoid SessionStatus.Initializing on every background (onStop), which blanked
+                // the whole app on a spinner until reload finished — and could hang forever.
+                enableLifecycleCallbacks = false
             }
             install(Postgrest)
         }

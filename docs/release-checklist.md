@@ -10,14 +10,15 @@ Use before uploading a Play Console build.
 
 ## Supabase production
 - [ ] Confirm email **ON** in Authentication → Providers → Email
-- [ ] Redirect URL allow-list includes `splitease://auth-callback`
+- [ ] Confirm signup email template includes `{{ .Token }}` (6-digit OTP), e.g. `Your SplitEase code is {{ .Token }}`
+- [ ] Redirect URL allow-list includes `splitease://auth-callback` (password reset / other Auth redirects; **not** required for signup OTP)
 - [ ] Site URL set to a real landing or Play listing URL
 - [ ] Phase 3–6 SQL applied (profiles, groups, invites, expenses, payments) + RLS verified
 - [ ] Anon key only in the app; service role never shipped
 
 ## App QA
-- [ ] Sign up → verify-email screen when confirmation required → confirm → log in
-- [ ] Resend confirmation works
+- [ ] Sign up → verify-email OTP screen when confirmation required → enter 6-digit code → signed in on Home
+- [ ] Resend code works
 - [ ] Password reset email arrives
 - [ ] Language switch (Settings → Language) updates UI for at least 2 locales
 - [ ] Offline create expense → Sync now uploads

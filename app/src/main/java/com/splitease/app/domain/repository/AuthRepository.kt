@@ -35,12 +35,23 @@ interface AuthRepository {
     suspend fun signIn(email: String, password: String): Result<Unit>
 
     /**
-     * Resends the signup confirmation email when Confirm email is enabled.
+     * Resends the signup confirmation email (with a fresh OTP) when Confirm email is enabled.
      *
      * @param email Account email.
      * @return [Result] success or failure with message.
      */
     suspend fun resendSignupConfirmation(email: String): Result<Unit>
+
+    /**
+     * Verifies the 6-digit signup OTP emailed after [signUp] when Confirm email is enabled.
+     *
+     * On success, establishes a session and hydrates the local profile (same as sign-in).
+     *
+     * @param email Account email that received the code.
+     * @param token Six-digit OTP from the confirmation email (`{{ .Token }}`).
+     * @return [Result] success or failure with message.
+     */
+    suspend fun verifySignupOtp(email: String, token: String): Result<Unit>
 
     /**
      * Sends a password-reset email.

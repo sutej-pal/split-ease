@@ -231,7 +231,7 @@ private fun CurrencyTotalsBlock(
             amount = amount,
             currencyCode = currency,
             tone = SeMoneyTone.YOU_OWE,
-            prefix = "You owe",
+            prefix = stringResource(R.string.balances_you_owe_plain),
         )
     }
 }
@@ -246,8 +246,8 @@ private fun netTone(net: BigDecimal): SeMoneyTone =
 @Composable
 private fun moneyPrefix(net: BigDecimal): String? =
     when {
-        net > BigDecimal.ZERO -> "you are owed"
-        net < BigDecimal.ZERO -> "you owe"
+        net > BigDecimal.ZERO -> stringResource(R.string.balances_you_are_owed_plain)
+        net < BigDecimal.ZERO -> stringResource(R.string.balances_you_owe_plain)
         else -> stringResource(R.string.balances_settled_up)
     }
 

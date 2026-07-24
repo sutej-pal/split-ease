@@ -5,15 +5,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
-import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,7 +26,8 @@ import javax.inject.Inject
  * @property isLoading True while a network auth call is in flight.
  * @property errorMessage User-visible error, if any.
  * @property infoMessage User-visible success/info, if any.
- * @property pendingConfirmationEmail When set, show the verify-email screen.
+ * @property pendingConfirmationEmail When set, show the verify-email OTP screen
+ *   (blocks Home even if a session already exists).
  */
 data class AuthFormState(
     val isLoading: Boolean = false,
@@ -39,6 +42,7 @@ data class AuthFormState(
  * @property authRepository Supabase-backed auth operations.
  * @property appContext Application context for string resources.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AuthViewModel
     @Inject
@@ -50,6 +54,14 @@ class AuthViewModel
         val session: StateFlow<AuthSession> =
             authRepository
                 .observeSession()
+                .transformLatest { current ->
+                    emit(current)
+                    if (current is AuthSession.Loading) {
+                        // Auth init can hang (stale refresh token / network). Unblock UI.
+                        delay(AUTH_LOADING_TIMEOUT_MS)
+                        emit(AuthSession.SignedOut)
+                    }
+                }
                 .stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(5_000),
@@ -61,12 +73,17 @@ class AuthViewModel
         /** Form loading / error / info for auth screens. */
         val formState: StateFlow<AuthFormState> = _formState.asStateFlow()
 
+        /** Password kept only in memory until the OTP gate completes (dev signup flow). */
+        private var pendingPassword: String? = null
+
         init {
             viewModelScope.launch {
                 session.collect { current ->
-                    if (current is AuthSession.SignedIn) {
+                    // Hydrate profile only after OTP onboarding is done.
+                    if (current is AuthSession.SignedIn &&
+                        _formState.value.pendingConfirmationEmail == null
+                    ) {
                         authRepository.ensureLocalProfile()
-                        _formState.update { it.copy(pendingConfirmationEmail = null) }
                     }
                 }
             }
@@ -79,8 +96,9 @@ class AuthViewModel
             }
         }
 
-        /** Leaves the pending-confirmation screen without signing in. */
+        /** Leaves the pending-confirmation screen without completing OTP. */
         fun clearPendingConfirmation() {
+            pendingPassword = null
             _formState.update { it.copy(pendingConfirmationEmail = null) }
         }
 
@@ -97,7 +115,10 @@ class AuthViewModel
         }
 
         /**
-         * Creates an account. Navigates to verify-email when confirmation is required.
+         * Creates an account, then shows the OTP gate (dev: enter [DEV_DEFAULT_OTP]).
+         *
+         * TODO(auth-email-otp): Restore real emailed OTP verification and remove the
+         * hardcoded [DEV_DEFAULT_OTP] bypass once custom SMTP email delivery works.
          *
          * @param email Account email.
          * @param password Account password.
@@ -113,9 +134,12 @@ class AuthViewModel
                         pendingConfirmationEmail = null,
                     )
                 }
-                val result = authRepository.signUp(email, password, displayName)
+                pendingPassword = password
+                val trimmedEmail = email.trim()
+                val result = authRepository.signUp(trimmedEmail, password, displayName)
                 _formState.update {
                     if (result.isFailure) {
+                        pendingPassword = null
                         AuthFormState(
                             isLoading = false,
                             errorMessage =
@@ -123,30 +147,91 @@ class AuthViewModel
                                     ?: appContext.getString(R.string.error_generic),
                         )
                     } else {
-                        when (val outcome = result.getOrThrow()) {
-                            SignUpResult.SignedIn ->
-                                AuthFormState(isLoading = false)
-                            is SignUpResult.PendingEmailConfirmation ->
-                                AuthFormState(
-                                    isLoading = false,
-                                    pendingConfirmationEmail = outcome.email,
-                                    infoMessage =
-                                        appContext.getString(R.string.verify_email_sent),
-                                )
-                        }
+                        // Always gate on OTP after signup (dev bypass), whether or not
+                        // Supabase already established a session (autoconfirm).
+                        AuthFormState(
+                            isLoading = false,
+                            pendingConfirmationEmail = trimmedEmail,
+                            infoMessage = appContext.getString(R.string.verify_email_sent),
+                        )
                     }
                 }
             }
         }
 
         /**
-         * Resends the signup confirmation email for [email].
+         * Dev stub: does not send email. Reminds the user of [DEV_DEFAULT_OTP].
+         *
+         * TODO(auth-email-otp): Call [AuthRepository.resendSignupConfirmation] again.
          *
          * @param email Pending confirmation email.
          */
+        @Suppress("UNUSED_PARAMETER")
         fun resendConfirmation(email: String) {
-            submit(successMessage = appContext.getString(R.string.verify_email_resent)) {
-                authRepository.resendSignupConfirmation(email)
+            _formState.update {
+                it.copy(
+                    errorMessage = null,
+                    infoMessage = appContext.getString(R.string.verify_email_resent),
+                )
+            }
+        }
+
+        /**
+         * Verifies signup OTP. Dev: accepts [DEV_DEFAULT_OTP] only.
+         *
+         * TODO(auth-email-otp): Call [AuthRepository.verifySignupOtp] with the emailed code.
+         *
+         * @param email Pending confirmation email.
+         * @param token User-entered OTP.
+         */
+        fun verifySignupOtp(email: String, token: String) {
+            val code = token.trim()
+            if (code != DEV_DEFAULT_OTP) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.verify_email_invalid_code),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            viewModelScope.launch {
+                _formState.update {
+                    it.copy(isLoading = true, errorMessage = null, infoMessage = null)
+                }
+                val password = pendingPassword
+                val signedIn = session.value is AuthSession.SignedIn
+                val result =
+                    if (signedIn) {
+                        Result.success(Unit)
+                    } else if (password != null) {
+                        authRepository.signIn(email.trim(), password)
+                    } else {
+                        Result.failure(
+                            IllegalStateException(appContext.getString(R.string.error_generic)),
+                        )
+                    }
+                if (result.isSuccess) {
+                    pendingPassword = null
+                    _formState.update {
+                        it.copy(
+                            isLoading = false,
+                            pendingConfirmationEmail = null,
+                            errorMessage = null,
+                            infoMessage = null,
+                        )
+                    }
+                    authRepository.ensureLocalProfile()
+                } else {
+                    _formState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage =
+                                result.exceptionOrNull()?.localizedMessage
+                                    ?: appContext.getString(R.string.error_generic),
+                        )
+                    }
+                }
             }
         }
 
@@ -164,6 +249,8 @@ class AuthViewModel
 
         /** Signs out the current user. */
         fun signOut() {
+            pendingPassword = null
+            _formState.update { it.copy(pendingConfirmationEmail = null) }
             submit {
                 authRepository.signOut()
             }
@@ -195,5 +282,16 @@ class AuthViewModel
                     }
                 }
             }
+        }
+
+        companion object {
+            /**
+             * Temporary hardcoded OTP while email delivery is deferred.
+             *
+             * TODO(auth-email-otp): Remove once real emailed OTP is wired.
+             */
+            const val DEV_DEFAULT_OTP = "1234"
+
+            private const val AUTH_LOADING_TIMEOUT_MS = 8_000L
         }
     }

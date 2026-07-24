@@ -19,11 +19,18 @@ Track development phases. Always check this file at the start of a session to de
 | 8 | Stretch / Pro-like Features | Payment integrations; transaction import; charts | Done | [phase-8-stretch.md](docs/phase-8-stretch.md) |
 | 9 | Polish, Testing, and Release Prep | 7+ languages; release hardening | Done | [phase-9-polish-release.md](docs/phase-9-polish-release.md) |
 
-**Current phase:** Complete through Phase 9 (2026-07-23); Phase 0b theme inserted
+**Current phase:** Complete through Phase 9 (2026-07-23); Phase 0b theme + Phase 10a expense details inserted
 
-**Last completed:** Phase 0b (brand theme) on 2026-07-23; Phase 9 on 2026-07-23
+**Last completed:** Maintenance — signup email OTP verification (2026-07-24); release size / dead-code / docs earlier same day; Phase 0b + Phase 9 on 2026-07-23
+
+### Docs map
+- Index: [docs/README.md](docs/README.md)
+- Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)
+- Maintenance: [email OTP verification](docs/maintenance-email-otp-verification.md)
 
 ### Carried-forward TODOs
+- **TODO(auth-email-otp)** — Restore real emailed 6-digit OTP (custom SMTP + Confirm signup `{{ .Token }}`); remove hardcoded `1234` bypass ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
+- **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
 - **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0b](docs/phase-0b-theme-system.md)).
 - **Apply Phase 3–6 SQL** — run in order: [phase-3-schema.sql](docs/sql/phase-3-schema.sql), [phase-3b-invites.sql](docs/sql/phase-3b-invites.sql), [phase-4-expenses.sql](docs/sql/phase-4-expenses.sql), [phase-6-payments.sql](docs/sql/phase-6-payments.sql).
 - **Invite email delivery** — MVP uses the system share sheet; automated send via Edge Function is still TODO.

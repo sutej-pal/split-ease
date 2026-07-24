@@ -2,6 +2,7 @@ package com.splitease.app.data.settings
 
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
@@ -47,7 +48,7 @@ class SharedPreferencesAppSettingsRepository
         override suspend fun setCurrencyCode(code: String) {
             val normalized = code.trim().uppercase().ifBlank { AppCurrencies.DEFAULT }
             withContext(Dispatchers.IO) {
-                prefs.edit().putString(KEY_CURRENCY, normalized).apply()
+                prefs.edit { putString(KEY_CURRENCY, normalized) }
             }
             currencyFlow.value = normalized
         }
@@ -69,7 +70,7 @@ class SharedPreferencesAppSettingsRepository
 
         override suspend fun setSimplifyGroupDebts(groupId: String, enabled: Boolean) {
             withContext(Dispatchers.IO) {
-                prefs.edit().putBoolean(simplifyKey(groupId), enabled).apply()
+                prefs.edit { putBoolean(simplifyKey(groupId), enabled) }
             }
             simplifyMapFlow.value = simplifyMapFlow.value + (groupId to enabled)
         }
@@ -83,7 +84,7 @@ class SharedPreferencesAppSettingsRepository
 
         override suspend fun setThemeMode(mode: ThemeMode) {
             withContext(Dispatchers.IO) {
-                prefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
+                prefs.edit { putString(KEY_THEME_MODE, mode.name) }
             }
             themeModeFlow.value = mode
         }
@@ -97,7 +98,7 @@ class SharedPreferencesAppSettingsRepository
 
         override suspend fun setBiometricLockEnabled(enabled: Boolean) {
             withContext(Dispatchers.IO) {
-                prefs.edit().putBoolean(KEY_BIOMETRIC_LOCK, enabled).apply()
+                prefs.edit { putBoolean(KEY_BIOMETRIC_LOCK, enabled) }
             }
             biometricLockFlow.value = enabled
         }
@@ -111,7 +112,7 @@ class SharedPreferencesAppSettingsRepository
 
         override suspend fun setAuthTimeout(timeout: AuthTimeout) {
             withContext(Dispatchers.IO) {
-                prefs.edit().putString(KEY_AUTH_TIMEOUT, timeout.name).apply()
+                prefs.edit { putString(KEY_AUTH_TIMEOUT, timeout.name) }
             }
             authTimeoutFlow.value = timeout
         }
@@ -125,7 +126,7 @@ class SharedPreferencesAppSettingsRepository
 
         override suspend fun setAppLocale(locale: AppLocale) {
             withContext(Dispatchers.IO) {
-                prefs.edit().putString(KEY_APP_LOCALE, locale.name).apply()
+                prefs.edit { putString(KEY_APP_LOCALE, locale.name) }
             }
             appLocaleFlow.value = locale
             applyAppLocale(locale)

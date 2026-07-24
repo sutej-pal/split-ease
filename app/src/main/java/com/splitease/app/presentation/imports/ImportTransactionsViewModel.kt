@@ -1,7 +1,9 @@
 package com.splitease.app.presentation.imports
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.data.imports.TransactionImportInteractor
 import com.splitease.app.domain.imports.CsvTransactionParser
 import com.splitease.app.domain.imports.ImportedTransaction
@@ -9,6 +11,7 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +33,7 @@ data class ImportUiState(
 class ImportTransactionsViewModel
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val importInteractor: TransactionImportInteractor,
         private val appSettingsRepository: AppSettingsRepository,
@@ -50,7 +54,7 @@ class ImportTransactionsViewModel
                 if (text.isBlank()) {
                     pendingCsv = null
                     _ui.update {
-                        it.copy(preview = emptyList(), errorMessage = "Could not read file.")
+                        it.copy(preview = emptyList(), errorMessage = appContext.getString(R.string.msg_could_not_read_file))
                     }
                     return@launch
                 }
@@ -65,7 +69,7 @@ class ImportTransactionsViewModel
                     _ui.update {
                         it.copy(
                             preview = emptyList(),
-                            errorMessage = err.message ?: "Could not parse CSV.",
+                            errorMessage = err.message ?: appContext.getString(R.string.msg_could_not_parse_csv),
                         )
                     }
                 }
@@ -85,7 +89,7 @@ class ImportTransactionsViewModel
                         _ui.update {
                             it.copy(
                                 isImporting = false,
-                                errorMessage = err.message ?: "Import failed.",
+                                errorMessage = err.message ?: appContext.getString(R.string.msg_import_failed),
                             )
                         }
                         return@launch
@@ -94,12 +98,15 @@ class ImportTransactionsViewModel
                     it.copy(
                         isImporting = false,
                         successMessage =
-                            "Imported ${result.imported}" +
-                                if (result.failures.isEmpty()) {
-                                    ""
-                                } else {
-                                    "; ${result.failures.size} failed"
-                                },
+                            if (result.failures.isEmpty()) {
+                                appContext.getString(R.string.msg_imported_count, result.imported)
+                            } else {
+                                appContext.getString(
+                                    R.string.msg_synced_partial,
+                                    appContext.getString(R.string.msg_imported_count, result.imported),
+                                    result.failures.size,
+                                )
+                            },
                         errorMessage = result.failures.firstOrNull(),
                         preview = if (result.failures.isEmpty()) emptyList() else it.preview,
                     )

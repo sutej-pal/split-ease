@@ -1,7 +1,9 @@
 package com.splitease.app.presentation.groups
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
@@ -14,6 +16,7 @@ import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +44,7 @@ data class GroupsUiState(
 class GroupsViewModel
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         private val authRepository: AuthRepository,
         private val groupRepository: GroupRepository,
         friendRepository: FriendRepository,
@@ -113,7 +117,7 @@ class GroupsViewModel
                 val id = requireUserId()
                 if (id == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, errorMessage = "Not signed in.")
+                        it.copy(isSubmitting = false, errorMessage = appContext.getString(R.string.msg_not_signed_in))
                     }
                     return@launch
                 }
@@ -175,7 +179,7 @@ class GroupsViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) "Group updated." else null,
+                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_group_updated) else null,
                     )
                 }
             }
@@ -230,7 +234,7 @@ class GroupsViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) "Member added." else null,
+                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_member_added) else null,
                     )
                 }
             }
@@ -240,7 +244,7 @@ class GroupsViewModel
             viewModelScope.launch {
                 val ownerId = requireUserId()
                 if (ownerId == null) {
-                    _uiState.update { it.copy(errorMessage = "Not signed in.") }
+                    _uiState.update { it.copy(errorMessage = appContext.getString(R.string.msg_not_signed_in)) }
                     return@launch
                 }
                 _uiState.update {
@@ -261,7 +265,7 @@ class GroupsViewModel
                             when {
                                 outcome == null -> null
                                 outcome.isInvitePending -> "Invite ready — share the link so they can join."
-                                else -> "Member added."
+                                else -> appContext.getString(R.string.msg_member_added)
                             },
                         pendingShareText = outcome?.inviteShareText,
                     )
@@ -273,7 +277,7 @@ class GroupsViewModel
             viewModelScope.launch {
                 val id = requireUserId()
                 if (id == null) {
-                    _uiState.update { it.copy(errorMessage = "Not signed in.") }
+                    _uiState.update { it.copy(errorMessage = appContext.getString(R.string.msg_not_signed_in)) }
                     return@launch
                 }
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
@@ -292,7 +296,7 @@ class GroupsViewModel
             viewModelScope.launch {
                 val id = requireUserId()
                 if (id == null) {
-                    _uiState.update { it.copy(errorMessage = "Not signed in.") }
+                    _uiState.update { it.copy(errorMessage = appContext.getString(R.string.msg_not_signed_in)) }
                     return@launch
                 }
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
@@ -322,14 +326,13 @@ class GroupsViewModel
             return when {
                 raw.contains("group_members", ignoreCase = true) ||
                     raw.contains("schema cache", ignoreCase = true) ->
-                    "Cloud tables are not set up yet. Group was not saved to the cloud — " +
-                        "run docs/sql/phase-3-schema.sql in the Supabase SQL Editor."
+                    appContext.getString(R.string.msg_cloud_tables_missing)
                 raw.contains("Authorization", ignoreCase = true) ||
                     raw.contains("Bearer ", ignoreCase = true) ||
                     raw.contains("apikey", ignoreCase = true) ->
-                    "Could not reach the cloud. Check your connection and Supabase setup."
+                    appContext.getString(R.string.msg_cloud_unreachable)
                 raw.isNotBlank() && raw.length <= 160 -> raw
-                else -> "Something went wrong. Try again."
+                else -> appContext.getString(R.string.error_generic)
             }
         }
     }

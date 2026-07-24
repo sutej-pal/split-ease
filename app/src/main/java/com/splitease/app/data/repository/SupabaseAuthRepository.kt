@@ -19,6 +19,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import javax.inject.Inject
@@ -39,21 +40,29 @@ class SupabaseAuthRepository
         private val syncInteractor: Provider<SyncInteractor>,
     ) : AuthRepository {
         override fun observeSession(): Flow<AuthSession> =
-            supabase.auth.sessionStatus.map { status ->
-                when (status) {
-                    is SessionStatus.Authenticated -> {
-                        val info = status.session.user
-                        if (info == null) {
-                            AuthSession.SignedOut
-                        } else {
-                            AuthSession.SignedIn(info.toAuthUser())
-                        }
+            supabase.auth.sessionStatus
+                .onEach { status ->
+                    // Stale refresh tokens (e.g. after remote user wipe) leave RefreshFailure;
+                    // clear local storage so the UI can leave the auth gate.
+                    if (status is SessionStatus.RefreshFailure) {
+                        runCatching { supabase.auth.clearSession() }
                     }
-                    SessionStatus.Initializing -> AuthSession.Loading
-                    is SessionStatus.NotAuthenticated -> AuthSession.SignedOut
-                    is SessionStatus.RefreshFailure -> AuthSession.SignedOut
                 }
-            }
+                .map { status ->
+                    when (status) {
+                        is SessionStatus.Authenticated -> {
+                            val info = status.session.user
+                            if (info == null) {
+                                AuthSession.SignedOut
+                            } else {
+                                AuthSession.SignedIn(info.toAuthUser())
+                            }
+                        }
+                        SessionStatus.Initializing -> AuthSession.Loading
+                        is SessionStatus.NotAuthenticated -> AuthSession.SignedOut
+                        is SessionStatus.RefreshFailure -> AuthSession.SignedOut
+                    }
+                }
 
         override suspend fun signUp(
             email: String,
@@ -95,6 +104,18 @@ class SupabaseAuthRepository
         override suspend fun resendSignupConfirmation(email: String): Result<Unit> =
             runCatching {
                 supabase.auth.resendEmail(OtpType.Email.SIGNUP, email.trim())
+            }
+
+        override suspend fun verifySignupOtp(email: String, token: String): Result<Unit> =
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type = OtpType.Email.SIGNUP,
+                    email = email.trim(),
+                    token = token.trim(),
+                )
+                persistCurrentUser()
+                categoryRepository.ensureDefaults()
+                hydrateCloudData()
             }
 
         override suspend fun sendPasswordReset(email: String): Result<Unit> =

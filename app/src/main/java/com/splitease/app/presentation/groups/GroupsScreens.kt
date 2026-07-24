@@ -61,7 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,8 +71,10 @@ import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
+import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.balances.GroupBalanceHeader
 import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.ledgerEntries
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
@@ -292,8 +294,8 @@ fun GroupDetailScreen(
         counterpartyLabel: String,
     ) -> Unit,
     viewModel: GroupsViewModel = hiltViewModel(),
-    expensesViewModel: com.splitease.app.presentation.expenses.ExpensesViewModel = hiltViewModel(),
-    balancesViewModel: com.splitease.app.presentation.balances.BalancesViewModel = hiltViewModel(),
+    expensesViewModel: ExpensesViewModel = hiltViewModel(),
+    balancesViewModel: BalancesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val membersState by remember(groupId) { viewModel.observeMembers(groupId) }
@@ -322,15 +324,18 @@ fun GroupDetailScreen(
         }
     }
 
+    val inviteSubject = stringResource(R.string.invite_email_subject)
+    val shareInvite = stringResource(R.string.action_share_invite)
+
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.invite_email_subject))
+                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
             }
-        context.startActivity(Intent.createChooser(intent, context.getString(R.string.action_share_invite)))
+        context.startActivity(Intent.createChooser(intent, shareInvite))
         viewModel.consumeShareText()
     }
 
@@ -418,15 +423,11 @@ fun GroupDetailScreen(
                     ) {
                         if (isSolo && ledger.isEmpty()) {
                             item {
+                                val groupShareText = stringResource(R.string.group_share_placeholder, group?.name.orEmpty())
                                 GroupSoloEmptyState(
                                     onAddMembers = onOpenSettings,
                                     onShareLink = {
-                                        viewModel.shareGroupLink(
-                                            context.getString(
-                                                R.string.group_share_placeholder,
-                                                group?.name.orEmpty(),
-                                            ),
-                                        )
+                                        viewModel.shareGroupLink(groupShareText)
                                     },
                                 )
                             }

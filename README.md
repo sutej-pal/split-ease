@@ -4,24 +4,29 @@ Native Android expense-sharing app (Kotlin + Jetpack Compose). Inspired by Split
 
 ## Status
 
-See [PROGRESS.md](PROGRESS.md) for phase status and [docs/ROADMAP.md](docs/ROADMAP.md) for the full feature → phase map.
+Phases **0–9** and **0b / 10a** are complete. See [PROGRESS.md](PROGRESS.md) and the feature map in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-**Next:** Phase 4 — Expense Creation & Splitting Logic.
+Carried-forward work (not a numbered phase) is listed under **Carried-forward TODOs** in `PROGRESS.md`.
 
 ## Requirements
 
 - JDK 17+
-- Android SDK (compile/target SDK 36)
-- Android Studio Otter / recent stable recommended
+- Android SDK (compile SDK 37 / target SDK 36)
+- Android Studio recent stable recommended
+- Supabase credentials in gitignored `local.properties` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
 
 ## Build
 
 ```bash
 ./gradlew :app:assembleStandardDebug
+./gradlew :app:assembleStandardRelease
 ./gradlew ktlintCheck
+./gradlew :app:testStandardDebugUnitTest
 ```
 
 On Windows: `gradlew.bat :app:assembleStandardDebug`
+
+Release builds enable **R8 minify + resource shrinking**.
 
 ### Twin install (testing only)
 
@@ -34,8 +39,13 @@ Install a second copy beside the main app to test multi-device sync on one phone
 
 ## Docs
 
-- [PROGRESS.md](PROGRESS.md) — phase checklist
-- [docs/ROADMAP.md](docs/ROADMAP.md) — feature distribution across phases
-- [ARCHITECTURE.md](ARCHITECTURE.md)
-- [CHANGELOG.md](CHANGELOG.md)
-- [docs/](docs/)
+Start here: [docs/README.md](docs/README.md)
+
+| Doc | Purpose |
+|---|---|
+| [PROGRESS.md](PROGRESS.md) | Phase checklist + open TODOs |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Feature → phase map |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Living architecture |
+| [CHANGELOG.md](CHANGELOG.md) | Keep a Changelog |
+| [docs/data-dictionary.md](docs/data-dictionary.md) | Schema / entities |
+| [docs/release-checklist.md](docs/release-checklist.md) | Ship checklist |
