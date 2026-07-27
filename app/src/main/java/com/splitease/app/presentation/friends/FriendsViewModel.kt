@@ -1,6 +1,9 @@
 package com.splitease.app.presentation.friends
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
@@ -70,6 +73,65 @@ class FriendsViewModel
 
         fun consumeShareText() {
             _uiState.update { it.copy(pendingShareText = null) }
+        }
+
+        /**
+         * Copies the pending invite deep link for [friendRowId] to the clipboard.
+         *
+         * @param friendRowId Local friendship row id.
+         */
+        fun copyInviteLink(friendRowId: String) {
+            viewModelScope.launch {
+                val link =
+                    runCatching { socialInteractor.pendingInviteClipboardLink(friendRowId) }
+                        .getOrNull()
+                if (link.isNullOrBlank()) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
+                            infoMessage = null,
+                        )
+                    }
+                    return@launch
+                }
+                val clipboard = appContext.getSystemService<ClipboardManager>()
+                clipboard?.setPrimaryClip(ClipData.newPlainText("SplitEase invite", link))
+                _uiState.update {
+                    it.copy(
+                        infoMessage = appContext.getString(R.string.invite_link_copied),
+                        errorMessage = null,
+                    )
+                }
+            }
+        }
+
+        /**
+         * Re-opens the system share sheet for an existing pending invite.
+         *
+         * @param friendRowId Local friendship row id.
+         */
+        fun shareInviteAgain(friendRowId: String) {
+            viewModelScope.launch {
+                val text =
+                    runCatching { socialInteractor.pendingInviteShareText(friendRowId) }
+                        .getOrNull()
+                if (text.isNullOrBlank()) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
+                            infoMessage = null,
+                        )
+                    }
+                    return@launch
+                }
+                _uiState.update {
+                    it.copy(
+                        pendingShareText = text,
+                        errorMessage = null,
+                        infoMessage = null,
+                    )
+                }
+            }
         }
 
         fun refresh() {

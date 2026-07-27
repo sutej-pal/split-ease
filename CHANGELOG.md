@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bottom navigation + Groups home UI; shared `Se*` design system
 
 ### Changed
+- Signup OTP is strictly **6 digits** (field max + validation; 8-digit codes rejected)
+- Confirm-signup email template + configure script set Supabase `mailer_otp_length=6` and OTP-first HTML ([supabase-confirm-signup-otp.html](docs/supabase-confirm-signup-otp.html))
+- Invite share text includes `splitease://invite/{token}` so the installed app opens; after signup/OTP the app opens the invited group (or Friends tab)
+- Pending invites show **Copy** / **Share again** on Friends list and Group settings member rows
 - Removed post-signup name confirmation screen; display name from signup is used and users go straight to the app after OTP ([phase-10b](docs/phase-10b-onboarding.md))
 - Welcome email still sends once on first signed-in session (no setup UI gate)
 - Onboarding now tracks a per-user local `onboarding_email_sent_{userId}` flag to avoid duplicate onboarding-start sends

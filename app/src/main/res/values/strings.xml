@@ -142,6 +142,11 @@
     <string name="groups_title">Groups</string>
     <string name="groups_empty">No groups yet. Tap + to create one.</string>
     <string name="action_share_invite">Share invite</string>
+    <string name="action_copy_invite_link">Copy invite link</string>
+    <string name="cd_copy_invite_link">Copy invite link</string>
+    <string name="cd_share_invite_again">Share invite again</string>
+    <string name="invite_link_copied">Invite link copied</string>
+    <string name="msg_invite_link_unavailable">No pending invite link found for this person.</string>
     <string name="invite_email_subject">You\'re invited to SplitEase</string>
     <string name="invite_pending_label">Invite pending</string>
     <string name="invite_select_name">Select your name:</string>
@@ -231,7 +236,7 @@
     <string name="verify_email_subtitle">Enter the verification code sent to %1$s to finish setup.</string>
     <string name="verify_email_sent">Account created. Check your email for a verification code.</string>
     <string name="verify_email_resent">Verification code resent. Check your inbox.</string>
-    <string name="verify_email_invalid_code">Enter a valid 6–8 digit code.</string>
+    <string name="verify_email_invalid_code">Enter a valid 6-digit code.</string>
     <string name="signup_complete_message">Signup complete. You can continue to the app.</string>
     <string name="label_verification_code">Verification code</string>
     <string name="action_verify_code">Verify</string>

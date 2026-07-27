@@ -39,6 +39,7 @@ class SharedPreferencesAppSettingsRepository
         private val appLocaleFlow = MutableStateFlow(readAppLocale())
         private val onboardingCompleteFlow = MutableStateFlow(readOnboardingComplete())
         private val pendingInviteTokenFlow = MutableStateFlow(readPendingInviteToken())
+        private val pendingInviteOpenTargetFlow = MutableStateFlow(readPendingInviteOpenTarget())
 
         override fun observeCurrencyCode(): Flow<String> = currencyFlow.asStateFlow()
 
@@ -159,10 +160,37 @@ class SharedPreferencesAppSettingsRepository
                         remove(KEY_PENDING_INVITE_TOKEN)
                     } else {
                         putString(KEY_PENDING_INVITE_TOKEN, normalized)
+                        // Reset until preview / sync captures the destination again.
+                        remove(KEY_PENDING_INVITE_OPEN_TARGET)
                     }
                 }
             }
             pendingInviteTokenFlow.value = normalized
+            if (normalized != null) {
+                pendingInviteOpenTargetFlow.value = null
+            }
+        }
+
+        override fun observePendingInviteOpenTarget(): Flow<String?> =
+            pendingInviteOpenTargetFlow.asStateFlow()
+
+        override suspend fun getPendingInviteOpenTarget(): String? =
+            withContext(Dispatchers.IO) {
+                readPendingInviteOpenTarget()
+            }
+
+        override suspend fun setPendingInviteOpenTarget(target: String?) {
+            val normalized = target?.trim()?.takeIf { it.isNotEmpty() }
+            withContext(Dispatchers.IO) {
+                prefs.edit {
+                    if (normalized == null) {
+                        remove(KEY_PENDING_INVITE_OPEN_TARGET)
+                    } else {
+                        putString(KEY_PENDING_INVITE_OPEN_TARGET, normalized)
+                    }
+                }
+            }
+            pendingInviteOpenTargetFlow.value = normalized
         }
 
         override fun observeAppLocale(): Flow<AppLocale> = appLocaleFlow.asStateFlow()
@@ -218,6 +246,9 @@ class SharedPreferencesAppSettingsRepository
         private fun readPendingInviteToken(): String? =
             prefs.getString(KEY_PENDING_INVITE_TOKEN, null)?.trim()?.takeIf { it.isNotEmpty() }
 
+        private fun readPendingInviteOpenTarget(): String? =
+            prefs.getString(KEY_PENDING_INVITE_OPEN_TARGET, null)?.trim()?.takeIf { it.isNotEmpty() }
+
         private fun readSimplifyMap(): Map<String, Boolean> =
             prefs.all
                 .mapNotNull { (key, value) ->
@@ -234,6 +265,7 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_APP_LOCALE = "app_locale"
             private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
             private const val KEY_PENDING_INVITE_TOKEN = "pending_invite_token"
+            private const val KEY_PENDING_INVITE_OPEN_TARGET = "pending_invite_open_target"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
             private const val KEY_ONBOARDING_EMAIL_SENT_PREFIX = "onboarding_email_sent_"
 

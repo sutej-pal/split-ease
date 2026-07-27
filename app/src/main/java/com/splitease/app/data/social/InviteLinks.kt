@@ -30,6 +30,14 @@ object InviteLinks {
     fun deepLinkUri(token: String): String = "$DEEP_LINK_SCHEME://$DEEP_LINK_HOST/$token"
 
     /**
+     * Plain invite URL for clipboard (custom scheme opens the installed app).
+     *
+     * @param token Opaque invite token.
+     * @return `splitease://invite/{token}`.
+     */
+    fun clipboardLink(token: String): String = deepLinkUri(token)
+
+    /**
      * Extracts an invite token from a deep-link [uri], or null if not an invite link.
      *
      * @param uri Incoming intent data.
@@ -78,9 +86,11 @@ object InviteLinks {
      * @return Plain-text message.
      */
     fun friendShareText(inviterName: String, token: String): String {
-        val link = urlFor(token)
+        val appLink = deepLinkUri(token)
+        val webLink = urlFor(token)
         return "$inviterName invited you to SplitEase.\n\n" +
-            "Open the link to join:\n$link"
+            "Open this link on your phone to join in the app:\n$appLink\n\n" +
+            "Or open:\n$webLink"
     }
 
     /**
@@ -92,8 +102,10 @@ object InviteLinks {
      * @return Plain-text message.
      */
     fun groupShareText(inviterName: String, groupName: String, token: String): String {
-        val link = urlFor(token)
+        val appLink = deepLinkUri(token)
+        val webLink = urlFor(token)
         return "$inviterName invited you to join \"$groupName\" on SplitEase.\n\n" +
-            "Open the link to join the group:\n$link"
+            "Open this link on your phone to join the group in the app:\n$appLink\n\n" +
+            "Or open:\n$webLink"
     }
 }

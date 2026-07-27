@@ -76,7 +76,8 @@ Supabase (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
 3. From a signed-in account, invite a non-user to a group and share the link.
 4. Open `https://splitease.app/invite/{token}` or `splitease://invite/{token}` on a device with the app installed → Invite landing.
 5. Tap **Join as someone new** → fill signup → OTP screen appears; Home/onboarding must not show until Verify succeeds.
-6. After OTP, user should be a group member and friend row remapped.
+6. After OTP, user should land on the invited **group detail** screen (membership already claimed).
+7. Friend-only invites should open the Friends tab after OTP.
 
 ## Known Issues / TODOs
 
@@ -95,6 +96,8 @@ Phase 10c delivered the invite deep-link join path:
 - Opening `https://splitease.app/invite/{token}` or `splitease://invite/{token}` stores the token and shows the invite landing screen (inviter, group, members, **Join as someone new**).
 - Join signup creates the account, then the root OTP gate blocks Home/onboarding until the 6-digit code is verified (also enforced for normal signup).
 - After verify, sync calls `accept_invite_by_token` (plus email-based accept) so the new user joins the group.
+- Share text includes the custom-scheme link so an installed app opens without relying on App Links verification.
+- After accept, the app navigates to the invited **group detail** (or Friends tab for friend-only invites).
 - Screens use SplitEase `Se*` theme (not a third-party skin). Claiming an existing placeholder from the member list remains out of scope.
 
 ### Delivered checklist

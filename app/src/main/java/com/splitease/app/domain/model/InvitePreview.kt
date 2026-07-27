@@ -31,3 +31,13 @@ data class InvitePreviewMember(
     val displayName: String,
     val alreadyJoined: Boolean,
 )
+
+/**
+ * Navigation target after the invite is accepted (group id or Friends tab sentinel).
+ *
+ * @return Group id when present; otherwise [com.splitease.app.domain.settings.AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS].
+ */
+fun InvitePreview.pendingOpenTarget(): String =
+    groupId?.trim()?.takeIf { it.isNotEmpty() }
+        ?: com.splitease.app.domain.settings.AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS
+

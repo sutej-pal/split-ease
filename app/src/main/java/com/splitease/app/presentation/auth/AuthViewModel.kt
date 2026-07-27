@@ -85,6 +85,19 @@ class AuthViewModel
                     initialValue = null,
                 )
 
+        /**
+         * Where to navigate after invite accept (group id or friends sentinel).
+         * Survives token clear until [consumePendingInviteOpenTarget].
+         */
+        val pendingInviteOpenTarget: StateFlow<String?> =
+            appSettingsRepository
+                .observePendingInviteOpenTarget()
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = null,
+                )
+
         init {
             viewModelScope.launch {
                 session.collect { current ->
@@ -180,9 +193,7 @@ class AuthViewModel
          */
         fun verifySignupOtp(email: String, token: String) {
             val code = token.trim()
-            if (code.length !in SIGNUP_OTP_MIN_LENGTH..SIGNUP_OTP_MAX_LENGTH ||
-                code.any { !it.isDigit() }
-            ) {
+            if (code.length != SIGNUP_OTP_LENGTH || code.any { !it.isDigit() }) {
                 _formState.update {
                     it.copy(
                         errorMessage = appContext.getString(R.string.verify_email_invalid_code),
@@ -248,6 +259,21 @@ class AuthViewModel
             }
         }
 
+        /**
+         * Claims any pending invite (sync), then returns and clears the open target
+         * for post-accept navigation.
+         *
+         * @return Group id, [AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS], or null.
+         */
+        suspend fun claimInviteAndConsumeOpenTarget(): String? {
+            runCatching { authRepository.ensureLocalProfile() }
+            val target = appSettingsRepository.getPendingInviteOpenTarget()
+            if (!target.isNullOrBlank()) {
+                appSettingsRepository.setPendingInviteOpenTarget(null)
+            }
+            return target?.takeIf { it.isNotBlank() }
+        }
+
         private fun submit(
             successMessage: String? = null,
             block: suspend () -> Result<Unit>,
@@ -277,11 +303,8 @@ class AuthViewModel
         }
 
         companion object {
-            /** Minimum digits accepted (legacy / shorter Supabase configs). */
-            const val SIGNUP_OTP_MIN_LENGTH = 6
-
-            /** Max digits accepted — matches Supabase mailer OTP length (commonly 8). */
-            const val SIGNUP_OTP_MAX_LENGTH = 8
+            /** Exact digit count for signup email OTP (Supabase mailer OTP length). */
+            const val SIGNUP_OTP_LENGTH = 6
 
             private const val AUTH_LOADING_TIMEOUT_MS = 8_000L
         }

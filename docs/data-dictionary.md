@@ -72,6 +72,7 @@ Unique index: `(ownerUserId, friendUserId)`.
 - `onboarding_complete` — legacy flag from the removed setup wizard (defaults to `true`; no longer gates navigation)
 - `onboarding_email_sent_{userId}` — per-user marker set after welcome email send succeeds
 - `pending_invite_token` — opaque invite token from a deep link, kept until OTP verify + accept clears it
+- `pending_invite_open_target` — group id (or friends sentinel) to open after accept; survives token clear until UI consumes it
 
 ### `group_members`
 

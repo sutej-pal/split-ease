@@ -3,6 +3,7 @@ package com.splitease.app.presentation.friends
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,8 +15,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +60,21 @@ fun FriendsListScreen(
 ) {
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val inviteSubject = stringResource(R.string.invite_email_subject)
+    val shareInvite = stringResource(R.string.action_share_invite)
+
+    LaunchedEffect(uiState.pendingShareText) {
+        val text = uiState.pendingShareText ?: return@LaunchedEffect
+        val intent =
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+        context.startActivity(Intent.createChooser(intent, shareInvite))
+        viewModel.consumeShareText()
+    }
 
     SeScreen(
         title = stringResource(R.string.friends_title),
@@ -87,6 +105,9 @@ fun FriendsListScreen(
                 uiState.errorMessage?.let {
                     SeErrorText(it, modifier = Modifier.padding(16.dp))
                 }
+                uiState.infoMessage?.let {
+                    SeInfoText(it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                }
                 if (friends.isEmpty()) {
                     SeEmptyState(
                         message = stringResource(R.string.friends_empty),
@@ -99,7 +120,12 @@ fun FriendsListScreen(
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     ) {
                         items(friends, key = { it.id }) { friend ->
-                            FriendRow(friend = friend, onClick = { onOpenFriend(friend.friendUserId) })
+                            FriendRow(
+                                friend = friend,
+                                onClick = { onOpenFriend(friend.friendUserId) },
+                                onCopyInvite = { viewModel.copyInviteLink(friend.id) },
+                                onShareInvite = { viewModel.shareInviteAgain(friend.id) },
+                            )
                         }
                     }
                 }
@@ -109,7 +135,12 @@ fun FriendsListScreen(
 }
 
 @Composable
-private fun FriendRow(friend: Friend, onClick: () -> Unit) {
+private fun FriendRow(
+    friend: Friend,
+    onClick: () -> Unit,
+    onCopyInvite: () -> Unit,
+    onShareInvite: () -> Unit,
+) {
     val pending = friend.displayNameSnapshot.contains("(invited)", ignoreCase = true)
     SeListRow(
         title = friend.displayNameSnapshot,
@@ -120,6 +151,29 @@ private fun FriendRow(friend: Friend, onClick: () -> Unit) {
                 friend.emailSnapshot
             },
         leading = { SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 48) },
+        trailing =
+            if (pending) {
+                {
+                    Row {
+                        IconButton(onClick = onCopyInvite) {
+                            Icon(
+                                Icons.Filled.ContentCopy,
+                                contentDescription = stringResource(R.string.cd_copy_invite_link),
+                                tint = SplitEaseColors.Primary,
+                            )
+                        }
+                        IconButton(onClick = onShareInvite) {
+                            Icon(
+                                Icons.Filled.Share,
+                                contentDescription = stringResource(R.string.cd_share_invite_again),
+                                tint = SplitEaseColors.Primary,
+                            )
+                        }
+                    }
+                }
+            } else {
+                null
+            },
         onClick = onClick,
     )
 }

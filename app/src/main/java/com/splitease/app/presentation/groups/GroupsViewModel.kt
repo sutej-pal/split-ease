@@ -1,6 +1,9 @@
 package com.splitease.app.presentation.groups
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
@@ -94,6 +97,79 @@ class GroupsViewModel
         /** Queues a system share sheet with [shareText]. */
         fun shareGroupLink(shareText: String) {
             _uiState.update { it.copy(pendingShareText = shareText) }
+        }
+
+        /**
+         * Copies the pending invite link for a group member who has not joined yet.
+         *
+         * @param memberUserId Placeholder / friend user id on the membership row.
+         */
+        fun copyInviteLinkForMember(memberUserId: String) {
+            viewModelScope.launch {
+                val friend =
+                    friends.value.firstOrNull { it.friendUserId == memberUserId }
+                if (friend == null) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
+                            infoMessage = null,
+                        )
+                    }
+                    return@launch
+                }
+                val link =
+                    runCatching { socialInteractor.pendingInviteClipboardLink(friend.id) }
+                        .getOrNull()
+                if (link.isNullOrBlank()) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
+                            infoMessage = null,
+                        )
+                    }
+                    return@launch
+                }
+                val clipboard = appContext.getSystemService<ClipboardManager>()
+                clipboard?.setPrimaryClip(ClipData.newPlainText("SplitEase invite", link))
+                _uiState.update {
+                    it.copy(
+                        infoMessage = appContext.getString(R.string.invite_link_copied),
+                        errorMessage = null,
+                    )
+                }
+            }
+        }
+
+        /**
+         * Re-shares the pending invite for a group member who has not joined yet.
+         *
+         * @param memberUserId Placeholder / friend user id on the membership row.
+         */
+        fun shareInviteAgainForMember(memberUserId: String) {
+            viewModelScope.launch {
+                val friend =
+                    friends.value.firstOrNull { it.friendUserId == memberUserId }
+                val text =
+                    friend?.let {
+                        runCatching { socialInteractor.pendingInviteShareText(it.id) }.getOrNull()
+                    }
+                if (text.isNullOrBlank()) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
+                            infoMessage = null,
+                        )
+                    }
+                    return@launch
+                }
+                _uiState.update {
+                    it.copy(
+                        pendingShareText = text,
+                        errorMessage = null,
+                        infoMessage = null,
+                    )
+                }
+            }
         }
 
         fun refresh() {

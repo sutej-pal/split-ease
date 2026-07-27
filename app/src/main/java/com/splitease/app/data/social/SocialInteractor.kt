@@ -212,6 +212,38 @@ class SocialInteractor
         }
 
         /**
+         * Rebuilds share body text for an existing pending invite.
+         *
+         * @param friendRowId Local friendship row id linked to the invite.
+         * @return Share text, or null when no pending invite exists.
+         */
+        suspend fun pendingInviteShareText(friendRowId: String): String? {
+            val invite = inviteRepository.getByFriendRowId(friendRowId) ?: return null
+            if (invite.status != InviteStatus.PENDING) return null
+            val inviterName =
+                userRepository.getUserById(invite.inviterUserId)?.displayName ?: "A friend"
+            return if (!invite.groupId.isNullOrBlank()) {
+                val groupName =
+                    groupRepository.getGroupById(invite.groupId)?.name ?: "a group"
+                InviteLinks.groupShareText(inviterName, groupName, invite.token)
+            } else {
+                InviteLinks.friendShareText(inviterName, invite.token)
+            }
+        }
+
+        /**
+         * Invite URL suitable for clipboard copy (reuses the existing pending token).
+         *
+         * @param friendRowId Local friendship row id linked to the invite.
+         * @return Deep-link URL, or null when no pending invite exists.
+         */
+        suspend fun pendingInviteClipboardLink(friendRowId: String): String? {
+            val invite = inviteRepository.getByFriendRowId(friendRowId) ?: return null
+            if (invite.status != InviteStatus.PENDING) return null
+            return InviteLinks.clipboardLink(invite.token)
+        }
+
+        /**
          * Loads invite landing preview for a deep-link token (anonymous-safe).
          *
          * @param token Opaque invite token.

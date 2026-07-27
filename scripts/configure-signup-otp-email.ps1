@@ -25,6 +25,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $localProps = Join-Path $repoRoot 'local.properties'
+$templatePath = Join-Path $repoRoot 'docs\supabase-confirm-signup-otp.html'
 
 function Read-LocalProperty([string]$name) {
     if (-not (Test-Path $localProps)) { return $null }
@@ -55,22 +56,22 @@ SUPABASE_ACCESS_TOKEN missing.
 Or paste the OTP template manually:
   https://supabase.com/dashboard/project/<ref>/auth/templates
   → Confirm signup → replace body with docs/supabase-confirm-signup-otp.html
+  → Authentication → Providers → Email → OTP length = 6
 '@
 }
 if (-not $ProjectRef) {
     throw 'Could not resolve project ref. Set SUPABASE_URL or -ProjectRef.'
 }
+if (-not (Test-Path $templatePath)) {
+    throw "Template not found: $templatePath"
+}
 
-$subject = 'Your SplitEase verification code'
+$subject = 'Your SplitEase 6-digit verification code'
 # Keep subject + body OTP-first; no ConfirmationURL so clients are not steered to a link.
-$body = @'
-<h2>Confirm your SplitEase account</h2>
-<p>Enter this 6-digit code in the app to activate your account:</p>
-<p style="font-size:24px;letter-spacing:4px;font-weight:bold;">{{ .Token }}</p>
-<p>If you did not create a SplitEase account, you can ignore this email.</p>
-'@
+$body = (Get-Content -Path $templatePath -Raw).Trim()
 
 $payload = @{
+    mailer_otp_length = 6
     mailer_subjects_confirmation = $subject
     mailer_templates_confirmation_content = $body
 } | ConvertTo-Json -Compress
@@ -81,7 +82,7 @@ $headers = @{
     'Content-Type' = 'application/json'
 }
 
-Write-Host "Updating Confirm signup template for project $ProjectRef ..."
+Write-Host "Updating Confirm signup template + OTP length=6 for project $ProjectRef ..."
 Invoke-RestMethod -Uri $uri -Method Patch -Headers $headers -Body $payload | Out-Null
-Write-Host 'Done. New signups will email {{ .Token }} (6-digit OTP).'
+Write-Host 'Done. New signups will email {{ .Token }} as a 6-digit OTP.'
 Write-Host "Dashboard: https://supabase.com/dashboard/project/$ProjectRef/auth/templates"

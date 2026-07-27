@@ -52,7 +52,7 @@ interface AuthRepository {
 
     /**
      * Verifies the signup OTP emailed after [signUp] when Confirm email is enabled
-     * (typically 6–8 digits from Supabase mailer).
+     * (6-digit code from Supabase mailer).
      *
      * On success, establishes a session and hydrates the local profile (same as sign-in).
      *

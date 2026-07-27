@@ -54,9 +54,10 @@ None (Room / PostgREST unchanged).
 
 ### Supabase Dashboard (required once)
 1. Authentication → Providers → Email → **Confirm email** ON.
-2. Authentication → Email Templates → **Confirm signup**: include the 6-digit code, e.g.  
-   `Your SplitEase code is {{ .Token }}`  
-   (optional: remove or de-emphasize `{{ .ConfirmationURL }}` so users are not pushed to a link).
+2. Authentication → Providers → Email → **OTP length** = **6** (must match the app).
+3. Authentication → Email Templates → **Confirm signup**: paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)  
+   (uses `{{ .Token }}`; no `{{ .ConfirmationURL }}` so users enter the code in-app).  
+   Or run `.\scripts\configure-signup-otp-email.ps1` (sets template + `mailer_otp_length=6`).
 
 ### Manual
 1. Sign up with a new email → verify screen shows code field.
@@ -95,5 +96,6 @@ Updated 2026-07-27: real OTP path is now active in app logic.
 
 Operator requirements remain:
 - Confirm email must stay ON for OTP-gated signup behavior.
-- Confirm signup template must include `{{ .Token }}`.
+- Mailer OTP length must be **6** (`mailer_otp_length`).
+- Confirm signup template must include `{{ .Token }}` (see [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)).
 - SMTP/provider configuration must be healthy (or equivalent provider setup) for reliable email delivery.

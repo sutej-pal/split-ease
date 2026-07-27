@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.onboarding.OnboardingViewModel
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
@@ -317,13 +318,6 @@ fun SplitEaseNavHost(
             LaunchedEffect(current.user.userId) {
                 authViewModel.clearMessages()
             }
-            // If an invite link was opened while already signed in, sync will claim it.
-            LaunchedEffect(current.user.userId, pendingInviteToken) {
-                if (!pendingInviteToken.isNullOrBlank()) {
-                    // Trigger profile hydrate → SyncInteractor accepts token + clears it.
-                    authViewModel.ensureInviteAccepted()
-                }
-            }
             // Welcome email only — display name was already collected at signup.
             val onboardingViewModel: OnboardingViewModel = hiltViewModel()
             LaunchedEffect(current.user.userId) {
@@ -334,8 +328,10 @@ fun SplitEaseNavHost(
                 )
             }
             SignedInNavHost(
+                userId = current.user.userId,
                 displayName = current.user.displayName,
                 onSignOut = authViewModel::signOut,
+                claimInviteAndConsumeOpenTarget = authViewModel::claimInviteAndConsumeOpenTarget,
             )
         }
     }
@@ -343,14 +339,34 @@ fun SplitEaseNavHost(
 
 @Composable
 private fun SignedInNavHost(
+    userId: String,
     displayName: String,
     onSignOut: () -> Unit,
+    claimInviteAndConsumeOpenTarget: suspend () -> String?,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomBarRoutes
     val bottomBarSelectedRoute = selectedTabRoute(currentRoute)
+
+    // After invite signup/OTP (or opening a link while signed in): claim membership, then open group.
+    LaunchedEffect(userId) {
+        val openTarget = claimInviteAndConsumeOpenTarget() ?: return@LaunchedEffect
+        when {
+            openTarget == AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS -> {
+                navController.navigate(Routes.TAB_FRIENDS) {
+                    popUpTo(Routes.TAB_GROUPS) { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
+            openTarget.isNotBlank() -> {
+                navController.navigate(Routes.groupDetail(openTarget)) {
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     Scaffold(
         // Child screens own status-bar insets via their TopAppBars; only reserve bottom-bar space here.

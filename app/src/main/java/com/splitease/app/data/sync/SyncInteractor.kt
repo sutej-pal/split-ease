@@ -17,6 +17,7 @@ import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupMember
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SyncStatus
+import com.splitease.app.domain.model.pendingOpenTarget
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
@@ -173,6 +174,14 @@ class SyncInteractor
             val flush = flushPending()
             val pendingInviteToken =
                 runCatching { appSettingsRepository.getPendingInviteToken() }.getOrNull()
+            if (!pendingInviteToken.isNullOrBlank()) {
+                // Capture where to navigate after accept (survives token clear).
+                runCatching {
+                    socialInteractor.get().loadInvitePreview(pendingInviteToken)?.let { preview ->
+                        appSettingsRepository.setPendingInviteOpenTarget(preview.pendingOpenTarget())
+                    }
+                }
+            }
             runCatching {
                 socialInteractor.get().acceptPendingInvitesForCurrentUser(
                     userId = uid,

@@ -49,7 +49,7 @@ class AuthViewModelTest {
         every { context.getString(R.string.verify_email_resent) } returns
             "Verification code resent. Check your inbox."
         every { context.getString(R.string.verify_email_invalid_code) } returns
-            "Enter a valid 6–8 digit code."
+            "Enter a valid 6-digit code."
         every { context.getString(R.string.signup_complete_message) } returns
             "Signup complete. You can continue to the app."
         viewModel = AuthViewModel(repository, appSettings, context)
@@ -115,11 +115,20 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `verifySignupOtp rejects wrong code`() =
+    fun `verifySignupOtp rejects wrong length code`() =
         runTest {
             viewModel.verifySignupOtp("a@b.com", "9999")
             advanceUntilIdle()
-            assertEquals("Enter a valid 6–8 digit code.", viewModel.formState.value.errorMessage)
+            assertEquals("Enter a valid 6-digit code.", viewModel.formState.value.errorMessage)
+            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
+        }
+
+    @Test
+    fun `verifySignupOtp rejects 8-digit code`() =
+        runTest {
+            viewModel.verifySignupOtp("a@b.com", "12345678")
+            advanceUntilIdle()
+            assertEquals("Enter a valid 6-digit code.", viewModel.formState.value.errorMessage)
             coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
         }
 
@@ -135,20 +144,6 @@ class AuthViewModelTest {
             advanceUntilIdle()
             assertNull(viewModel.formState.value.pendingConfirmationEmail)
             coVerify(exactly = 1) { repository.verifySignupOtp("a@b.com", "123456") }
-        }
-
-    @Test
-    fun `verifySignupOtp with valid 8-digit code calls repository and clears pending`() =
-        runTest {
-            coEvery { repository.signUp(any(), any(), any()) } returns
-                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
-            coEvery { repository.verifySignupOtp(any(), any()) } returns Result.success(Unit)
-            viewModel.signUp("a@b.com", "secret1", "Ada")
-            advanceUntilIdle()
-            viewModel.verifySignupOtp("a@b.com", "12345678")
-            advanceUntilIdle()
-            assertNull(viewModel.formState.value.pendingConfirmationEmail)
-            coVerify(exactly = 1) { repository.verifySignupOtp("a@b.com", "12345678") }
         }
 
     @Test

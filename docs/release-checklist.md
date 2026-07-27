@@ -10,7 +10,8 @@ Use before uploading a Play Console build.
 
 ## Supabase production
 - [ ] Confirm email **ON** in Authentication → Providers → Email
-- [ ] Confirm signup email template includes `{{ .Token }}` (6-digit OTP), e.g. `Your SplitEase code is {{ .Token }}`
+- [ ] Email OTP length = 6 (Auth → Providers → Email, or `mailer_otp_length`)
+- [ ] Confirm signup email template includes `{{ .Token }}` (paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) or run `scripts/configure-signup-otp-email.ps1`)
 - [ ] Redirect URL allow-list includes `splitease://auth-callback` (password reset / other Auth redirects; **not** required for signup OTP)
 - [ ] Site URL set to a real landing or Play listing URL
 - [ ] Phase 3–6 SQL applied (profiles, groups, invites, expenses, payments) + RLS verified

@@ -8,6 +8,14 @@ import kotlinx.coroutines.flow.Flow
  * Currency is chosen in Settings and applied to new expenses and groups.
  */
 interface AppSettingsRepository {
+    companion object {
+        /**
+         * Sentinel for [getPendingInviteOpenTarget] / [setPendingInviteOpenTarget]:
+         * open the Friends tab after invite accept (friend invite, no group).
+         */
+        const val PENDING_INVITE_OPEN_FRIENDS = "__friends__"
+    }
+
     /**
      * Observes the active ISO 4217 currency code (e.g. `"INR"`).
      *
@@ -181,6 +189,32 @@ interface AppSettingsRepository {
      * @param token Opaque invite token, or null to clear.
      */
     suspend fun setPendingInviteToken(token: String?)
+
+    /**
+     * Observes where to navigate after an invite is accepted.
+     *
+     * Values:
+     * - a group id → open that group
+     * - [PENDING_INVITE_OPEN_FRIENDS] → Friends tab
+     * - `null` → no pending invite navigation
+     *
+     * Survives token clear after accept until the UI consumes it.
+     */
+    fun observePendingInviteOpenTarget(): Flow<String?>
+
+    /**
+     * Reads the pending post-invite navigation target once.
+     *
+     * @return Group id, [PENDING_INVITE_OPEN_FRIENDS], or null.
+     */
+    suspend fun getPendingInviteOpenTarget(): String?
+
+    /**
+     * Persists or clears where to navigate after invite accept.
+     *
+     * @param target Group id, [PENDING_INVITE_OPEN_FRIENDS], or null to clear.
+     */
+    suspend fun setPendingInviteOpenTarget(target: String?)
 
     /**
      * Observes the in-app language preference.

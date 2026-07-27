@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -156,6 +158,8 @@ fun GroupSettingsScreen(
                 members.forEach { member ->
                     val friend = friends.firstOrNull { it.friendUserId == member.userId }
                     val isYou = member.userId == me
+                    val pending =
+                        friend?.displayNameSnapshot?.contains("(invited)", ignoreCase = true) == true
                     val title =
                         if (isYou) {
                             stringResource(
@@ -167,7 +171,15 @@ fun GroupSettingsScreen(
                         }
                     SeListRow(
                         title = title,
-                        subtitle = friend?.emailSnapshot,
+                        subtitle =
+                            when {
+                                pending ->
+                                    listOfNotNull(
+                                        friend?.emailSnapshot,
+                                        stringResource(R.string.invite_pending_label),
+                                    ).joinToString(" · ")
+                                else -> friend?.emailSnapshot
+                            },
                         leading = {
                             SeIconTile(
                                 icon = Icons.Filled.Person,
@@ -175,6 +187,39 @@ fun GroupSettingsScreen(
                                 size = 40,
                             )
                         },
+                        trailing =
+                            if (pending) {
+                                {
+                                    Row {
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.copyInviteLinkForMember(member.userId)
+                                            },
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.ContentCopy,
+                                                contentDescription =
+                                                    stringResource(R.string.cd_copy_invite_link),
+                                                tint = SplitEaseColors.Primary,
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.shareInviteAgainForMember(member.userId)
+                                            },
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Share,
+                                                contentDescription =
+                                                    stringResource(R.string.cd_share_invite_again),
+                                                tint = SplitEaseColors.Primary,
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                         showDivider = true,
                     )
                 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.InvitePreview
+import com.splitease.app.domain.model.pendingOpenTarget
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -81,6 +82,7 @@ class InviteJoinViewModel
         fun dismissInvite() {
             viewModelScope.launch {
                 appSettingsRepository.setPendingInviteToken(null)
+                appSettingsRepository.setPendingInviteOpenTarget(null)
                 _uiState.value = InviteJoinUiState()
             }
         }
@@ -115,6 +117,7 @@ class InviteJoinViewModel
                     )
                 }
             } else {
+                appSettingsRepository.setPendingInviteOpenTarget(preview.pendingOpenTarget())
                 _uiState.update {
                     it.copy(
                         isLoading = false,
