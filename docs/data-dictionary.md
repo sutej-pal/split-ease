@@ -68,6 +68,11 @@ Unique index: `(ownerUserId, friendUserId)`.
 - `biometric_lock_enabled` — require biometric / device credential to open the app
 - `auth_timeout` — idle grace period before re-auth (`IMMEDIATE`, `FIVE_SECONDS`, …)
 
+**Local Onboarding preferences (SharedPreferences `splitease_settings`):**
+- `onboarding_complete` — legacy flag from the removed setup wizard (defaults to `true`; no longer gates navigation)
+- `onboarding_email_sent_{userId}` — per-user marker set after welcome email send succeeds
+- `pending_invite_token` — opaque invite token from a deep link, kept until OTP verify + accept clears it
+
 ### `group_members`
 
 | Column | Type | Nullable | Description |
@@ -184,6 +189,11 @@ Unique index: `(expenseId, userId)`.
 | invites | friend_row_id | UUID | yes | Related friends row |
 | invites | status | TEXT | no | PENDING / ACCEPTED / CANCELLED |
 | invites | created_at_epoch_ms | BIGINT | no | Created time |
+
+**Invite join RPCs** (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
+- `get_invite_preview(p_token)` — public (anon) preview for landing UI
+- `accept_invite_by_token(p_token)` — authenticated accept for deep-link join-as-new
+
 | expenses | id | UUID (PK) | no | Expense id |
 | expenses | description | TEXT | no | Title |
 | expenses | amount | TEXT | no | Plain decimal |

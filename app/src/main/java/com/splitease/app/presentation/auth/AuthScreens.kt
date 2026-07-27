@@ -198,7 +198,10 @@ fun VerifyEmailScreen(
         SeTextField(
             value = code,
             onValueChange = { incoming ->
-                code = incoming.filter { it.isDigit() }.take(4)
+                code =
+                    incoming
+                        .filter { it.isDigit() }
+                        .take(AuthViewModel.SIGNUP_OTP_MAX_LENGTH)
             },
             label = stringResource(R.string.label_verification_code),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -208,7 +211,10 @@ fun VerifyEmailScreen(
         SePrimaryButton(
             text = stringResource(R.string.action_verify_code),
             onClick = { onVerify(code) },
-            enabled = !formState.isLoading && code.length == 4,
+            enabled =
+                !formState.isLoading &&
+                    code.length in
+                    AuthViewModel.SIGNUP_OTP_MIN_LENGTH..AuthViewModel.SIGNUP_OTP_MAX_LENGTH,
         )
         Spacer(modifier = Modifier.height(8.dp))
         SeTextButton(

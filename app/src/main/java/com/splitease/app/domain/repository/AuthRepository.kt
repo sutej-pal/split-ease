@@ -1,6 +1,7 @@
 package com.splitease.app.domain.repository
 
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SignUpResult
 import kotlinx.coroutines.flow.Flow
 
@@ -14,6 +15,13 @@ interface AuthRepository {
      * @return Cold [Flow] of [AuthSession] updates.
      */
     fun observeSession(): Flow<AuthSession>
+
+    /**
+     * Returns the currently signed-in user snapshot, if any.
+     *
+     * @return [AuthUser] when authenticated, otherwise null.
+     */
+    suspend fun getSignedInUserOrNull(): AuthUser?
 
     /**
      * Creates an account with email and password.
@@ -43,7 +51,8 @@ interface AuthRepository {
     suspend fun resendSignupConfirmation(email: String): Result<Unit>
 
     /**
-     * Verifies the 6-digit signup OTP emailed after [signUp] when Confirm email is enabled.
+     * Verifies the signup OTP emailed after [signUp] when Confirm email is enabled
+     * (typically 6–8 digits from Supabase mailer).
      *
      * On success, establishes a session and hydrates the local profile (same as sign-in).
      *
@@ -67,6 +76,15 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun signOut(): Result<Unit>
+
+    /**
+     * Updates the signed-in user's display name in Supabase metadata, local Room, and
+     * the remote `profiles` table (best-effort).
+     *
+     * @param displayName New display name.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun updateDisplayName(displayName: String): Result<Unit>
 
     /**
      * Ensures the signed-in auth user exists in local Room (and remote profiles best-effort),

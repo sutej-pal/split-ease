@@ -37,6 +37,8 @@ class SharedPreferencesAppSettingsRepository
         private val biometricLockFlow = MutableStateFlow(readBiometricLock())
         private val authTimeoutFlow = MutableStateFlow(readAuthTimeout())
         private val appLocaleFlow = MutableStateFlow(readAppLocale())
+        private val onboardingCompleteFlow = MutableStateFlow(readOnboardingComplete())
+        private val pendingInviteTokenFlow = MutableStateFlow(readPendingInviteToken())
 
         override fun observeCurrencyCode(): Flow<String> = currencyFlow.asStateFlow()
 
@@ -117,6 +119,52 @@ class SharedPreferencesAppSettingsRepository
             authTimeoutFlow.value = timeout
         }
 
+        override fun observeOnboardingComplete(): Flow<Boolean> = onboardingCompleteFlow.asStateFlow()
+
+        override suspend fun getOnboardingComplete(): Boolean =
+            withContext(Dispatchers.IO) {
+                readOnboardingComplete()
+            }
+
+        override suspend fun setOnboardingComplete(complete: Boolean) {
+            withContext(Dispatchers.IO) {
+                prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, complete) }
+            }
+            onboardingCompleteFlow.value = complete
+        }
+
+        override suspend fun getOnboardingEmailSent(userId: String): Boolean =
+            withContext(Dispatchers.IO) {
+                prefs.getBoolean(onboardingEmailSentKey(userId), false)
+            }
+
+        override suspend fun setOnboardingEmailSent(userId: String, sent: Boolean) {
+            withContext(Dispatchers.IO) {
+                prefs.edit { putBoolean(onboardingEmailSentKey(userId), sent) }
+            }
+        }
+
+        override fun observePendingInviteToken(): Flow<String?> = pendingInviteTokenFlow.asStateFlow()
+
+        override suspend fun getPendingInviteToken(): String? =
+            withContext(Dispatchers.IO) {
+                readPendingInviteToken()
+            }
+
+        override suspend fun setPendingInviteToken(token: String?) {
+            val normalized = token?.trim()?.takeIf { it.isNotEmpty() }
+            withContext(Dispatchers.IO) {
+                prefs.edit {
+                    if (normalized == null) {
+                        remove(KEY_PENDING_INVITE_TOKEN)
+                    } else {
+                        putString(KEY_PENDING_INVITE_TOKEN, normalized)
+                    }
+                }
+            }
+            pendingInviteTokenFlow.value = normalized
+        }
+
         override fun observeAppLocale(): Flow<AppLocale> = appLocaleFlow.asStateFlow()
 
         override suspend fun getAppLocale(): AppLocale =
@@ -165,6 +213,11 @@ class SharedPreferencesAppSettingsRepository
         private fun readAppLocale(): AppLocale =
             AppLocale.fromStorage(prefs.getString(KEY_APP_LOCALE, AppLocale.DEFAULT.name))
 
+        private fun readOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, true)
+
+        private fun readPendingInviteToken(): String? =
+            prefs.getString(KEY_PENDING_INVITE_TOKEN, null)?.trim()?.takeIf { it.isNotEmpty() }
+
         private fun readSimplifyMap(): Map<String, Boolean> =
             prefs.all
                 .mapNotNull { (key, value) ->
@@ -179,8 +232,13 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_BIOMETRIC_LOCK = "biometric_lock_enabled"
             private const val KEY_AUTH_TIMEOUT = "auth_timeout"
             private const val KEY_APP_LOCALE = "app_locale"
+            private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+            private const val KEY_PENDING_INVITE_TOKEN = "pending_invite_token"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
+            private const val KEY_ONBOARDING_EMAIL_SENT_PREFIX = "onboarding_email_sent_"
 
             private fun simplifyKey(groupId: String) = KEY_SIMPLIFY_PREFIX + groupId
+
+            private fun onboardingEmailSentKey(userId: String) = KEY_ONBOARDING_EMAIL_SENT_PREFIX + userId
         }
     }

@@ -20,6 +20,7 @@ import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
+import com.splitease.app.domain.settings.AppSettingsRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import javax.inject.Inject
@@ -63,6 +64,7 @@ class SyncInteractor
         private val socialInteractor: Provider<SocialInteractor>,
         private val expenseInteractor: Provider<ExpenseInteractor>,
         private val paymentInteractor: Provider<PaymentInteractor>,
+        private val appSettingsRepository: AppSettingsRepository,
     ) {
         /**
          * Counts pending social + expense + payment rows once.
@@ -169,11 +171,19 @@ class SyncInteractor
         suspend fun syncForUser(userId: String? = null): SyncFlushResult {
             val uid = userId ?: supabase.auth.currentUserOrNull()?.id ?: return SyncFlushResult()
             val flush = flushPending()
+            val pendingInviteToken =
+                runCatching { appSettingsRepository.getPendingInviteToken() }.getOrNull()
             runCatching {
-                socialInteractor.get().acceptPendingInvitesForCurrentUser(uid)
+                socialInteractor.get().acceptPendingInvitesForCurrentUser(
+                    userId = uid,
+                    inviteToken = pendingInviteToken,
+                )
             }.onFailure {
                 // RPC may be missing on older projects; fall back to PostgREST accept.
                 runCatching { socialRemote.acceptPendingInvites() }
+            }
+            if (!pendingInviteToken.isNullOrBlank()) {
+                runCatching { appSettingsRepository.setPendingInviteToken(null) }
             }
             // Always hydrate after flush so other members' writes become visible.
             runCatching { socialInteractor.get().refreshFriends(uid) }

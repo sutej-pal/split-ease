@@ -9,6 +9,9 @@ Track development phases. Always check this file at the start of a session to de
 | 0 | Project Setup & Foundations | — | Done | [phase-0-setup.md](docs/phase-0-setup.md) |
 | 0b | Brand Theme System | Light/dark Material 3 ColorScheme | Done | [phase-0b-theme-system.md](docs/phase-0b-theme-system.md) |
 | 10a | Expense Details | Edit/delete expense + Activity events | Done | [phase-10a-expense-details.md](docs/phase-10a-expense-details.md) |
+| 10b | Post-Signup Onboarding | Name + currency setup flow | Done | [phase-10b-onboarding.md](docs/phase-10b-onboarding.md) |
+| 10c | Invite Deep Link Join | Invite landing + join signup + OTP gate | Done | [phase-10c-invite-join.md](docs/phase-10c-invite-join.md) |
+| 10d | Onboarding Start Email | Send onboarding-start email via Render mail service | Done | [phase-10d-onboarding-mail.md](docs/phase-10d-onboarding-mail.md) |
 | 1 | Data Layer Foundations | Offline DB foundation | Done | [phase-1-data-layer.md](docs/phase-1-data-layer.md) |
 | 2 | Authentication (Supabase) | Cloud identity | Done | [phase-2-authentication.md](docs/phase-2-authentication.md) |
 | 3 | Friends & Groups | Add groups and friends | Done | [phase-3-friends-groups.md](docs/phase-3-friends-groups.md) |
@@ -19,9 +22,9 @@ Track development phases. Always check this file at the start of a session to de
 | 8 | Stretch / Pro-like Features | Payment integrations; transaction import; charts | Done | [phase-8-stretch.md](docs/phase-8-stretch.md) |
 | 9 | Polish, Testing, and Release Prep | 7+ languages; release hardening | Done | [phase-9-polish-release.md](docs/phase-9-polish-release.md) |
 
-**Current phase:** Complete through Phase 9 (2026-07-23); Phase 0b theme + Phase 10a expense details inserted
+**Current phase:** Complete through Phase 10d (2026-07-27)
 
-**Last completed:** Maintenance — signup email OTP verification (2026-07-24); release size / dead-code / docs earlier same day; Phase 0b + Phase 9 on 2026-07-23
+**Last completed:** Phase 10d — onboarding-start email via external Render mail service
 
 ### Docs map
 - Index: [docs/README.md](docs/README.md)
@@ -29,15 +32,16 @@ Track development phases. Always check this file at the start of a session to de
 - Maintenance: [email OTP verification](docs/maintenance-email-otp-verification.md)
 
 ### Carried-forward TODOs
-- **TODO(auth-email-otp)** — Restore real emailed 6-digit OTP (custom SMTP + Confirm signup `{{ .Token }}`); remove hardcoded `1234` bypass ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
+- **OTP ops checklist** — Keep Supabase signup OTP operational (Confirm email ON, `{{ .Token }}` in Confirm signup template, SMTP/provider health) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
 - **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0b](docs/phase-0b-theme-system.md)).
-- **Apply Phase 3–6 SQL** — run in order: [phase-3-schema.sql](docs/sql/phase-3-schema.sql), [phase-3b-invites.sql](docs/sql/phase-3b-invites.sql), [phase-4-expenses.sql](docs/sql/phase-4-expenses.sql), [phase-6-payments.sql](docs/sql/phase-6-payments.sql).
-- **Invite email delivery** — MVP uses the system share sheet; automated send via Edge Function is still TODO.
-- **Invite deep links** — `https://splitease.app/invite/{token}` is a placeholder URL until App Links / web landing exist.
+- **Apply Phase 3–6 SQL** — run in order: [phase-3-schema.sql](docs/sql/phase-3-schema.sql), [phase-3b-invites.sql](docs/sql/phase-3b-invites.sql), [phase-3c-invite-join.sql](docs/sql/phase-3c-invite-join.sql), [phase-4-expenses.sql](docs/sql/phase-4-expenses.sql), [phase-6-payments.sql](docs/sql/phase-6-payments.sql).
+- **Invite email delivery** — MVP uses the system share sheet; automated send via mail-service is still TODO.
+- **Render Free SMTP** — outbound SMTP ports are blocked on Free; onboarding mail needs `RESEND_API_KEY` (HTTPS) on the mail-service, or a paid Render instance for Gmail SMTP ([phase-10d](docs/phase-10d-onboarding-mail.md)).
+- **App Links verification** — https invite links need `assetlinks.json` on `splitease.app` for chooser-free open; custom scheme `splitease://invite/{token}` works now ([phase-10c](docs/phase-10c-invite-join.md)).
 - **Group live updates & push notifications (extra)** — see [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md). Sync-on-open MVP done; FCM member notifications still TODO.
 - **FX rates** — multi-currency remains per-bucket; live FX is still deferred.
 - **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
 - **Social PENDING flush** — groups/members are now flushed in `SyncInteractor` before expenses (still verify Supabase SQL is applied).
 - **Store assets** — feature graphic, phone screenshots, privacy policy URL (`docs/store-listing.md`).
-- **i18n depth** — expand full translations beyond chrome strings in `values-*`.
+- **TODO(i18n-last)** — Localization is deferred until the end of the product. Locale overlays (`values-de/es/fr/hi/it/ja/pt`) currently fall back to English; restore and expand full translations last.

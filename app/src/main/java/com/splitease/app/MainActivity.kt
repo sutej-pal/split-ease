@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.splitease.app.data.di.SupabaseModule
+import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
@@ -41,7 +42,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleAuthDeepLink(intent)
+        handleIncomingIntent(intent)
         enableEdgeToEdge()
         setContent {
             val themeMode by
@@ -66,13 +67,13 @@ class MainActivity : FragmentActivity() {
                         if (darkTheme) {
                             SystemBarStyle.dark(darkScrim)
                         } else {
-                            SystemBarStyle.light(lightScrim, darkScrim)
+                            SystemBarStyle.light(lightScrim, lightScrim)
                         },
                     navigationBarStyle =
                         if (darkTheme) {
                             SystemBarStyle.dark(darkScrim)
                         } else {
-                            SystemBarStyle.light(lightScrim, darkScrim)
+                            SystemBarStyle.light(lightScrim, lightScrim)
                         },
                 )
             }
@@ -93,11 +94,18 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleAuthDeepLink(intent)
+        handleIncomingIntent(intent)
     }
 
-    private fun handleAuthDeepLink(intent: Intent?) {
+    private fun handleIncomingIntent(intent: Intent?) {
         if (intent?.data == null) return
+        val inviteToken = InviteLinks.tokenFromUri(intent.data)
+        if (!inviteToken.isNullOrBlank()) {
+            lifecycleScope.launch {
+                appSettingsRepository.setPendingInviteToken(inviteToken)
+            }
+            return
+        }
         val host = intent.data?.host
         if (host != SupabaseModule.AUTH_DEEP_LINK_HOST) return
         lifecycleScope.launch {

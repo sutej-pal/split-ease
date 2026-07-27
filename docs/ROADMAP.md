@@ -106,7 +106,7 @@ Features requested after Phase 9 that are **not** in the original phase matrix. 
 
 - [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify all group members on expense/payment changes; open group → show latest cloud entries.
 - **TODO(auth-mobile-onboarding)** — onboard with mobile phone number (SMS OTP / phone auth) in addition to email ([PROGRESS.md](../PROGRESS.md)).
-- **TODO(auth-email-otp)** — restore real emailed OTP; remove hardcoded `1234` bypass.
+- **OTP operations** — keep signup OTP delivery healthy (SMTP/provider + Confirm signup template with `{{ .Token }}`).
 
 ## Dependency order
 

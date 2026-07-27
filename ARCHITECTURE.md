@@ -28,7 +28,7 @@ Single Gradle module `:app`. Money uses `java.math.BigDecimal` only (never `Floa
 | Work | WorkManager (+ HiltWorker) |
 | Money math | `BigDecimal` |
 
-Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.properties` → `BuildConfig`. Never ship the database password in the app.
+Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Never ship database/service-role secrets in the app.
 
 ## Data & sync
 
@@ -39,20 +39,21 @@ Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.propert
 - **Activity events:** local `activity_events` (Room); not cloud-synced.
 - **Schema SoT:** [docs/data-dictionary.md](docs/data-dictionary.md) + `app/schemas/`.
 
-Apply Supabase SQL in order: `docs/sql/phase-3-schema.sql` → `phase-3b-invites.sql` → `phase-4-expenses.sql` → `phase-6-payments.sql`.
+Apply Supabase SQL in order: `docs/sql/phase-3-schema.sql` → `phase-3b-invites.sql` → `phase-3c-invite-join.sql` → `phase-4-expenses.sql` → `phase-6-payments.sql`.
 
 ## Feature map (packages)
 
 | Area | Key packages / types |
 |---|---|
-| Auth | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup OTP verify) |
+| Auth | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup OTP verify), `presentation/onboarding` (welcome-email side effect; no setup UI) |
+| Invites | `InviteLinks`, `presentation/invite` (deep-link landing + join signup), `get_invite_preview` / `accept_invite_by_token` RPCs |
 | Friends & groups | `SocialInteractor`, `SocialRemoteDataSource`, `presentation/friends\|groups\|home` |
 | Expenses | `SplitCalculator`, `ExpenseInteractor`, `presentation/expenses` |
 | Balances | `BalanceCalculator`, `DebtSimplifier`, `BalanceInteractor` |
 | Settlements / recurring | `PaymentInteractor`, `RecurrenceScheduler`, `RecurringExpenseWorker` |
 | Search / spending / sync | `SyncInteractor`, `SpendingTotalsCalculator`, `presentation/search\|spending\|account` |
 | Stretch | `PaymentDeepLinks`, `CsvTransactionParser`, `SpendingCategoryChart` |
-| Settings | `AppSettingsRepository` (currency, theme, locale, biometric lock) |
+| Settings | `AppSettingsRepository` (currency, theme, locale, biometric lock, pending invite token, onboarding flags) |
 
 Phase write-ups (historical Plan + Outcome): [docs/README.md](docs/README.md).
 

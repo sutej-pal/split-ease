@@ -4,7 +4,7 @@ package com.splitease.app.domain.model
  * Outcome of [com.splitease.app.domain.repository.AuthRepository.signUp].
  *
  * When Supabase has **Confirm email** enabled, signup succeeds without a session
- * until the user enters the emailed 6-digit OTP — [PendingEmailConfirmation].
+ * until the user enters the emailed OTP — [PendingEmailConfirmation].
  * When confirmation is off, a session is created immediately — [SignedIn].
  */
 sealed interface SignUpResult {

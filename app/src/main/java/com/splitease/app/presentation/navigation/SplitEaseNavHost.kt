@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.presentation.onboarding.OnboardingViewModel
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
@@ -32,6 +33,8 @@ import com.splitease.app.presentation.auth.ForgotPasswordScreen
 import com.splitease.app.presentation.auth.LoginScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
+import com.splitease.app.presentation.invite.InviteJoinSignUpScreen
+import com.splitease.app.presentation.invite.InviteLandingScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
@@ -59,6 +62,8 @@ object Routes {
     const val LOGIN = "login"
     const val SIGN_UP = "sign_up"
     const val FORGOT_PASSWORD = "forgot_password"
+    const val INVITE_LANDING = "invite_landing/{token}"
+    const val INVITE_JOIN_SIGN_UP = "invite_join_sign_up"
 
     const val TAB_GROUPS = "tab_groups"
     const val TAB_FRIENDS = "tab_friends"
@@ -130,6 +135,8 @@ object Routes {
         val encodedLabel = android.net.Uri.encode(label)
         return "settle_up?fromUserId=$fromUserId&toUserId=$toUserId&amount=$amount&currency=$currency&groupId=${groupId.orEmpty()}&label=$encodedLabel"
     }
+
+    fun inviteLanding(token: String) = "invite_landing/${android.net.Uri.encode(token)}"
 }
 
 private val tabRoutes =
@@ -166,6 +173,7 @@ fun SplitEaseNavHost(
 ) {
     val session by authViewModel.session.collectAsStateWithLifecycle()
     val formState by authViewModel.formState.collectAsStateWithLifecycle()
+    val pendingInviteToken by authViewModel.pendingInviteToken.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val googleSoon = stringResource(R.string.google_sign_in_soon)
     val resetSent = stringResource(R.string.reset_sent)
@@ -194,9 +202,30 @@ fun SplitEaseNavHost(
         }
         AuthSession.SignedOut -> {
             val navController = rememberNavController()
+            val startDestination =
+                if (!pendingInviteToken.isNullOrBlank()) {
+                    Routes.inviteLanding(pendingInviteToken!!)
+                } else {
+                    Routes.WELCOME
+                }
+            LaunchedEffect(pendingInviteToken) {
+                val token = pendingInviteToken
+                if (!token.isNullOrBlank()) {
+                    val route = Routes.inviteLanding(token)
+                    val currentRoute = navController.currentBackStackEntry?.destination?.route
+                    val onInviteFlow =
+                        currentRoute == Routes.INVITE_LANDING ||
+                            currentRoute == Routes.INVITE_JOIN_SIGN_UP
+                    if (!onInviteFlow) {
+                        navController.navigate(route) {
+                            launchSingleTop = true
+                        }
+                    }
+                }
+            }
             NavHost(
                 navController = navController,
-                startDestination = Routes.WELCOME,
+                startDestination = startDestination,
             ) {
                 composable(Routes.WELCOME) {
                     WelcomeScreen(
@@ -245,11 +274,64 @@ fun SplitEaseNavHost(
                         },
                     )
                 }
+                composable(
+                    route = Routes.INVITE_LANDING,
+                    arguments = listOf(navArgument("token") { type = NavType.StringType }),
+                ) { entry ->
+                    val token =
+                        android.net.Uri.decode(entry.arguments?.getString("token").orEmpty())
+                    InviteLandingScreen(
+                        token = token,
+                        onJoinAsNew = {
+                            authViewModel.clearMessages()
+                            navController.navigate(Routes.INVITE_JOIN_SIGN_UP)
+                        },
+                        onAlreadyHaveAccount = {
+                            authViewModel.clearMessages()
+                            navController.navigate(Routes.LOGIN)
+                        },
+                        onDismiss = {
+                            navController.navigate(Routes.WELCOME) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                    )
+                }
+                composable(Routes.INVITE_JOIN_SIGN_UP) {
+                    InviteJoinSignUpScreen(
+                        formState = formState,
+                        onSignUp = authViewModel::signUp,
+                        onNavigateLogin = {
+                            authViewModel.clearMessages()
+                            navController.navigate(Routes.LOGIN)
+                        },
+                        onBack = {
+                            authViewModel.clearMessages()
+                            navController.popBackStack()
+                        },
+                    )
+                }
             }
         }
         is AuthSession.SignedIn -> {
             LaunchedEffect(current.user.userId) {
                 authViewModel.clearMessages()
+            }
+            // If an invite link was opened while already signed in, sync will claim it.
+            LaunchedEffect(current.user.userId, pendingInviteToken) {
+                if (!pendingInviteToken.isNullOrBlank()) {
+                    // Trigger profile hydrate → SyncInteractor accepts token + clears it.
+                    authViewModel.ensureInviteAccepted()
+                }
+            }
+            // Welcome email only — display name was already collected at signup.
+            val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+            LaunchedEffect(current.user.userId) {
+                onboardingViewModel.onSignedInWelcome(
+                    userId = current.user.userId,
+                    email = current.user.email,
+                    displayName = current.user.displayName,
+                )
             }
             SignedInNavHost(
                 displayName = current.user.displayName,

@@ -4,12 +4,15 @@ import com.splitease.app.data.remote.dto.FriendDto
 import com.splitease.app.data.remote.dto.GroupDto
 import com.splitease.app.data.remote.dto.GroupMemberDto
 import com.splitease.app.data.remote.dto.InviteDto
+import com.splitease.app.data.remote.dto.InvitePreviewDto
 import com.splitease.app.data.remote.dto.ProfileDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -223,5 +226,43 @@ class SocialRemoteDataSource
             runCatching {
                 supabase.postgrest.rpc("accept_pending_invites")
             }
+        }
+
+        /**
+         * Loads a public invite preview by token (works for anonymous callers).
+         *
+         * @param token Opaque invite token from the deep link.
+         * @return Preview DTO, or null when missing / already accepted.
+         */
+        suspend fun fetchInvitePreview(token: String): InvitePreviewDto? {
+            val trimmed = token.trim()
+            if (trimmed.isEmpty()) return null
+            return runCatching {
+                supabase.postgrest
+                    .rpc(
+                        function = "get_invite_preview",
+                        parameters =
+                            buildJsonObject {
+                                put("p_token", trimmed)
+                            },
+                    ).decodeAs<InvitePreviewDto>()
+            }.getOrNull()
+        }
+
+        /**
+         * Claims a specific invite for the signed-in user by token.
+         *
+         * @param token Opaque invite token.
+         */
+        suspend fun acceptInviteByToken(token: String) {
+            val trimmed = token.trim()
+            if (trimmed.isEmpty()) return
+            supabase.postgrest.rpc(
+                function = "accept_invite_by_token",
+                parameters =
+                    buildJsonObject {
+                        put("p_token", trimmed)
+                    },
+            )
         }
     }

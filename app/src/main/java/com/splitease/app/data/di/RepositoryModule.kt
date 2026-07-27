@@ -8,6 +8,7 @@ import com.splitease.app.data.repository.RoomGroupRepository
 import com.splitease.app.data.repository.RoomInviteRepository
 import com.splitease.app.data.repository.RoomPaymentRepository
 import com.splitease.app.data.repository.RoomUserRepository
+import com.splitease.app.data.repository.RenderMailRepository
 import com.splitease.app.data.repository.SupabaseAuthRepository
 import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
 import com.splitease.app.domain.repository.ActivityEventRepository
@@ -17,6 +18,7 @@ import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
+import com.splitease.app.domain.repository.MailRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
@@ -81,4 +83,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAppSettingsRepository(impl: SharedPreferencesAppSettingsRepository): AppSettingsRepository
+
+    /** Binds [MailRepository] to [RenderMailRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindMailRepository(impl: RenderMailRepository): MailRepository
 }

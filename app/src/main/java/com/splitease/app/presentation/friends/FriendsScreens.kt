@@ -129,7 +129,7 @@ fun AddFriendScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
     groupId: String? = null,
-    prefillName: String = "",
+    prefillName: String = "",   
     prefillContact: String = "",
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {

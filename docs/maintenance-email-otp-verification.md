@@ -86,11 +86,14 @@ _Placeholder — add device captures of verify-OTP screen when available._
 
 ## Outcome
 
-Shipped 2026-07-24 (partial / deferred email delivery).
+Updated 2026-07-27: real OTP path is now active in app logic.
 
-- App OTP UI + `AuthRepository.verifySignupOtp` exist for the real flow.
-- **Temporary dev bypass (current):** after signup, user enters hardcoded OTP **`1234`**; no email is sent. Supabase `mailer_autoconfirm=true` so signup does not depend on SMTP.
-- **TODO(auth-email-otp):** re-enable emailed OTP — fix SMTP, Confirm signup template with `{{ .Token }}`, remove `AuthViewModel.DEV_DEFAULT_OTP`, call `verifySignupOtp` / `resendSignupConfirmation` again.
-- Free-tier note: template edits require custom SMTP or Pro.
+- Verify screen enforces a 6-digit numeric code.
+- `AuthViewModel.verifySignupOtp` now calls `AuthRepository.verifySignupOtp(...)` directly.
+- `AuthViewModel.resendConfirmation` now calls `AuthRepository.resendSignupConfirmation(...)`.
+- Dev-only hardcoded OTP acceptance (`1234`) was removed from the app flow.
 
-**Operator step (when resuming real OTP):** fix SMTP (Gmail username must be full address + App Password, or use Resend), set `mailer_autoconfirm=false`, Confirm email ON, template includes `{{ .Token }}`.
+Operator requirements remain:
+- Confirm email must stay ON for OTP-gated signup behavior.
+- Confirm signup template must include `{{ .Token }}`.
+- SMTP/provider configuration must be healthy (or equivalent provider setup) for reliable email delivery.

@@ -125,6 +125,64 @@ interface AppSettingsRepository {
     suspend fun setAuthTimeout(timeout: AuthTimeout)
 
     /**
+     * Observes whether the signed-in user has completed post-signup onboarding.
+     *
+     * @return Cold [Flow]; defaults to `false`.
+     */
+    fun observeOnboardingComplete(): Flow<Boolean>
+
+    /**
+     * Reads the onboarding-complete flag once.
+     *
+     * @return `true` when the user finished the setup wizard.
+     */
+    suspend fun getOnboardingComplete(): Boolean
+
+    /**
+     * Persists the onboarding-complete flag.
+     *
+     * @param complete `true` after the user finishes setup.
+     */
+    suspend fun setOnboardingComplete(complete: Boolean)
+
+    /**
+     * Reads whether onboarding-start email has already been sent for a user.
+     *
+     * @param userId Signed-in user id.
+     * @return `true` when onboarding-start email was already sent.
+     */
+    suspend fun getOnboardingEmailSent(userId: String): Boolean
+
+    /**
+     * Persists onboarding-start email sent state for a user.
+     *
+     * @param userId Signed-in user id.
+     * @param sent `true` after successful send.
+     */
+    suspend fun setOnboardingEmailSent(userId: String, sent: Boolean)
+
+    /**
+     * Observes a pending invite token from a deep link (awaiting signup / OTP / accept).
+     *
+     * @return Cold [Flow]; emits `null` when none is stored.
+     */
+    fun observePendingInviteToken(): Flow<String?>
+
+    /**
+     * Reads the pending invite token once.
+     *
+     * @return Token string, or null.
+     */
+    suspend fun getPendingInviteToken(): String?
+
+    /**
+     * Persists or clears the pending invite token.
+     *
+     * @param token Opaque invite token, or null to clear.
+     */
+    suspend fun setPendingInviteToken(token: String?)
+
+    /**
      * Observes the in-app language preference.
      *
      * @return Cold [Flow]; defaults to [AppLocale.SYSTEM].

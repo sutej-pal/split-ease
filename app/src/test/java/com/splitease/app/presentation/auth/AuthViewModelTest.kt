@@ -5,6 +5,7 @@ import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.repository.AuthRepository
+import com.splitease.app.domain.settings.AppSettingsRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -12,6 +13,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -29,6 +31,7 @@ class AuthViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val sessionFlow = MutableStateFlow<AuthSession>(AuthSession.SignedOut)
     private lateinit var repository: AuthRepository
+    private lateinit var appSettings: AppSettingsRepository
     private lateinit var context: Context
     private lateinit var viewModel: AuthViewModel
 
@@ -36,16 +39,20 @@ class AuthViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = mockk(relaxed = true)
+        appSettings = mockk(relaxed = true)
         context = mockk(relaxed = true)
         every { repository.observeSession() } returns sessionFlow
+        every { appSettings.observePendingInviteToken() } returns flowOf(null)
         every { context.getString(R.string.error_generic) } returns "Something went wrong. Try again."
         every { context.getString(R.string.verify_email_sent) } returns
-            "Account created. Enter code 1234 to continue."
+            "Account created. Check your email for a verification code."
         every { context.getString(R.string.verify_email_resent) } returns
-            "Email sending is paused. Use code 1234 for now."
+            "Verification code resent. Check your inbox."
         every { context.getString(R.string.verify_email_invalid_code) } returns
-            "Enter code 1234 to continue."
-        viewModel = AuthViewModel(repository, context)
+            "Enter a valid 6–8 digit code."
+        every { context.getString(R.string.signup_complete_message) } returns
+            "Signup complete. You can continue to the app."
+        viewModel = AuthViewModel(repository, appSettings, context)
     }
 
     @AfterEach
@@ -87,14 +94,24 @@ class AuthViewModelTest {
     fun `signUp always gates on OTP screen`() =
         runTest {
             coEvery { repository.signUp(any(), any(), any()) } returns
-                Result.success(SignUpResult.SignedIn)
+                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
             viewModel.signUp("a@b.com", "secret1", "Ada")
             advanceUntilIdle()
             assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
             assertEquals(
-                "Account created. Enter code 1234 to continue.",
+                "Account created. Check your email for a verification code.",
                 viewModel.formState.value.infoMessage,
             )
+        }
+
+    @Test
+    fun `signUp gates on OTP even when repository returns SignedIn`() =
+        runTest {
+            coEvery { repository.signUp(any(), any(), any()) } returns
+                Result.success(SignUpResult.SignedIn)
+            viewModel.signUp("a@b.com", "secret1", "Ada")
+            advanceUntilIdle()
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
         }
 
     @Test
@@ -102,23 +119,44 @@ class AuthViewModelTest {
         runTest {
             viewModel.verifySignupOtp("a@b.com", "9999")
             advanceUntilIdle()
-            assertEquals("Enter code 1234 to continue.", viewModel.formState.value.errorMessage)
+            assertEquals("Enter a valid 6–8 digit code.", viewModel.formState.value.errorMessage)
             coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
         }
 
     @Test
-    fun `verifySignupOtp with default code clears pending and signs in when needed`() =
+    fun `verifySignupOtp with valid 6-digit code calls repository and clears pending`() =
         runTest {
             coEvery { repository.signUp(any(), any(), any()) } returns
                 Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
-            coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
-            coEvery { repository.ensureLocalProfile() } returns Result.success(Unit)
+            coEvery { repository.verifySignupOtp(any(), any()) } returns Result.success(Unit)
             viewModel.signUp("a@b.com", "secret1", "Ada")
             advanceUntilIdle()
-            viewModel.verifySignupOtp("a@b.com", AuthViewModel.DEV_DEFAULT_OTP)
+            viewModel.verifySignupOtp("a@b.com", "123456")
             advanceUntilIdle()
             assertNull(viewModel.formState.value.pendingConfirmationEmail)
-            coVerify(exactly = 1) { repository.signIn("a@b.com", "secret1") }
-            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
+            coVerify(exactly = 1) { repository.verifySignupOtp("a@b.com", "123456") }
+        }
+
+    @Test
+    fun `verifySignupOtp with valid 8-digit code calls repository and clears pending`() =
+        runTest {
+            coEvery { repository.signUp(any(), any(), any()) } returns
+                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
+            coEvery { repository.verifySignupOtp(any(), any()) } returns Result.success(Unit)
+            viewModel.signUp("a@b.com", "secret1", "Ada")
+            advanceUntilIdle()
+            viewModel.verifySignupOtp("a@b.com", "12345678")
+            advanceUntilIdle()
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            coVerify(exactly = 1) { repository.verifySignupOtp("a@b.com", "12345678") }
+        }
+
+    @Test
+    fun `resendConfirmation calls repository resend`() =
+        runTest {
+            coEvery { repository.resendSignupConfirmation(any()) } returns Result.success(Unit)
+            viewModel.resendConfirmation("a@b.com")
+            advanceUntilIdle()
+            coVerify(exactly = 1) { repository.resendSignupConfirmation("a@b.com") }
         }
 }

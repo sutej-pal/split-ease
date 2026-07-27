@@ -39,6 +39,9 @@ class SupabaseAuthRepository
         private val socialRemote: SocialRemoteDataSource,
         private val syncInteractor: Provider<SyncInteractor>,
     ) : AuthRepository {
+        override suspend fun getSignedInUserOrNull(): AuthUser? =
+            supabase.auth.currentUserOrNull()?.toAuthUser()
+
         override fun observeSession(): Flow<AuthSession> =
             supabase.auth.sessionStatus
                 .onEach { status ->
@@ -116,6 +119,16 @@ class SupabaseAuthRepository
                 persistCurrentUser()
                 categoryRepository.ensureDefaults()
                 hydrateCloudData()
+            }
+
+        override suspend fun updateDisplayName(displayName: String): Result<Unit> =
+            runCatching {
+                val trimmed = displayName.trim()
+                require(trimmed.isNotBlank()) { "Display name cannot be empty." }
+                supabase.auth.updateUser {
+                    data = buildJsonObject { put("display_name", trimmed) }
+                }
+                persistCurrentUser()
             }
 
         override suspend fun sendPasswordReset(email: String): Result<Unit> =

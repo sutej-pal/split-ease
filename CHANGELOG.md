@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Onboarding-start transactional email trigger via external Render mail service (`/send-mail`) when onboarding first opens for a signed-in user ([phase-10d](docs/phase-10d-onboarding-mail.md))
+- `MailRepository` + Render-backed remote data source and `BuildConfig` keys (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`)
+- Invite deep-link join flow: landing screen + join signup → OTP gate → accept invite / join group ([phase-10c](docs/phase-10c-invite-join.md))
+- Deep links for `https://splitease.app/invite/{token}` and `splitease://invite/{token}`
+- Supabase RPCs `get_invite_preview` + `accept_invite_by_token` ([sql/phase-3c-invite-join.sql](docs/sql/phase-3c-invite-join.sql))
+- Post-signup onboarding setup flow: confirm display name + choose default currency before entering the app ([phase-10b](docs/phase-10b-onboarding.md))
+- `AuthRepository.updateDisplayName` updates Supabase metadata, Room, and remote profile
+- Onboarding-complete preference in app settings (existing users skip automatically)
 - Signup email verification via **6-digit OTP** (in-app code entry; no deep link required) ([docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md))
 - Expense detail screen with edit and delete; create/update/delete appear on Activity ([phase-10a](docs/phase-10a-expense-details.md))
 - Brand color system and Material 3 theme (light/dark) from icon indigo/amber tokens ([phase-0b](docs/phase-0b-theme-system.md), [design-tokens](docs/design-tokens.md))
@@ -19,7 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bottom navigation + Groups home UI; shared `Se*` design system
 
 ### Changed
-- Auth signup OTP temporarily uses hardcoded **`1234`** (no email send); real emailed OTP marked TODO; mobile/phone onboarding marked TODO
+- Removed post-signup name confirmation screen; display name from signup is used and users go straight to the app after OTP ([phase-10b](docs/phase-10b-onboarding.md))
+- Welcome email still sends once on first signed-in session (no setup UI gate)
+- Onboarding now tracks a per-user local `onboarding_email_sent_{userId}` flag to avoid duplicate onboarding-start sends
+- Signup always gates on the OTP screen until the code is verified (including when Supabase returns an immediate session)
+- Auth signup now uses real 6-digit OTP verify/resend repository calls; mobile/phone onboarding remains TODO
+- Locale string packs temporarily emptied (fall back to English); full i18n deferred to last (TODO(i18n-last))
 - Auth no longer blanks the UI on `SessionStatus.Initializing` after background (disabled Supabase lifecycle callbacks); loading gate times out to signed-out after 8s; refresh failures clear stale sessions
 - Verify-email screen: enter OTP + Verify / Resend code (replaces “open confirmation link” copy)
 - **Release size:** R8 minify + resource shrinking enabled; removed unused Coil/Espresso/JUnit4 deps; pruned dead string resources and orphan `commonMain` tree

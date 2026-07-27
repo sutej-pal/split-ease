@@ -11,6 +11,8 @@ import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupMember
 import com.splitease.app.domain.model.Invite
 import com.splitease.app.domain.model.InviteKind
+import com.splitease.app.domain.model.InvitePreview
+import com.splitease.app.domain.model.InvitePreviewMember
 import com.splitease.app.domain.model.InviteStatus
 import com.splitease.app.domain.model.MemberRole
 import com.splitease.app.domain.model.SyncStatus
@@ -193,13 +195,45 @@ class SocialInteractor
          * Then refresh friends/groups into Room.
          *
          * @param userId Newly authenticated user id.
+         * @param inviteToken Optional deep-link token to accept first (join-as-new).
          */
-        suspend fun acceptPendingInvitesForCurrentUser(userId: String) {
+        suspend fun acceptPendingInvitesForCurrentUser(
+            userId: String,
+            inviteToken: String? = null,
+        ) {
+            if (!inviteToken.isNullOrBlank()) {
+                runCatching { remote.acceptInviteByToken(inviteToken) }
+            }
             remote.acceptPendingInvites()
             refreshFriends(userId)
             refreshGroups(userId)
             refreshSentInvites(userId)
             runCatching { expenseInteractor.refreshExpensesForUser(userId) }
+        }
+
+        /**
+         * Loads invite landing preview for a deep-link token (anonymous-safe).
+         *
+         * @param token Opaque invite token.
+         * @return Domain preview, or null when invalid / already used.
+         */
+        suspend fun loadInvitePreview(token: String): InvitePreview? {
+            val dto = remote.fetchInvitePreview(token) ?: return null
+            return InvitePreview(
+                token = dto.token,
+                kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
+                email = dto.email,
+                inviterName = dto.inviterName.ifBlank { "A friend" },
+                groupId = dto.groupId,
+                groupName = dto.groupName,
+                members =
+                    dto.members.map { member ->
+                        InvitePreviewMember(
+                            displayName = member.displayName,
+                            alreadyJoined = member.alreadyJoined,
+                        )
+                    },
+            )
         }
 
         /**
