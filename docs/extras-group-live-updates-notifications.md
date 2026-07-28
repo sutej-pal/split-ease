@@ -1,7 +1,8 @@
 # Extras — Group live updates & member notifications
 
-**Status:** Partially started (sync-on-open + sync pull fix). Push notifications not implemented yet.  
+**Status:** Realtime (B7) + FCM push path (B1–B5) implemented. Mute prefs / Activity badges / delete tombstones still TODO.  
 **Added:** 2026-07-23 (post Phase 9 — out of original roadmap)  
+**Updated:** 2026-07-29 — Realtime + FCM slice  
 **Why this doc exists:** Capture product extras that are **not** part of Phases 0–9, so we can implement and regress them later without losing intent.
 
 ---
@@ -38,13 +39,13 @@ Use this list as the implementation backlog. Mark items when done.
 
 | # | Change | Status | Notes |
 |---|---|---|---|
-| B1 | Choose push stack (recommend **FCM** + Supabase Edge Function; ask before adding libs) | TODO | Not in current Gradle stack (`auth` + `postgrest` only) |
-| B2 | Store device push tokens per user (`device_tokens` table + RLS) | TODO | |
-| B3 | On expense/payment insert/update/delete, notify other **group members** (exclude actor) | TODO | DB webhook / trigger → Edge Function → FCM |
-| B4 | Notification copy: actor, group name, action (“Ada added “Dinner” · ₹1,200”) | TODO | Keep short; no PII beyond display names |
-| B5 | Tap notification → open `group_detail/{groupId}` (App Links / intent extras) | TODO | Depends on invite deep-link / App Links work |
+| B1 | Choose push stack (recommend **FCM** + Supabase Edge Function; ask before adding libs) | **Done** | FCM + Edge Function ([fcm-setup.md](fcm-setup.md)) |
+| B2 | Store device push tokens per user (`device_tokens` table + RLS) | **Done** | [sql/phase-extras-device-tokens.sql](sql/phase-extras-device-tokens.sql) |
+| B3 | On expense/payment insert/update/delete, notify other **group members** (exclude actor) | **Done** | Edge Function + webhook/trigger ([sql/phase-extras-notify-triggers.sql](sql/phase-extras-notify-triggers.sql)) |
+| B4 | Notification copy: actor, group name, action (“Ada added “Dinner” · ₹1,200”) | **Done** | Built in `notify-group-members` |
+| B5 | Tap notification → open `group_detail/{groupId}` (App Links / intent extras) | **Done** | Intent extra + `pending_notification_group_id` |
 | B6 | In-app Activity feed already lists own activity — extend or badge when remote events arrive | TODO | Optional if push is delayed |
-| B7 | Supabase Realtime channel while group detail is open (live list without leaving screen) | TODO | Needs `realtime-kt`; ask before adding |
+| B7 | Supabase Realtime channel while group detail is open (live list without leaving screen) | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/phase-extras-realtime-expenses-payments.sql](sql/phase-extras-realtime-expenses-payments.sql) |
 | B8 | Notification preferences (mute group / mute all) | TODO | Settings later |
 
 ### C. Docs / ops
@@ -52,8 +53,8 @@ Use this list as the implementation backlog. Mark items when done.
 | # | Change | Status | Notes |
 |---|---|---|---|
 | C1 | This extras doc | **Done** | |
-| C2 | SQL for `device_tokens` + notify trigger | TODO | Ship under `docs/sql/` when implementing B |
-| C3 | Flag free-tier FCM / Edge Function / Realtime cost in Known Issues | TODO | When B/Realtime land |
+| C2 | SQL for `device_tokens` + notify trigger | **Done** | phase-extras-device-tokens + notify-triggers |
+| C3 | Flag free-tier FCM / Edge Function / Realtime cost in Known Issues | **Done** | See Known Issues below + [fcm-setup.md](fcm-setup.md) |
 
 ---
 
@@ -63,13 +64,14 @@ Use this list as the implementation backlog. Mark items when done.
 - Group detail refreshed expenses on resume only.
 - `SyncInteractor.syncForUser` pulled friends/groups/expenses **only inside** `acceptPendingInvites` **failure** path — successful invite-accept skipped hydrate. Multi-device “open group → see their expense” was unreliable.
 
-**After MVP (A1–A4)**
+**After MVP (A1–A4) + Realtime/FCM (2026-07-29)**
 - Opening / resuming a group runs full `syncForUser` (flush + pull) and a targeted group expense refresh so ledger/balances update from Supabase.
-- **No system notification** yet when another member changes data while the app is backgrounded or closed.
+- While group detail is **RESUMED**, Realtime postgres changes on `expenses` / `payments` debounce-refresh Room (`GroupLiveSync`).
+- Background members get FCM via Edge Function `notify-group-members` when Firebase + webhooks are configured ([fcm-setup.md](fcm-setup.md)).
 
 ---
 
-## Recommended architecture (when implementing B + B7)
+## Architecture (Realtime + FCM)
 
 ```
 Member A writes expense → Room PENDING → PostgREST upsert
@@ -85,17 +87,33 @@ Member B device: show notification; on tap → GroupDetail
 GroupDetail RESUMED / Realtime event → sync pull → UI Flow updates
 ```
 
-**Foreground alternative:** Supabase Realtime on `expenses` / `payments` filtered by `group_id` while GroupDetail is visible; still keep FCM for background.
+**Foreground:** Supabase Realtime on `expenses` / `payments` filtered by `group_id` while GroupDetail is visible (`GroupLiveSync`).  
+**Background:** FCM via Edge Function (see [fcm-setup.md](fcm-setup.md)).
+
+**Remote pull into Room:** `persistRemoteExpense` / `persistRemotePayment` must stub missing payer/participant users and drop unknown `category_id` values. Default categories used to be random UUIDs per device, which made Room reject co-member expenses on FK (fixed 2026-07-29).
 
 ---
 
-## Library / product decisions (blocked until asked)
+## Known Issues / costs
 
-Per project rules, do **not** add without explicit approval:
+- Supabase Realtime concurrent connections and FCM/Edge Function invocations count toward free-tier quotas — monitor before wide rollout.
+- Without `app/google-services.json`, FCM registration no-ops at runtime (Realtime still works).
+- Notify triggers no-op until `app.settings.notify_function_url` + `service_role_key` are set (or use Dashboard webhooks instead).
+- Remote delete tombstones (A5) and mute prefs (B8) are still TODO.
 
-- `firebase-messaging` (FCM)
-- `realtime-kt` (Supabase Realtime)
+---
+
+## Library / product decisions
+
+Approved for this extras work:
+
+- `realtime-kt` (Supabase Realtime) — installed
+- `firebase-messaging` (FCM) — installed; requires `app/google-services.json` (gitignored)
+
+Still deferred:
+
 - Third-party push (OneSignal, etc.)
+- Mute preferences (B8)
 
 ---
 
@@ -124,4 +142,4 @@ Per project rules, do **not** add without explicit approval:
 |---|---|
 | 2026-07-23 | Created this extras doc; fixed `syncForUser` pull; group open runs full sync + group expense refresh |
 | 2026-07-23 | Find people + Add friend contact UI (device contacts, search) — related social UX extra |
-| | Push notifications (B*) still TODO — needs FCM / Edge Function decision |
+| 2026-07-29 | Slice 1 Realtime (`GroupLiveSync` + publication SQL) and Slice 2 FCM (device_tokens, Edge Function, MessagingService) |

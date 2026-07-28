@@ -39,7 +39,9 @@ Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_B
 - **Activity events:** local `activity_events` (Room); not cloud-synced.
 - **Schema SoT:** [docs/data-dictionary.md](docs/data-dictionary.md) + `app/schemas/`.
 
-Apply Supabase SQL in order: `docs/sql/phase-3-schema.sql` → `phase-3b-invites.sql` → `phase-3c-invite-join.sql` → `phase-4-expenses.sql` → `phase-6-payments.sql`.
+Apply Supabase SQL in order: `docs/sql/phase-3-schema.sql` → `phase-3b-invites.sql` → `phase-3c-invite-join.sql` → `phase-3d-fix-groups-rls-recursion.sql` → `phase-3e-fix-group-members-select.sql` → `phase-4-expenses.sql` → `phase-4b-expense-rls-fix.sql` (existing projects) → `phase-6-payments.sql` → `phase-extras-realtime-expenses-payments.sql` → `phase-extras-device-tokens.sql` (+ optional notify triggers / FCM — [docs/fcm-setup.md](docs/fcm-setup.md)).
+
+Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured.
 
 ## Feature map (packages)
 

@@ -99,6 +99,9 @@ drop policy if exists "group_members_select" on public.group_members;
 drop policy if exists "group_members_insert" on public.group_members;
 drop policy if exists "group_members_delete" on public.group_members;
 
+-- Prefer phase-3d/3e policies (SECURITY DEFINER helpers) on live projects.
+-- Greenfield: this select is replaced by phase-3d then phase-3e so co-members
+-- can see each other without RLS recursion.
 create policy "group_members_select"
   on public.group_members for select to authenticated
   using (

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Co-member expenses never appeared on other devices: default category ids were random per install, so Room rejected the remote row on `categoryId` FK; pull now drops unknown categories and seeds stable default ids on fresh installs
+- Non-creator group members could only sync themselves (RLS); co-members can now SELECT all `group_members` rows ([sql/phase-3e-fix-group-members-select.sql](docs/sql/phase-3e-fix-group-members-select.sql))
+- Group settings showed UUID prefixes for members not in the local friends list; member sync now loads `profiles` into Room and the UI falls back to that display name
 - Invite `splitease://` links fail when pasted into Chrome; share links are now **https** (`MAIL_SERVICE_BASE_URL/invite/{token}`) with a mail-service redirect page into the app
 - Groups/invites failed to sync under authenticated RLS (`42P17` infinite recursion between `groups` and `group_members`); fixed with SECURITY DEFINER helpers ([sql/phase-3d-fix-groups-rls-recursion.sql](docs/sql/phase-3d-fix-groups-rls-recursion.sql))
 - Invite share links are only returned after the invite row is successfully upserted to Supabase (no more unclaimable deep links)
@@ -15,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Group invite links failed when the group had not synced to Supabase (FK); invites are now pushed after ensuring the group exists, and pending invites are flushed on sync
 
 ### Added
+- Live group ledger via Supabase Realtime while group detail is open (`GroupLiveSync` + [sql/phase-extras-realtime-expenses-payments.sql](docs/sql/phase-extras-realtime-expenses-payments.sql))
+- FCM push for other group members on expense/payment changes (`device_tokens`, Edge Function `notify-group-members`, [fcm-setup.md](docs/fcm-setup.md))
 - Deferred invite deep link: mail-service Play Store fallback with `referrer=invite_token%3D…` + Android Play Install Referrer bootstrap into `pending_invite_token` (same OTP / accept path as live deep links)
 - Group settings → **Invite via link** opens an Invite link screen (copy / share / change link) instead of jumping straight to the share sheet
 - Onboarding-start transactional email trigger via external Render mail service (`/send-mail`) when onboarding first opens for a signed-in user ([phase-10d](docs/phase-10d-onboarding-mail.md))
@@ -40,8 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Invite token is cleared only after accept-by-token succeeds (failed claims can retry)
 - Signup OTP is strictly **6 digits** (field max + validation; 8-digit codes rejected)
 - Confirm-signup email template + configure script set Supabase `mailer_otp_length=6` and OTP-first HTML ([supabase-confirm-signup-otp.html](docs/supabase-confirm-signup-otp.html))
-- Invite share text includes `splitease://invite/{token}` so the installed app opens; after signup/OTP the app opens the invited group (or Friends tab)
+- Invite share text includes https + custom-scheme options; after signup/OTP the app opens the invited group (or Friends tab)
 - Pending invites show **Copy** / **Share again** on Friends list and Group settings member rows
+- Restored `splitease://invite` intent-filter; https App Links need hosted `assetlinks.json` ([app-links-setup.md](docs/app-links-setup.md))
+- Invite share/copy now prefer `splitease://invite/{token}` (plus https fallback) so the installed app opens without verified App Links
+- Expense cloud sync: flush groups before expense upsert; warn when an expense stays local-only; RLS fix so group members can insert expenses ([phase-4b-expense-rls-fix.sql](docs/sql/phase-4b-expense-rls-fix.sql))
 - Removed post-signup name confirmation screen; display name from signup is used and users go straight to the app after OTP ([phase-10b](docs/phase-10b-onboarding.md))
 - Welcome email still sends once on first signed-in session (no setup UI gate)
 - Onboarding now tracks a per-user local `onboarding_email_sent_{userId}` flag to avoid duplicate onboarding-start sends

@@ -3,6 +3,7 @@ package com.splitease.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.splitease.app.data.push.PushTokenRegistrar
 import com.splitease.app.data.recurring.RecurringExpenseWorker
 import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
 import com.splitease.app.data.social.InstallReferrerInviteBootstrap
@@ -28,6 +29,9 @@ class SplitEaseApplication :
     @Inject
     lateinit var installReferrerInviteBootstrap: InstallReferrerInviteBootstrap
 
+    @Inject
+    lateinit var pushTokenRegistrar: PushTokenRegistrar
+
     override val workManagerConfiguration: Configuration
         get() =
             Configuration.Builder()
@@ -38,6 +42,7 @@ class SplitEaseApplication :
         super.onCreate()
         (appSettingsRepository as? SharedPreferencesAppSettingsRepository)?.applyStoredLocale()
         installReferrerInviteBootstrap.start()
+        pushTokenRegistrar.start()
         RecurringExpenseWorker.enqueue(this)
         SyncWorker.enqueuePeriodic(this)
         SyncWorker.enqueueOnce(this)

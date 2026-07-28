@@ -17,6 +17,7 @@ import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -51,6 +52,7 @@ class GroupsViewModel
         private val authRepository: AuthRepository,
         private val groupRepository: GroupRepository,
         friendRepository: FriendRepository,
+        userRepository: UserRepository,
         private val socialInteractor: SocialInteractor,
         private val syncInteractor: SyncInteractor,
         private val appSettingsRepository: AppSettingsRepository,
@@ -74,6 +76,13 @@ class GroupsViewModel
                 .flatMapLatest { id ->
                     if (id == null) flowOf(emptyList()) else friendRepository.observeFriends(id)
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        /** userId → displayName for members who are not in the local friends list. */
+        val userDisplayNames: StateFlow<Map<String, String>> =
+            userRepository
+                .observeUsers()
+                .map { users -> users.associate { it.id to it.displayName } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
         private val _uiState = MutableStateFlow(GroupsUiState())
         val uiState: StateFlow<GroupsUiState> = _uiState.asStateFlow()

@@ -46,6 +46,7 @@ create policy "group_members_select"
   using (
     user_id = auth.uid()
     or public.is_group_creator(group_id)
+    or public.is_group_member(group_id)
   );
 
 create policy "group_members_insert"

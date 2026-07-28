@@ -9,7 +9,6 @@ import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.CategoryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,22 +38,25 @@ class RoomCategoryRepository
 
         override suspend fun ensureDefaults() {
             if (categoryDao.count() > 0) return
-            val defaults = listOf(
-                "General" to "category_general",
-                "Food" to "category_food",
-                "Travel" to "category_travel",
-                "Rent" to "category_rent",
-                "Utilities" to "category_utilities",
-                "Entertainment" to "category_entertainment",
-            ).map { (name, icon) ->
-                CategoryEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = name,
-                    iconKey = icon,
-                    isDefault = true,
-                    syncStatus = SyncStatus.LOCAL_ONLY,
-                )
-            }
+            // Stable ids so co-members share the same category_id over the wire.
+            // (Older installs used random UUIDs; remote pull drops unknown category ids.)
+            val defaults =
+                listOf(
+                    Triple("cat_general", "General", "category_general"),
+                    Triple("cat_food", "Food", "category_food"),
+                    Triple("cat_travel", "Travel", "category_travel"),
+                    Triple("cat_rent", "Rent", "category_rent"),
+                    Triple("cat_utilities", "Utilities", "category_utilities"),
+                    Triple("cat_entertainment", "Entertainment", "category_entertainment"),
+                ).map { (id, name, icon) ->
+                    CategoryEntity(
+                        id = id,
+                        name = name,
+                        iconKey = icon,
+                        isDefault = true,
+                        syncStatus = SyncStatus.LOCAL_ONLY,
+                    )
+                }
             categoryDao.upsertAll(defaults)
         }
     }

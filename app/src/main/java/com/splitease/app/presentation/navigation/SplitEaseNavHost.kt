@@ -340,6 +340,10 @@ fun SplitEaseNavHost(
                 onSignOut = authViewModel::signOut,
                 pendingInviteToken = pendingInviteToken,
                 claimInviteAndConsumeOpenTarget = authViewModel::claimInviteAndConsumeOpenTarget,
+                observePendingNotificationGroupId = {
+                    authViewModel.observePendingNotificationGroupId()
+                },
+                consumePendingNotificationGroupId = authViewModel::consumePendingNotificationGroupId,
             )
         }
     }
@@ -352,12 +356,16 @@ private fun SignedInNavHost(
     onSignOut: () -> Unit,
     pendingInviteToken: String?,
     claimInviteAndConsumeOpenTarget: suspend () -> String?,
+    observePendingNotificationGroupId: () -> kotlinx.coroutines.flow.Flow<String?>,
+    consumePendingNotificationGroupId: suspend () -> String?,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomBarRoutes
     val bottomBarSelectedRoute = selectedTabRoute(currentRoute)
+    val pendingNotificationGroupId by
+        observePendingNotificationGroupId().collectAsStateWithLifecycle(null)
 
     // Claim on sign-in (post-OTP open target) and again when a deep-link token arrives
     // while already signed in. Key on non-blank token only so clearing the token after
@@ -370,6 +378,12 @@ private fun SignedInNavHost(
                 claim = claimInviteAndConsumeOpenTarget,
             ) ?: return@LaunchedEffect
         navController.navigateInviteOpenTarget(target)
+    }
+
+    LaunchedEffect(userId, pendingNotificationGroupId) {
+        val groupId = pendingNotificationGroupId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        val consumed = consumePendingNotificationGroupId() ?: groupId
+        navController.navigateInviteOpenTarget(consumed)
     }
 
     Scaffold(

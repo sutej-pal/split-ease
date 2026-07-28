@@ -1,6 +1,7 @@
 package com.splitease.app.data.social
 
 import com.splitease.app.data.remote.SocialRemoteDataSource
+import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.toDomain
 import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.domain.model.AddPersonOutcome
@@ -355,7 +356,7 @@ class SocialInteractor
          * Invite URL suitable for clipboard copy (reuses the existing pending token).
          *
          * @param friendRowId Local friendship row id linked to the invite.
-         * @return Deep-link URL, or null when no pending invite exists.
+         * @return https invite URL from [InviteLinks], or null when no pending invite exists.
          */
         suspend fun pendingInviteClipboardLink(friendRowId: String): String? {
             val invite = inviteRepository.getByFriendRowId(friendRowId) ?: return null
@@ -651,8 +652,14 @@ class SocialInteractor
                         syncStatus = SyncStatus.SYNCED,
                     ),
                 )
-                runCatching { remote.fetchGroupMembers(groupId) }.getOrDefault(emptyList()).forEach { memberDto ->
-                    ensureLocalUserExists(memberDto.userId)
+                val memberDtos =
+                    runCatching { remote.fetchGroupMembers(groupId) }.getOrDefault(emptyList())
+                val profilesById =
+                    runCatching { remote.fetchProfilesByIds(memberDtos.map { it.userId }) }
+                        .getOrDefault(emptyList())
+                        .associateBy { it.id }
+                memberDtos.forEach { memberDto ->
+                    ensureLocalUserExists(memberDto.userId, profilesById[memberDto.userId])
                     groupRepository.upsertMember(
                         GroupMember(
                             id = memberDto.id,
@@ -668,20 +675,40 @@ class SocialInteractor
         }
 
         /**
-         * Room FK on [GroupMember] requires a [User] row. Friends synced from the cloud may
-         * exist without a local user — insert a stub when missing.
+         * Room FK on [GroupMember] requires a [User] row. Prefer the remote [ProfileDto] when
+         * available so co-members show real names (not UUID stubs). Upgrades existing stubs.
          *
          * @param userId User id to ensure.
-         * @param email Optional email for the stub.
-         * @param displayName Optional display name for the stub.
+         * @param profile Optional profile already fetched for this user.
+         * @param email Optional email for the stub when no profile.
+         * @param displayName Optional display name for the stub when no profile.
          */
         private suspend fun ensureLocalUserExists(
             userId: String,
+            profile: ProfileDto? = null,
             email: String = "",
             displayName: String = "Member",
         ) {
-            if (userRepository.getUserById(userId) != null) return
+            val resolved =
+                profile ?: runCatching { remote.fetchProfileById(userId) }.getOrNull()
+            val existing = userRepository.getUserById(userId)
             val now = System.currentTimeMillis()
+            if (resolved != null) {
+                userRepository.upsert(
+                    User(
+                        id = userId,
+                        email = resolved.email,
+                        displayName = resolved.displayName.ifBlank { displayName.ifBlank { "Member" } },
+                        photoUrl = resolved.photoUrl,
+                        remoteId = userId,
+                        createdAtEpochMs = existing?.createdAtEpochMs ?: now,
+                        updatedAtEpochMs = resolved.updatedAtEpochMs.takeIf { it > 0 } ?: now,
+                        syncStatus = SyncStatus.SYNCED,
+                    ),
+                )
+                return
+            }
+            if (existing != null) return
             userRepository.upsert(
                 User(
                     id = userId,

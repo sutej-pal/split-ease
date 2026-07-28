@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.splitease.app.data.di.SupabaseModule
+import com.splitease.app.data.push.SplitEaseMessagingService
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.domain.settings.AuthTimeout
@@ -98,7 +99,18 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
-        if (intent?.data == null) return
+        if (intent == null) return
+        val openGroupId =
+            intent.getStringExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        if (openGroupId != null) {
+            lifecycleScope.launch {
+                appSettingsRepository.setPendingNotificationGroupId(openGroupId)
+            }
+            intent.removeExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
+        }
+        if (intent.data == null) return
         val inviteToken = InviteLinks.tokenFromUri(intent.data)
         if (!inviteToken.isNullOrBlank()) {
             lifecycleScope.launch {

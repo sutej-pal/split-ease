@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".SplitEaseApplication"
@@ -27,41 +28,67 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="splitease"
-                    android:host="auth-callback" />
+
+                <data android:scheme="splitease" />
+                <data android:host="auth-callback" />
             </intent-filter>
-            <!-- Invite deep links: custom scheme + https (App Links verification later) -->
+            <!-- Custom-scheme invites open the app without App Links verification. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data
-                    android:scheme="splitease"
                     android:host="invite"
-                    android:pathPrefix="/" />
+                    android:pathPrefix="/"
+                    android:scheme="splitease" />
             </intent-filter>
-            <!-- https invite hosts: mail-service redirect page + future splitease.app -->
-            <intent-filter android:autoVerify="false">
+            <!--
+              Verified https App Links. Requires Digital Asset Links on each host:
+              https://{host}/.well-known/assetlinks.json
+              (see docs/assetlinks.json). Until hosted, Settings shows "0 verified links"
+              and Android may show an open-with chooser for https invites.
+            -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data
-                    android:scheme="https"
-                    android:host="${inviteWebHost}"
-                    android:pathPrefix="/invite" />
-                <data
-                    android:scheme="https"
                     android:host="splitease.app"
-                    android:pathPrefix="/invite" />
+                    android:pathPrefix="/invite"
+                    android:scheme="https" />
                 <data
-                    android:scheme="https"
                     android:host="www.splitease.app"
-                    android:pathPrefix="/invite" />
+                    android:pathPrefix="/invite"
+                    android:scheme="https" />
+            </intent-filter>
+            <!-- Optional mail-service host (from MAIL_SERVICE_BASE_URL → inviteWebHost). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="${inviteWebHost}"
+                    android:pathPrefix="/invite"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".data.push.SplitEaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
         <!-- Custom WorkManager config via Configuration.Provider -->
         <provider

@@ -100,6 +100,23 @@ class AuthViewModel
                     initialValue = null,
                 )
 
+        /** Observes a group id queued from an FCM notification tap. */
+        fun observePendingNotificationGroupId() =
+            appSettingsRepository.observePendingNotificationGroupId()
+
+        /**
+         * Returns and clears the pending notification group id.
+         *
+         * @return Group id, or null.
+         */
+        suspend fun consumePendingNotificationGroupId(): String? {
+            val id = appSettingsRepository.getPendingNotificationGroupId()?.takeIf { it.isNotBlank() }
+            if (id != null) {
+                appSettingsRepository.setPendingNotificationGroupId(null)
+            }
+            return id
+        }
+
         init {
             viewModelScope.launch {
                 session.collect { current ->

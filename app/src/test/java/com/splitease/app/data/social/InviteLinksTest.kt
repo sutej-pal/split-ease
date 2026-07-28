@@ -1,6 +1,7 @@
 package com.splitease.app.data.social
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -42,6 +43,12 @@ class InviteLinksTest {
     }
 
     @Test
+    fun `clipboardLink matches urlFor`() {
+        assertEquals(InviteLinks.urlFor("tok123"), InviteLinks.clipboardLink("tok123"))
+        assertFalse(InviteLinks.clipboardLink("tok123").startsWith("splitease://"))
+    }
+
+    @Test
     fun `tokenFromPastedText finds link inside share body`() {
         val body =
             InviteLinks.groupShareText("sutej hotmail", "group 2", "5159bf4f5b9e4834a7362c9dfba81809")
@@ -60,11 +67,39 @@ class InviteLinksTest {
     }
 
     @Test
-    fun `intentUri builds chrome friendly link`() {
+    fun `tokenFromPastedText still accepts legacy custom scheme`() {
         assertEquals(
-            "intent://invite/tok123#Intent;scheme=splitease;package=com.splitease.app;end",
-            InviteLinks.intentUri("tok123"),
+            "cb00d1b224714109a8e46755728c7cd5",
+            InviteLinks.tokenFromPastedText(
+                "splitease://invite/cb00d1b224714109a8e46755728c7cd5",
+            ),
         )
+    }
+
+    @Test
+    fun `intentUri builds chrome friendly link with fallback`() {
+        val uri = InviteLinks.intentUri("tok123", "https://example.com/invite/tok123")
+        assertTrue(uri.startsWith("intent://invite/tok123#Intent;"), uri)
+        assertTrue(uri.contains("scheme=splitease;"), uri)
+        assertTrue(uri.contains("package=com.splitease.app;"), uri)
+        assertTrue(uri.contains("S.browser_fallback_url="), uri)
+        assertTrue(uri.endsWith(";end"), uri)
+    }
+
+    @Test
+    fun `share text uses single https link only`() {
+        val body = InviteLinks.friendShareText("Ada", "tok123abc")
+        assertFalse(body.contains("splitease://"), body)
+        assertTrue(body.contains(InviteLinks.urlFor("tok123abc")), body)
+        assertEquals(1, Regex("""https?://\S+/invite/tok123abc""").findAll(body).count())
+    }
+
+    @Test
+    fun `group share html uses https only`() {
+        val html = InviteLinks.groupShareHtml("Ada", "Trip", "tok123abc")
+        assertFalse(html.contains("splitease://"), html)
+        assertFalse(html.contains("intent://"), html)
+        assertTrue(html.contains(InviteLinks.urlFor("tok123abc")), html)
     }
 
     @Test

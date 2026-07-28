@@ -84,13 +84,8 @@ create policy "expenses_insert"
   on public.expenses for insert to authenticated
   with check (
     paid_by_user_id = auth.uid()
-    or (
-      group_id is not null
-      and exists (
-        select 1 from public.groups g
-        where g.id = group_id and g.created_by_user_id = auth.uid()
-      )
-    )
+    or (group_id is not null and public.is_group_member(group_id))
+    or (group_id is not null and public.is_group_creator(group_id))
   );
 
 create policy "expenses_update"
@@ -120,15 +115,6 @@ create policy "expense_splits_select"
   on public.expense_splits for select to authenticated
   using (public.can_access_expense(expense_id));
 
-create policy "expense_splits_insert"
-  on public.expense_splits for insert to authenticated
-  with check (public.can_access_expense(expense_id) or exists (
-    select 1 from public.expenses e
-    where e.id = expense_id and e.paid_by_user_id = auth.uid()
-  ));
-
--- Insert of splits often happens in the same request as expense insert;
--- allow creator via paid_by on the parent (may not be visible yet in can_access for other participants).
 drop policy if exists "expense_splits_insert" on public.expense_splits;
 create policy "expense_splits_insert"
   on public.expense_splits for insert to authenticated
@@ -138,13 +124,8 @@ create policy "expense_splits_insert"
       where e.id = expense_id
         and (
           e.paid_by_user_id = auth.uid()
-          or (
-            e.group_id is not null
-            and exists (
-              select 1 from public.groups g
-              where g.id = e.group_id and g.created_by_user_id = auth.uid()
-            )
-          )
+          or (e.group_id is not null and public.is_group_member(e.group_id))
+          or (e.group_id is not null and public.is_group_creator(e.group_id))
         )
     )
   );

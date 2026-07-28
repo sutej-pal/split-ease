@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
@@ -66,11 +67,15 @@ fun FriendsListScreen(
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
+        val html = InviteLinks.htmlForShareText(text)
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
+                if (html != null) {
+                    putExtra(Intent.EXTRA_HTML_TEXT, html)
+                }
             }
         context.startActivity(Intent.createChooser(intent, shareInvite))
         viewModel.consumeShareText()
@@ -199,11 +204,15 @@ fun AddFriendScreen(
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
+        val html = InviteLinks.htmlForShareText(text)
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
+                if (html != null) {
+                    putExtra(Intent.EXTRA_HTML_TEXT, html)
+                }
             }
         context.startActivity(
             Intent.createChooser(intent, shareInvite),

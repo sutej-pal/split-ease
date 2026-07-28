@@ -50,4 +50,19 @@ class PaymentRemoteDataSource
                     }.decodeList<PaymentDto>()
             return (asFrom + asTo).distinctBy { it.id }
         }
+
+        /**
+         * Fetches payments for a group.
+         *
+         * @param groupId Group id.
+         * @return Remote payment rows.
+         */
+        suspend fun fetchByGroup(groupId: String): List<PaymentDto> =
+            supabase
+                .from("payments")
+                .select(Columns.ALL) {
+                    filter {
+                        eq("group_id", groupId)
+                    }
+                }.decodeList()
     }

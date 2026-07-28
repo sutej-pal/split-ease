@@ -182,6 +182,11 @@ Unique index: `(expenseId, userId)`.
 | group_members | user_id | UUID | no | Member |
 | group_members | role | TEXT | no | OWNER / MEMBER |
 | group_members | joined_at_epoch_ms | BIGINT | no | Join time |
+| device_tokens | id | UUID (PK) | no | Token row id |
+| device_tokens | user_id | UUID | no | Owner auth user |
+| device_tokens | token | TEXT | no | FCM registration token |
+| device_tokens | platform | TEXT | no | e.g. `android` |
+| device_tokens | updated_at_epoch_ms | BIGINT | no | Last upsert |
 | invites | id | UUID (PK) | no | Invite id |
 | invites | token | TEXT | no | Unique invite token |
 | invites | inviter_user_id | UUID | no | Sender |

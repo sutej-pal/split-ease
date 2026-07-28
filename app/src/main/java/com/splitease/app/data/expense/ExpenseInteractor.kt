@@ -3,6 +3,7 @@ package com.splitease.app.data.expense
 import com.splitease.app.data.remote.ExpenseRemoteDataSource
 import com.splitease.app.data.remote.dto.ExpenseDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
+import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
 import com.splitease.app.domain.model.Expense
@@ -13,6 +14,7 @@ import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
 import com.splitease.app.domain.recurrence.RecurrenceScheduler
 import com.splitease.app.domain.repository.ActivityEventRepository
+import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
@@ -22,7 +24,9 @@ import java.text.DateFormat
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Provider
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.first
 
 /**
  * Input for creating an expense with splits.
@@ -70,9 +74,11 @@ class ExpenseInteractor
     constructor(
         private val expenseRepository: ExpenseRepository,
         private val userRepository: UserRepository,
+        private val categoryRepository: CategoryRepository,
         private val groupRepository: GroupRepository,
         private val activityEventRepository: ActivityEventRepository,
         private val remote: ExpenseRemoteDataSource,
+        private val syncInteractor: Provider<SyncInteractor>,
     ) {
         /**
          * Creates an expense with calculated splits and best-effort cloud sync.
@@ -228,12 +234,24 @@ class ExpenseInteractor
          */
         suspend fun refreshGroupExpenses(groupId: String) {
             remote.fetchByGroup(groupId).forEach { dto ->
-                persistRemoteExpense(dto)
+                runCatching { persistRemoteExpense(dto) }
+                    .onFailure { err ->
+                        android.util.Log.w(
+                            "ExpenseSync",
+                            "Failed to persist remote expense ${dto.id}: ${dto.description}",
+                            err,
+                        )
+                    }
             }
         }
 
         /**
-         * Pulls expenses involving [userId] (payer or split participant) into Room.
+         * Pulls expenses the signed-in user can see into Room.
+         *
+         * Includes:
+         * - expenses where [userId] is payer or split participant
+         * - all expenses in groups [userId] belongs to (needed after invite join —
+         *   membership alone does not put the user on historical split rows)
          *
          * @param userId Current user id.
          */
@@ -246,7 +264,20 @@ class ExpenseInteractor
 
             ids.forEach { expenseId ->
                 val dto = remote.fetchExpense(expenseId) ?: return@forEach
-                persistRemoteExpense(dto)
+                runCatching { persistRemoteExpense(dto) }
+                    .onFailure { err ->
+                        android.util.Log.w(
+                            "ExpenseSync",
+                            "Failed to persist remote expense $expenseId",
+                            err,
+                        )
+                    }
+            }
+
+            // Group membership grants SELECT via RLS; pull those rows even when the
+            // joiner is not (yet) on any split.
+            groupRepository.observeGroupsForUser(userId).first().forEach { group ->
+                refreshGroupExpenses(group.id)
             }
         }
 
@@ -349,19 +380,48 @@ class ExpenseInteractor
             expense: Expense,
             splits: List<ExpenseSplit>,
         ): Expense {
-            val synced =
+            // Ensure group/member rows exist remotely before expense FK upsert.
+            runCatching { syncInteractor.get().flushPending() }
+
+            val pushError =
                 runCatching {
                     pushExpense(expense, splits)
-                    expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
-                }.getOrDefault(expense)
+                }.exceptionOrNull()
 
-            if (synced.syncStatus == SyncStatus.SYNCED) {
+            if (pushError == null) {
+                val synced =
+                    expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
                 expenseRepository.upsertExpenseWithSplits(
                     synced,
                     splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
                 )
+                return synced
             }
-            return synced
+
+            // Retry once after another social flush (group may have been PENDING).
+            runCatching { syncInteractor.get().flushPending() }
+            val retryError =
+                runCatching {
+                    pushExpense(expense, splits)
+                    val synced =
+                        expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
+                    expenseRepository.upsertExpenseWithSplits(
+                        synced,
+                        splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
+                    )
+                    synced
+                }.exceptionOrNull()
+
+            if (retryError == null) {
+                return expenseRepository.getExpenseById(expense.id) ?: expense
+            }
+
+            android.util.Log.w(
+                "ExpenseSync",
+                "Expense stayed PENDING: ${expense.description}",
+                retryError ?: pushError,
+            )
+            return expense
         }
 
         private suspend fun recordExpenseActivity(
@@ -403,13 +463,20 @@ class ExpenseInteractor
 
         private suspend fun persistRemoteExpense(dto: ExpenseDto) {
             val splits = remote.fetchSplits(dto.id)
+            // Room FKs require local user rows for payer + participants (other members).
+            ensureLocalUserExists(dto.paidByUserId)
+            splits.forEach { ensureLocalUserExists(it.userId) }
+            // Default category ids are device-local UUIDs (not synced). Drop unknown
+            // category_id so a co-member's expense still lands in Room.
+            val categoryId =
+                dto.categoryId?.takeIf { id -> categoryRepository.getById(id) != null }
             val expense =
                 Expense(
                     id = dto.id,
                     description = dto.description,
                     amount = BigDecimal(dto.amount),
                     currencyCode = dto.currencyCode,
-                    categoryId = dto.categoryId,
+                    categoryId = categoryId,
                     paidByUserId = dto.paidByUserId,
                     groupId = dto.groupId,
                     expenseDateEpochMs = dto.expenseDateEpochMs,

@@ -3,20 +3,22 @@ package com.splitease.app.data.social
 import com.splitease.app.BuildConfig
 
 /**
- * Builds shareable invite links and email bodies (MVP: share/mailto; Edge Function later).
+ * Single source of truth for invite URLs and share copy.
  *
- * Primary share link is an **https** page (mail-service `/invite/{token}`) so pasting into
- * Chrome tries to open the installed app, then falls back to Play Store with an
- * `invite_token` Install Referrer for first-launch recovery.
+ * **Outbound (copy / share / UI):** always [urlFor] — https mail-service (or fallback) page that
+ * redirects into the app.
+ *
+ * **Inbound:** still accepts custom-scheme / intent / https / bare tokens via [tokenFromUri],
+ * [tokenFromPastedText], and [tokenFromInstallReferrer].
  */
 object InviteLinks {
     /** Fallback when [BuildConfig.MAIL_SERVICE_BASE_URL] is unset. */
     private const val FALLBACK_WEB_BASE = "https://splitease.app/invite"
 
-    /** Custom-scheme host for invite deep links (`splitease://invite/{token}`). */
+    /** Custom-scheme for Android intent-filters (`splitease://invite/{token}`). Inbound only. */
     const val DEEP_LINK_SCHEME = "splitease"
 
-    /** Custom-scheme host for invite deep links. */
+    /** Custom-scheme host for invite deep links. Inbound only. */
     const val DEEP_LINK_HOST = "invite"
 
     /** Play Install Referrer query key set by the mail-service Play Store fallback. */
@@ -45,7 +47,7 @@ object InviteLinks {
     private val TOKEN_LOOSE = Regex("""^[A-Za-z0-9_-]{8,128}$""")
 
     /**
-     * Builds an https invite URL for [token] (paste this into a browser).
+     * Canonical https invite URL for [token] — use for copy, share, and on-screen display.
      *
      * @param token Opaque invite token.
      * @return Absolute invite URL on the mail-service redirect page.
@@ -53,7 +55,16 @@ object InviteLinks {
     fun urlFor(token: String): String = "$BASE_URL/$token"
 
     /**
-     * Builds a custom-scheme invite URI for [token].
+     * Invite URL for clipboard / UI — same as [urlFor].
+     *
+     * @param token Opaque invite token.
+     * @return https invite URL.
+     */
+    fun clipboardLink(token: String): String = urlFor(token)
+
+    /**
+     * Custom-scheme URI for Android deep-link intake tests / diagnostics.
+     * Do **not** use for share or clipboard — prefer [urlFor].
      *
      * @param token Opaque invite token.
      * @return `splitease://invite/{token}`.
@@ -61,24 +72,25 @@ object InviteLinks {
     fun deepLinkUri(token: String): String = "$DEEP_LINK_SCHEME://$DEEP_LINK_HOST/$token"
 
     /**
-     * Chrome-friendly Intent URI that opens the installed app.
+     * Chrome-friendly Intent URI that opens the installed app, with https fallback.
      *
      * @param token Opaque invite token.
-     * @return `intent://invite/{token}#Intent;scheme=splitease;package=…;end`.
+     * @param fallbackUrl Browser fallback when the app is not installed (defaults to [urlFor]).
+     * @return `intent://invite/{token}#Intent;…;end`.
      */
-    fun intentUri(token: String): String =
-        "intent://$DEEP_LINK_HOST/$token#Intent;" +
+    fun intentUri(
+        token: String,
+        fallbackUrl: String = urlFor(token),
+    ): String {
+        val encodedFallback =
+            java.net.URLEncoder.encode(fallbackUrl, Charsets.UTF_8.name())
+                .replace("+", "%20")
+        return "intent://$DEEP_LINK_HOST/$token#Intent;" +
             "scheme=$DEEP_LINK_SCHEME;" +
             "package=com.splitease.app;" +
+            "S.browser_fallback_url=$encodedFallback;" +
             "end"
-
-    /**
-     * Invite URL for clipboard — https so it works when pasted into a browser.
-     *
-     * @param token Opaque invite token.
-     * @return `https://…/invite/{token}`.
-     */
-    fun clipboardLink(token: String): String = urlFor(token)
+    }
 
     /**
      * Extracts an invite token from a deep-link [uri], or null if not an invite link.
@@ -180,12 +192,11 @@ object InviteLinks {
      *
      * @param inviterName Display name of the sender.
      * @param token Invite token.
-     * @return Plain-text message.
+     * @return Plain-text message with a single https invite link.
      */
     fun friendShareText(inviterName: String, token: String): String {
-        val webLink = urlFor(token)
-        return "$inviterName invited you to SplitEase.\n\n" +
-            "Open this link in your browser to join in the app:\n$webLink"
+        val link = urlFor(token)
+        return "$inviterName invited you to SplitEase.\n\nJoin here:\n$link"
     }
 
     /**
@@ -193,13 +204,13 @@ object InviteLinks {
      *
      * @param inviterName Display name of the sender.
      * @param token Invite token.
-     * @return HTML fragment.
+     * @return HTML fragment with a single https invite link.
      */
     fun friendShareHtml(inviterName: String, token: String): String {
-        val webLink = urlFor(token)
+        val link = urlFor(token)
         return "<p>${escapeHtml(inviterName)} invited you to SplitEase.</p>" +
-            "<p><a href=\"$webLink\">Open invite in SplitEase</a></p>" +
-            "<p>Or paste this link in your browser:<br/><a href=\"$webLink\">$webLink</a></p>"
+            "<p><a href=\"$link\">Join on SplitEase</a></p>" +
+            "<p>${escapeHtml(link)}</p>"
     }
 
     /**
@@ -208,12 +219,11 @@ object InviteLinks {
      * @param inviterName Display name of the sender.
      * @param groupName Group name.
      * @param token Invite token.
-     * @return Plain-text message.
+     * @return Plain-text message with a single https invite link.
      */
     fun groupShareText(inviterName: String, groupName: String, token: String): String {
-        val webLink = urlFor(token)
-        return "$inviterName invited you to join \"$groupName\" on SplitEase.\n\n" +
-            "Open this link in your browser to join the group in the app:\n$webLink"
+        val link = urlFor(token)
+        return "$inviterName invited you to join \"$groupName\" on SplitEase.\n\nJoin here:\n$link"
     }
 
     /**
@@ -222,14 +232,14 @@ object InviteLinks {
      * @param inviterName Display name of the sender.
      * @param groupName Group name.
      * @param token Invite token.
-     * @return HTML fragment.
+     * @return HTML fragment with a single https invite link.
      */
     fun groupShareHtml(inviterName: String, groupName: String, token: String): String {
-        val webLink = urlFor(token)
+        val link = urlFor(token)
         return "<p>${escapeHtml(inviterName)} invited you to join " +
             "&quot;${escapeHtml(groupName)}&quot; on SplitEase.</p>" +
-            "<p><a href=\"$webLink\">Open invite in SplitEase</a></p>" +
-            "<p>Or paste this link in your browser:<br/><a href=\"$webLink\">$webLink</a></p>"
+            "<p><a href=\"$link\">Join on SplitEase</a></p>" +
+            "<p>${escapeHtml(link)}</p>"
     }
 
     /**

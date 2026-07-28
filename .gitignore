@@ -24,6 +24,8 @@ google-services.json
 **/google-services.json
 *.jks
 *.keystore
+keystore/*.jks
+keystore/*.keystore
 
 # Docs screenshots may be large; keep placeholders
 # docs/screenshots/*.png are intentional once captured

@@ -10,6 +10,11 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
+// Apply only when Firebase config is present (file is gitignored).
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) {
@@ -51,7 +56,25 @@ android {
         manifestPlaceholders["inviteWebHost"] = inviteWebHost
     }
 
-    // Side-by-side twin install for multi-device sync testing (debug only; not for release).
+    signingConfigs {
+        // Keep Android's default debug keystore for day-to-day installations.
+        getByName("debug")
+
+        create("release") {
+            val storePath = localProp("KEYSTORE_FILE").trim()
+            val storePasswordValue = localProp("KEYSTORE_PASSWORD")
+            val keyAliasValue = localProp("KEY_ALIAS").trim()
+            val keyPasswordValue = localProp("KEY_PASSWORD")
+            if (storePath.isNotEmpty()) {
+                storeFile = rootProject.file(storePath)
+                storePassword = storePasswordValue
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
+
+    // Side-by-side twin installation for multi-device sync testing (debug only; not for release).
     flavorDimensions += "install"
     productFlavors {
         create("standard") {
@@ -74,6 +97,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile?.exists() == true) {
+                signingConfig = releaseSigning
+            }
         }
         debug {
             isMinifyEnabled = false
@@ -154,6 +181,9 @@ dependencies {
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)
     implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.realtime)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.ktor.client.android)
 
     testImplementation(libs.junit.jupiter.api)

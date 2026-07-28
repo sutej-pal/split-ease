@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">SplitEase</string>
+    <string name="notification_channel_group_updates">Group updates</string>
+    <string name="notification_group_update_body">Something changed in your group.</string>
     <string name="welcome_title">SplitEase</string>
     <string name="welcome_tagline">Share expenses. Settle fairly. Stay in sync.</string>
     <string name="action_get_started">Get started</string>
@@ -270,6 +272,7 @@
     <string name="msg_expense_added">Expense added.</string>
     <string name="msg_expense_updated">Expense updated.</string>
     <string name="msg_expense_deleted">Expense deleted.</string>
+    <string name="msg_expense_saved_not_synced">Expense saved on this device, but cloud sync failed. Stay online and open Account → Sync now, or it may disappear after reinstall/login.</string>
     <string name="expense_detail_title">Expense</string>
     <string name="expense_not_found">Expense not found.</string>
     <string name="action_edit_expense">Edit expense</string>

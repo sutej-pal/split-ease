@@ -92,6 +92,7 @@ fun GroupSettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
+    val userDisplayNames by viewModel.userDisplayNames.collectAsStateWithLifecycle()
     val membersState by remember(groupId) { viewModel.observeMembers(groupId) }
         .collectAsStateWithLifecycle()
     val members = membersState.orEmpty()
@@ -167,10 +168,14 @@ fun GroupSettingsScreen(
                         if (isYou) {
                             stringResource(
                                 R.string.member_you_label,
-                                friend?.displayNameSnapshot ?: stringResource(R.string.you_label),
+                                friend?.displayNameSnapshot
+                                    ?: userDisplayNames[member.userId]
+                                    ?: stringResource(R.string.you_label),
                             )
                         } else {
-                            friend?.displayNameSnapshot ?: member.userId.take(8)
+                            friend?.displayNameSnapshot
+                                ?: userDisplayNames[member.userId]
+                                ?: member.userId.take(8)
                         }
                     SeListRow(
                         title = title,

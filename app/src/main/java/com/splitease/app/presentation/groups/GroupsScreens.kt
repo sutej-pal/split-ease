@@ -322,6 +322,8 @@ fun GroupDetailScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             // Flush local writes + pull remote so other members' expense/payment edits show up.
             expensesViewModel.refreshGroupFromCloud(groupId)
+            // Keep Room fresh while this screen is visible (Supabase Realtime).
+            expensesViewModel.observeGroupLiveUpdates(groupId)
         }
     }
 

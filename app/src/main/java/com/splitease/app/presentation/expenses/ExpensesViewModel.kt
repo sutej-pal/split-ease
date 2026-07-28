@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.data.expense.CreateExpenseInput
 import com.splitease.app.data.expense.ExpenseInteractor
+import com.splitease.app.data.payment.PaymentInteractor
+import com.splitease.app.data.sync.GroupLiveSync
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Category
@@ -118,6 +120,7 @@ class ExpensesViewModel
         authRepository: AuthRepository,
         private val expenseRepository: ExpenseRepository,
         private val expenseInteractor: ExpenseInteractor,
+        private val paymentInteractor: PaymentInteractor,
         private val syncInteractor: SyncInteractor,
         private val groupRepository: GroupRepository,
         private val friendRepository: FriendRepository,
@@ -125,6 +128,7 @@ class ExpensesViewModel
         private val categoryRepository: CategoryRepository,
         private val paymentRepository: PaymentRepository,
         private val appSettingsRepository: AppSettingsRepository,
+        private val groupLiveSync: GroupLiveSync,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository.observeSession()
@@ -388,13 +392,34 @@ class ExpensesViewModel
             viewModelScope.launch {
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
                 runCatching { syncInteractor.syncForUser(userId.value) }
-                runCatching { expenseInteractor.refreshGroupExpenses(groupId) }
-                    .onFailure { err ->
-                        _uiState.update {
-                            it.copy(errorMessage = err.message ?: appContext.getString(R.string.msg_could_not_refresh_expenses))
-                        }
+                val refreshError =
+                    runCatching {
+                        expenseInteractor.refreshGroupExpenses(groupId)
+                        paymentInteractor.refreshGroupPayments(groupId)
+                    }.exceptionOrNull()
+                if (refreshError != null) {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage =
+                                refreshError.message
+                                    ?: appContext.getString(R.string.msg_could_not_refresh_expenses),
+                        )
                     }
+                }
                 _uiState.update { it.copy(isRefreshing = false) }
+            }
+        }
+
+        /**
+         * Subscribes to Realtime changes for [groupId] until the caller cancels
+         * (e.g. [androidx.lifecycle.repeatOnLifecycle] leaves RESUMED).
+         */
+        suspend fun observeGroupLiveUpdates(groupId: String) {
+            try {
+                groupLiveSync.start(groupId, viewModelScope)
+                kotlinx.coroutines.awaitCancellation()
+            } finally {
+                groupLiveSync.stop()
             }
         }
 
@@ -470,11 +495,18 @@ class ExpensesViewModel
                             expenseDateEpochMs = expenseDateEpochMs,
                         ),
                     )
+                val saved = result.getOrNull()
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_added) else null,
+                        infoMessage =
+                            when {
+                                result.isFailure -> null
+                                saved?.syncStatus != SyncStatus.SYNCED ->
+                                    appContext.getString(R.string.msg_expense_saved_not_synced)
+                                else -> appContext.getString(R.string.msg_expense_added)
+                            },
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -606,7 +638,13 @@ class ExpensesViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_updated) else null,
+                        infoMessage =
+                            when {
+                                result.isFailure -> null
+                                result.getOrNull()?.syncStatus != SyncStatus.SYNCED ->
+                                    appContext.getString(R.string.msg_expense_saved_not_synced)
+                                else -> appContext.getString(R.string.msg_expense_updated)
+                            },
                     )
                 }
                 if (result.isSuccess) onSuccess()

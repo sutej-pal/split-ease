@@ -40,6 +40,8 @@ class SharedPreferencesAppSettingsRepository
         private val onboardingCompleteFlow = MutableStateFlow(readOnboardingComplete())
         private val pendingInviteTokenFlow = MutableStateFlow(readPendingInviteToken())
         private val pendingInviteOpenTargetFlow = MutableStateFlow(readPendingInviteOpenTarget())
+        private val pendingNotificationGroupIdFlow =
+            MutableStateFlow(readPendingNotificationGroupId())
 
         override fun observeCurrencyCode(): Flow<String> = currencyFlow.asStateFlow()
 
@@ -201,6 +203,31 @@ class SharedPreferencesAppSettingsRepository
             pendingInviteOpenTargetFlow.value = normalized
         }
 
+        override fun observePendingNotificationGroupId(): Flow<String?> =
+            pendingNotificationGroupIdFlow.asStateFlow()
+
+        override suspend fun getPendingNotificationGroupId(): String? {
+            pendingNotificationGroupIdFlow.value?.let { return it }
+            return withContext(Dispatchers.IO) { readPendingNotificationGroupId() }
+        }
+
+        override suspend fun setPendingNotificationGroupId(groupId: String?) {
+            val normalized = groupId?.trim()?.takeIf { it.isNotEmpty() }
+            if (normalized != null && pendingNotificationGroupIdFlow.value == normalized) {
+                pendingNotificationGroupIdFlow.value = null
+            }
+            pendingNotificationGroupIdFlow.value = normalized
+            withContext(Dispatchers.IO) {
+                prefs.edit {
+                    if (normalized == null) {
+                        remove(KEY_PENDING_NOTIFICATION_GROUP_ID)
+                    } else {
+                        putString(KEY_PENDING_NOTIFICATION_GROUP_ID, normalized)
+                    }
+                }
+            }
+        }
+
         override suspend fun getInstallReferrerChecked(): Boolean =
             withContext(Dispatchers.IO) {
                 prefs.getBoolean(KEY_INSTALL_REFERRER_CHECKED, false)
@@ -268,6 +295,9 @@ class SharedPreferencesAppSettingsRepository
         private fun readPendingInviteOpenTarget(): String? =
             prefs.getString(KEY_PENDING_INVITE_OPEN_TARGET, null)?.trim()?.takeIf { it.isNotEmpty() }
 
+        private fun readPendingNotificationGroupId(): String? =
+            prefs.getString(KEY_PENDING_NOTIFICATION_GROUP_ID, null)?.trim()?.takeIf { it.isNotEmpty() }
+
         private fun readSimplifyMap(): Map<String, Boolean> =
             prefs.all
                 .mapNotNull { (key, value) ->
@@ -285,6 +315,7 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
             private const val KEY_PENDING_INVITE_TOKEN = "pending_invite_token"
             private const val KEY_PENDING_INVITE_OPEN_TARGET = "pending_invite_open_target"
+            private const val KEY_PENDING_NOTIFICATION_GROUP_ID = "pending_notification_group_id"
             private const val KEY_INSTALL_REFERRER_CHECKED = "install_referrer_checked"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
             private const val KEY_ONBOARDING_EMAIL_SENT_PREFIX = "onboarding_email_sent_"

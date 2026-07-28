@@ -217,6 +217,27 @@ interface AppSettingsRepository {
     suspend fun setPendingInviteOpenTarget(target: String?)
 
     /**
+     * Observes a group id to open from a push notification tap.
+     *
+     * @return Cold [Flow]; emits `null` when none is pending.
+     */
+    fun observePendingNotificationGroupId(): Flow<String?>
+
+    /**
+     * Reads the pending notification group id once.
+     *
+     * @return Group id, or null.
+     */
+    suspend fun getPendingNotificationGroupId(): String?
+
+    /**
+     * Persists or clears a group id opened from a notification.
+     *
+     * @param groupId Group id, or null to clear.
+     */
+    suspend fun setPendingNotificationGroupId(groupId: String?)
+
+    /**
      * Whether Play Install Referrer was already read for this install.
      *
      * @return `true` after a successful or empty referrer attempt.

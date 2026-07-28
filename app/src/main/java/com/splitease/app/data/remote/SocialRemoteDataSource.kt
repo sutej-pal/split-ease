@@ -53,6 +53,40 @@ class SocialRemoteDataSource
                 .firstOrNull()
 
         /**
+         * Fetches a single profile by user id.
+         *
+         * @param userId Profile / auth user id.
+         * @return Matching profile, or null.
+         */
+        suspend fun fetchProfileById(userId: String): ProfileDto? =
+            supabase
+                .from("profiles")
+                .select(Columns.ALL) {
+                    filter {
+                        eq("id", userId)
+                    }
+                }.decodeList<ProfileDto>()
+                .firstOrNull()
+
+        /**
+         * Fetches profiles for the given user ids.
+         *
+         * @param userIds Profile / auth user ids.
+         * @return Matching profile rows (order not guaranteed).
+         */
+        suspend fun fetchProfilesByIds(userIds: List<String>): List<ProfileDto> {
+            val distinct = userIds.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+            if (distinct.isEmpty()) return emptyList()
+            return supabase
+                .from("profiles")
+                .select(Columns.ALL) {
+                    filter {
+                        isIn("id", distinct)
+                    }
+                }.decodeList()
+        }
+
+        /**
          * Upserts a friendship owned by the current user.
          *
          * @param friend Friend row.

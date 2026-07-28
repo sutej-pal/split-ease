@@ -86,7 +86,7 @@ Supabase (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
 
 - **Redeploy mail-service `/invite/:token`** — page now tries open-app then Play Store with `referrer=invite_token%3D…`; redeploy Render after pulling mail-service changes.
 - **Install Referrer E2E** — full deferred-invite proof needs a Play install (Internal testing is enough). Sideload / Studio Run does not populate referrer; parser unit tests cover the string format.
-- **App Links verification** — without `assetlinks.json`, Chrome loads the https bridge first then `intent://` (or Play fallback). Verified App Links can skip the intermediate page for installed-app opens later.
+- **App Links verification** — Settings shows **0 verified links** until each https host serves [assetlinks.json](../assetlinks.json) at `/.well-known/assetlinks.json` ([app-links-setup.md](../app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification. Without assetlinks, Chrome may load the https bridge then `intent://` (or Play fallback).
 - **Select your name / claim placeholder** — landing lists members for context only; joining always creates a new account.
 - **Invite email delivery** — still share-sheet MVP.
 

@@ -5,6 +5,8 @@ Use before uploading a Play Console build.
 ## Build & version
 - [ ] `versionName` / `versionCode` bumped in `app/build.gradle.kts`
 - [ ] `./gradlew assembleStandardRelease` (or bundle) succeeds
+- [ ] Host Digital Asset Links: `https://splitease.app/.well-known/assetlinks.json` (and mail-service host if used) — see [app-links-setup.md](app-links-setup.md)
+- [ ] Settings → SplitEase → Open by default shows verified invite hosts (not “0 verified links”)
 - [ ] Release signing configured locally (keystore not committed)
 - [ ] ProGuard/R8 rules reviewed if minify enabled
 
@@ -14,7 +16,9 @@ Use before uploading a Play Console build.
 - [ ] Confirm signup email template includes `{{ .Token }}` (paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) or run `scripts/configure-signup-otp-email.ps1`)
 - [ ] Redirect URL allow-list includes `splitease://auth-callback` (password reset / other Auth redirects; **not** required for signup OTP)
 - [ ] Site URL set to a real landing or Play listing URL
-- [ ] Phase 3–6 SQL applied (profiles, groups, invites, expenses, payments) + RLS verified
+- [ ] Phase 3–6 SQL applied (profiles, groups, invites, expenses, payments) + RLS verified — include [phase-3e-fix-group-members-select.sql](sql/phase-3e-fix-group-members-select.sql) and [phase-4b-expense-rls-fix.sql](sql/phase-4b-expense-rls-fix.sql) if those were applied under older policies
+- [ ] Realtime publication + FCM extras SQL when using live updates / push ([phase-extras-realtime-expenses-payments.sql](sql/phase-extras-realtime-expenses-payments.sql), [phase-extras-device-tokens.sql](sql/phase-extras-device-tokens.sql), [fcm-setup.md](fcm-setup.md))
+- [ ] `app/google-services.json` present for release builds that need push; Edge Function `notify-group-members` deployed with `FIREBASE_SERVICE_ACCOUNT_JSON`
 - [ ] Anon key only in the app; service role never shipped
 
 ## App QA
