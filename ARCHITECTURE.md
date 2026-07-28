@@ -46,7 +46,7 @@ Apply Supabase SQL in order: `docs/sql/phase-3-schema.sql` → `phase-3b-invites
 | Area | Key packages / types |
 |---|---|
 | Auth | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup OTP verify), `presentation/onboarding` (welcome-email side effect; no setup UI) |
-| Invites | `InviteLinks`, `presentation/invite` (deep-link landing + join signup), `get_invite_preview` / `accept_invite_by_token` RPCs |
+| Invites | `InviteLinks`, `InstallReferrerInviteBootstrap` (Play deferred deep link), `presentation/invite` (deep-link landing + join signup), `get_invite_preview` / `accept_invite_by_token` RPCs |
 | Friends & groups | `SocialInteractor`, `SocialRemoteDataSource`, `presentation/friends\|groups\|home` |
 | Expenses | `SplitCalculator`, `ExpenseInteractor`, `presentation/expenses` |
 | Balances | `BalanceCalculator`, `DebtSimplifier`, `BalanceInteractor` |

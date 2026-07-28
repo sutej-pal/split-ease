@@ -22,7 +22,7 @@ Use before uploading a Play Console build.
 - [ ] Resend code works
 - [ ] Password reset email arrives
 - [ ] Language switch (Settings → Language) updates UI for at least 2 locales
-- [ ] Offline create expense → Sync now uploads
+- [ ] Offline create expense → go online and verify auto-sync uploads within worker window
 - [ ] Settle-up pay intents + CSV import + Spending chart smoke
 - [ ] Biometric lock timeout smoke
 - [ ] Room upgrade from prior install does **not** wipe data (migrations 1→4)

@@ -69,6 +69,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
+import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.balances.BalancesViewModel
@@ -329,11 +330,15 @@ fun GroupDetailScreen(
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
+        val html = InviteLinks.htmlForShareText(text)
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
+                if (html != null) {
+                    putExtra(Intent.EXTRA_HTML_TEXT, html)
+                }
             }
         context.startActivity(Intent.createChooser(intent, shareInvite))
         viewModel.consumeShareText()
@@ -423,11 +428,10 @@ fun GroupDetailScreen(
                     ) {
                         if (isSolo && ledger.isEmpty()) {
                             item {
-                                val groupShareText = stringResource(R.string.group_share_placeholder, group?.name.orEmpty())
                                 GroupSoloEmptyState(
                                     onAddMembers = onOpenSettings,
                                     onShareLink = {
-                                        viewModel.shareGroupLink(groupShareText)
+                                        viewModel.shareGroupLink(groupId)
                                     },
                                 )
                             }

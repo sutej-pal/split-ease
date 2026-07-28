@@ -94,9 +94,37 @@ class GroupsViewModel
             _uiState.update { it.copy(pendingShareText = null) }
         }
 
-        /** Queues a system share sheet with [shareText]. */
-        fun shareGroupLink(shareText: String) {
-            _uiState.update { it.copy(pendingShareText = shareText) }
+        /**
+         * Creates a cloud-backed invite token for [groupId] and queues share text.
+         *
+         * @param groupId Group to share.
+         */
+        fun shareGroupLink(groupId: String) {
+            viewModelScope.launch {
+                val ownerId = requireUserId()
+                if (ownerId == null) {
+                    _uiState.update { it.copy(errorMessage = appContext.getString(R.string.msg_not_signed_in)) }
+                    return@launch
+                }
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = true,
+                        errorMessage = null,
+                        infoMessage = null,
+                        pendingShareText = null,
+                    )
+                }
+                val result = socialInteractor.createGroupShareLink(ownerId, groupId)
+                val shareText = result.getOrNull()
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                        infoMessage = if (shareText != null) "Invite link is ready to share." else null,
+                        pendingShareText = shareText,
+                    )
+                }
+            }
         }
 
         /**

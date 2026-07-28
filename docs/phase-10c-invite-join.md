@@ -74,14 +74,19 @@ Supabase (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
 1. Apply [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql) in Supabase SQL Editor (after phase-3b).
 2. Confirm email ON + Confirm signup template includes `{{ .Token }}`.
 3. From a signed-in account, invite a non-user to a group and share the link.
-4. Open `https://splitease.app/invite/{token}` or `splitease://invite/{token}` on a device with the app installed → Invite landing.
+4. Open the **https** invite link in a browser (Chrome) on a device with the app installed:
+   `https://<mail-service>/invite/{token}` — the page redirects into SplitEase → Invite landing.
+   (Custom `splitease://` cannot be pasted into the browser address bar.)
 5. Tap **Join as someone new** → fill signup → OTP screen appears; Home/onboarding must not show until Verify succeeds.
 6. After OTP, user should land on the invited **group detail** screen (membership already claimed).
 7. Friend-only invites should open the Friends tab after OTP.
+8. Already signed in: opening the https link claims the invite and opens the group.
 
 ## Known Issues / TODOs
 
-- **App Links verification** — without `assetlinks.json` on `splitease.app`, Android may show an open-with chooser for https links; custom scheme works immediately.
+- **Redeploy mail-service `/invite/:token`** — page now tries open-app then Play Store with `referrer=invite_token%3D…`; redeploy Render after pulling mail-service changes.
+- **Install Referrer E2E** — full deferred-invite proof needs a Play install (Internal testing is enough). Sideload / Studio Run does not populate referrer; parser unit tests cover the string format.
+- **App Links verification** — without `assetlinks.json`, Chrome loads the https bridge first then `intent://` (or Play fallback). Verified App Links can skip the intermediate page for installed-app opens later.
 - **Select your name / claim placeholder** — landing lists members for context only; joining always creates a new account.
 - **Invite email delivery** — still share-sheet MVP.
 
@@ -100,12 +105,21 @@ Phase 10c delivered the invite deep-link join path:
 - After accept, the app navigates to the invited **group detail** (or Friends tab for friend-only invites).
 - Screens use SplitEase `Se*` theme (not a third-party skin). Claiming an existing placeholder from the member list remains out of scope.
 
+### Follow-up fix (signed-in deep link)
+Opening `splitease://invite/{token}` while already signed in previously stored the token but did not re-run accept (claim was keyed only on `userId`). Signed-in navigation now reacts to a new pending invite token, and the token is cleared only after accept succeeds.
+
+### Follow-up: deferred invite via Play Install Referrer
+
+When the app is **not** installed, the mail-service invite page falls back to Google Play with `referrer=invite_token%3D{token}`. On first launch, `InstallReferrerInviteBootstrap` reads that referrer once into `pending_invite_token` — the same path as a live deep link (signup / OTP / accept).
+
 ### Delivered checklist
 - Intent-filters + `MainActivity` invite token intake
 - `InviteLandingScreen` + `InviteJoinSignUpScreen`
 - Always-on OTP gate after signup
 - SQL RPCs in `docs/sql/phase-3c-invite-join.sql`
 - Docs: PROGRESS / CHANGELOG / ARCHITECTURE / data-dictionary / README / phase-bundles
+- Signed-in deep-link claim + retry-safe token clear
+- Mail-service Play Store referrer fallback + Android Install Referrer bootstrap
 
 ## Screenshots
 

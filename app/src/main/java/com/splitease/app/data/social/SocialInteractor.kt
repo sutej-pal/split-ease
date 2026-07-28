@@ -1,14 +1,13 @@
 package com.splitease.app.data.social
 
 import com.splitease.app.data.remote.SocialRemoteDataSource
-import com.splitease.app.data.remote.dto.FriendDto
-import com.splitease.app.data.remote.dto.GroupDto
-import com.splitease.app.data.remote.dto.GroupMemberDto
-import com.splitease.app.data.remote.dto.InviteDto
+import com.splitease.app.data.remote.mapper.toDomain
+import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.domain.model.AddPersonOutcome
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupMember
+import com.splitease.app.domain.model.GroupShareLink
 import com.splitease.app.domain.model.Invite
 import com.splitease.app.domain.model.InviteKind
 import com.splitease.app.domain.model.InvitePreview
@@ -146,6 +145,118 @@ class SocialInteractor
                 inviteToGroupByContact(ownerUserId, groupId, email, displayName = null)
             }
 
+        /**
+         * Creates a generic, shareable group invite link token.
+         *
+         * Reuses an existing pending group share-link invite when one exists.
+         * The invite is accepted by `accept_invite_by_token`, so any signed-in recipient
+         * opening the link can be auto-joined to the group.
+         *
+         * @param ownerUserId Current user (group owner/inviter).
+         * @param groupId Target group.
+         * @return Plain-text share body containing the deep link.
+         */
+        suspend fun createGroupShareLink(
+            ownerUserId: String,
+            groupId: String,
+        ): Result<String> =
+            getOrCreateGroupShareLink(ownerUserId, groupId).map { it.shareText }
+
+        /**
+         * Returns an existing pending group share link, or creates one.
+         *
+         * @param ownerUserId Current user (group owner/inviter).
+         * @param groupId Target group.
+         * @return [GroupShareLink] with URL and share text.
+         */
+        suspend fun getOrCreateGroupShareLink(
+            ownerUserId: String,
+            groupId: String,
+        ): Result<GroupShareLink> =
+            runCatching {
+                val existing = inviteRepository.getGroupShareInvites(groupId).firstOrNull()
+                if (existing != null) {
+                    if (existing.syncStatus != SyncStatus.SYNCED) {
+                        pushInviteToCloud(existing)
+                    }
+                    return@runCatching toGroupShareLink(ownerUserId, groupId, existing.token)
+                }
+                createFreshGroupShareLink(ownerUserId, groupId)
+            }
+
+        /**
+         * Invalidates prior generic group share links and creates a new token.
+         *
+         * @param ownerUserId Current user (group owner/inviter).
+         * @param groupId Target group.
+         * @return New [GroupShareLink].
+         */
+        suspend fun regenerateGroupShareLink(
+            ownerUserId: String,
+            groupId: String,
+        ): Result<GroupShareLink> =
+            runCatching {
+                cancelPendingGroupShareLinks(groupId)
+                createFreshGroupShareLink(ownerUserId, groupId)
+            }
+
+        private suspend fun createFreshGroupShareLink(
+            ownerUserId: String,
+            groupId: String,
+        ): GroupShareLink {
+            val group =
+                groupRepository.getGroupById(groupId)
+                    ?: throw IllegalStateException("Group not found.")
+            val inviterEmail =
+                userRepository.getUserById(ownerUserId)?.email?.trim().orEmpty()
+            // Placeholder recipient; token-based accept overwrites this.
+            val invite =
+                buildPendingInvite(
+                    inviterUserId = ownerUserId,
+                    email = inviterEmail.ifBlank { "link-invite@splitease.app" },
+                    kind = InviteKind.GROUP,
+                    groupId = groupId,
+                    friendRowId = null,
+                )
+            inviteRepository.upsert(invite)
+            pushInviteToCloud(invite)
+            return toGroupShareLink(ownerUserId, groupId, invite.token, group.name)
+        }
+
+        private suspend fun cancelPendingGroupShareLinks(groupId: String) {
+            val pending = inviteRepository.getGroupShareInvites(groupId)
+            for (invite in pending) {
+                val cancelled =
+                    invite.copy(
+                        status = InviteStatus.CANCELLED,
+                        syncStatus = SyncStatus.PENDING,
+                    )
+                inviteRepository.upsert(cancelled)
+                runCatching {
+                    remote.upsertInvite(cancelled.toDto())
+                    inviteRepository.upsert(cancelled.copy(syncStatus = SyncStatus.SYNCED))
+                }
+            }
+        }
+
+        private suspend fun toGroupShareLink(
+            ownerUserId: String,
+            groupId: String,
+            token: String,
+            knownGroupName: String? = null,
+        ): GroupShareLink {
+            val groupName =
+                knownGroupName
+                    ?: groupRepository.getGroupById(groupId)?.name
+                    ?: "a group"
+            val inviterName = userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
+            return GroupShareLink(
+                groupName = groupName,
+                url = InviteLinks.clipboardLink(token),
+                shareText = InviteLinks.groupShareText(inviterName, groupName, token),
+            )
+        }
+
         private suspend fun inviteToGroupByContact(
             ownerUserId: String,
             groupId: String,
@@ -196,19 +307,28 @@ class SocialInteractor
          *
          * @param userId Newly authenticated user id.
          * @param inviteToken Optional deep-link token to accept first (join-as-new).
+         * @return True when there was no token, or the token invite is no longer pending
+         *   (accepted / invalid). False when the token invite is still pending after claim.
          */
         suspend fun acceptPendingInvitesForCurrentUser(
             userId: String,
             inviteToken: String? = null,
-        ) {
+        ): Boolean {
+            var acceptedByToken = false
             if (!inviteToken.isNullOrBlank()) {
-                runCatching { remote.acceptInviteByToken(inviteToken) }
+                // Do not swallow — callers must know when the RPC fails so the token is kept.
+                val accepted = remote.acceptInviteByToken(inviteToken)
+                acceptedByToken = accepted > 0
             }
-            remote.acceptPendingInvites()
+            runCatching { remote.acceptPendingInvites() }
             refreshFriends(userId)
             refreshGroups(userId)
             refreshSentInvites(userId)
             runCatching { expenseInteractor.refreshExpensesForUser(userId) }
+            if (inviteToken.isNullOrBlank()) return true
+            if (acceptedByToken) return true
+            // RPC returned 0: invite missing/already used, or accept no-oped.
+            return loadInvitePreview(inviteToken) == null
         }
 
         /**
@@ -310,20 +430,7 @@ class SocialInteractor
          */
         suspend fun refreshSentInvites(inviterUserId: String) {
             remote.fetchInvitesSentBy(inviterUserId).forEach { dto ->
-                inviteRepository.upsert(
-                    Invite(
-                        id = dto.id,
-                        token = dto.token,
-                        inviterUserId = dto.inviterUserId,
-                        email = dto.email,
-                        kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
-                        groupId = dto.groupId,
-                        friendRowId = dto.friendRowId,
-                        status = runCatching { InviteStatus.valueOf(dto.status) }.getOrDefault(InviteStatus.PENDING),
-                        createdAtEpochMs = dto.createdAtEpochMs,
-                        syncStatus = SyncStatus.SYNCED,
-                    ),
-                )
+                inviteRepository.upsert(dto.toDomain())
             }
         }
 
@@ -398,24 +505,8 @@ class SocialInteractor
                 // (e.g. invite placeholders that are not auth.users yet).
                 val cloudError =
                     runCatching {
-                        remote.upsertGroup(
-                            GroupDto(
-                                id = group.id,
-                                name = group.name,
-                                defaultCurrencyCode = group.defaultCurrencyCode,
-                                createdByUserId = group.createdByUserId,
-                                updatedAtEpochMs = now,
-                            ),
-                        )
-                        remote.upsertGroupMember(
-                            GroupMemberDto(
-                                id = ownerMember.id,
-                                groupId = ownerMember.groupId,
-                                userId = ownerMember.userId,
-                                role = ownerMember.role.name,
-                                joinedAtEpochMs = ownerMember.joinedAtEpochMs,
-                            ),
-                        )
+                        remote.upsertGroup(group.toDto(updatedAtEpochMs = now))
+                        remote.upsertGroupMember(ownerMember.toDto())
                         groupRepository.upsertGroup(group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED))
                         groupRepository.upsertMember(ownerMember.copy(syncStatus = SyncStatus.SYNCED))
                     }.exceptionOrNull()
@@ -430,15 +521,7 @@ class SocialInteractor
 
                 extraMembers.forEach { member ->
                     runCatching {
-                        remote.upsertGroupMember(
-                            GroupMemberDto(
-                                id = member.id,
-                                groupId = member.groupId,
-                                userId = member.userId,
-                                role = member.role.name,
-                                joinedAtEpochMs = member.joinedAtEpochMs,
-                            ),
-                        )
+                        remote.upsertGroupMember(member.toDto())
                         groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
                     }.onFailure { err ->
                         android.util.Log.e(
@@ -463,15 +546,7 @@ class SocialInteractor
                 val pending = group.copy(updatedAtEpochMs = now, syncStatus = SyncStatus.PENDING)
                 groupRepository.upsertGroup(pending)
                 runCatching {
-                    remote.upsertGroup(
-                        GroupDto(
-                            id = pending.id,
-                            name = pending.name,
-                            defaultCurrencyCode = pending.defaultCurrencyCode,
-                            createdByUserId = pending.createdByUserId,
-                            updatedAtEpochMs = now,
-                        ),
-                    )
+                    remote.upsertGroup(pending.toDto(updatedAtEpochMs = now))
                     groupRepository.upsertGroup(
                         pending.copy(remoteId = pending.id, syncStatus = SyncStatus.SYNCED),
                     )
@@ -504,15 +579,7 @@ class SocialInteractor
                     )
                 groupRepository.upsertMember(member)
                 runCatching {
-                    remote.upsertGroupMember(
-                        GroupMemberDto(
-                            id = member.id,
-                            groupId = member.groupId,
-                            userId = member.userId,
-                            role = member.role.name,
-                            joinedAtEpochMs = member.joinedAtEpochMs,
-                        ),
-                    )
+                    remote.upsertGroupMember(member.toDto())
                     groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
                 }
             }
@@ -672,16 +739,7 @@ class SocialInteractor
 
             val synced =
                 runCatching {
-                    remote.upsertFriend(
-                        FriendDto(
-                            id = friend.id,
-                            ownerUserId = friend.ownerUserId,
-                            friendUserId = friend.friendUserId,
-                            emailSnapshot = friend.emailSnapshot,
-                            displayNameSnapshot = friend.displayNameSnapshot,
-                            updatedAtEpochMs = now,
-                        ),
-                    )
+                    remote.upsertFriend(friend.toDto(updatedAtEpochMs = now))
                     friend.copy(remoteId = friend.id, syncStatus = SyncStatus.SYNCED, updatedAtEpochMs = now)
                 }.getOrDefault(friend)
 
@@ -738,35 +796,21 @@ class SocialInteractor
             friendRepository.upsert(friend)
 
             runCatching {
-                remote.upsertFriend(
-                    FriendDto(
-                        id = friend.id,
-                        ownerUserId = friend.ownerUserId,
-                        friendUserId = friend.friendUserId,
-                        emailSnapshot = friend.emailSnapshot,
-                        displayNameSnapshot = friend.displayNameSnapshot,
-                        updatedAtEpochMs = now,
-                    ),
-                )
+                remote.upsertFriend(friend.toDto(updatedAtEpochMs = now))
                 friendRepository.upsert(
                     friend.copy(remoteId = friend.id, syncStatus = SyncStatus.SYNCED),
                 )
             }
 
-            val token = UUID.randomUUID().toString().replace("-", "")
             val kind = if (groupId != null) InviteKind.GROUP else InviteKind.FRIEND
             val invite =
-                Invite(
-                    id = UUID.randomUUID().toString(),
-                    token = token,
+                buildPendingInvite(
                     inviterUserId = ownerUserId,
                     email = email,
                     kind = kind,
                     groupId = groupId,
                     friendRowId = friend.id,
-                    status = InviteStatus.PENDING,
-                    createdAtEpochMs = now,
-                    syncStatus = SyncStatus.PENDING,
+                    now = now,
                 )
             inviteRepository.upsert(invite)
 
@@ -783,29 +827,17 @@ class SocialInteractor
                 )
             }
 
-            runCatching {
-                remote.upsertInvite(
-                    InviteDto(
-                        id = invite.id,
-                        token = invite.token,
-                        inviterUserId = invite.inviterUserId,
-                        email = invite.email,
-                        kind = invite.kind.name,
-                        groupId = invite.groupId,
-                        friendRowId = invite.friendRowId,
-                        status = invite.status.name,
-                        createdAtEpochMs = invite.createdAtEpochMs,
-                    ),
-                )
-                inviteRepository.upsert(invite.copy(syncStatus = SyncStatus.SYNCED))
-            }
+            // GROUP invites FK to public.groups — push the group first or the invite
+            // upsert fails and deep links open the app with nothing to claim.
+            // Fail the whole invite if cloud sync fails; never share a token that isn't claimable.
+            pushInviteToCloud(invite)
 
             val inviterName = userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
             val shareText =
                 if (groupId != null) {
-                    InviteLinks.groupShareText(inviterName, groupName ?: "a group", token)
+                    InviteLinks.groupShareText(inviterName, groupName ?: "a group", invite.token)
                 } else {
-                    InviteLinks.friendShareText(inviterName, token)
+                    InviteLinks.friendShareText(inviterName, invite.token)
                 }
 
             return AddPersonOutcome(
@@ -813,5 +845,60 @@ class SocialInteractor
                 inviteShareText = shareText,
                 isInvitePending = true,
             )
+        }
+
+        private fun newInviteToken(): String = UUID.randomUUID().toString().replace("-", "")
+
+        private fun buildPendingInvite(
+            inviterUserId: String,
+            email: String,
+            kind: InviteKind,
+            groupId: String?,
+            friendRowId: String?,
+            now: Long = System.currentTimeMillis(),
+        ): Invite =
+            Invite(
+                id = UUID.randomUUID().toString(),
+                token = newInviteToken(),
+                inviterUserId = inviterUserId,
+                email = email,
+                kind = kind,
+                groupId = groupId,
+                friendRowId = friendRowId,
+                status = InviteStatus.PENDING,
+                createdAtEpochMs = now,
+                syncStatus = SyncStatus.PENDING,
+            )
+
+        /**
+         * Ensures group FK (when needed), upserts the invite remotely, and marks it synced.
+         *
+         * @param invite Local pending invite to push.
+         */
+        private suspend fun pushInviteToCloud(invite: Invite) {
+            invite.groupId?.let { ensureGroupSyncedToCloud(it) }
+            remote.upsertInvite(invite.toDto())
+            inviteRepository.upsert(invite.copy(syncStatus = SyncStatus.SYNCED))
+        }
+
+        /**
+         * Ensures [groupId] exists in Supabase before writing a GROUP invite (FK-safe).
+         *
+         * @param groupId Local / remote group id.
+         */
+        private suspend fun ensureGroupSyncedToCloud(groupId: String) {
+            val group = groupRepository.getGroupById(groupId) ?: return
+            // Always upsert before invite write — local SYNCED can be stale when a prior
+            // cloud upsert failed under RLS (token must never be shared without a cloud row).
+            val now = System.currentTimeMillis()
+            remote.upsertGroup(group.toDto(updatedAtEpochMs = now))
+            groupRepository.upsertGroup(
+                group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED, updatedAtEpochMs = now),
+            )
+            val owner = groupRepository.getMember(groupId, group.createdByUserId)
+            if (owner != null && owner.syncStatus != SyncStatus.SYNCED) {
+                remote.upsertGroupMember(owner.toDto())
+                groupRepository.upsertMember(owner.copy(syncStatus = SyncStatus.SYNCED))
+            }
         }
     }

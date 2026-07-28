@@ -30,6 +30,15 @@ class RoomInviteRepository
         override suspend fun getByFriendRowId(friendRowId: String): Invite? =
             inviteDao.getByFriendRowId(friendRowId)?.toDomain()
 
+        override suspend fun getGroupShareInvites(
+            groupId: String,
+            status: InviteStatus,
+        ): List<Invite> =
+            inviteDao.getGroupShareInvites(groupId, status).map { it.toDomain() }
+
+        override suspend fun getPendingSync(): List<Invite> =
+            inviteDao.getPendingSync().map { it.toDomain() }
+
         override suspend fun upsert(invite: Invite) {
             inviteDao.upsert(invite.toEntity())
         }

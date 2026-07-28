@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Invite `splitease://` links fail when pasted into Chrome; share links are now **https** (`MAIL_SERVICE_BASE_URL/invite/{token}`) with a mail-service redirect page into the app
+- Groups/invites failed to sync under authenticated RLS (`42P17` infinite recursion between `groups` and `group_members`); fixed with SECURITY DEFINER helpers ([sql/phase-3d-fix-groups-rls-recursion.sql](docs/sql/phase-3d-fix-groups-rls-recursion.sql))
+- Invite share links are only returned after the invite row is successfully upserted to Supabase (no more unclaimable deep links)
+- Opening an invite deep link while already signed in now claims the invite and opens the group (previously the token was stored but accept only ran on sign-in)
+- Group invite links failed when the group had not synced to Supabase (FK); invites are now pushed after ensuring the group exists, and pending invites are flushed on sync
+
 ### Added
+- Deferred invite deep link: mail-service Play Store fallback with `referrer=invite_token%3D…` + Android Play Install Referrer bootstrap into `pending_invite_token` (same OTP / accept path as live deep links)
+- Group settings → **Invite via link** opens an Invite link screen (copy / share / change link) instead of jumping straight to the share sheet
 - Onboarding-start transactional email trigger via external Render mail service (`/send-mail`) when onboarding first opens for a signed-in user ([phase-10d](docs/phase-10d-onboarding-mail.md))
 - `MailRepository` + Render-backed remote data source and `BuildConfig` keys (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`)
 - Invite deep-link join flow: landing screen + join signup → OTP gate → accept invite / join group ([phase-10c](docs/phase-10c-invite-join.md))
@@ -27,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bottom navigation + Groups home UI; shared `Se*` design system
 
 ### Changed
+- Account no longer shows a manual **Cloud sync** section/action; sync now runs automatically via background workers
+- Invite token is cleared only after accept-by-token succeeds (failed claims can retry)
 - Signup OTP is strictly **6 digits** (field max + validation; 8-digit codes rejected)
 - Confirm-signup email template + configure script set Supabase `mailer_otp_length=6` and OTP-first HTML ([supabase-confirm-signup-otp.html](docs/supabase-confirm-signup-otp.html))
 - Invite share text includes `splitease://invite/{token}` so the installed app opens; after signup/OTP the app opens the invited group (or Friends tab)

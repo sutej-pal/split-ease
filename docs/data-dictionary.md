@@ -71,8 +71,9 @@ Unique index: `(ownerUserId, friendUserId)`.
 **Local Onboarding preferences (SharedPreferences `splitease_settings`):**
 - `onboarding_complete` — legacy flag from the removed setup wizard (defaults to `true`; no longer gates navigation)
 - `onboarding_email_sent_{userId}` — per-user marker set after welcome email send succeeds
-- `pending_invite_token` — opaque invite token from a deep link, kept until OTP verify + accept clears it
+- `pending_invite_token` — opaque invite token from a deep link **or** Play Install Referrer (`invite_token=…`), kept until OTP verify + accept clears it
 - `pending_invite_open_target` — group id (or friends sentinel) to open after accept; survives token clear until UI consumes it
+- `install_referrer_checked` — one-shot flag; Play Install Referrer is read at most once per install
 
 ### `group_members`
 

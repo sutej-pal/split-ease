@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
@@ -81,7 +82,8 @@ class AuthViewModel
                 .observePendingInviteToken()
                 .stateIn(
                     scope = viewModelScope,
-                    started = SharingStarted.WhileSubscribed(5_000),
+                    // Eager so a cold-start deep link is visible before first frame.
+                    started = SharingStarted.Eagerly,
                     initialValue = null,
                 )
 
@@ -116,6 +118,23 @@ class AuthViewModel
             _formState.update {
                 it.copy(errorMessage = null, infoMessage = null)
             }
+        }
+
+        /**
+         * Parses pasted invite share text / URI / bare token and stores it so the
+         * signed-out nav graph opens the invite landing screen.
+         *
+         * Needed on emulators where Chrome/email do not open `splitease://` links.
+         *
+         * @param pasted Text from the clipboard or a text field.
+         * @return True when a token was recognized and stored.
+         */
+        fun openInviteFromPastedText(pasted: String): Boolean {
+            val token = InviteLinks.tokenFromPastedText(pasted) ?: return false
+            viewModelScope.launch {
+                appSettingsRepository.setPendingInviteToken(token)
+            }
+            return true
         }
 
         /** Leaves the pending-confirmation screen without completing OTP. */
@@ -266,7 +285,12 @@ class AuthViewModel
          * @return Group id, [AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS], or null.
          */
         suspend fun claimInviteAndConsumeOpenTarget(): String? {
+            val hadToken = !appSettingsRepository.getPendingInviteToken().isNullOrBlank()
             runCatching { authRepository.ensureLocalProfile() }
+            // If a deep-link token is still stored, accept failed — don't pretend we joined.
+            if (hadToken && !appSettingsRepository.getPendingInviteToken().isNullOrBlank()) {
+                return null
+            }
             val target = appSettingsRepository.getPendingInviteOpenTarget()
             if (!target.isNullOrBlank()) {
                 appSettingsRepository.setPendingInviteOpenTarget(null)

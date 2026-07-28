@@ -28,7 +28,7 @@ class WelcomeScreenComposeTest {
 
         composeRule.setContent {
             SplitEaseTheme(darkTheme = false, dynamicColor = false) {
-                WelcomeScreen(onGetStarted = {}, onLogIn = {})
+                WelcomeScreen(onGetStarted = {}, onLogIn = {}, onOpenInviteLink = { true })
             }
         }
 

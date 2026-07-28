@@ -41,6 +41,25 @@ interface InviteRepository {
     suspend fun getByFriendRowId(friendRowId: String): Invite?
 
     /**
+     * Generic group share-link invites (no per-person friendship row).
+     *
+     * @param groupId Target group.
+     * @param status Status filter (typically [InviteStatus.PENDING]).
+     * @return Matching invites, newest first.
+     */
+    suspend fun getGroupShareInvites(
+        groupId: String,
+        status: InviteStatus = InviteStatus.PENDING,
+    ): List<Invite>
+
+    /**
+     * Loads invites that still need a cloud upsert.
+     *
+     * @return Pending / local-only invites.
+     */
+    suspend fun getPendingSync(): List<Invite>
+
+    /**
      * Inserts or replaces an invite.
      *
      * @param invite Domain invite.

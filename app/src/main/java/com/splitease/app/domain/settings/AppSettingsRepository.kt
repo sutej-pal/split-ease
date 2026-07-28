@@ -217,6 +217,20 @@ interface AppSettingsRepository {
     suspend fun setPendingInviteOpenTarget(target: String?)
 
     /**
+     * Whether Play Install Referrer was already read for this install.
+     *
+     * @return `true` after a successful or empty referrer attempt.
+     */
+    suspend fun getInstallReferrerChecked(): Boolean
+
+    /**
+     * Marks Play Install Referrer as consumed so it is not read again.
+     *
+     * @param checked `true` after the one-shot referrer bootstrap finishes.
+     */
+    suspend fun setInstallReferrerChecked(checked: Boolean)
+
+    /**
      * Observes the in-app language preference.
      *
      * @return Cold [Flow]; defaults to [AppLocale.SYSTEM].

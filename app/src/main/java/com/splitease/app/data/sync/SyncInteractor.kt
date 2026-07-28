@@ -7,19 +7,17 @@ import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ExpenseDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
-import com.splitease.app.data.remote.dto.GroupDto
-import com.splitease.app.data.remote.dto.GroupMemberDto
 import com.splitease.app.data.remote.dto.PaymentDto
+import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
-import com.splitease.app.domain.model.Group
-import com.splitease.app.domain.model.GroupMember
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.pendingOpenTarget
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.InviteRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import io.github.jan.supabase.SupabaseClient
@@ -33,6 +31,7 @@ import javax.inject.Singleton
  *
  * @property groupsSynced Count of groups pushed.
  * @property membersSynced Count of memberships pushed.
+ * @property invitesSynced Count of invites pushed.
  * @property expensesSynced Count of expenses pushed.
  * @property paymentsSynced Count of payments pushed.
  * @property failures Error messages for failed rows.
@@ -40,6 +39,7 @@ import javax.inject.Singleton
 data class SyncFlushResult(
     val groupsSynced: Int = 0,
     val membersSynced: Int = 0,
+    val invitesSynced: Int = 0,
     val expensesSynced: Int = 0,
     val paymentsSynced: Int = 0,
     val failures: List<String> = emptyList(),
@@ -48,7 +48,7 @@ data class SyncFlushResult(
 /**
  * Offline write queue + remote hydrate for multi-device sync.
  *
- * Flush order: groups → members → expenses → payments (FK-safe).
+ * Flush order: groups → members → invites → expenses → payments (FK-safe).
  * Hydrate pulls friends/groups/expenses/payments into Room.
  */
 @Singleton
@@ -57,6 +57,7 @@ class SyncInteractor
     constructor(
         private val supabase: SupabaseClient,
         private val groupRepository: GroupRepository,
+        private val inviteRepository: InviteRepository,
         private val expenseRepository: ExpenseRepository,
         private val paymentRepository: PaymentRepository,
         private val socialRemote: SocialRemoteDataSource,
@@ -73,11 +74,12 @@ class SyncInteractor
         suspend fun pendingCount(): Int =
             groupRepository.getPendingGroups().size +
                 groupRepository.getPendingMembers().size +
+                inviteRepository.getPendingSync().size +
                 expenseRepository.getPendingSync().size +
                 paymentRepository.getPendingSync().size
 
         /**
-         * Pushes pending groups, members, expenses, and payments to Supabase.
+         * Pushes pending groups, members, invites, expenses, and payments to Supabase.
          *
          * Failed rows stay PENDING for the next retry.
          *
@@ -86,13 +88,14 @@ class SyncInteractor
         suspend fun flushPending(): SyncFlushResult {
             var groupsSynced = 0
             var membersSynced = 0
+            var invitesSynced = 0
             var expensesSynced = 0
             var paymentsSynced = 0
             val failures = mutableListOf<String>()
 
             groupRepository.getPendingGroups().forEach { group ->
                 runCatching {
-                    pushGroup(group)
+                    socialRemote.upsertGroup(group.toDto())
                     groupRepository.upsertGroup(
                         group.copy(
                             remoteId = group.remoteId ?: group.id,
@@ -106,13 +109,26 @@ class SyncInteractor
                 }
             }
 
-            groupRepository.getPendingMembers().forEach { member ->
+            groupRepository.getPendingMembers()
+                .filter { it.syncStatus != SyncStatus.LOCAL_ONLY }
+                .forEach { member ->
                 runCatching {
-                    pushMember(member)
+                    socialRemote.upsertGroupMember(member.toDto())
                     groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
                     membersSynced++
                 }.onFailure { err ->
                     failures += "Member ${member.userId.take(8)}: ${err.message ?: "failed"}"
+                }
+            }
+
+            // Invites after groups so group_id FK exists for GROUP invites.
+            inviteRepository.getPendingSync().forEach { invite ->
+                runCatching {
+                    socialRemote.upsertInvite(invite.toDto())
+                    inviteRepository.upsert(invite.copy(syncStatus = SyncStatus.SYNCED))
+                    invitesSynced++
+                }.onFailure { err ->
+                    failures += "Invite ${invite.email}: ${err.message ?: "failed"}"
                 }
             }
 
@@ -155,6 +171,7 @@ class SyncInteractor
             return SyncFlushResult(
                 groupsSynced = groupsSynced,
                 membersSynced = membersSynced,
+                invitesSynced = invitesSynced,
                 expensesSynced = expensesSynced,
                 paymentsSynced = paymentsSynced,
                 failures = failures,
@@ -164,7 +181,7 @@ class SyncInteractor
         /**
          * Flushes local PENDING rows, then pulls cloud data for the signed-in user into Room.
          *
-         * Safe to call on login, cold start, Account → Sync now, and Activity/Groups refresh.
+         * Safe to call on login, cold start, and Activity/Groups refresh.
          *
          * @param userId Optional override; defaults to the current auth user.
          * @return Flush summary from the push half (pull failures are soft).
@@ -182,16 +199,20 @@ class SyncInteractor
                     }
                 }
             }
-            runCatching {
-                socialInteractor.get().acceptPendingInvitesForCurrentUser(
-                    userId = uid,
-                    inviteToken = pendingInviteToken,
-                )
-            }.onFailure {
-                // RPC may be missing on older projects; fall back to PostgREST accept.
-                runCatching { socialRemote.acceptPendingInvites() }
-            }
-            if (!pendingInviteToken.isNullOrBlank()) {
+            val inviteClaimed =
+                runCatching {
+                    socialInteractor.get().acceptPendingInvitesForCurrentUser(
+                        userId = uid,
+                        inviteToken = pendingInviteToken,
+                    )
+                }.getOrElse {
+                    // RPC may be missing on older projects; fall back to email-based accept.
+                    runCatching { socialRemote.acceptPendingInvites() }
+                    // Keep the deep-link token so a later sync can retry accept-by-token.
+                    false
+                }
+            // Only clear when the invite is actually gone (or there was no token).
+            if (!pendingInviteToken.isNullOrBlank() && inviteClaimed) {
                 runCatching { appSettingsRepository.setPendingInviteToken(null) }
             }
             // Always hydrate after flush so other members' writes become visible.
@@ -201,30 +222,6 @@ class SyncInteractor
             runCatching { expenseInteractor.get().refreshExpensesForUser(uid) }
             runCatching { paymentInteractor.get().refreshPaymentsForUser(uid) }
             return flush
-        }
-
-        private suspend fun pushGroup(group: Group) {
-            socialRemote.upsertGroup(
-                GroupDto(
-                    id = group.id,
-                    name = group.name,
-                    defaultCurrencyCode = group.defaultCurrencyCode,
-                    createdByUserId = group.createdByUserId,
-                    updatedAtEpochMs = group.updatedAtEpochMs,
-                ),
-            )
-        }
-
-        private suspend fun pushMember(member: GroupMember) {
-            socialRemote.upsertGroupMember(
-                GroupMemberDto(
-                    id = member.id,
-                    groupId = member.groupId,
-                    userId = member.userId,
-                    role = member.role.name,
-                    joinedAtEpochMs = member.joinedAtEpochMs,
-                ),
-            )
         }
 
         private suspend fun pushExpense(expense: Expense, splits: List<ExpenseSplit>) {

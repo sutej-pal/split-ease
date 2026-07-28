@@ -17,6 +17,7 @@ captures/
 .kotlin/
 build-install.log
 *.log
+.tmp-debug/
 
 # Secrets
 google-services.json

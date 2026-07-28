@@ -18,6 +18,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.SplitEase"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -42,10 +43,15 @@
                     android:host="invite"
                     android:pathPrefix="/" />
             </intent-filter>
+            <!-- https invite hosts: mail-service redirect page + future splitease.app -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${inviteWebHost}"
+                    android:pathPrefix="/invite" />
                 <data
                     android:scheme="https"
                     android:host="splitease.app"

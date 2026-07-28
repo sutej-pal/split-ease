@@ -13,6 +13,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,19 +27,29 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SeModalBody
+import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTextField
 
 /**
- * Launch screen with auth entry points.
+ * Launch screen with auth entry points and paste-invite fallback for emulators.
  */
 @Composable
 fun WelcomeScreen(
     onGetStarted: () -> Unit,
     onLogIn: () -> Unit,
+    onOpenInviteLink: (String) -> Boolean,
     modifier: Modifier = Modifier,
 ) {
+    var showPasteInvite by rememberSaveable { mutableStateOf(false) }
+    var pasteValue by rememberSaveable { mutableStateOf("") }
+    var pasteError by rememberSaveable { mutableStateOf(false) }
+
     val gradient =
         Brush.verticalGradient(
             colors =
@@ -96,6 +110,66 @@ fun WelcomeScreen(
                 text = stringResource(R.string.action_log_in),
                 onClick = onLogIn,
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            SeTextButton(
+                text = stringResource(R.string.action_have_invite_link),
+                onClick = {
+                    pasteError = false
+                    showPasteInvite = true
+                },
+            )
+        }
+    }
+
+    if (showPasteInvite) {
+        SeModal(
+            onDismissRequest = {
+                showPasteInvite = false
+                pasteError = false
+            },
+        ) {
+            SeModalTitle(stringResource(R.string.invite_paste_title))
+            Spacer(modifier = Modifier.height(8.dp))
+            SeModalBody(stringResource(R.string.invite_paste_body))
+            Spacer(modifier = Modifier.height(16.dp))
+            SeTextField(
+                value = pasteValue,
+                onValueChange = {
+                    pasteValue = it
+                    pasteError = false
+                },
+                label = stringResource(R.string.invite_paste_label),
+                singleLine = false,
+            )
+            if (pasteError) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.invite_paste_invalid),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            SePrimaryButton(
+                text = stringResource(R.string.invite_paste_continue),
+                onClick = {
+                    if (onOpenInviteLink(pasteValue)) {
+                        showPasteInvite = false
+                        pasteValue = ""
+                        pasteError = false
+                    } else {
+                        pasteError = true
+                    }
+                },
+            )
+            SeTextButton(
+                text = stringResource(R.string.action_cancel),
+                onClick = {
+                    showPasteInvite = false
+                    pasteError = false
+                },
+            )
         }
     }
 }
@@ -104,6 +178,6 @@ fun WelcomeScreen(
 @Composable
 private fun WelcomeScreenPreview() {
     SePreview {
-        WelcomeScreen(onGetStarted = {}, onLogIn = {})
+        WelcomeScreen(onGetStarted = {}, onLogIn = {}, onOpenInviteLink = { true })
     }
 }

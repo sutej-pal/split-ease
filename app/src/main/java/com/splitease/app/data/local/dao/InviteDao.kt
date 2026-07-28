@@ -39,6 +39,38 @@ interface InviteDao {
     @Query("SELECT * FROM invites WHERE friendRowId = :friendRowId LIMIT 1")
     suspend fun getByFriendRowId(friendRowId: String): InviteEntity?
 
+    /**
+     * Generic group share-link invites (no per-person friendship row).
+     *
+     * @param groupId Target group.
+     * @param status Status filter (typically [InviteStatus.PENDING]).
+     * @return Matching invites, newest first.
+     */
+    @Query(
+        """
+        SELECT * FROM invites
+        WHERE groupId = :groupId
+          AND status = :status
+          AND kind = 'GROUP'
+          AND friendRowId IS NULL
+        ORDER BY createdAtEpochMs DESC
+        """,
+    )
+    suspend fun getGroupShareInvites(
+        groupId: String,
+        status: InviteStatus,
+    ): List<InviteEntity>
+
+    /** Invites awaiting cloud upsert. */
+    @Query(
+        """
+        SELECT * FROM invites
+        WHERE syncStatus IN ('PENDING', 'LOCAL_ONLY')
+        ORDER BY createdAtEpochMs ASC
+        """,
+    )
+    suspend fun getPendingSync(): List<InviteEntity>
+
     /** Inserts or replaces [invite]. */
     @Upsert
     suspend fun upsert(invite: InviteEntity)

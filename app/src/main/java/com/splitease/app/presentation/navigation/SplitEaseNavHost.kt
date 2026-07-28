@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,6 +28,7 @@ import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.onboarding.OnboardingViewModel
+import kotlinx.coroutines.delay
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
@@ -44,6 +46,7 @@ import com.splitease.app.presentation.friends.FindPeopleScreen
 import com.splitease.app.presentation.friends.FriendsListScreen
 import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
+import com.splitease.app.presentation.groups.GroupInviteLinkScreen
 import com.splitease.app.presentation.groups.GroupSettingsScreen
 import com.splitease.app.presentation.home.GroupsHomeScreen
 import com.splitease.app.presentation.imports.ImportTransactionsScreen
@@ -86,6 +89,7 @@ object Routes {
     const val CREATE_GROUP = "create_group"
     const val GROUP_DETAIL = "group_detail/{groupId}"
     const val GROUP_SETTINGS = "group_settings/{groupId}"
+    const val GROUP_INVITE_LINK = "group_invite_link/{groupId}"
     const val ADD_EXPENSE =
         "add_expense?groupId={groupId}&friendUserId={friendUserId}&expenseId={expenseId}"
     const val EXPENSE_DETAIL = "expense_detail/{expenseId}"
@@ -95,6 +99,8 @@ object Routes {
     fun groupDetail(groupId: String) = "group_detail/$groupId"
 
     fun groupSettings(groupId: String) = "group_settings/$groupId"
+
+    fun groupInviteLink(groupId: String) = "group_invite_link/$groupId"
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
 
@@ -232,6 +238,7 @@ fun SplitEaseNavHost(
                     WelcomeScreen(
                         onGetStarted = { navController.navigate(Routes.SIGN_UP) },
                         onLogIn = { navController.navigate(Routes.LOGIN) },
+                        onOpenInviteLink = authViewModel::openInviteFromPastedText,
                     )
                 }
                 composable(Routes.LOGIN) {
@@ -331,6 +338,7 @@ fun SplitEaseNavHost(
                 userId = current.user.userId,
                 displayName = current.user.displayName,
                 onSignOut = authViewModel::signOut,
+                pendingInviteToken = pendingInviteToken,
                 claimInviteAndConsumeOpenTarget = authViewModel::claimInviteAndConsumeOpenTarget,
             )
         }
@@ -342,6 +350,7 @@ private fun SignedInNavHost(
     userId: String,
     displayName: String,
     onSignOut: () -> Unit,
+    pendingInviteToken: String?,
     claimInviteAndConsumeOpenTarget: suspend () -> String?,
 ) {
     val navController = rememberNavController()
@@ -350,22 +359,17 @@ private fun SignedInNavHost(
     val showBottomBar = currentRoute in bottomBarRoutes
     val bottomBarSelectedRoute = selectedTabRoute(currentRoute)
 
-    // After invite signup/OTP (or opening a link while signed in): claim membership, then open group.
-    LaunchedEffect(userId) {
-        val openTarget = claimInviteAndConsumeOpenTarget() ?: return@LaunchedEffect
-        when {
-            openTarget == AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS -> {
-                navController.navigate(Routes.TAB_FRIENDS) {
-                    popUpTo(Routes.TAB_GROUPS) { inclusive = false }
-                    launchSingleTop = true
-                }
-            }
-            openTarget.isNotBlank() -> {
-                navController.navigate(Routes.groupDetail(openTarget)) {
-                    launchSingleTop = true
-                }
-            }
-        }
+    // Claim on sign-in (post-OTP open target) and again when a deep-link token arrives
+    // while already signed in. Key on non-blank token only so clearing the token after
+    // accept can restart the effect and still navigate if the prior run was cancelled.
+    val inviteTokenKey = pendingInviteToken?.takeIf { it.isNotBlank() }
+    LaunchedEffect(userId, inviteTokenKey) {
+        val target =
+            claimInviteOpenTargetWithRetry(
+                hasPendingToken = !inviteTokenKey.isNullOrBlank(),
+                claim = claimInviteAndConsumeOpenTarget,
+            ) ?: return@LaunchedEffect
+        navController.navigateInviteOpenTarget(target)
     }
 
     Scaffold(
@@ -587,6 +591,15 @@ private fun SignedInNavHost(
                         navController.popBackStack(Routes.TAB_GROUPS, inclusive = false)
                     },
                     onAddPeople = { navController.navigate(Routes.findPeople(groupId)) },
+                    onInviteViaLink = { navController.navigate(Routes.groupInviteLink(groupId)) },
+                )
+            }
+            composable(
+                route = Routes.GROUP_INVITE_LINK,
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
+            ) {
+                GroupInviteLinkScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(
@@ -679,6 +692,42 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() },
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Retries invite claim while a deep-link token may still be settling after cold start.
+ *
+ * @param hasPendingToken When false, stops after the first unsuccessful claim.
+ * @param claim Accepts invite and returns navigation target when ready.
+ */
+private suspend fun claimInviteOpenTargetWithRetry(
+    hasPendingToken: Boolean,
+    claim: suspend () -> String?,
+): String? {
+    repeat(4) { attempt ->
+        val target = claim()
+        if (target != null) return target
+        if (!hasPendingToken) return null
+        delay(1_200L * (attempt + 1))
+    }
+    return null
+}
+
+/** Navigates to friends or a group detail from a claimed invite open target. */
+private fun NavHostController.navigateInviteOpenTarget(target: String) {
+    when {
+        target == AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS -> {
+            navigate(Routes.TAB_FRIENDS) {
+                popUpTo(Routes.TAB_GROUPS) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+        target.isNotBlank() -> {
+            navigate(Routes.groupDetail(target)) {
+                launchSingleTop = true
             }
         }
     }

@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.net.URI
 
 plugins {
     alias(libs.plugins.android.application)
@@ -21,6 +22,14 @@ fun localProp(key: String): String =
         ?: providers.environmentVariable(key).orNull
         ?: ""
 
+val mailServiceBaseUrl = localProp("MAIL_SERVICE_BASE_URL").trim().trimEnd('/')
+val inviteWebHost: String =
+    try {
+        URI(mailServiceBaseUrl).host?.takeIf { it.isNotBlank() } ?: "splitease.app"
+    } catch (_: Exception) {
+        "splitease.app"
+    }
+
 android {
     namespace = "com.splitease.app"
     compileSdk = 37
@@ -38,6 +47,8 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProp("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "MAIL_SERVICE_BASE_URL", "\"${localProp("MAIL_SERVICE_BASE_URL")}\"")
         buildConfigField("String", "MAIL_SERVICE_API_KEY", "\"${localProp("MAIL_SERVICE_API_KEY")}\"")
+        // Host for https://{host}/invite/{token} browser → app redirects (Render mail-service).
+        manifestPlaceholders["inviteWebHost"] = inviteWebHost
     }
 
     // Side-by-side twin install for multi-device sync testing (debug only; not for release).
@@ -125,6 +136,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     implementation(libs.androidx.biometric)
+    implementation(libs.play.install.referrer)
 
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)

@@ -1,6 +1,8 @@
 -- Phase 3 schema for SplitEase (run once in Supabase SQL Editor)
 -- Apply in order. Safe to re-run for tables that already exist (IF NOT EXISTS),
 -- but policies may error if re-created — drop them first if re-applying.
+-- If groups/group_members were created before the recursion fix, also run
+-- docs/sql/phase-3d-fix-groups-rls-recursion.sql (already applied on this project).
 
 -- 1) Profiles
 create table if not exists public.profiles (

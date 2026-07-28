@@ -147,13 +147,25 @@ class SharedPreferencesAppSettingsRepository
 
         override fun observePendingInviteToken(): Flow<String?> = pendingInviteTokenFlow.asStateFlow()
 
-        override suspend fun getPendingInviteToken(): String? =
-            withContext(Dispatchers.IO) {
-                readPendingInviteToken()
-            }
+        override suspend fun getPendingInviteToken(): String? {
+            // Prefer in-memory (published before disk I/O) so signed-in deep-link
+            // claim does not race the prefs write from MainActivity.
+            pendingInviteTokenFlow.value?.let { return it }
+            return withContext(Dispatchers.IO) { readPendingInviteToken() }
+        }
 
         override suspend fun setPendingInviteToken(token: String?) {
             val normalized = token?.trim()?.takeIf { it.isNotEmpty() }
+            // Publish in-memory first so signed-in deep-link claim can run without
+            // waiting on disk I/O (MainActivity stores the token asynchronously).
+            if (normalized != null && pendingInviteTokenFlow.value == normalized) {
+                // Same link opened again — force collectors to re-run claim.
+                pendingInviteTokenFlow.value = null
+            }
+            pendingInviteTokenFlow.value = normalized
+            if (normalized != null) {
+                pendingInviteOpenTargetFlow.value = null
+            }
             withContext(Dispatchers.IO) {
                 prefs.edit {
                     if (normalized == null) {
@@ -164,10 +176,6 @@ class SharedPreferencesAppSettingsRepository
                         remove(KEY_PENDING_INVITE_OPEN_TARGET)
                     }
                 }
-            }
-            pendingInviteTokenFlow.value = normalized
-            if (normalized != null) {
-                pendingInviteOpenTargetFlow.value = null
             }
         }
 
@@ -191,6 +199,17 @@ class SharedPreferencesAppSettingsRepository
                 }
             }
             pendingInviteOpenTargetFlow.value = normalized
+        }
+
+        override suspend fun getInstallReferrerChecked(): Boolean =
+            withContext(Dispatchers.IO) {
+                prefs.getBoolean(KEY_INSTALL_REFERRER_CHECKED, false)
+            }
+
+        override suspend fun setInstallReferrerChecked(checked: Boolean) {
+            withContext(Dispatchers.IO) {
+                prefs.edit { putBoolean(KEY_INSTALL_REFERRER_CHECKED, checked) }
+            }
         }
 
         override fun observeAppLocale(): Flow<AppLocale> = appLocaleFlow.asStateFlow()
@@ -266,6 +285,7 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
             private const val KEY_PENDING_INVITE_TOKEN = "pending_invite_token"
             private const val KEY_PENDING_INVITE_OPEN_TARGET = "pending_invite_open_target"
+            private const val KEY_INSTALL_REFERRER_CHECKED = "install_referrer_checked"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
             private const val KEY_ONBOARDING_EMAIL_SENT_PREFIX = "onboarding_email_sent_"
 

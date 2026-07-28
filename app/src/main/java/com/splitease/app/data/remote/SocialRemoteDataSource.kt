@@ -254,15 +254,16 @@ class SocialRemoteDataSource
          *
          * @param token Opaque invite token.
          */
-        suspend fun acceptInviteByToken(token: String) {
+        suspend fun acceptInviteByToken(token: String): Int {
             val trimmed = token.trim()
-            if (trimmed.isEmpty()) return
-            supabase.postgrest.rpc(
-                function = "accept_invite_by_token",
-                parameters =
-                    buildJsonObject {
-                        put("p_token", trimmed)
-                    },
-            )
+            if (trimmed.isEmpty()) return 0
+            return supabase.postgrest
+                .rpc(
+                    function = "accept_invite_by_token",
+                    parameters =
+                        buildJsonObject {
+                            put("p_token", trimmed)
+                        },
+                ).decodeAs<Int>()
         }
     }
