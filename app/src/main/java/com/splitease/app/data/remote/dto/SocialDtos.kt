@@ -12,6 +12,9 @@ data class ProfileDto(
     val email: String,
     @SerialName("display_name") val displayName: String,
     @SerialName("photo_url") val photoUrl: String? = null,
+    @SerialName("phone_country_code") val phoneCountryCode: String? = null,
+    @SerialName("phone_number") val phoneNumber: String? = null,
+    @SerialName("preferred_currency") val preferredCurrency: String? = null,
     @SerialName("updated_at_epoch_ms") val updatedAtEpochMs: Long,
 )
 

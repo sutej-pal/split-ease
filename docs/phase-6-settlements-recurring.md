@@ -58,7 +58,7 @@ Let users record settlements (“mark paid”) that reduce derived balances, and
 | `data/recurring/RecurringExpenseWorker.kt` | WorkManager |
 | `presentation/settlements/*` | Settle-up UI |
 | `presentation/expenses/*` | Frequency picker |
-| `docs/sql/phase-6-payments.sql` | Cloud schema |
+| `docs/sql/migration_db.sql` | Cloud schema (payments + recurring columns) |
 | Docs / version `0.7.0` | PROGRESS, CHANGELOG, ARCHITECTURE, data-dictionary |
 
 ## Screens/UI Added
@@ -100,6 +100,6 @@ Let users record settlements (“mark paid”) that reduce derived balances, and
 
 **Status:** Done (2026-07-22)
 
-Phase 6 delivered settle-up payments that reduce derived balances, and recurring expense templates with a daily WorkManager generator. Room bumped to **v4** (`nextOccurrenceEpochMs`, `recurringTemplateId`). Version **0.7.0**. Apply [phase-6-payments.sql](sql/phase-6-payments.sql) in Supabase when ready; cloud payment push stays Phase 7.
+Phase 6 delivered settle-up payments that reduce derived balances, and recurring expense templates with a daily WorkManager generator. Room bumped to **v4** (`nextOccurrenceEpochMs`, `recurringTemplateId`). Version **0.7.0**. Apply [migration_db.sql](sql/migration_db.sql) in Supabase when ready; cloud payment push stays Phase 7.
 
 **Next:** Phase 7 — Search, Categories, Multi-Currency, Offline Sync.

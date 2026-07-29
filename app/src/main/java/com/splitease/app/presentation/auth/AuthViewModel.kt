@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.repository.AuthRepository
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -170,8 +172,34 @@ class AuthViewModel
          * @param password Account password.
          */
         fun signIn(email: String, password: String) {
-            submit {
-                authRepository.signIn(email, password)
+            viewModelScope.launch {
+                _formState.update {
+                    it.copy(isLoading = true, errorMessage = null, infoMessage = null)
+                }
+                val trimmedEmail = email.trim()
+                val result = authRepository.signIn(trimmedEmail, password)
+                if (result.isSuccess) {
+                    _formState.update {
+                        it.copy(isLoading = false, errorMessage = null, infoMessage = null)
+                    }
+                    return@launch
+                }
+                val err = result.exceptionOrNull()
+                val message =
+                    if (isInvalidCredentials(err)) {
+                        val registered =
+                            authRepository.isEmailRegistered(trimmedEmail).getOrDefault(true)
+                        if (!registered) {
+                            appContext.getString(R.string.error_not_registered)
+                        } else {
+                            appContext.getString(R.string.error_invalid_credentials)
+                        }
+                    } else {
+                        friendlyAuthError(err)
+                    }
+                _formState.update {
+                    it.copy(isLoading = false, errorMessage = message)
+                }
             }
         }
 
@@ -179,10 +207,41 @@ class AuthViewModel
          * Creates an account and, when required by Supabase settings, opens the OTP gate.
          *
          * @param email Account email.
-         * @param password Account password.
+         * @param password Account password (minimum [MIN_SIGNUP_PASSWORD_LENGTH] characters).
          * @param displayName Preferred display name.
+         * @param phoneCountryCode Dialing code (e.g. `+91`).
+         * @param phoneNumber National phone number digits.
+         * @param currencyCode Preferred ISO 4217 currency.
+         * @param photoUri Optional local avatar URI string.
          */
-        fun signUp(email: String, password: String, displayName: String) {
+        fun signUp(
+            email: String,
+            password: String,
+            displayName: String,
+            phoneCountryCode: String = "+91",
+            phoneNumber: String = "",
+            currencyCode: String = AppCurrencies.DEFAULT,
+            photoUri: String? = null,
+        ) {
+            val trimmedName = displayName.trim()
+            if (trimmedName.isBlank()) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.signup_error_name_required),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            if (password.length < MIN_SIGNUP_PASSWORD_LENGTH) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.signup_error_password_short),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
             viewModelScope.launch {
                 _formState.update {
                     it.copy(
@@ -193,22 +252,40 @@ class AuthViewModel
                     )
                 }
                 val trimmedEmail = email.trim()
-                val result = authRepository.signUp(trimmedEmail, password, displayName)
+                appSettingsRepository.setCurrencyCode(currencyCode)
+                val result =
+                    authRepository.signUp(
+                        email = trimmedEmail,
+                        password = password,
+                        displayName = trimmedName,
+                        phoneCountryCode = phoneCountryCode,
+                        phoneNumber = phoneNumber,
+                        currencyCode = currencyCode,
+                        photoUri = photoUri,
+                    )
                 _formState.update {
                     if (result.isFailure) {
                         AuthFormState(
                             isLoading = false,
-                            errorMessage =
-                                result.exceptionOrNull()?.localizedMessage
-                                    ?: appContext.getString(R.string.error_generic),
+                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
                         )
                     } else {
-                        // Always gate on OTP after signup — do not enter the app until verified.
-                        AuthFormState(
-                            isLoading = false,
-                            pendingConfirmationEmail = trimmedEmail,
-                            infoMessage = appContext.getString(R.string.verify_email_sent),
-                        )
+                        when (val outcome = result.getOrNull()) {
+                            is SignUpResult.PendingEmailConfirmation ->
+                                // Confirm-email ON: gate until OTP is verified.
+                                AuthFormState(
+                                    isLoading = false,
+                                    pendingConfirmationEmail = outcome.email,
+                                    infoMessage = appContext.getString(R.string.verify_email_sent),
+                                )
+                            is SignUpResult.SignedIn, null ->
+                                // Confirm-email OFF / autoconfirm: session is ready.
+                                AuthFormState(
+                                    isLoading = false,
+                                    pendingConfirmationEmail = null,
+                                    infoMessage = appContext.getString(R.string.signup_complete_message),
+                                )
+                        }
                     }
                 }
             }
@@ -256,9 +333,7 @@ class AuthViewModel
                     _formState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage =
-                                result.exceptionOrNull()?.localizedMessage
-                                    ?: appContext.getString(R.string.error_generic),
+                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
                         )
                     }
                 }
@@ -334,18 +409,68 @@ class AuthViewModel
                     } else {
                         it.copy(
                             isLoading = false,
-                            errorMessage =
-                                result.exceptionOrNull()?.localizedMessage
-                                    ?: appContext.getString(R.string.error_generic),
+                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
                         )
                     }
                 }
             }
         }
 
+        /**
+         * Maps Supabase/RestException dumps into short user-facing copy.
+         */
+        private fun friendlyAuthError(throwable: Throwable?): String {
+            val raw = throwable?.localizedMessage.orEmpty()
+            val lower = raw.lowercase()
+            return when {
+                isInvalidCredentials(throwable) ->
+                    appContext.getString(R.string.error_invalid_credentials)
+                isEmailRateLimited(lower) ->
+                    appContext.getString(R.string.error_signup_email_rate_limit)
+                isEmailDeliveryFailure(lower) ->
+                    appContext.getString(R.string.error_signup_email_delivery)
+                raw.isBlank() -> appContext.getString(R.string.error_generic)
+                // RestException dumps include Url / Headers / Http Method — never show those.
+                "url:" in lower || "headers:" in lower || "http method" in lower ->
+                    // Prefer specific auth/email clues buried in RestException text.
+                    when {
+                        isEmailRateLimited(lower) ->
+                            appContext.getString(R.string.error_signup_email_rate_limit)
+                        isEmailDeliveryFailure(lower) ->
+                            appContext.getString(R.string.error_signup_email_delivery)
+                        else -> appContext.getString(R.string.error_generic)
+                    }
+                else ->
+                    raw.lineSequence().firstOrNull()?.take(160)?.trim().orEmpty()
+                        .ifBlank { appContext.getString(R.string.error_generic) }
+            }
+        }
+
+        private fun isEmailRateLimited(lower: String): Boolean =
+            "over_email_send_rate_limit" in lower ||
+                "email rate limit" in lower ||
+                "rate limit exceeded" in lower
+
+        private fun isEmailDeliveryFailure(lower: String): Boolean =
+            "error sending confirmation email" in lower ||
+                "error sending magic link email" in lower ||
+                "unexpected status code returned from hook" in lower ||
+                ("hook" in lower && "email" in lower) ||
+                "send email hook" in lower ||
+                "resend send failed" in lower ||
+                "you can only send testing emails" in lower
+
+        private fun isInvalidCredentials(throwable: Throwable?): Boolean {
+            val lower = throwable?.localizedMessage.orEmpty().lowercase()
+            return "invalid_credentials" in lower || "invalid login credentials" in lower
+        }
+
         companion object {
             /** Exact digit count for signup email OTP (Supabase mailer OTP length). */
             const val SIGNUP_OTP_LENGTH = 6
+
+            /** Minimum password length shown on the signup form. */
+            const val MIN_SIGNUP_PASSWORD_LENGTH = 8
 
             private const val AUTH_LOADING_TIMEOUT_MS = 8_000L
         }

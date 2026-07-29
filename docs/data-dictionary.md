@@ -165,6 +165,9 @@ Unique index: `(expenseId, userId)`.
 | profiles | email | TEXT | no | Lookup email |
 | profiles | display_name | TEXT | no | Display name |
 | profiles | photo_url | TEXT | yes | Avatar |
+| profiles | phone_country_code | TEXT | yes | Dialing code (e.g. `+91`) |
+| profiles | phone_number | TEXT | yes | National phone number |
+| profiles | preferred_currency | TEXT | yes | ISO 4217 from signup |
 | profiles | updated_at_epoch_ms | BIGINT | no | Last update |
 | friends | id | UUID (PK) | no | Friendship id |
 | friends | owner_user_id | UUID | no | Owner |
@@ -197,7 +200,7 @@ Unique index: `(expenseId, userId)`.
 | invites | status | TEXT | no | PENDING / ACCEPTED / CANCELLED |
 | invites | created_at_epoch_ms | BIGINT | no | Created time |
 
-**Invite join RPCs** (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
+**Invite join RPCs** (see [sql/migration_db.sql](sql/migration_db.sql)):
 - `get_invite_preview(p_token)` — public (anon) preview for landing UI
 - `accept_invite_by_token(p_token)` — authenticated accept for deep-link join-as-new
 
@@ -216,8 +219,17 @@ Unique index: `(expenseId, userId)`.
 | expense_splits | owed_amount | TEXT | no | Plain decimal |
 | expense_splits | percentage | TEXT | yes | Optional % |
 | expense_splits | shares | INTEGER | yes | Optional shares |
-| payments | id | UUID (PK) | no | Settlement id (see [phase-6-payments.sql](sql/phase-6-payments.sql)) |
+| payments | id | UUID (PK) | no | Settlement id (see [migration_db.sql](sql/migration_db.sql)) |
 | payments | from_user_id / to_user_id | UUID | no | Payer / payee |
 | payments | amount / currency_code | TEXT | no | Settlement amount |
 | payments | group_id | UUID | yes | Optional group context |
 | expenses | is_recurring / recurrence_frequency / next_occurrence_epoch_ms / recurring_template_id | mixed | yes/no | Recurring metadata (Phase 6) |
+
+### `pin_boards` (Supabase only — no Room cache)
+
+| Column | Type | Nullable | Description |
+|---|---|---|---|
+| group_id | UUID (PK, FK → groups.id CASCADE) | no | One board per group |
+| content | TEXT | no | Markdown content (default '') |
+| updated_by | UUID (FK → auth.users SET NULL) | yes | Last editor |
+| updated_at | TIMESTAMPTZ | no | Last edit timestamp |

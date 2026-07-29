@@ -40,7 +40,7 @@ No Room schema changes. New SharedPreferences key:
 |---|---|---|---|
 | `pending_invite_token` | String? | null | Invite token awaiting accept after signup/OTP |
 
-Supabase (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
+Supabase (see [sql/migration_db.sql](sql/migration_db.sql)):
 - `get_invite_preview(p_token text) → jsonb`
 - `accept_invite_by_token(p_token text) → integer`
 
@@ -48,7 +48,7 @@ Supabase (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
 
 | File path | Purpose |
 |---|---|
-| `docs/sql/phase-3c-invite-join.sql` | Preview + accept-by-token RPCs |
+| `docs/sql/migration_db.sql` | Preview + accept-by-token RPCs (among other schema) |
 | `domain/model/InvitePreview.kt` | Preview DTO for landing UI |
 | `domain/settings/AppSettingsRepository.kt` | Pending invite token API |
 | `data/settings/SharedPreferencesAppSettingsRepository.kt` | Persist token |
@@ -71,7 +71,7 @@ Supabase (see [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)):
 
 ## How to Test
 
-1. Apply [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql) in Supabase SQL Editor (after phase-3b).
+1. Apply [sql/migration_db.sql](sql/migration_db.sql) in Supabase SQL Editor (fresh DB), or ensure invite RPCs are present.
 2. Confirm email ON + Confirm signup template includes `{{ .Token }}`.
 3. From a signed-in account, invite a non-user to a group and share the link.
 4. Open the **https** invite link in a browser (Chrome) on a device with the app installed:
@@ -116,7 +116,7 @@ When the app is **not** installed, the mail-service invite page falls back to Go
 - Intent-filters + `MainActivity` invite token intake
 - `InviteLandingScreen` + `InviteJoinSignUpScreen`
 - Always-on OTP gate after signup
-- SQL RPCs in `docs/sql/phase-3c-invite-join.sql`
+- SQL RPCs in `docs/sql/migration_db.sql`
 - Docs: PROGRESS / CHANGELOG / ARCHITECTURE / data-dictionary / README / phase-bundles
 - Signed-in deep-link claim + retry-safe token clear
 - Mail-service Play Store referrer fallback + Android Install Referrer bootstrap

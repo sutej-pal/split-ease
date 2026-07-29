@@ -37,6 +37,7 @@ import com.splitease.app.presentation.auth.LoginScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.invite.InviteJoinSignUpScreen
+import com.splitease.app.presentation.pinboard.PinBoardScreen
 import com.splitease.app.presentation.invite.InviteLandingScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
@@ -93,6 +94,7 @@ object Routes {
     const val ADD_EXPENSE =
         "add_expense?groupId={groupId}&friendUserId={friendUserId}&expenseId={expenseId}"
     const val EXPENSE_DETAIL = "expense_detail/{expenseId}"
+    const val PIN_BOARD = "pin_board/{groupId}"
     const val SETTLE_UP =
         "settle_up?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}&groupId={groupId}&label={label}"
 
@@ -101,6 +103,8 @@ object Routes {
     fun groupSettings(groupId: String) = "group_settings/$groupId"
 
     fun groupInviteLink(groupId: String) = "group_invite_link/$groupId"
+
+    fun pinBoard(groupId: String) = "pin_board/$groupId"
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
 
@@ -261,12 +265,20 @@ fun SplitEaseNavHost(
                 composable(Routes.SIGN_UP) {
                     SignUpScreen(
                         formState = formState,
-                        onSignUp = authViewModel::signUp,
-                        onNavigateLogin = {
+                        onSignUp = { email, password, displayName, dial, phone, currency, photo ->
+                            authViewModel.signUp(
+                                email = email,
+                                password = password,
+                                displayName = displayName,
+                                phoneCountryCode = dial,
+                                phoneNumber = phone,
+                                currencyCode = currency,
+                                photoUri = photo,
+                            )
+                        },
+                        onBack = {
                             authViewModel.clearMessages()
-                            navController.navigate(Routes.LOGIN) {
-                                popUpTo(Routes.WELCOME)
-                            }
+                            navController.popBackStack()
                         },
                     )
                 }
@@ -308,7 +320,9 @@ fun SplitEaseNavHost(
                 composable(Routes.INVITE_JOIN_SIGN_UP) {
                     InviteJoinSignUpScreen(
                         formState = formState,
-                        onSignUp = authViewModel::signUp,
+                        onSignUp = { email, password, displayName ->
+                            authViewModel.signUp(email, password, displayName)
+                        },
                         onNavigateLogin = {
                             authViewModel.clearMessages()
                             navController.navigate(Routes.LOGIN)
@@ -579,6 +593,9 @@ private fun SignedInNavHost(
                     },
                     onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
+                    onOpenPinBoard = {
+                        navController.navigate(Routes.pinBoard(groupId))
+                    },
                     onSettleDebt = { from, to, amount, currency, label ->
                         navController.navigate(
                             Routes.settleUp(
@@ -613,6 +630,16 @@ private fun SignedInNavHost(
                 arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
             ) {
                 GroupInviteLinkScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Routes.PIN_BOARD,
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty()
+                PinBoardScreen(
+                    groupId = groupId,
                     onBack = { navController.popBackStack() },
                 )
             }

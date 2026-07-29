@@ -3,7 +3,7 @@
 ## Slice 1 — Realtime (live ledger while group is open)
 
 1. Run in Supabase SQL Editor:
-   - [`docs/sql/phase-extras-realtime-expenses-payments.sql`](sql/phase-extras-realtime-expenses-payments.sql)
+   - [`docs/sql/migration_db.sql`](sql/migration_db.sql) (includes realtime publication for `expenses` / `payments`)
 2. Install a build that includes `realtime-kt` and open the same group on two devices.
 3. Add/edit/delete an expense or payment on device A → device B updates without leaving the screen.
 
@@ -24,7 +24,7 @@
 
 Run in order:
 
-1. [`docs/sql/phase-extras-device-tokens.sql`](sql/phase-extras-device-tokens.sql)
+1. [`docs/sql/migration_db.sql`](sql/migration_db.sql) (includes `device_tokens` + RLS) if not already applied
 2. Optionally [`docs/sql/phase-extras-notify-triggers.sql`](sql/phase-extras-notify-triggers.sql) **or** use Dashboard Database Webhooks (preferred — keeps the service role out of DB settings).
 
 ### Edge Function

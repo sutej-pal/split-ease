@@ -235,6 +235,8 @@ class GroupsViewModel
                     return@launch
                 }
                 val currency = appSettingsRepository.getCurrencyCode()
+                // Ensure Room `users` row exists before group_members FK insert.
+                runCatching { authRepository.ensureLocalProfile() }
                 val result =
                     socialInteractor.createGroup(
                         creatorUserId = id,
@@ -437,6 +439,9 @@ class GroupsViewModel
         private fun userFacingError(error: Throwable?): String {
             val raw = error?.message.orEmpty()
             return when {
+                raw.contains("FOREIGN KEY", ignoreCase = true) ||
+                    raw.contains("SQLITE_CONSTRAINT_FOREIGNKEY", ignoreCase = true) ->
+                    appContext.getString(R.string.msg_local_profile_missing)
                 raw.contains("group_members", ignoreCase = true) ||
                     raw.contains("schema cache", ignoreCase = true) ->
                     appContext.getString(R.string.msg_cloud_tables_missing)

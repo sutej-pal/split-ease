@@ -92,6 +92,7 @@ import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBar
@@ -287,6 +288,7 @@ fun GroupDetailScreen(
     onAddExpense: () -> Unit,
     onOpenExpense: (expenseId: String) -> Unit,
     onOpenSpending: () -> Unit,
+    onOpenPinBoard: () -> Unit,
     onSettleDebt: (
         fromUserId: String,
         toUserId: String,
@@ -317,6 +319,7 @@ fun GroupDetailScreen(
     val isSolo = membersReady && members.size <= 1
     val nothingToSettle = stringResource(R.string.group_nothing_to_settle)
     val lifecycleOwner = LocalLifecycleOwner.current
+    val bannerColor = lerp((group?.groupType ?: GroupType.OTHER).tint(), SplitEaseColors.Navy, 0.28f)
 
     LaunchedEffect(groupId, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -377,6 +380,12 @@ fun GroupDetailScreen(
             )
         },
     ) { padding ->
+        SeSystemBars(
+            statusBarColor = bannerColor,
+            navigationBarColor = bannerColor,
+            statusBarDarkIcons = false,
+            navigationBarDarkIcons = false,
+        )
         Column(
             modifier =
                 Modifier
@@ -385,6 +394,7 @@ fun GroupDetailScreen(
         ) {
             GroupDetailBanner(
                 group = group,
+                bannerColor = bannerColor,
                 onBack = onBack,
                 onOpenSettings = onOpenSettings,
             )
@@ -417,6 +427,10 @@ fun GroupDetailScreen(
                     label = stringResource(R.string.group_chip_totals),
                     onClick = onOpenSpending,
                 )
+                SeActionChip(
+                    label = stringResource(R.string.action_open_pin_board),
+                    onClick = onOpenPinBoard,
+                )
             }
 
             when (pane) {
@@ -425,7 +439,8 @@ fun GroupDetailScreen(
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .fillMaxWidth(),
+                                .fillMaxWidth()
+                                .background(SplitEaseColors.Surface),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     ) {
                         if (isSolo && ledger.isEmpty()) {
@@ -530,11 +545,10 @@ fun GroupDetailScreen(
 @Composable
 private fun GroupDetailBanner(
     group: Group?,
+    bannerColor: Color,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    val type = group?.groupType ?: GroupType.OTHER
-    val bannerColor = lerp(type.tint(), SplitEaseColors.Navy, 0.28f)
     Column(
         modifier =
             Modifier

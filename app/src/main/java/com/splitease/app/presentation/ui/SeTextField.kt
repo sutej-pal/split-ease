@@ -12,10 +12,13 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
+
+private val SeTextFieldShape = RoundedCornerShape(12.dp)
 
 @Composable
 fun SeTextField(
@@ -27,23 +30,31 @@ fun SeTextField(
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    supportingText: String? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
+        // Clip so password-manager autofill highlight (e.g. Bitwarden yellow)
+        // respects the same rounded corners as the outline.
+        modifier = modifier.fillMaxWidth().clip(SeTextFieldShape),
         label = { Text(label) },
         enabled = enabled,
         singleLine = singleLine,
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
+        supportingText =
+            supportingText?.let { hint ->
+                { Text(hint) }
+            },
         trailingIcon = trailingIcon,
-        shape = RoundedCornerShape(12.dp),
+        shape = SeTextFieldShape,
         colors =
             OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = SplitEaseColors.Primary,
                 unfocusedBorderColor = SplitEaseColors.OutlineStrong,
+                disabledBorderColor = SplitEaseColors.OutlineStrong.copy(alpha = 0.5f),
                 focusedLabelColor = SplitEaseColors.Primary,
                 unfocusedLabelColor = SplitEaseColors.NavyMuted,
                 cursorColor = SplitEaseColors.Primary,
@@ -51,6 +62,8 @@ fun SeTextField(
                 unfocusedTextColor = SplitEaseColors.Navy,
                 focusedContainerColor = SplitEaseColors.Surface,
                 unfocusedContainerColor = SplitEaseColors.Surface,
+                disabledContainerColor = SplitEaseColors.Surface,
+                errorContainerColor = SplitEaseColors.Surface,
             ),
     )
 }

@@ -455,7 +455,12 @@ class SocialInteractor
         ): Result<Group> =
             runCatching {
                 require(name.isNotBlank()) { "Group name is required." }
-                ensureLocalUserExists(creatorUserId, displayName = "You")
+                val self = userRepository.getUserById(creatorUserId)
+                ensureLocalUserExists(
+                    userId = creatorUserId,
+                    email = self?.email.orEmpty(),
+                    displayName = self?.displayName?.takeIf { it.isNotBlank() } ?: "You",
+                )
                 val now = System.currentTimeMillis()
                 val groupId = UUID.randomUUID().toString()
                 val group =
@@ -678,6 +683,9 @@ class SocialInteractor
          * Room FK on [GroupMember] requires a [User] row. Prefer the remote [ProfileDto] when
          * available so co-members show real names (not UUID stubs). Upgrades existing stubs.
          *
+         * Also resolves unique-email conflicts with invite placeholders so the real auth user
+         * id can be written (otherwise group create hits SQLITE_CONSTRAINT_FOREIGNKEY).
+         *
          * @param userId User id to ensure.
          * @param profile Optional profile already fetched for this user.
          * @param email Optional email for the stub when no profile.
@@ -693,34 +701,115 @@ class SocialInteractor
                 profile ?: runCatching { remote.fetchProfileById(userId) }.getOrNull()
             val existing = userRepository.getUserById(userId)
             val now = System.currentTimeMillis()
+            val resolvedEmail =
+                when {
+                    resolved != null && resolved.email.isNotBlank() -> resolved.email.trim()
+                    email.isNotBlank() -> email.trim()
+                    existing != null && existing.email.isNotBlank() &&
+                        !existing.email.startsWith("local+") -> existing.email
+                    else -> "local+$userId@users.local"
+                }
+            releaseEmailAndRemapStub(ownerUserId = userId, email = resolvedEmail)
             if (resolved != null) {
                 userRepository.upsert(
                     User(
                         id = userId,
-                        email = resolved.email,
+                        email = resolvedEmail,
                         displayName = resolved.displayName.ifBlank { displayName.ifBlank { "Member" } },
                         photoUrl = resolved.photoUrl,
+                        phoneCountryCode = resolved.phoneCountryCode,
+                        phoneNumber = resolved.phoneNumber,
+                        preferredCurrency = resolved.preferredCurrency,
                         remoteId = userId,
                         createdAtEpochMs = existing?.createdAtEpochMs ?: now,
                         updatedAtEpochMs = resolved.updatedAtEpochMs.takeIf { it > 0 } ?: now,
                         syncStatus = SyncStatus.SYNCED,
                     ),
                 )
-                return
+            } else if (existing == null) {
+                userRepository.upsert(
+                    User(
+                        id = userId,
+                        email = resolvedEmail,
+                        displayName = displayName.ifBlank { "Member" },
+                        photoUrl = null,
+                        remoteId = userId,
+                        createdAtEpochMs = now,
+                        updatedAtEpochMs = now,
+                        syncStatus = SyncStatus.LOCAL_ONLY,
+                    ),
+                )
+            } else if (existing.email.isBlank() || existing.email.startsWith("local+")) {
+                userRepository.upsert(
+                    existing.copy(
+                        email = resolvedEmail,
+                        displayName =
+                            existing.displayName.takeIf { it.isNotBlank() && it != "Member" }
+                                ?: displayName.ifBlank { "Member" },
+                        updatedAtEpochMs = now,
+                    ),
+                )
             }
-            if (existing != null) return
+            require(userRepository.getUserById(userId) != null) {
+                "Local user profile is missing. Sign out and sign in again."
+            }
+        }
+
+        /**
+         * If another local user row owns [email], free the unique index and remap FKs onto [ownerUserId].
+         */
+        private suspend fun releaseEmailAndRemapStub(
+            ownerUserId: String,
+            email: String,
+        ) {
+            val trimmed = email.trim()
+            if (trimmed.isEmpty() || trimmed.startsWith("local+")) return
+            val conflict = userRepository.getUserByEmail(trimmed) ?: return
+            if (conflict.id == ownerUserId) return
+            val now = System.currentTimeMillis()
             userRepository.upsert(
-                User(
-                    id = userId,
-                    email = email,
-                    displayName = displayName.ifBlank { "Member" },
-                    photoUrl = null,
-                    remoteId = userId,
-                    createdAtEpochMs = now,
+                conflict.copy(
+                    email = "local+${conflict.id}@users.local",
                     updatedAtEpochMs = now,
-                    syncStatus = SyncStatus.LOCAL_ONLY,
                 ),
             )
+            // Ensure destination user exists before remapping FK child rows.
+            if (userRepository.getUserById(ownerUserId) == null) {
+                userRepository.upsert(
+                    User(
+                        id = ownerUserId,
+                        email = trimmed,
+                        displayName = conflict.displayName.removeSuffix(" (invited)").ifBlank { "You" },
+                        photoUrl = conflict.photoUrl,
+                        phoneCountryCode = conflict.phoneCountryCode,
+                        phoneNumber = conflict.phoneNumber,
+                        preferredCurrency = conflict.preferredCurrency,
+                        remoteId = ownerUserId,
+                        createdAtEpochMs = conflict.createdAtEpochMs,
+                        updatedAtEpochMs = now,
+                        syncStatus = SyncStatus.SYNCED,
+                    ),
+                )
+            }
+            runCatching { groupRepository.remapMemberUserId(conflict.id, ownerUserId) }
+            runCatching { expenseRepository.remapUserId(conflict.id, ownerUserId) }
+            runCatching {
+                friendRepository.getByFriendUserId(conflict.id)?.let { friend ->
+                    friendRepository.upsert(
+                        friend.copy(
+                            friendUserId = ownerUserId,
+                            emailSnapshot = trimmed,
+                            displayNameSnapshot =
+                                friend.displayNameSnapshot
+                                    .removeSuffix(" (invited)")
+                                    .ifBlank { friend.displayNameSnapshot },
+                            updatedAtEpochMs = now,
+                            syncStatus = SyncStatus.PENDING,
+                        ),
+                    )
+                }
+            }
+            runCatching { userRepository.deleteById(conflict.id) }
         }
 
         private suspend fun linkExistingFriend(

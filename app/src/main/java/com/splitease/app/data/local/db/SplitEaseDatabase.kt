@@ -24,7 +24,7 @@ import com.splitease.app.data.local.entity.PaymentEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 5 — activity_events).
+ * Offline-first Room database for SplitEase (version 6 — user phone/currency).
  */
 @Database(
     entities = [
@@ -39,7 +39,7 @@ import com.splitease.app.data.local.entity.UserEntity
         InviteEntity::class,
         ActivityEventEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)

@@ -153,6 +153,9 @@ class ExpensesViewModel
         /** Reactive signed-in user id for Compose collectors. */
         val signedInUserId: StateFlow<String?> = userId
 
+        suspend fun getGroupName(groupId: String): String? =
+            groupRepository.getGroupById(groupId)?.name
+
         /**
          * True when [groupId] already has at least one expense or settlement payment.
          * Used to skip the first-expense members confirm dialog on non-empty groups.
@@ -444,6 +447,7 @@ class ExpensesViewModel
         fun createExpense(
             description: String,
             amountText: String,
+            currencyCode: String,
             paidByUserId: String,
             participantIds: List<String>,
             splitType: SplitType,
@@ -457,6 +461,7 @@ class ExpensesViewModel
             expenseDateEpochMs: Long? = null,
             onSuccess: () -> Unit,
         ) {
+            if (_uiState.value.isSubmitting) return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
                 if (paidByUserId.isBlank() || participantIds.isEmpty()) {
@@ -475,13 +480,12 @@ class ExpensesViewModel
                         }
                         return@launch
                     }
-                val currency = appSettingsRepository.getCurrencyCode()
                 val result =
                     expenseInteractor.createExpense(
                         CreateExpenseInput(
                             description = description,
                             amount = amount,
-                            currencyCode = currency,
+                            currencyCode = currencyCode,
                             paidByUserId = paidByUserId,
                             participantIds = participantIds,
                             splitType = splitType,
@@ -495,18 +499,11 @@ class ExpensesViewModel
                             expenseDateEpochMs = expenseDateEpochMs,
                         ),
                     )
-                val saved = result.getOrNull()
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage =
-                            when {
-                                result.isFailure -> null
-                                saved?.syncStatus != SyncStatus.SYNCED ->
-                                    appContext.getString(R.string.msg_expense_saved_not_synced)
-                                else -> appContext.getString(R.string.msg_expense_added)
-                            },
+                        errorMessage = mapExpenseSaveError(result.exceptionOrNull()),
+                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_added) else null,
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -587,6 +584,7 @@ class ExpensesViewModel
             expenseDateEpochMs: Long? = null,
             onSuccess: () -> Unit,
         ) {
+            if (_uiState.value.isSubmitting) return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
                 if (paidByUserId.isBlank() || participantIds.isEmpty()) {
@@ -637,14 +635,8 @@ class ExpensesViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage =
-                            when {
-                                result.isFailure -> null
-                                result.getOrNull()?.syncStatus != SyncStatus.SYNCED ->
-                                    appContext.getString(R.string.msg_expense_saved_not_synced)
-                                else -> appContext.getString(R.string.msg_expense_updated)
-                            },
+                        errorMessage = mapExpenseSaveError(result.exceptionOrNull()),
+                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_updated) else null,
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -655,6 +647,7 @@ class ExpensesViewModel
             expenseId: String,
             onSuccess: () -> Unit,
         ) {
+            if (_uiState.value.isSubmitting) return
             val actor = userId.value.orEmpty()
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
@@ -744,5 +737,17 @@ class ExpensesViewModel
                 ?.displayNameSnapshot
                 ?: userRepository.getUserById(friendUserId)?.displayName
                 ?: friendUserId.take(8)
+        }
+
+        private fun mapExpenseSaveError(throwable: Throwable?): String? {
+            val raw = throwable?.message ?: return null
+            val lower = raw.lowercase()
+            return when {
+                lower.contains("row-level security") && lower.contains("expenses") ->
+                    appContext.getString(R.string.msg_expense_cloud_rls)
+                lower.contains("violates row-level security policy") ->
+                    appContext.getString(R.string.msg_expense_cloud_rls)
+                else -> raw
+            }
         }
     }

@@ -100,12 +100,23 @@ object SplitEaseMigrations {
             }
         }
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 5. */
+    /** Adds phone + preferred currency on `users` (signup profile). */
+    val MIGRATION_5_6 =
+        object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `users` ADD COLUMN `phoneCountryCode` TEXT")
+                db.execSQL("ALTER TABLE `users` ADD COLUMN `phoneNumber` TEXT")
+                db.execSQL("ALTER TABLE `users` ADD COLUMN `preferredCurrency` TEXT")
+            }
+        }
+
+    /** All migrations from version 1 through [SplitEaseDatabase] version 6. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
             MIGRATION_3_4,
             MIGRATION_4_5,
+            MIGRATION_5_6,
         )
 }

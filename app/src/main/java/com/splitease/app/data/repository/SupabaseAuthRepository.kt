@@ -17,6 +17,8 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -71,15 +73,29 @@ class SupabaseAuthRepository
             email: String,
             password: String,
             displayName: String,
+            phoneCountryCode: String,
+            phoneNumber: String,
+            currencyCode: String,
+            photoUri: String?,
         ): Result<SignUpResult> =
             runCatching {
                 val trimmedEmail = email.trim()
+                val trimmedName = displayName.trim()
+                val dialCode = phoneCountryCode.trim().ifBlank { "+91" }
+                val nationalNumber = phoneNumber.trim()
+                val currency = currencyCode.trim().uppercase().ifBlank { "INR" }
                 supabase.auth.signUpWith(Email) {
                     this.email = trimmedEmail
                     this.password = password
                     data =
                         buildJsonObject {
-                            put("display_name", displayName.trim())
+                            put("display_name", trimmedName)
+                            put("phone_country_code", dialCode)
+                            put("phone_number", nationalNumber)
+                            put("preferred_currency", currency)
+                            if (!photoUri.isNullOrBlank()) {
+                                put("photo_url", photoUri.trim())
+                            }
                         }
                 }
                 val session = supabase.auth.currentSessionOrNull()
@@ -104,6 +120,20 @@ class SupabaseAuthRepository
                 hydrateCloudData()
             }
 
+        override suspend fun isEmailRegistered(email: String): Result<Boolean> =
+            runCatching {
+                val trimmed = email.trim()
+                if (trimmed.isEmpty()) return@runCatching false
+                supabase.postgrest
+                    .rpc(
+                        function = "auth_email_registered",
+                        parameters =
+                            buildJsonObject {
+                                put("p_email", trimmed)
+                            },
+                    ).decodeAs<Boolean>()
+            }
+
         override suspend fun resendSignupConfirmation(email: String): Result<Unit> =
             runCatching {
                 supabase.auth.resendEmail(OtpType.Email.SIGNUP, email.trim())
@@ -116,7 +146,11 @@ class SupabaseAuthRepository
                     email = email.trim(),
                     token = token.trim(),
                 )
+                val sessionUser = supabase.auth.currentUserOrNull()
+                    ?: error("Email verified but session is missing. Try signing in.")
                 persistCurrentUser()
+                val local = userRepository.getUserById(sessionUser.id)
+                require(local != null) { "Could not save your local profile. Try signing in again." }
                 categoryRepository.ensureDefaults()
                 hydrateCloudData()
             }
@@ -158,12 +192,25 @@ class SupabaseAuthRepository
             val authUser = info.toAuthUser()
             val now = System.currentTimeMillis()
             val existing = userRepository.getUserById(authUser.userId)
+            val meta = info.userMetadata
+            val phoneCountryCode =
+                meta.stringMeta("phone_country_code") ?: existing?.phoneCountryCode
+            val phoneNumber = meta.stringMeta("phone_number") ?: existing?.phoneNumber
+            val preferredCurrency =
+                meta.stringMeta("preferred_currency") ?: existing?.preferredCurrency
+            val photoUrl = meta.stringMeta("photo_url") ?: existing?.photoUrl
+            // Invite stubs may already own this email under a different local id.
+            // Free the unique email index so the auth user row can be written.
+            releaseEmailForUser(authUser.userId, authUser.email)
             userRepository.upsert(
                 User(
                     id = authUser.userId,
                     email = authUser.email,
                     displayName = authUser.displayName,
-                    photoUrl = existing?.photoUrl,
+                    photoUrl = photoUrl,
+                    phoneCountryCode = phoneCountryCode,
+                    phoneNumber = phoneNumber,
+                    preferredCurrency = preferredCurrency,
                     remoteId = authUser.userId,
                     createdAtEpochMs = existing?.createdAtEpochMs ?: now,
                     updatedAtEpochMs = now,
@@ -176,13 +223,42 @@ class SupabaseAuthRepository
                         id = authUser.userId,
                         email = authUser.email,
                         displayName = authUser.displayName,
-                        photoUrl = existing?.photoUrl,
+                        photoUrl = photoUrl,
+                        phoneCountryCode = phoneCountryCode,
+                        phoneNumber = phoneNumber,
+                        preferredCurrency = preferredCurrency,
                         updatedAtEpochMs = now,
                     ),
                 )
             }
         }
+
+        /**
+         * Moves any other local user off [email] so [userId] can claim the unique index.
+         */
+        private suspend fun releaseEmailForUser(
+            userId: String,
+            email: String,
+        ) {
+            val trimmed = email.trim()
+            if (trimmed.isEmpty()) return
+            val conflict = userRepository.getUserByEmail(trimmed) ?: return
+            if (conflict.id == userId) return
+            userRepository.upsert(
+                conflict.copy(
+                    email = "local+${conflict.id}@users.local",
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+        }
     }
+
+private fun kotlinx.serialization.json.JsonObject?.stringMeta(key: String): String? =
+    this
+        ?.get(key)
+        ?.toString()
+        ?.trim('"')
+        ?.takeIf { it.isNotBlank() }
 
 private fun UserInfo.toAuthUser(): AuthUser {
     val emailValue = email.orEmpty()

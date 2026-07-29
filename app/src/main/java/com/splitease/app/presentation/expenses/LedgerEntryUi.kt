@@ -128,11 +128,11 @@ fun LedgerEntryRow(
             modifier
                 .fillMaxWidth()
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(vertical = 10.dp),
+                .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
-            modifier = Modifier.width(36.dp),
+            modifier = Modifier.width(30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -149,11 +149,11 @@ fun LedgerEntryRow(
                 lineHeight = 22.sp,
             )
         }
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Box(
             modifier =
                 Modifier
-                    .size(44.dp)
+                    .size(40.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(pastel),
             contentAlignment = Alignment.Center,

@@ -52,12 +52,17 @@ None (Room / PostgREST unchanged).
 
 ## How to Test
 
-### Supabase Dashboard (required once)
+### Preferred: mail-service Auth Hook (Free tier)
+1. Redeploy Render `mail-service` with `POST /supabase/send-email-hook`.
+2. Run `.\scripts\configure-signup-otp-email.ps1` (enables hook + sets OTP length 6).
+3. Optional: set matching `SEND_EMAIL_HOOK_SECRET` on Render and in Supabase Auth Hooks.
+4. Sign up → receive SplitEase 6-digit OTP email from mail-service → verify in app.
+
+### Fallback: Supabase template (Custom SMTP / Pro only)
 1. Authentication → Providers → Email → **Confirm email** ON.
-2. Authentication → Providers → Email → **OTP length** = **6** (must match the app).
+2. Authentication → Providers → Email → **OTP length** = **6**.
 3. Authentication → Email Templates → **Confirm signup**: paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)  
-   (uses `{{ .Token }}`; no `{{ .ConfirmationURL }}` so users enter the code in-app).  
-   Or run `.\scripts\configure-signup-otp-email.ps1` (sets template + `mailer_otp_length=6`).
+   Or run `.\scripts\configure-signup-otp-email.ps1 -TemplateOnly`.
 
 ### Manual
 1. Sign up with a new email → verify screen shows code field.
@@ -72,12 +77,15 @@ None (Room / PostgREST unchanged).
 
 ## Known Issues / TODOs
 
-- **Confirm signup email template must use `{{ .Token }}`** — the Android app cannot change Supabase mail content.
+- **Confirm signup email template must use `{{ .Token }}`** when *not* using the Send Email hook — the Android app cannot change Supabase mail content.
+- **Preferred ops path:** use mail-service Send Email Auth Hook (`/supabase/send-email-hook`) so Free-tier projects do not need template editing.
 - **Free-tier blocker (June 2026):** new Free projects using Supabase’s **default** email provider **cannot edit auth templates** (API returns 400). Unlock editing by either:
   1. **Custom SMTP** (recommended, free): Authentication → Emails → SMTP Settings (e.g. [Resend SMTP](https://resend.com/docs/send-with-supabase-smtp)), then paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) into Confirm signup, **or**
   2. Upgrade to Pro, **or**
-  3. Configure a Send Email Auth Hook.
-  Script (after SMTP/Pro unlocks editing): `.\scripts\configure-signup-otp-email.ps1` with a personal access token.
+  3. Configure a Send Email Auth Hook (mail-service).
+  Script: `.\scripts\configure-signup-otp-email.ps1`.
+- If the Send Email hook URL 404s/500s, Supabase signup fails with a generic error — disable the hook (`-DisableHook`) until mail-service is healthy.
+- **Resend testing mode:** without a verified domain, Resend only delivers to the Resend account email. Verify a domain at [resend.com/domains](https://resend.com/domains) and set `MAIL_FROM` to an address on that domain before production signup.
 - Password reset remains link-oriented (`splitease://auth-callback` still registered).
 - Free-tier Auth email rate limits apply to resend.
 
@@ -87,15 +95,17 @@ _Placeholder — add device captures of verify-OTP screen when available._
 
 ## Outcome
 
-Updated 2026-07-27: real OTP path is now active in app logic.
+Updated 2026-07-29: signup OTP delivery moved to the Render **mail-service** via Supabase **Send Email Auth Hook**.
 
 - Verify screen enforces a 6-digit numeric code.
-- `AuthViewModel.verifySignupOtp` now calls `AuthRepository.verifySignupOtp(...)` directly.
-- `AuthViewModel.resendConfirmation` now calls `AuthRepository.resendSignupConfirmation(...)`.
-- Dev-only hardcoded OTP acceptance (`1234`) was removed from the app flow.
+- `AuthViewModel.verifySignupOtp` calls `AuthRepository.verifySignupOtp(...)`.
+- `AuthViewModel.resendConfirmation` calls `AuthRepository.resendSignupConfirmation(...)`.
+- mail-service exposes `POST /supabase/send-email-hook` and sends the SplitEase OTP HTML.
+- Ops script: `.\scripts\configure-signup-otp-email.ps1` (probe + enable hook; `-DisableHook` / `-TemplateOnly` available).
 
 Operator requirements remain:
 - Confirm email must stay ON for OTP-gated signup behavior.
 - Mailer OTP length must be **6** (`mailer_otp_length`).
-- Confirm signup template must include `{{ .Token }}` (see [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)).
-- SMTP/provider configuration must be healthy (or equivalent provider setup) for reliable email delivery.
+- Send Email hook must point at a healthy mail-service (otherwise signup fails).
+- SMTP/provider configuration must be healthy (Resend HTTPS on Render Free).
+- **Resend testing mode blocker (2026-07-29):** without a verified domain, Resend only delivers to the Resend account email (`sutejpal@hotmail.com`). Until a domain is verified and `MAIL_FROM` uses it, keep `mailer_autoconfirm=true` + Send Email hook OFF so emulator/dev signup can create a session; re-enable Confirm email + hook after Resend domain verification.

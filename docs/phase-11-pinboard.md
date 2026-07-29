@@ -1,0 +1,84 @@
+# Phase 11 — Group Pin Board
+
+## Phase Goal
+
+Add a shared per-group "Pin Board" — a single rich-text notepad visible and editable by all group members.
+
+## Scope
+
+### In
+- Supabase `pin_boards` table (one row per group, RLS by membership)
+- Online-only read/write via PostgREST
+- Markdown-based content with toolbar (bold, italic, checklist, link, image)
+- Auto-save with 2-second debounce; save on back navigation
+- "Last edited by" footer
+- Accessible via action chip on group detail screen
+
+### Out
+- Offline (Room) cache for the board
+- Conflict resolution / real-time collaborative editing
+- Rich text rendering (content stored/displayed as Markdown source)
+- Image uploads (images referenced by URL only)
+
+## Architecture Decisions
+
+- **Online-only:** The pin board is a lightweight collaborative surface. Always-latest content matters more than offline availability. Room cache can be added later.
+- **Markdown storage:** Avoids heavy rich-text serialization libraries. The toolbar inserts Markdown syntax; content is displayed/edited as source text.
+- **Single board per group:** `pin_boards.group_id` is the PK — one document, not a collection of notes.
+
+## Data Model Changes
+
+### New Supabase table: `pin_boards`
+
+| Column | Type | Notes |
+|---|---|---|
+| group_id | uuid PK, FK → groups.id ON DELETE CASCADE | One board per group |
+| content | text, default '' | Markdown content |
+| updated_by | uuid FK → auth.users, ON DELETE SET NULL | Last editor |
+| updated_at | timestamptz, default now() | Last edit timestamp |
+
+SQL: included in [sql/migration_db.sql](sql/migration_db.sql)
+
+RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
+
+## Files Added
+
+- `docs/sql/migration_db.sql` (embedded `pin_boards` section)
+- `data/pinboard/PinBoardRemoteDataSource.kt` — Supabase PostgREST fetch + upsert
+- `data/pinboard/PinBoardInteractor.kt` — load / save orchestration
+- `presentation/pinboard/PinBoardViewModel.kt` — UI state, debounced auto-save
+- `presentation/pinboard/PinBoardScreen.kt` — Compose editor with toolbar + footer
+
+## Files Modified
+
+- `presentation/navigation/SplitEaseNavHost.kt` — added `PIN_BOARD` route + composable
+- `presentation/groups/GroupsScreens.kt` — added `onOpenPinBoard` callback + action chip
+- `res/values/strings.xml` — pin board string resources
+
+## Screens / UI Added
+
+- **PinBoardScreen** — full-screen Markdown editor with:
+  - `SeTopBar` with back arrow
+  - Toolbar row (Bold, Italic, Checklist, Link, Image)
+  - `BasicTextField` for editing
+  - Footer showing saving state or last editor name
+
+## How to Test
+
+1. Run `docs/sql/migration_db.sql` in Supabase SQL Editor.
+2. Open a group with 2+ members (both signed in on separate devices).
+3. Tap the "Pin Board" chip on the group detail screen.
+4. Type content; wait 2 seconds — content auto-saves.
+5. Open the same group's pin board on the second device — content should appear.
+6. Edit on device 2 → navigate back → reopen on device 1 — latest content visible.
+
+## Known Issues / TODOs
+
+- No offline cache — board requires network connectivity.
+- No real-time push — second device sees updates only on (re-)open, not live.
+- Content is raw Markdown source, not rendered. A Markdown renderer can be added later.
+- No image upload — images must be pasted as external URLs.
+
+## Screenshots
+
+*(placeholder)*

@@ -40,12 +40,12 @@ Use this list as the implementation backlog. Mark items when done.
 | # | Change | Status | Notes |
 |---|---|---|---|
 | B1 | Choose push stack (recommend **FCM** + Supabase Edge Function; ask before adding libs) | **Done** | FCM + Edge Function ([fcm-setup.md](fcm-setup.md)) |
-| B2 | Store device push tokens per user (`device_tokens` table + RLS) | **Done** | [sql/phase-extras-device-tokens.sql](sql/phase-extras-device-tokens.sql) |
+| B2 | Store device push tokens per user (`device_tokens` table + RLS) | **Done** | [sql/migration_db.sql](sql/migration_db.sql) |
 | B3 | On expense/payment insert/update/delete, notify other **group members** (exclude actor) | **Done** | Edge Function + webhook/trigger ([sql/phase-extras-notify-triggers.sql](sql/phase-extras-notify-triggers.sql)) |
 | B4 | Notification copy: actor, group name, action (“Ada added “Dinner” · ₹1,200”) | **Done** | Built in `notify-group-members` |
 | B5 | Tap notification → open `group_detail/{groupId}` (App Links / intent extras) | **Done** | Intent extra + `pending_notification_group_id` |
 | B6 | In-app Activity feed already lists own activity — extend or badge when remote events arrive | TODO | Optional if push is delayed |
-| B7 | Supabase Realtime channel while group detail is open (live list without leaving screen) | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/phase-extras-realtime-expenses-payments.sql](sql/phase-extras-realtime-expenses-payments.sql) |
+| B7 | Supabase Realtime channel while group detail is open (live list without leaving screen) | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/migration_db.sql](sql/migration_db.sql) |
 | B8 | Notification preferences (mute group / mute all) | TODO | Settings later |
 
 ### C. Docs / ops
@@ -53,7 +53,7 @@ Use this list as the implementation backlog. Mark items when done.
 | # | Change | Status | Notes |
 |---|---|---|---|
 | C1 | This extras doc | **Done** | |
-| C2 | SQL for `device_tokens` + notify trigger | **Done** | phase-extras-device-tokens + notify-triggers |
+| C2 | SQL for `device_tokens` + notify trigger | **Done** | migration_db.sql + notify-triggers |
 | C3 | Flag free-tier FCM / Edge Function / Realtime cost in Known Issues | **Done** | See Known Issues below + [fcm-setup.md](fcm-setup.md) |
 
 ---

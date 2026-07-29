@@ -89,8 +89,7 @@ class ExpenseInteractor
         suspend fun createExpense(input: CreateExpenseInput): Result<Expense> =
             runCatching {
                 val built = buildExpenseAndSplits(input = input, existing = null)
-                expenseRepository.upsertExpenseWithSplits(built.expense, built.splits)
-                val synced = pushOrKeepPending(built.expense, built.splits)
+                val synced = pushAndPersistSynced(expense = built.expense, splits = built.splits)
                 recordExpenseActivity(
                     kind = ActivityEventKind.EXPENSE_ADDED,
                     expense = synced,
@@ -116,8 +115,7 @@ class ExpenseInteractor
                     expenseRepository.getExpenseById(expenseId)
                         ?: error("Expense not found.")
                 val built = buildExpenseAndSplits(input = input, existing = existing)
-                expenseRepository.upsertExpenseWithSplits(built.expense, built.splits)
-                val synced = pushOrKeepPending(built.expense, built.splits)
+                val synced = pushAndPersistSynced(expense = built.expense, splits = built.splits)
                 recordExpenseActivity(
                     kind = ActivityEventKind.EXPENSE_UPDATED,
                     expense = synced,
@@ -376,7 +374,7 @@ class ExpenseInteractor
             return BuiltExpense(expense, splits)
         }
 
-        private suspend fun pushOrKeepPending(
+        private suspend fun pushAndPersistSynced(
             expense: Expense,
             splits: List<ExpenseSplit>,
         ): Expense {
@@ -389,13 +387,7 @@ class ExpenseInteractor
                 }.exceptionOrNull()
 
             if (pushError == null) {
-                val synced =
-                    expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
-                expenseRepository.upsertExpenseWithSplits(
-                    synced,
-                    splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
-                )
-                return synced
+                return persistSyncedExpense(expense, splits)
             }
 
             // Retry once after another social flush (group may have been PENDING).
@@ -403,25 +395,34 @@ class ExpenseInteractor
             val retryError =
                 runCatching {
                     pushExpense(expense, splits)
-                    val synced =
-                        expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
-                    expenseRepository.upsertExpenseWithSplits(
-                        synced,
-                        splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
-                    )
-                    synced
+                    persistSyncedExpense(expense, splits)
                 }.exceptionOrNull()
 
             if (retryError == null) {
-                return expenseRepository.getExpenseById(expense.id) ?: expense
+                return expenseRepository.getExpenseById(expense.id)
+                    ?: error("Cloud save succeeded but local read failed.")
             }
 
+            // Cloud push failed — persist locally so the expense is not lost.
             android.util.Log.w(
                 "ExpenseSync",
-                "Expense stayed PENDING: ${expense.description}",
+                "Cloud save failed for expense: ${expense.description}; saving locally",
                 retryError ?: pushError,
             )
+            expenseRepository.upsertExpenseWithSplits(expense, splits)
             return expense
+        }
+
+        private suspend fun persistSyncedExpense(
+            expense: Expense,
+            splits: List<ExpenseSplit>,
+        ): Expense {
+            val synced = expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
+            expenseRepository.upsertExpenseWithSplits(
+                synced,
+                splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
+            )
+            return synced
         }
 
         private suspend fun recordExpenseActivity(

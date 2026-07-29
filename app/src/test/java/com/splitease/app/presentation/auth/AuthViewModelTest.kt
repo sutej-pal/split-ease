@@ -44,6 +44,10 @@ class AuthViewModelTest {
         every { repository.observeSession() } returns sessionFlow
         every { appSettings.observePendingInviteToken() } returns flowOf(null)
         every { context.getString(R.string.error_generic) } returns "Something went wrong. Try again."
+        every { context.getString(R.string.error_invalid_credentials) } returns
+            "Invalid email or password. Try again."
+        every { context.getString(R.string.error_not_registered) } returns
+            "You're not registered with us. Please sign up."
         every { context.getString(R.string.verify_email_sent) } returns
             "Account created. Check your email for a verification code."
         every { context.getString(R.string.verify_email_resent) } returns
@@ -52,6 +56,11 @@ class AuthViewModelTest {
             "Enter a valid 6-digit code."
         every { context.getString(R.string.signup_complete_message) } returns
             "Signup complete. You can continue to the app."
+        every { context.getString(R.string.signup_error_name_required) } returns
+            "Enter your full name."
+        every { context.getString(R.string.signup_error_password_short) } returns
+            "Password must be at least 8 characters."
+        coEvery { appSettings.setCurrencyCode(any()) } returns Unit
         viewModel = AuthViewModel(repository, appSettings, context)
     }
 
@@ -82,6 +91,34 @@ class AuthViewModelTest {
         }
 
     @Test
+    fun `signIn unknown email shows not registered message`() =
+        runTest {
+            coEvery { repository.signIn(any(), any()) } returns
+                Result.failure(IllegalStateException("invalid_credentials"))
+            coEvery { repository.isEmailRegistered("new@b.com") } returns Result.success(false)
+            viewModel.signIn("new@b.com", "secret1")
+            advanceUntilIdle()
+            assertEquals(
+                "You're not registered with us. Please sign up.",
+                viewModel.formState.value.errorMessage,
+            )
+        }
+
+    @Test
+    fun `signIn wrong password shows invalid credentials`() =
+        runTest {
+            coEvery { repository.signIn(any(), any()) } returns
+                Result.failure(IllegalStateException("Invalid login credentials"))
+            coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
+            viewModel.signIn("a@b.com", "bad")
+            advanceUntilIdle()
+            assertEquals(
+                "Invalid email or password. Try again.",
+                viewModel.formState.value.errorMessage,
+            )
+        }
+
+    @Test
     fun `sendPasswordReset shows success message`() =
         runTest {
             coEvery { repository.sendPasswordReset(any()) } returns Result.success(Unit)
@@ -91,11 +128,12 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `signUp always gates on OTP screen`() =
+    fun `signUp gates on OTP when confirmation is pending`() =
         runTest {
-            coEvery { repository.signUp(any(), any(), any()) } returns
-                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
-            viewModel.signUp("a@b.com", "secret1", "Ada")
+            coEvery {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            } returns Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
+            viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
             assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
             assertEquals(
@@ -105,13 +143,18 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `signUp gates on OTP even when repository returns SignedIn`() =
+    fun `signUp skips OTP gate when repository returns SignedIn`() =
         runTest {
-            coEvery { repository.signUp(any(), any(), any()) } returns
-                Result.success(SignUpResult.SignedIn)
-            viewModel.signUp("a@b.com", "secret1", "Ada")
+            coEvery {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            } returns Result.success(SignUpResult.SignedIn)
+            viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
-            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals(
+                "Signup complete. You can continue to the app.",
+                viewModel.formState.value.infoMessage,
+            )
         }
 
     @Test
@@ -135,10 +178,11 @@ class AuthViewModelTest {
     @Test
     fun `verifySignupOtp with valid 6-digit code calls repository and clears pending`() =
         runTest {
-            coEvery { repository.signUp(any(), any(), any()) } returns
-                Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
+            coEvery {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            } returns Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
             coEvery { repository.verifySignupOtp(any(), any()) } returns Result.success(Unit)
-            viewModel.signUp("a@b.com", "secret1", "Ada")
+            viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
             viewModel.verifySignupOtp("a@b.com", "123456")
             advanceUntilIdle()

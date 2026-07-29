@@ -28,16 +28,19 @@ Historical docs remain for auditability and phase traceability. New work should 
 - `phase-bundles.md` for condensed phase history
 - specific phase docs only when deep context is required
 
-## SQL (apply in Supabase in order)
+## SQL (apply in Supabase)
 
-1. [sql/phase-3-schema.sql](sql/phase-3-schema.sql)
-2. [sql/phase-3b-invites.sql](sql/phase-3b-invites.sql)
-3. [sql/phase-3c-invite-join.sql](sql/phase-3c-invite-join.sql)
-4. [sql/phase-3d-fix-groups-rls-recursion.sql](sql/phase-3d-fix-groups-rls-recursion.sql) (if needed)
-5. [sql/phase-3e-fix-group-members-select.sql](sql/phase-3e-fix-group-members-select.sql)
-6. [sql/phase-4-expenses.sql](sql/phase-4-expenses.sql)
-7. [sql/phase-4b-expense-rls-fix.sql](sql/phase-4b-expense-rls-fix.sql) (existing projects)
-8. [sql/phase-6-payments.sql](sql/phase-6-payments.sql)
-9. [sql/phase-extras-realtime-expenses-payments.sql](sql/phase-extras-realtime-expenses-payments.sql)
-10. [sql/phase-extras-device-tokens.sql](sql/phase-extras-device-tokens.sql)
-11. Optional notify triggers / FCM: [sql/phase-extras-notify-triggers.sql](sql/phase-extras-notify-triggers.sql) + [fcm-setup.md](fcm-setup.md)
+1. Fresh DB: [sql/migration_db.sql](sql/migration_db.sql) (single-run baseline — schema, RLS, invites, expenses, payments, realtime, device tokens, pin boards, auth email RPC)
+2. Optional notify triggers / FCM: [sql/phase-extras-notify-triggers.sql](sql/phase-extras-notify-triggers.sql) + [fcm-setup.md](fcm-setup.md)
+
+### Clipboard helper
+
+Copy the canonical migration (optionally with notify triggers) to the clipboard:
+
+```powershell
+.\scripts\build-supabase-bootstrap-sql.ps1 -CopyToClipboard
+```
+
+```powershell
+.\scripts\build-supabase-bootstrap-sql.ps1 -IncludeOptionalNotifyTriggers -CopyToClipboard
+```

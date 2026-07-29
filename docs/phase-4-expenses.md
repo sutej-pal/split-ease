@@ -35,7 +35,7 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 ## Data Model Changes
 
 - Room: remap helpers on `expenses` / `expense_splits` / `group_members` (no schema version bump).
-- Supabase: `docs/sql/phase-4-expenses.sql` — tables + RLS + accept RPC remap.
+- Supabase: `docs/sql/migration_db.sql` — tables + RLS + accept RPC remap.
 - Local remap when friend placeholder → real id on friends refresh.
 
 ## Files Added/Modified
@@ -45,7 +45,7 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 | `domain/split/SplitCalculator.kt` | Equal / unequal / % / shares |
 | `data/expense/ExpenseInteractor.kt` | Create + sync + refresh |
 | `data/remote/ExpenseRemoteDataSource.kt` | PostgREST expenses |
-| `docs/sql/phase-4-expenses.sql` | Cloud schema + accept remap |
+| `docs/sql/migration_db.sql` | Cloud schema + accept remap |
 | `presentation/expenses/*` | Add expense, friend detail, list section |
 | `presentation/groups/GroupsScreens.kt` | Expense list + FAB |
 | `presentation/friends/FriendsScreens.kt` | Open friend detail |
@@ -60,7 +60,7 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 
 ## How to Test
 
-1. Run `docs/sql/phase-4-expenses.sql` in Supabase (after phase-3 + 3b).
+1. Run `docs/sql/migration_db.sql` in Supabase (fresh DB).
 2. User A: add friend by email (non-user) → share invite → open friend → Add expense including invited person.
 3. User A: invite email into a group → Add group expense with that participant.
 4. User B: sign up with the **same invited email** → open Friends/Groups → expenses appear after sync.
@@ -95,6 +95,6 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 
 Phase 4 delivered expense creation with all four split modes, Room + Supabase sync, and support for **invited users as participants immediately**. On sign-up/sign-in, `accept_pending_invites()` remaps placeholder ids on friends, splits, and payer; the client refreshes expenses so the new user sees history. Version **0.5.0**.
 
-**Required SQL:** `docs/sql/phase-4-expenses.sql` (redefines `accept_pending_invites()` — run after phase-3b).
+**Required SQL:** `docs/sql/migration_db.sql` (includes `accept_pending_invites()` remap).
 
 **Next:** Phase 5 — Balances & Debt Simplification.

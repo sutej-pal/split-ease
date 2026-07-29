@@ -154,7 +154,7 @@ fun SeActionChip(
 ) {
     val bg = if (selected) SplitEaseColors.PrimarySoft else SplitEaseColors.Surface
     val content = if (selected) SplitEaseColors.PrimaryDark else SplitEaseColors.Navy
-    val border = if (selected) SplitEaseColors.Primary else SplitEaseColors.OutlineStrong
+    val border = if (selected) SplitEaseColors.Primary else SplitEaseColors.Outline
     Row(
         modifier =
             modifier

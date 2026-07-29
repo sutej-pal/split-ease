@@ -28,7 +28,7 @@ Let signed-in users manage friends (add by email) and groups (create/edit, add m
 | Supabase PostgREST instead of Firestore | Matches Phase 2 backend choice |
 | Room write-first, then best-effort cloud upsert | Offline-first; pending rows kept if sync fails |
 | `profiles` table mirroring auth users | Enables friend lookup by email without exposing `auth.users` |
-| SQL schema shipped as `docs/sql/phase-3-schema.sql` | Anon key cannot create tables; apply once in SQL editor |
+| SQL schema shipped as `docs/sql/migration_db.sql` | Anon key cannot create tables; apply once in SQL editor |
 | `SocialInteractor` in `data/social` | Orchestrates Room + remote without polluting domain |
 | Nested signed-in NavHost from Home | Keeps auth graph separate from app graph |
 
@@ -36,7 +36,7 @@ Let signed-in users manage friends (add by email) and groups (create/edit, add m
 
 Room schema unchanged (v1).
 
-Supabase public tables (see [phase-3-schema.sql](./sql/phase-3-schema.sql)):
+Supabase public tables (see [migration_db.sql](./sql/migration_db.sql)):
 
 | Table | Purpose |
 |---|---|
@@ -49,7 +49,7 @@ Supabase public tables (see [phase-3-schema.sql](./sql/phase-3-schema.sql)):
 
 | File path | Purpose |
 |---|---|
-| `docs/sql/phase-3-schema.sql` | Supabase DDL + RLS |
+| `docs/sql/migration_db.sql` | Supabase DDL + RLS |
 | `data/remote/dto/SocialDtos.kt` | PostgREST DTOs |
 | `data/remote/SocialRemoteDataSource.kt` | PostgREST calls |
 | `data/social/SocialInteractor.kt` | Add friend / create group / refresh |
@@ -76,7 +76,7 @@ Supabase public tables (see [phase-3-schema.sql](./sql/phase-3-schema.sql)):
 
 ### One-time Supabase setup
 1. Open Supabase Dashboard → SQL Editor.
-2. Paste and run [`docs/sql/phase-3-schema.sql`](./sql/phase-3-schema.sql).
+2. Paste and run [`docs/sql/migration_db.sql`](./sql/migration_db.sql).
 3. Confirm tables `profiles`, `friends`, `groups`, `group_members` exist.
 
 ### Manual
@@ -96,8 +96,7 @@ Supabase public tables (see [phase-3-schema.sql](./sql/phase-3-schema.sql)):
 ## Known Issues / TODOs carried forward
 
 - **Must run SQL** before cloud sync works; local Room still works offline without it.
-  - Base: `docs/sql/phase-3-schema.sql`
-  - Invites: `docs/sql/phase-3b-invites.sql` (`invites` + `accept_pending_invites()`)
+  - Canonical: `docs/sql/migration_db.sql` (profiles, groups, invites + `accept_pending_invites()`, expenses, payments, …)
 - Non-users can be invited by email; MVP shares a link via the system share sheet (no automated SMTP yet).
 - Invite landing URL `https://splitease.app/invite/{token}` is a placeholder until deep links / web are wired.
 - Sync conflicts / offline queue still Phase 7.
@@ -128,6 +127,6 @@ Phase 3 delivered friends and groups UI with Room-first persistence and Supabase
 
 **Invite follow-up (v0.4.1):** Adding a friend/group member by email no longer requires an existing SplitEase account. Non-users get a pending friend row + `invites` record; the app opens a share sheet with the invite link. On sign-up/sign-in, `accept_pending_invites()` links the friendship and (for group invites) adds membership.
 
-**Required before cloud sync:** run `docs/sql/phase-3-schema.sql` and `docs/sql/phase-3b-invites.sql` in the Supabase SQL Editor.
+**Required before cloud sync:** run `docs/sql/migration_db.sql` in the Supabase SQL Editor.
 
 **Next:** Phase 4 — Expense Creation & Splitting Logic.

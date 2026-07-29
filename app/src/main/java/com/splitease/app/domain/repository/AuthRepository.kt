@@ -29,9 +29,21 @@ interface AuthRepository {
      * @param email User email.
      * @param password Password (min length enforced by Supabase).
      * @param displayName Optional display name stored in user metadata.
+     * @param phoneCountryCode Optional dialing code (e.g. `+91`).
+     * @param phoneNumber Optional national phone number.
+     * @param currencyCode Preferred ISO 4217 currency stored in metadata + profile.
+     * @param photoUri Optional local avatar URI (content:// or file path).
      * @return [Result] of [SignUpResult] (session created vs pending email confirmation).
      */
-    suspend fun signUp(email: String, password: String, displayName: String): Result<SignUpResult>
+    suspend fun signUp(
+        email: String,
+        password: String,
+        displayName: String,
+        phoneCountryCode: String = "+91",
+        phoneNumber: String = "",
+        currencyCode: String = "INR",
+        photoUri: String? = null,
+    ): Result<SignUpResult>
 
     /**
      * Signs in with email and password.
@@ -41,6 +53,15 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun signIn(email: String, password: String): Result<Unit>
+
+    /**
+     * Returns whether [email] already has an Auth account (for login error messaging).
+     * Safe to call while signed out.
+     *
+     * @param email Candidate account email.
+     * @return true when registered; false when not; failure when the check could not run.
+     */
+    suspend fun isEmailRegistered(email: String): Result<Boolean>
 
     /**
      * Resends the signup confirmation email (with a fresh OTP) when Confirm email is enabled.

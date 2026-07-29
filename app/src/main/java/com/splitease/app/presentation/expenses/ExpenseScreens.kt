@@ -72,7 +72,9 @@ import com.splitease.app.domain.model.SplitType
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeLoadingOverlay
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeScreen
@@ -226,6 +228,10 @@ fun AddExpenseScreen(
             SplitType.PERCENTAGE -> stringResource(R.string.split_percentage)
             SplitType.SHARES -> stringResource(R.string.split_shares)
         }
+    var groupName by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(groupId) {
+        groupName = groupId?.let { viewModel.getGroupName(it) }
+    }
     val others = participants.filter { it.userId != me }
     val allOthersSelected = others.isNotEmpty() && others.all { it.userId in selected }
     val dateTimeLabel =
@@ -235,19 +241,32 @@ fun AddExpenseScreen(
         }
 
     fun saveExpense() {
-        val unequal =
-            selected.associateWith { id ->
-                BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
-            }
-        val percents =
-            selected.associateWith { id ->
-                BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
-            }
-        val sharesMap =
-            selected.associateWith { id ->
-                shareTexts[id]?.trim()?.toIntOrNull() ?: 1
-            }
-        if (isEdit && expenseId != null) {
+        if (uiState.isSubmitting) return
+        if (isEdit) {
+            val unequal =
+                if (mode == SplitType.UNEQUAL) {
+                    selected.associateWith { id ->
+                        BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                    }
+                } else {
+                    emptyMap()
+                }
+            val percents =
+                if (mode == SplitType.PERCENTAGE) {
+                    selected.associateWith { id ->
+                        BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                    }
+                } else {
+                    emptyMap()
+                }
+            val sharesMap =
+                if (mode == SplitType.SHARES) {
+                    selected.associateWith { id ->
+                        shareTexts[id]?.trim()?.toIntOrNull() ?: 1
+                    }
+                } else {
+                    emptyMap()
+                }
             viewModel.updateExpense(
                 expenseId = expenseId,
                 description = title,
@@ -256,25 +275,50 @@ fun AddExpenseScreen(
                 participantIds = selected.toList(),
                 splitType = mode,
                 groupId = groupId ?: editingExpense?.expense?.groupId,
-                unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
-                percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
-                shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
+                unequalAmounts = unequal,
+                percentages = percents,
+                shares = sharesMap,
                 categoryId = editingExpense?.expense?.categoryId,
                 notes = notes.trim().ifBlank { null },
                 expenseDateEpochMs = expenseDateMs,
                 onSuccess = onDone,
             )
         } else {
+            val unequal =
+                if (mode == SplitType.UNEQUAL) {
+                    selected.associateWith { id ->
+                        BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                    }
+                } else {
+                    emptyMap()
+                }
+            val percents =
+                if (mode == SplitType.PERCENTAGE) {
+                    selected.associateWith { id ->
+                        BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                    }
+                } else {
+                    emptyMap()
+                }
+            val sharesMap =
+                if (mode == SplitType.SHARES) {
+                    selected.associateWith { id ->
+                        shareTexts[id]?.trim()?.toIntOrNull() ?: 1
+                    }
+                } else {
+                    emptyMap()
+                }
             viewModel.createExpense(
                 description = title,
                 amountText = amount,
+                currencyCode = currencyCode,
                 paidByUserId = paidBy,
                 participantIds = selected.toList(),
                 splitType = mode,
                 groupId = groupId,
-                unequalAmounts = if (mode == SplitType.UNEQUAL) unequal else emptyMap(),
-                percentages = if (mode == SplitType.PERCENTAGE) percents else emptyMap(),
-                shares = if (mode == SplitType.SHARES) sharesMap else emptyMap(),
+                unequalAmounts = unequal,
+                percentages = percents,
+                shares = sharesMap,
                 recurrenceFrequency = RecurrenceFrequency.NONE,
                 categoryId = null,
                 notes = notes.trim().ifBlank { null },
@@ -300,22 +344,31 @@ fun AddExpenseScreen(
                         selected.isNotEmpty() &&
                         paidBy in selected,
             ) {
-                Icon(
-                    Icons.Filled.Check,
-                    contentDescription = stringResource(R.string.cd_save_expense),
-                    tint = SplitEaseColors.Primary,
-                )
+                if (uiState.isSubmitting) {
+                    SeInlineLoader()
+                } else {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = stringResource(R.string.cd_save_expense),
+                        tint = SplitEaseColors.Primary,
+                    )
+                }
             }
         },
         content = { padding ->
-            Column(
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                        .padding(padding.values),
             ) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -326,43 +379,51 @@ fun AddExpenseScreen(
                         color = SplitEaseColors.Navy,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        if (others.isNotEmpty()) {
-                            ParticipantChip(
-                                label = stringResource(R.string.expense_everyone),
-                                selected = allOthersSelected && me in selected,
-                                onClick = {
-                                    selected =
-                                        if (allOthersSelected) {
-                                            setOfNotNull(me)
-                                        } else {
-                                            participants.map { it.userId }.toSet()
+                    if (groupId != null && groupName != null) {
+                        ParticipantChip(
+                            label = stringResource(R.string.expense_all_of_group, groupName!!),
+                            selected = true,
+                            onClick = {},
+                        )
+                    } else {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (others.isNotEmpty()) {
+                                ParticipantChip(
+                                    label = stringResource(R.string.expense_everyone),
+                                    selected = allOthersSelected && me in selected,
+                                    onClick = {
+                                        selected =
+                                            if (allOthersSelected) {
+                                                setOfNotNull(me)
+                                            } else {
+                                                participants.map { it.userId }.toSet()
+                                            }
+                                        if (paidBy !in selected) {
+                                            paidBy = me.orEmpty()
                                         }
-                                    if (paidBy !in selected) {
-                                        paidBy = me.orEmpty()
-                                    }
-                                },
-                            )
-                        }
-                        others.forEach { option ->
-                            ParticipantChip(
-                                label = option.label,
-                                selected = option.userId in selected,
-                                onClick = {
-                                    selected =
-                                        if (option.userId in selected) {
-                                            (selected - option.userId).ifEmpty { setOfNotNull(me) }
-                                        } else {
-                                            selected + option.userId
+                                    },
+                                )
+                            }
+                            others.forEach { option ->
+                                ParticipantChip(
+                                    label = option.label,
+                                    selected = option.userId in selected,
+                                    onClick = {
+                                        selected =
+                                            if (option.userId in selected) {
+                                                (selected - option.userId).ifEmpty { setOfNotNull(me) }
+                                            } else {
+                                                selected + option.userId
+                                            }
+                                        if (paidBy !in selected) {
+                                            paidBy = me.orEmpty()
                                         }
-                                    if (paidBy !in selected) {
-                                        paidBy = me.orEmpty()
-                                    }
-                                },
-                            )
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -383,8 +444,15 @@ fun AddExpenseScreen(
                 Spacer(modifier = Modifier.height(20.dp))
                 ExpenseUnderlineField(
                     value = amount,
-                    onValueChange = { amount = it },
-                    placeholder = stringResource(R.string.label_amount),
+                    onValueChange = { raw ->
+                        val filtered = raw.filter { c -> c.isDigit() || c == '.' }
+                        val parts = filtered.split(".")
+                        amount = when {
+                            parts.size <= 1 -> filtered
+                            else -> parts[0] + "." + parts[1].take(2)
+                        }
+                    },
+                    placeholder = "0.00",
                     leadingLabel = currencySymbol(currencyCode),
                     enabled = !uiState.isSubmitting,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -496,7 +564,12 @@ fun AddExpenseScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     SeErrorText(it)
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+                SeLoadingOverlay(
+                    visible = uiState.isSubmitting,
+                    text = stringResource(R.string.expense_saving),
+                )
             }
         },
     )
@@ -650,7 +723,7 @@ private fun ParticipantChip(
             FilterChipDefaults.filterChipBorder(
                 enabled = true,
                 selected = selected,
-                borderColor = SplitEaseColors.OutlineStrong,
+                borderColor = SplitEaseColors.Outline,
                 selectedBorderColor = SplitEaseColors.Primary,
             ),
     )
@@ -666,7 +739,7 @@ private fun ChoicePill(
         modifier =
             Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, SplitEaseColors.OutlineStrong, RoundedCornerShape(10.dp))
+                .border(1.dp, SplitEaseColors.Outline, RoundedCornerShape(10.dp))
                 .background(SplitEaseColors.Surface)
                 .clickable(enabled = enabled, onClick = onClick)
                 .padding(horizontal = 12.dp, vertical = 8.dp),

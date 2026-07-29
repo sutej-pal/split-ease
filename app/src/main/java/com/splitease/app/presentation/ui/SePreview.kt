@@ -13,6 +13,9 @@ import com.splitease.app.presentation.theme.SplitEaseTheme
 
 /**
  * Wraps [content] in [SplitEaseTheme] for Android Studio / Compose previews.
+ *
+ * Mirrors [com.splitease.app.MainActivity]'s theme + [Surface] host so full-screen
+ * previews match the device (no extra padding; default surface color).
  */
 @Composable
 fun SePreview(
@@ -20,10 +23,8 @@ fun SePreview(
     content: @Composable () -> Unit,
 ) {
     SplitEaseTheme(darkTheme = darkTheme, dynamicColor = false) {
-        Surface(modifier = Modifier.fillMaxSize(), color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
-            Box(modifier = Modifier.padding(16.dp)) {
-                content()
-            }
+        Surface(modifier = Modifier.fillMaxSize()) {
+            content()
         }
     }
 }

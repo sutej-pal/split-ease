@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.ui
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -16,11 +17,38 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.splitease.app.presentation.theme.SplitEaseColors
+
+@Composable
+fun SeSystemBars(
+    statusBarColor: Color,
+    navigationBarColor: Color,
+    statusBarDarkIcons: Boolean,
+    navigationBarDarkIcons: Boolean,
+) {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+    SideEffect {
+        val window = (view.context as? Activity)?.window ?: return@SideEffect
+        @Suppress("DEPRECATION")
+        window.statusBarColor = statusBarColor.toArgb()
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = navigationBarColor.toArgb()
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = statusBarDarkIcons
+            isAppearanceLightNavigationBars = navigationBarDarkIcons
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,6 +119,13 @@ fun SeScreen(
     floatingActionButton: @Composable () -> Unit = {},
     content: @Composable (padding: PaddingValuesAware) -> Unit,
 ) {
+    val bg = MaterialTheme.colorScheme.background
+    SeSystemBars(
+        statusBarColor = bg,
+        navigationBarColor = bg,
+        statusBarDarkIcons = true,
+        navigationBarDarkIcons = true,
+    )
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
