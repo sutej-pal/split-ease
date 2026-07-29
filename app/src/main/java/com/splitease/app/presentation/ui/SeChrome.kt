@@ -19,6 +19,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Modifier
@@ -120,11 +121,12 @@ fun SeScreen(
     content: @Composable (padding: PaddingValuesAware) -> Unit,
 ) {
     val bg = MaterialTheme.colorScheme.background
+    val lightIconsOnBars = bg.luminance() > 0.5f
     SeSystemBars(
         statusBarColor = bg,
         navigationBarColor = bg,
-        statusBarDarkIcons = true,
-        navigationBarDarkIcons = true,
+        statusBarDarkIcons = lightIconsOnBars,
+        navigationBarDarkIcons = lightIconsOnBars,
     )
     Scaffold(
         modifier = modifier,

@@ -299,7 +299,7 @@
     <string name="expense_saving">Saving expense…</string>
     <string name="msg_expense_updated">Expense updated.</string>
     <string name="msg_expense_deleted">Expense deleted.</string>
-    <string name="msg_expense_saved_not_synced">Expense saved on this device, but cloud sync failed. Stay online and open Account → Sync now, or it may disappear after reinstall/login.</string>
+    <string name="msg_expense_saved_not_synced">Expense saved on this device, but cloud sync failed — other members won\'t see it yet. Connect to the internet and pull to refresh the group to retry.</string>
     <string name="msg_expense_cloud_rls">Could not save to cloud due to Supabase permissions (RLS). Verify you are a member of this group and run docs/sql/phase-4b-expense-rls-fix.sql in Supabase SQL Editor.</string>
     <string name="expense_detail_title">Expense</string>
     <string name="expense_not_found">Expense not found.</string>

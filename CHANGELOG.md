@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Sign-up screen redesigned (welcome header, full name + photo, phone + dial code, currency preference, terms links, Done CTA); profile fields `phone_country_code`, `phone_number`, `preferred_currency` on Supabase `profiles` + Room `users` ([sql/phase-auth-signup-profile.sql](docs/sql/phase-auth-signup-profile.sql))
-- Group Pin Board — shared per-group notepad (Markdown) accessible from the group detail action chips; auto-saves with 2-second debounce; online-only via Supabase `pin_boards` table
-
 ### Fixed
+- Dark theme text was near-invisible: `SplitEaseColors` light-only aliases (`Navy`, surfaces, etc.) now resolve from `MaterialTheme.colorScheme`; status/nav bar icon contrast follows background luminance
+- Group invite share links opened the app but never joined the group: share-link invites stored the inviter's email, so `accept_pending_invites` auto-accepted (burned) the link on the inviter's next sync; share links now use a placeholder email, email-accept skips token-only rows, and token-accept keeps share links multi-use ([sql/phase-3f-fix-group-share-invite-burn.sql](docs/sql/phase-3f-fix-group-share-invite-burn.sql))
+- Expense create/update now warns when cloud sync fails (local-only save); co-members cannot see expenses that never reached Supabase
+- Pull-to-refresh on Groups home, group detail, groups list, and Friends (was wired in ViewModels but never shown in UI)
 - Co-member expenses never appeared on other devices: default category ids were random per install, so Room rejected the remote row on `categoryId` FK; pull now drops unknown categories and seeds stable default ids on fresh installs
 - Non-creator group members could only sync themselves (RLS); co-members can now SELECT all `group_members` rows ([sql/migration_db.sql](docs/sql/migration_db.sql))
 - Group settings showed UUID prefixes for members not in the local friends list; member sync now loads `profiles` into Room and the UI falls back to that display name
@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Group invite links failed when the group had not synced to Supabase (FK); invites are now pushed after ensuring the group exists, and pending invites are flushed on sync
 
 ### Added
+- Sign-up screen redesigned (welcome header, full name + photo, phone + dial code, currency preference, terms links, Done CTA); profile fields `phone_country_code`, `phone_number`, `preferred_currency` on Supabase `profiles` + Room `users` ([sql/phase-auth-signup-profile.sql](docs/sql/phase-auth-signup-profile.sql))
+- Group Pin Board — shared per-group notepad (Markdown) accessible from the group detail action chips; auto-saves with 2-second debounce; online-only via Supabase `pin_boards` table
 - Live group ledger via Supabase Realtime while group detail is open (`GroupLiveSync` + [sql/migration_db.sql](docs/sql/migration_db.sql))
 - FCM push for other group members on expense/payment changes (`device_tokens`, Edge Function `notify-group-members`, [fcm-setup.md](docs/fcm-setup.md))
 - Deferred invite deep link: mail-service Play Store fallback with `referrer=invite_token%3D…` + Android Play Install Referrer bootstrap into `pending_invite_token` (same OTP / accept path as live deep links)

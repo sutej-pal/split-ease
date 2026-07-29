@@ -249,16 +249,16 @@ begin
 
   for inv in
     select * from public.invites
-    where lower(email) = v_email and status = 'PENDING'
+    where lower(email) = v_email
+      and status = 'PENDING'
+      and friend_row_id is not null
   loop
-    if inv.friend_row_id is not null then
-      update public.friends
-      set friend_user_id = v_uid,
-          display_name_snapshot = v_name,
-          email_snapshot = v_email,
-          updated_at_epoch_ms = now_ms
-      where id = inv.friend_row_id;
-    end if;
+    update public.friends
+    set friend_user_id = v_uid,
+        display_name_snapshot = v_name,
+        email_snapshot = v_email,
+        updated_at_epoch_ms = now_ms
+    where id = inv.friend_row_id;
 
     if inv.kind = 'GROUP' and inv.group_id is not null then
       insert into public.group_members (id, group_id, user_id, role, joined_at_epoch_ms)
@@ -357,6 +357,7 @@ begin
       where i.group_id = inv.group_id
         and i.status = 'PENDING'
         and i.token <> inv.token
+        and i.friend_row_id is not null
     ) members;
   else
     v_members := '[]'::jsonb;
@@ -420,6 +421,11 @@ begin
     return 0;
   end if;
 
+  -- Inviter opening their own share link must not consume / no-op join.
+  if inv.inviter_user_id = v_uid then
+    return 0;
+  end if;
+
   old_friend_uid := null;
 
   if inv.friend_row_id is not null then
@@ -460,10 +466,13 @@ begin
     on conflict (group_id, user_id) do nothing;
   end if;
 
-  update public.invites
-  set status = 'ACCEPTED',
-      email = v_email
-  where id = inv.id;
+  -- Person-specific invites are single-use; generic share links stay PENDING.
+  if inv.friend_row_id is not null then
+    update public.invites
+    set status = 'ACCEPTED',
+        email = v_email
+    where id = inv.id;
+  end if;
 
   return 1;
 end;
@@ -768,32 +777,41 @@ begin
 
   for inv in
     select * from public.invites
-    where lower(email) = v_email and status = 'PENDING'
+    where lower(email) = v_email
+      and status = 'PENDING'
+      and friend_row_id is not null
   loop
     old_friend_uid := null;
 
-    if inv.friend_row_id is not null then
-      select friend_user_id into old_friend_uid
-      from public.friends
-      where id = inv.friend_row_id;
+    select friend_user_id into old_friend_uid
+    from public.friends
+    where id = inv.friend_row_id;
 
-      if old_friend_uid is not null and old_friend_uid <> v_uid then
-        update public.expense_splits
-        set user_id = v_uid
-        where user_id = old_friend_uid;
+    if old_friend_uid is not null and old_friend_uid <> v_uid then
+      update public.expense_splits
+      set user_id = v_uid
+      where user_id = old_friend_uid;
 
-        update public.expenses
-        set paid_by_user_id = v_uid
-        where paid_by_user_id = old_friend_uid;
-      end if;
+      update public.expenses
+      set paid_by_user_id = v_uid
+      where paid_by_user_id = old_friend_uid;
 
-      update public.friends
-      set friend_user_id = v_uid,
-          display_name_snapshot = v_name,
-          email_snapshot = v_email,
-          updated_at_epoch_ms = now_ms
-      where id = inv.friend_row_id;
+      update public.group_members
+      set user_id = v_uid
+      where user_id = old_friend_uid
+        and not exists (
+          select 1 from public.group_members gm2
+          where gm2.group_id = group_members.group_id
+            and gm2.user_id = v_uid
+        );
     end if;
+
+    update public.friends
+    set friend_user_id = v_uid,
+        display_name_snapshot = v_name,
+        email_snapshot = v_email,
+        updated_at_epoch_ms = now_ms
+    where id = inv.friend_row_id;
 
     if inv.kind = 'GROUP' and inv.group_id is not null then
       insert into public.group_members (id, group_id, user_id, role, joined_at_epoch_ms)

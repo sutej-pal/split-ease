@@ -416,11 +416,13 @@ private fun SettingsActionRow(
     title: String,
     onClick: () -> Unit,
     subtitle: String? = null,
-    titleColor: Color = SplitEaseColors.Navy,
-    iconTint: Color = SplitEaseColors.NavyMuted,
+    titleColor: Color? = null,
+    iconTint: Color? = null,
     trailingBadge: String? = null,
     showDivider: Boolean = true,
 ) {
+    val resolvedTitleColor = titleColor ?: SplitEaseColors.Navy
+    val resolvedIconTint = iconTint ?: SplitEaseColors.NavyMuted
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier =
@@ -430,14 +432,14 @@ private fun SettingsActionRow(
                     .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = resolvedIconTint, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = titleColor,
+                    color = resolvedTitleColor,
                 )
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))

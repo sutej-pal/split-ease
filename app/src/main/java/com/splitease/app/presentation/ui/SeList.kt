@@ -188,7 +188,7 @@ fun SeTypeChip(
     modifier: Modifier = Modifier,
 ) {
     val bg = if (selected) SplitEaseColors.Primary else Color.Transparent
-    val content = if (selected) Color.White else SplitEaseColors.Navy
+    val content = if (selected) MaterialTheme.colorScheme.onPrimary else SplitEaseColors.Navy
     val border = if (selected) Color.Transparent else SplitEaseColors.OutlineStrong
     Column(
         modifier =

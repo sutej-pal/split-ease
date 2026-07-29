@@ -48,6 +48,7 @@ import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextField
 
@@ -101,36 +102,42 @@ fun FriendsListScreen(
             )
         },
         content = { padding ->
-            Column(
+            SePullRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = viewModel::refresh,
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values),
             ) {
-                uiState.errorMessage?.let {
-                    SeErrorText(it, modifier = Modifier.padding(16.dp))
-                }
-                uiState.infoMessage?.let {
-                    SeInfoText(it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                }
-                if (friends.isEmpty()) {
-                    SeEmptyState(
-                        message = stringResource(R.string.friends_empty),
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        actionLabel = stringResource(R.string.action_add_friend),
-                        onAction = onAddFriend,
-                    )
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                    ) {
-                        items(friends, key = { it.id }) { friend ->
-                            FriendRow(
-                                friend = friend,
-                                onClick = { onOpenFriend(friend.friendUserId) },
-                                onCopyInvite = { viewModel.copyInviteLink(friend.id) },
-                                onShareInvite = { viewModel.shareInviteAgain(friend.id) },
-                            )
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    uiState.errorMessage?.let {
+                        SeErrorText(it, modifier = Modifier.padding(16.dp))
+                    }
+                    uiState.infoMessage?.let {
+                        SeInfoText(it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    }
+                    if (friends.isEmpty()) {
+                        SeEmptyState(
+                            message = stringResource(R.string.friends_empty),
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            actionLabel = stringResource(R.string.action_add_friend),
+                            onAction = onAddFriend,
+                        )
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                        ) {
+                            items(friends, key = { it.id }) { friend ->
+                                FriendRow(
+                                    friend = friend,
+                                    onClick = { onOpenFriend(friend.friendUserId) },
+                                    onCopyInvite = { viewModel.copyInviteLink(friend.id) },
+                                    onShareInvite = { viewModel.shareInviteAgain(friend.id) },
+                                )
+                            }
                         }
                     }
                 }

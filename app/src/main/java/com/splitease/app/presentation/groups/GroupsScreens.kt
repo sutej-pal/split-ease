@@ -90,6 +90,7 @@ import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeSystemBars
@@ -120,31 +121,40 @@ fun GroupsListScreen(
             )
         },
         content = { padding ->
-            Column(modifier = Modifier.fillMaxSize().padding(padding.values)) {
-                uiState.errorMessage?.let {
-                    SeErrorText(it, modifier = Modifier.padding(16.dp))
-                }
-                if (groups.isEmpty()) {
-                    SeEmptyState(
-                        message = stringResource(R.string.groups_empty),
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        actionLabel = stringResource(R.string.action_create_group),
-                        onAction = onCreateGroup,
-                    )
-                } else {
-                    LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
-                        items(groups, key = { it.id }) { group ->
-                            SeListRow(
-                                title = group.name,
-                                leading = {
-                                    SeIconTile(
-                                        icon = group.groupType.icon(),
-                                        tint = group.groupType.tint(),
-                                        size = 48,
-                                    )
-                                },
-                                onClick = { onOpenGroup(group.id) },
-                            )
+            SePullRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = viewModel::refresh,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values),
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    uiState.errorMessage?.let {
+                        SeErrorText(it, modifier = Modifier.padding(16.dp))
+                    }
+                    if (groups.isEmpty()) {
+                        SeEmptyState(
+                            message = stringResource(R.string.groups_empty),
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            actionLabel = stringResource(R.string.action_create_group),
+                            onAction = onCreateGroup,
+                        )
+                    } else {
+                        LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
+                            items(groups, key = { it.id }) { group ->
+                                SeListRow(
+                                    title = group.name,
+                                    leading = {
+                                        SeIconTile(
+                                            icon = group.groupType.icon(),
+                                            tint = group.groupType.tint(),
+                                            size = 48,
+                                        )
+                                    },
+                                    onClick = { onOpenGroup(group.id) },
+                                )
+                            }
                         }
                     }
                 }
@@ -301,6 +311,7 @@ fun GroupDetailScreen(
     balancesViewModel: BalancesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val expensesUi by expensesViewModel.uiState.collectAsStateWithLifecycle()
     val membersState by remember(groupId) { viewModel.observeMembers(groupId) }
         .collectAsStateWithLifecycle()
     val members = membersState.orEmpty()
@@ -435,105 +446,119 @@ fun GroupDetailScreen(
 
             when (pane) {
                 GroupDetailPane.Expenses -> {
-                    LazyColumn(
+                    SePullRefreshBox(
+                        isRefreshing = expensesUi.isRefreshing,
+                        onRefresh = { expensesViewModel.refreshGroupFromCloud(groupId) },
                         modifier =
                             Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
                                 .background(SplitEaseColors.Surface),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     ) {
-                        if (isSolo && ledger.isEmpty()) {
-                            item {
-                                GroupSoloEmptyState(
-                                    onAddMembers = onOpenSettings,
-                                    onShareLink = {
-                                        viewModel.shareGroupLink(groupId)
-                                    },
-                                )
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                        ) {
+                            if (isSolo && ledger.isEmpty()) {
+                                item {
+                                    GroupSoloEmptyState(
+                                        onAddMembers = onOpenSettings,
+                                        onShareLink = {
+                                            viewModel.shareGroupLink(groupId)
+                                        },
+                                    )
+                                }
+                            } else if (ledger.isEmpty()) {
+                                item {
+                                    SeEmptyState(message = stringResource(R.string.ledger_empty))
+                                }
+                            } else {
+                                ledgerEntries(ledger, onExpenseClick = onOpenExpense)
                             }
-                        } else if (ledger.isEmpty()) {
-                            item {
-                                SeEmptyState(message = stringResource(R.string.ledger_empty))
+                            (expensesUi.errorMessage ?: uiState.errorMessage)?.let { msg ->
+                                item {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    SeErrorText(msg)
+                                }
                             }
-                        } else {
-                            ledgerEntries(ledger, onExpenseClick = onOpenExpense)
+                            (expensesUi.infoMessage ?: uiState.infoMessage)?.let { msg ->
+                                item {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    SeInfoText(msg)
+                                }
+                            }
+                            item { Spacer(modifier = Modifier.height(88.dp)) }
                         }
-                        uiState.errorMessage?.let { msg ->
-                            item {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeErrorText(msg)
-                            }
-                        }
-                        uiState.infoMessage?.let { msg ->
-                            item {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeInfoText(msg)
-                            }
-                        }
-                        item { Spacer(modifier = Modifier.height(88.dp)) }
                     }
                 }
 
                 GroupDetailPane.Balances -> {
-                    Column(
+                    SePullRefreshBox(
+                        isRefreshing = expensesUi.isRefreshing,
+                        onRefresh = { expensesViewModel.refreshGroupFromCloud(groupId) },
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 20.dp)
-                                .padding(bottom = 88.dp),
+                                .fillMaxWidth(),
                     ) {
-                        SeSectionHeader(text = stringResource(R.string.balances_title))
-                        GroupBalanceHeader(
-                            groupId = groupId,
-                            balance = groupBalance,
-                        )
-                        val myDebts =
-                            groupBalance?.simplifiedDebts?.filter { debt ->
-                                me != null && (debt.fromUserId == me || debt.toUserId == me)
-                            }.orEmpty()
-                        if (myDebts.isEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            SeInfoText(settleHint ?: nothingToSettle)
-                        } else {
-                            myDebts.forEach { debt ->
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 20.dp)
+                                    .padding(bottom = 88.dp),
+                        ) {
+                            SeSectionHeader(text = stringResource(R.string.balances_title))
+                            GroupBalanceHeader(
+                                groupId = groupId,
+                                balance = groupBalance,
+                            )
+                            val myDebts =
+                                groupBalance?.simplifiedDebts?.filter { debt ->
+                                    me != null && (debt.fromUserId == me || debt.toUserId == me)
+                                }.orEmpty()
+                            if (myDebts.isEmpty()) {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                SeOutlinedButton(
-                                    text =
-                                        stringResource(
-                                            R.string.balances_debt_line,
-                                            debt.fromLabel,
-                                            debt.toLabel,
-                                            "${debt.currencyCode} ${debt.amount.toPlainString()}",
-                                        ) + " · " + stringResource(R.string.action_settle_up),
-                                    onClick = {
-                                        val label =
-                                            if (me == debt.fromUserId) {
-                                                debt.toLabel
-                                            } else {
-                                                debt.fromLabel
-                                            }
-                                        onSettleDebt(
-                                            debt.fromUserId,
-                                            debt.toUserId,
-                                            debt.amount.toPlainString(),
-                                            debt.currencyCode,
-                                            label,
-                                        )
-                                    },
-                                )
+                                SeInfoText(settleHint ?: nothingToSettle)
+                            } else {
+                                myDebts.forEach { debt ->
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    SeOutlinedButton(
+                                        text =
+                                            stringResource(
+                                                R.string.balances_debt_line,
+                                                debt.fromLabel,
+                                                debt.toLabel,
+                                                "${debt.currencyCode} ${debt.amount.toPlainString()}",
+                                            ) + " · " + stringResource(R.string.action_settle_up),
+                                        onClick = {
+                                            val label =
+                                                if (me == debt.fromUserId) {
+                                                    debt.toLabel
+                                                } else {
+                                                    debt.fromLabel
+                                                }
+                                            onSettleDebt(
+                                                debt.fromUserId,
+                                                debt.toUserId,
+                                                debt.amount.toPlainString(),
+                                                debt.currencyCode,
+                                                label,
+                                            )
+                                        },
+                                    )
+                                }
                             }
-                        }
 
-                        uiState.errorMessage?.let {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SeErrorText(it)
-                        }
-                        uiState.infoMessage?.let {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SeInfoText(it)
+                            (expensesUi.errorMessage ?: uiState.errorMessage)?.let {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeErrorText(it)
+                            }
+                            (expensesUi.infoMessage ?: uiState.infoMessage)?.let {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeInfoText(it)
+                            }
                         }
                     }
                 }

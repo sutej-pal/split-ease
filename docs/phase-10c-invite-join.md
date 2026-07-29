@@ -112,6 +112,11 @@ Opening `splitease://invite/{token}` while already signed in previously stored t
 
 When the app is **not** installed, the mail-service invite page falls back to Google Play with `referrer=invite_token%3D{token}`. On first launch, `InstallReferrerInviteBootstrap` reads that referrer once into `pending_invite_token` — the same path as a live deep link (signup / OTP / accept).
 
+### Follow-up fix (group share-link burn)
+
+Generic **Invite via link** rows used the inviter's email as a placeholder. On the inviter's next sync, `accept_pending_invites()` matched that email and marked the share link `ACCEPTED` before any invitee opened it — deep link opened the app with nothing to claim. Fixed in [sql/phase-3f-fix-group-share-invite-burn.sql](sql/phase-3f-fix-group-share-invite-burn.sql): placeholder email, email-accept skips `friend_row_id is null`, token-accept keeps share links multi-use and ignores inviter self-claim.
+
+
 ### Delivered checklist
 - Intent-filters + `MainActivity` invite token intake
 - `InviteLandingScreen` + `InviteJoinSignUpScreen`

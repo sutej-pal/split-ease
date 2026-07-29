@@ -208,13 +208,13 @@ class SocialInteractor
             val group =
                 groupRepository.getGroupById(groupId)
                     ?: throw IllegalStateException("Group not found.")
-            val inviterEmail =
-                userRepository.getUserById(ownerUserId)?.email?.trim().orEmpty()
-            // Placeholder recipient; token-based accept overwrites this.
+            // Must NOT use the inviter's real email: accept_pending_invites matches by
+            // email and would auto-accept (burn) the share link on the inviter's next sync.
+            // Token-only claim via accept_invite_by_token; placeholder never matches a user.
             val invite =
                 buildPendingInvite(
                     inviterUserId = ownerUserId,
-                    email = inviterEmail.ifBlank { "link-invite@splitease.app" },
+                    email = GROUP_SHARE_LINK_EMAIL,
                     kind = InviteKind.GROUP,
                     groupId = groupId,
                     friendRowId = null,
@@ -964,6 +964,14 @@ class SocialInteractor
         }
 
         private fun newInviteToken(): String = UUID.randomUUID().toString().replace("-", "")
+
+        companion object {
+            /**
+             * Placeholder email on generic group share-link invites (no [friendRowId]).
+             * Must not match any real auth user so email-based accept cannot burn the link.
+             */
+            const val GROUP_SHARE_LINK_EMAIL = "group-share@splitease.invalid"
+        }
 
         private fun buildPendingInvite(
             inviterUserId: String,

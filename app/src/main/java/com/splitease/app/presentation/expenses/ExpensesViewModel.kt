@@ -503,7 +503,7 @@ class ExpensesViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = mapExpenseSaveError(result.exceptionOrNull()),
-                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_added) else null,
+                        infoMessage = expenseSaveInfoMessage(result),
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -636,7 +636,13 @@ class ExpensesViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = mapExpenseSaveError(result.exceptionOrNull()),
-                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_updated) else null,
+                        infoMessage =
+                            when {
+                                result.isFailure -> null
+                                result.getOrNull()?.syncStatus != SyncStatus.SYNCED ->
+                                    appContext.getString(R.string.msg_expense_saved_not_synced)
+                                else -> appContext.getString(R.string.msg_expense_updated)
+                            },
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -737,6 +743,15 @@ class ExpensesViewModel
                 ?.displayNameSnapshot
                 ?: userRepository.getUserById(friendUserId)?.displayName
                 ?: friendUserId.take(8)
+        }
+
+        private fun expenseSaveInfoMessage(result: Result<Expense>): String? {
+            if (result.isFailure) return null
+            return if (result.getOrNull()?.syncStatus != SyncStatus.SYNCED) {
+                appContext.getString(R.string.msg_expense_saved_not_synced)
+            } else {
+                appContext.getString(R.string.msg_expense_added)
+            }
         }
 
         private fun mapExpenseSaveError(throwable: Throwable?): String? {

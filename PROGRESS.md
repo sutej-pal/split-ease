@@ -38,6 +38,7 @@ Track development phases. Always check this file at the start of a session to de
 - **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0b](docs/phase-0b-theme-system.md)).
 - **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run.
 - **Invite email delivery** — MVP uses the system share sheet; automated send via mail-service is still TODO.
+- **Group share invite burn (fixed 2026-07-29)** — Apply [sql/phase-3f-fix-group-share-invite-burn.sql](docs/sql/phase-3f-fix-group-share-invite-burn.sql) on existing Supabase projects if not yet run (reactivates burned share links + RPC fixes).
 - **Render Free SMTP** — outbound SMTP ports are blocked on Free; onboarding mail needs `RESEND_API_KEY` (HTTPS) on the mail-service, or a paid Render instance for Gmail SMTP ([phase-10d](docs/phase-10d-onboarding-mail.md)).
 - **App Links / invite https** — share links use `MAIL_SERVICE_BASE_URL/invite/{token}` when set, else `splitease.app`. Host [docs/assetlinks.json](docs/assetlinks.json) for verified Open-by-default links ([app-links-setup.md](docs/app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification.
 - **Group live updates & push notifications (extra)** — Realtime + FCM path implemented; finish Firebase/`google-services.json` + Edge Function deploy per [docs/fcm-setup.md](docs/fcm-setup.md). Mute prefs / delete tombstones still TODO ([docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)).

@@ -193,7 +193,7 @@ Unique index: `(expenseId, userId)`.
 | invites | id | UUID (PK) | no | Invite id |
 | invites | token | TEXT | no | Unique invite token |
 | invites | inviter_user_id | UUID | no | Sender |
-| invites | email | TEXT | no | Recipient email |
+| invites | email | TEXT | no | Recipient email (person invite) or `group-share@splitease.invalid` for generic share links |
 | invites | kind | TEXT | no | FRIEND / GROUP |
 | invites | group_id | UUID | yes | Target group |
 | invites | friend_row_id | UUID | yes | Related friends row |
@@ -202,7 +202,10 @@ Unique index: `(expenseId, userId)`.
 
 **Invite join RPCs** (see [sql/migration_db.sql](sql/migration_db.sql)):
 - `get_invite_preview(p_token)` — public (anon) preview for landing UI
-- `accept_invite_by_token(p_token)` — authenticated accept for deep-link join-as-new
+- `accept_invite_by_token(p_token)` — authenticated accept for deep-link join-as-new (share links stay `PENDING` / multi-use; inviter self-claim returns 0)
+- `accept_pending_invites()` — email-based accept for person invites only (`friend_row_id` required; skips generic share links)
+
+Share-link burn fix: [sql/phase-3f-fix-group-share-invite-burn.sql](sql/phase-3f-fix-group-share-invite-burn.sql)
 
 | expenses | id | UUID (PK) | no | Expense id |
 | expenses | description | TEXT | no | Title |
