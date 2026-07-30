@@ -74,21 +74,6 @@ android {
         }
     }
 
-    // Side-by-side twin installation for multi-device sync testing (debug only; not for release).
-    flavorDimensions += "install"
-    productFlavors {
-        create("standard") {
-            dimension = "install"
-            isDefault = true
-        }
-        create("clone") {
-            dimension = "install"
-            applicationIdSuffix = ".clone"
-            versionNameSuffix = "-clone"
-            resValue("string", "app_name", "SplitEase Clone")
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -128,15 +113,6 @@ android {
                     "DebugProbesKt.bin",
                     "kotlin-tooling-metadata.json",
                 )
-        }
-    }
-}
-
-// Disable cloneRelease — testing-only twin install.
-androidComponents {
-    beforeVariants { variant ->
-        if (variant.flavorName == "clone" && variant.buildType == "release") {
-            variant.enable = false
         }
     }
 }

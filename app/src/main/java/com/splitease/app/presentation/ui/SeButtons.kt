@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.splitease.app.presentation.theme.SplitEaseColors
 
 private val ButtonShape = RoundedCornerShape(12.dp)
@@ -52,7 +53,10 @@ fun SePrimaryButton(
                 disabledContentColor = SplitEaseColors.NavyMuted,
             ),
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp, lineHeight = 22.sp),
+        )
     }
 }
 

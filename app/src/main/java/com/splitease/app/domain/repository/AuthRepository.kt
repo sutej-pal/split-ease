@@ -59,13 +59,26 @@ interface AuthRepository {
     suspend fun signIn(email: String, password: String): Result<Unit>
 
     /**
-     * Returns whether [email] already has an Auth account (for login error messaging).
+     * Returns whether [email] already has an Auth account (for login/signup messaging).
      * Safe to call while signed out.
      *
      * @param email Candidate account email.
      * @return true when registered; false when not; failure when the check could not run.
      */
     suspend fun isEmailRegistered(email: String): Result<Boolean>
+
+    /**
+     * Returns whether [phoneNumber] (with [phoneCountryCode]) is already used on a profile
+     * or auth user metadata. Safe to call while signed out. Blank phone → false.
+     *
+     * @param phoneCountryCode Dialing code (e.g. `+91`).
+     * @param phoneNumber National phone number digits.
+     * @return true when registered; false when not; failure when the check could not run.
+     */
+    suspend fun isPhoneRegistered(
+        phoneCountryCode: String,
+        phoneNumber: String,
+    ): Result<Boolean>
 
     /**
      * Sends a 6-digit email OTP for the post-password login gate.

@@ -4,7 +4,7 @@ Use before uploading a Play Console build.
 
 ## Build & version
 - [ ] `versionName` / `versionCode` bumped in `app/build.gradle.kts`
-- [ ] `./gradlew assembleStandardRelease` (or bundle) succeeds
+- [ ] `./gradlew assembleRelease` (or bundle) succeeds
 - [ ] Host Digital Asset Links: `https://splitease.app/.well-known/assetlinks.json` (and mail-service host if used) — see [app-links-setup.md](app-links-setup.md)
 - [ ] Settings → SplitEase → Open by default shows verified invite hosts (not “0 verified links”)
 - [ ] Release signing configured locally (keystore not committed)
@@ -38,5 +38,5 @@ Use before uploading a Play Console build.
 - [ ] Content rating questionnaire completed
 
 ## Tests
-- [ ] `./gradlew testStandardDebugUnitTest`
-- [ ] `./gradlew connectedStandardDebugAndroidTest` (device/emulator)
+- [ ] `./gradlew testDebugUnitTest`
+- [ ] `./gradlew connectedDebugAndroidTest` (device/emulator)

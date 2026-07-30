@@ -236,6 +236,15 @@ class AuthViewModel
                     }
                     return@launch
                 }
+                // Arm OTP gate BEFORE signOut — otherwise SignedOut briefly rebuilds Welcome.
+                _formState.update {
+                    AuthFormState(
+                        isLoading = true,
+                        pendingConfirmationEmail = trimmedEmail,
+                        pendingOtpPurpose = PendingOtpPurpose.LOGIN,
+                        holdSignedInForOtp = false,
+                    )
+                }
                 // Drop the password session so Home cannot open until OTP succeeds.
                 runCatching { authRepository.signOut() }
                 val otpResult = authRepository.sendLoginOtp(trimmedEmail)
@@ -244,19 +253,13 @@ class AuthViewModel
                         it.copy(
                             isLoading = false,
                             errorMessage = friendlyAuthError(otpResult.exceptionOrNull()),
-                            holdSignedInForOtp = false,
-                            pendingConfirmationEmail = null,
-                            pendingOtpPurpose = null,
                         )
                     }
                     return@launch
                 }
                 _formState.update {
-                    AuthFormState(
+                    it.copy(
                         isLoading = false,
-                        pendingConfirmationEmail = trimmedEmail,
-                        pendingOtpPurpose = PendingOtpPurpose.LOGIN,
-                        holdSignedInForOtp = false,
                         infoMessage = appContext.getString(R.string.verify_login_otp_sent),
                     )
                 }
@@ -304,6 +307,8 @@ class AuthViewModel
             }
             viewModelScope.launch {
                 val trimmedEmail = email.trim()
+                val trimmedPhone = phoneNumber.trim()
+                val dialCode = phoneCountryCode.trim().ifBlank { "+91" }
                 // Hold Home closed if signup returns a session before OTP.
                 _formState.update {
                     it.copy(
@@ -315,14 +320,41 @@ class AuthViewModel
                         holdSignedInForOtp = true,
                     )
                 }
+                val emailTaken = authRepository.isEmailRegistered(trimmedEmail).getOrDefault(false)
+                if (emailTaken) {
+                    _formState.update {
+                        AuthFormState(
+                            isLoading = false,
+                            errorMessage =
+                                appContext.getString(R.string.error_email_already_registered),
+                        )
+                    }
+                    return@launch
+                }
+                if (trimmedPhone.isNotEmpty()) {
+                    val phoneTaken =
+                        authRepository
+                            .isPhoneRegistered(dialCode, trimmedPhone)
+                            .getOrDefault(false)
+                    if (phoneTaken) {
+                        _formState.update {
+                            AuthFormState(
+                                isLoading = false,
+                                errorMessage =
+                                    appContext.getString(R.string.error_phone_already_registered),
+                            )
+                        }
+                        return@launch
+                    }
+                }
                 appSettingsRepository.setCurrencyCode(currencyCode)
                 val result =
                     authRepository.signUp(
                         email = trimmedEmail,
                         password = password,
                         displayName = trimmedName,
-                        phoneCountryCode = phoneCountryCode,
-                        phoneNumber = phoneNumber,
+                        phoneCountryCode = dialCode,
+                        phoneNumber = trimmedPhone,
                         currencyCode = currencyCode,
                         photoUri = photoUri,
                     )
@@ -350,11 +382,20 @@ class AuthViewModel
                     is SignUpResult.SignedIn, null -> {
                         // Autoconfirm / session-before-OTP: still require email OTP and
                         // do not open the app until verify succeeds.
+                        // Arm OTP gate BEFORE signOut — otherwise SignedOut briefly rebuilds Welcome.
+                        _formState.update {
+                            AuthFormState(
+                                isLoading = true,
+                                pendingConfirmationEmail = trimmedEmail,
+                                pendingOtpPurpose = PendingOtpPurpose.LOGIN,
+                                holdSignedInForOtp = false,
+                            )
+                        }
                         runCatching { authRepository.signOut() }
                         val otpResult = authRepository.sendLoginOtp(trimmedEmail)
                         if (otpResult.isFailure) {
                             _formState.update {
-                                AuthFormState(
+                                it.copy(
                                     isLoading = false,
                                     errorMessage = friendlyAuthError(otpResult.exceptionOrNull()),
                                 )
@@ -362,11 +403,8 @@ class AuthViewModel
                             return@launch
                         }
                         _formState.update {
-                            AuthFormState(
+                            it.copy(
                                 isLoading = false,
-                                pendingConfirmationEmail = trimmedEmail,
-                                pendingOtpPurpose = PendingOtpPurpose.LOGIN,
-                                holdSignedInForOtp = false,
                                 infoMessage = appContext.getString(R.string.verify_email_sent),
                             )
                         }
@@ -528,6 +566,8 @@ class AuthViewModel
             val raw = throwable?.localizedMessage.orEmpty()
             val lower = raw.lowercase()
             return when {
+                isAlreadyRegistered(lower) ->
+                    appContext.getString(R.string.error_already_registered)
                 isInvalidCredentials(throwable) ->
                     appContext.getString(R.string.error_invalid_credentials)
                 isEmailRateLimited(lower) ->
@@ -539,6 +579,8 @@ class AuthViewModel
                 "url:" in lower || "headers:" in lower || "http method" in lower ->
                     // Prefer specific auth/email clues buried in RestException text.
                     when {
+                        isAlreadyRegistered(lower) ->
+                            appContext.getString(R.string.error_already_registered)
                         isEmailRateLimited(lower) ->
                             appContext.getString(R.string.error_signup_email_rate_limit)
                         isEmailDeliveryFailure(lower) ->
@@ -550,6 +592,13 @@ class AuthViewModel
                         .ifBlank { appContext.getString(R.string.error_generic) }
             }
         }
+
+        private fun isAlreadyRegistered(lower: String): Boolean =
+            "user already registered" in lower ||
+                "already been registered" in lower ||
+                "email_exists" in lower ||
+                "user_already_exists" in lower ||
+                ("already exists" in lower && ("user" in lower || "email" in lower))
 
         private fun isEmailRateLimited(lower: String): Boolean =
             "over_email_send_rate_limit" in lower ||

@@ -18,24 +18,15 @@ Carried-forward work (not a numbered phase) is listed under **Carried-forward TO
 ## Build
 
 ```bash
-./gradlew :app:assembleStandardDebug
-./gradlew :app:assembleStandardRelease
+./gradlew :app:assembleDebug
+./gradlew :app:assembleRelease
 ./gradlew ktlintCheck
-./gradlew :app:testStandardDebugUnitTest
+./gradlew :app:testDebugUnitTest
 ```
 
-On Windows: `gradlew.bat :app:assembleStandardDebug`
+On Windows: `gradlew.bat :app:assembleDebug`
 
 Release builds enable **R8 minify + resource shrinking**.
-
-### Twin install (testing only)
-
-Install a second copy beside the main app to test multi-device sync on one phone.
-`clone` uses `applicationId` `com.splitease.app.clone` and is **debug-only** (no release variant).
-
-```bash
-./gradlew :app:installStandardDebug :app:installCloneDebug
-```
 
 ## Docs
 

@@ -63,7 +63,15 @@ class AuthViewModelTest {
             "Enter your full name."
         every { context.getString(R.string.signup_error_password_short) } returns
             "Password must be at least 8 characters."
+        every { context.getString(R.string.error_email_already_registered) } returns
+            "This email is already registered. Please log in."
+        every { context.getString(R.string.error_phone_already_registered) } returns
+            "This phone number is already registered. Please log in."
+        every { context.getString(R.string.error_already_registered) } returns
+            "You're already registered with us. Please log in."
         coEvery { appSettings.setCurrencyCode(any()) } returns Unit
+        coEvery { repository.isEmailRegistered(any()) } returns Result.success(false)
+        coEvery { repository.isPhoneRegistered(any(), any()) } returns Result.success(false)
         viewModel = AuthViewModel(repository, appSettings, context)
     }
 
@@ -174,6 +182,43 @@ class AuthViewModelTest {
                 "Account created. Check your email for a verification code.",
                 viewModel.formState.value.infoMessage,
             )
+        }
+
+    @Test
+    fun `signUp shows already registered when email exists`() =
+        runTest {
+            coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
+            viewModel.signUp("a@b.com", "secret12", "Ada")
+            advanceUntilIdle()
+            assertEquals(
+                "This email is already registered. Please log in.",
+                viewModel.formState.value.errorMessage,
+            )
+            coVerify(exactly = 0) {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            }
+        }
+
+    @Test
+    fun `signUp shows already registered when phone exists`() =
+        runTest {
+            coEvery { repository.isPhoneRegistered("+91", "9876543210") } returns
+                Result.success(true)
+            viewModel.signUp(
+                email = "new@b.com",
+                password = "secret12",
+                displayName = "Ada",
+                phoneCountryCode = "+91",
+                phoneNumber = "9876543210",
+            )
+            advanceUntilIdle()
+            assertEquals(
+                "This phone number is already registered. Please log in.",
+                viewModel.formState.value.errorMessage,
+            )
+            coVerify(exactly = 0) {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            }
         }
 
     @Test

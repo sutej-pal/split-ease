@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Signup blocks duplicate email/phone with clear “already registered” messaging (`auth_email_registered` + `auth_phone_registered`)
+
+### Removed
+- Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs
+
 ### Fixed
+- Sign-in briefly flashed Welcome before verify OTP: OTP gate is armed before password session sign-out
 - Group expenses never reached Supabase: `expenses_select` used `can_access_expense(id)`, which re-queries `expenses` and cannot see the in-flight row during PostgREST `INSERT … RETURNING`, so upserts rolled back while Room kept a local PENDING copy ([sql/phase-4c-fix-expense-select-rls-returning.sql](docs/sql/phase-4c-fix-expense-select-rls-returning.sql)); expense push now also re-upserts the group before FK write
 - Dark theme text was near-invisible: `SplitEaseColors` light-only aliases (`Navy`, surfaces, etc.) now resolve from `MaterialTheme.colorScheme`; status/nav bar icon contrast follows background luminance
 - Group invite share links opened the app but never joined the group: share-link invites stored the inviter's email, so `accept_pending_invites` auto-accepted (burned) the link on the inviter's next sync; share links now use a placeholder email, email-accept skips token-only rows, and token-accept keeps share links multi-use ([sql/phase-3f-fix-group-share-invite-burn.sql](docs/sql/phase-3f-fix-group-share-invite-burn.sql))
@@ -43,7 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Brand color system and Material 3 theme (light/dark) from icon indigo/amber tokens ([phase-0b](docs/phase-0b-theme-system.md), [design-tokens](docs/design-tokens.md))
 - Find people screen (search friends + device contacts); Group settings → Add people uses it
 - Extras backlog: [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)
-- Debug-only `clone` product flavor for side-by-side sync testing
 - Settings → Security: biometric / device-credential app lock with timeout
 - Settings hub (appearance, language, currency) and Group settings screen
 - Bottom navigation + Groups home UI; shared `Se*` design system

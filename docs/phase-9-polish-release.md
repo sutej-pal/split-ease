@@ -79,8 +79,8 @@ Phase 8 was already complete (payments / CSV / Vico). Phase 9 delivered i18n (8 
 2. Enable Confirm email in Supabase; sign up → verify screen → open mail link (`splitease://auth-callback`) → session signs in.
 3. Resend confirmation from verify screen.
 4. Install over an older DB (or run `SplitEaseMigrationsTest`) — data preserved.
-5. `./gradlew testStandardDebugUnitTest assembleStandardDebug`
-6. Optional: `connectedStandardDebugAndroidTest` for Compose + migration tests.
+5. `./gradlew testDebugUnitTest assembleDebug`
+6. Optional: `connectedDebugAndroidTest` for Compose + migration tests.
 
 ### Known Issues / TODOs
 

@@ -13,9 +13,8 @@
 
 ### Firebase
 
-1. Create a Firebase project and add Android apps for:
+1. Create a Firebase project and add an Android app for:
    - `com.splitease.app`
-   - `com.splitease.app.clone` (optional, for twin-install testing)
 2. Download `google-services.json` into `app/google-services.json` (gitignored).
    The Google Services Gradle plugin applies automatically when this file exists.
 3. Download a Firebase **service account** JSON (Project settings → Service accounts).

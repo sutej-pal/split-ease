@@ -256,6 +256,9 @@
     <string name="error_signup_email_rate_limit">Too many verification emails were sent. Wait a few minutes and try again.</string>
     <string name="error_invalid_credentials">Invalid email or password. Try again.</string>
     <string name="error_not_registered">You\'re not registered with us. Please sign up.</string>
+    <string name="error_email_already_registered">This email is already registered. Please log in.</string>
+    <string name="error_phone_already_registered">This phone number is already registered. Please log in.</string>
+    <string name="error_already_registered">You\'re already registered with us. Please log in.</string>
     <string name="reset_sent">Check your email for a reset link.</string>
     <string name="search_title">Search</string>
     <string name="search_hint">Search expenses</string>

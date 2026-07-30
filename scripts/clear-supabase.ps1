@@ -51,24 +51,29 @@ $headers = @{
     Prefer = 'return=minimal'
 }
 
-function Delete-AllRows([string]$table) {
-    $uri = "$SupabaseUrl/rest/v1/${table}?id=not.is.null"
+function Delete-AllRows([string]$table, [string]$pkColumn = 'id') {
+    $uri = "$SupabaseUrl/rest/v1/${table}?${pkColumn}=not.is.null"
     $resp = Invoke-WebRequest -Uri $uri -Method Delete -Headers $headers -UseBasicParsing
     Write-Host "$table -> HTTP $($resp.StatusCode)"
 }
 
 Write-Host "Clearing app tables at $SupabaseUrl ..."
-foreach ($t in @(
-    'payments',
-    'expense_splits',
-    'expenses',
-    'invites',
-    'group_members',
-    'groups',
-    'friends',
-    'profiles'
-)) {
-    Delete-AllRows $t
+# Child tables first (FK order). Includes later-phase tables.
+# pin_boards PK is group_id (not id).
+$tables = @(
+    @{ Name = 'payments'; Pk = 'id' },
+    @{ Name = 'expense_splits'; Pk = 'id' },
+    @{ Name = 'expenses'; Pk = 'id' },
+    @{ Name = 'pin_boards'; Pk = 'group_id' },
+    @{ Name = 'device_tokens'; Pk = 'id' },
+    @{ Name = 'invites'; Pk = 'id' },
+    @{ Name = 'group_members'; Pk = 'id' },
+    @{ Name = 'groups'; Pk = 'id' },
+    @{ Name = 'friends'; Pk = 'id' },
+    @{ Name = 'profiles'; Pk = 'id' }
+)
+foreach ($t in $tables) {
+    Delete-AllRows $t.Name $t.Pk
 }
 
 $authHeaders = @{
@@ -100,9 +105,10 @@ $countHeaders = @{
     Prefer = 'count=exact'
 }
 Write-Host 'Verify:'
-foreach ($t in @('payments','expense_splits','expenses','invites','group_members','groups','friends','profiles')) {
-    $r = Invoke-WebRequest -Uri "$SupabaseUrl/rest/v1/${t}?select=id&limit=1" -Headers $countHeaders -Method Get -UseBasicParsing
-    Write-Host "  $t Content-Range=$($r.Headers['Content-Range'])"
+foreach ($t in $tables) {
+    $selectCol = $t.Pk
+    $r = Invoke-WebRequest -Uri "$SupabaseUrl/rest/v1/$($t.Name)?select=${selectCol}&limit=1" -Headers $countHeaders -Method Get -UseBasicParsing
+    Write-Host "  $($t.Name) Content-Range=$($r.Headers['Content-Range'])"
 }
 if (-not $SkipAuthUsers) {
     $left = Invoke-RestMethod -Uri "$SupabaseUrl/auth/v1/admin/users?page=1&per_page=50" -Headers $authHeaders -Method Get

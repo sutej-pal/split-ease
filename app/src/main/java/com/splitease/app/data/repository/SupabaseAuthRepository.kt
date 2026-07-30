@@ -140,6 +140,25 @@ class SupabaseAuthRepository
                     ).decodeAs<Boolean>()
             }
 
+        override suspend fun isPhoneRegistered(
+            phoneCountryCode: String,
+            phoneNumber: String,
+        ): Result<Boolean> =
+            runCatching {
+                val digits = phoneNumber.filter { it.isDigit() }
+                if (digits.isEmpty()) return@runCatching false
+                val dial = phoneCountryCode.trim().ifBlank { "+91" }
+                supabase.postgrest
+                    .rpc(
+                        function = "auth_phone_registered",
+                        parameters =
+                            buildJsonObject {
+                                put("p_country_code", dial)
+                                put("p_phone", digits)
+                            },
+                    ).decodeAs<Boolean>()
+            }
+
         override suspend fun sendLoginOtp(email: String): Result<Unit> =
             runCatching {
                 supabase.auth.signInWith(OTP) {

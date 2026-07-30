@@ -205,6 +205,10 @@ Unique index: `(expenseId, userId)`.
 - `accept_invite_by_token(p_token)` — authenticated accept for deep-link join-as-new (share links stay `PENDING` / multi-use; inviter self-claim returns 0)
 - `accept_pending_invites()` — email-based accept for person invites only (`friend_row_id` required; skips generic share links)
 
+**Auth lookup RPCs** (anon + authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
+- `auth_email_registered(p_email)` — whether `auth.users` already has that email
+- `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number ([sql/phase-auth-phone-registered.sql](sql/phase-auth-phone-registered.sql))
+
 Share-link burn fix: [sql/phase-3f-fix-group-share-invite-burn.sql](sql/phase-3f-fix-group-share-invite-burn.sql)
 
 | expenses | id | UUID (PK) | no | Expense id |

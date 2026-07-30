@@ -119,7 +119,7 @@ Still deferred:
 
 ## How to test (MVP sync visibility)
 
-1. Two devices / flavors (`standard` + `clone`) signed in as two group members; Supabase Phase 3–6 SQL applied.
+1. Two devices signed in as two group members; Supabase Phase 3–6 SQL applied.
 2. Device A adds an expense in the shared group; wait for automatic background sync.
 3. Device B opens (or returns to) that group → expense and balances appear without reinstall.
 4. Repeat for settle-up payment.
