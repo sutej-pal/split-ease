@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.welcome
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,8 +19,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,14 +51,13 @@ fun WelcomeScreen(
     var pasteValue by rememberSaveable { mutableStateOf("") }
     var pasteError by rememberSaveable { mutableStateOf(false) }
 
+    val startColor = SplitEaseColors.PrimarySoft
+    val midColor = SplitEaseColors.Background
+    val endColor = SplitEaseColors.Surface
+
     val gradient =
         Brush.verticalGradient(
-            colors =
-                listOf(
-                    SplitEaseColors.PrimarySoft,
-                    SplitEaseColors.Background,
-                    SplitEaseColors.Surface,
-                ),
+            colors = listOf(startColor, midColor, endColor),
         )
 
     Box(
@@ -72,20 +72,12 @@ fun WelcomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(88.dp)
-                        .clip(CircleShape)
-                        .background(SplitEaseColors.Primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "SE",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = stringResource(R.string.welcome_title),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(96.dp),
+            )
             Spacer(modifier = Modifier.height(28.dp))
             Text(
                 text = stringResource(R.string.welcome_title),

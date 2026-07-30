@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.auth
 
-import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -77,6 +76,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
+import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeModal
@@ -350,7 +350,7 @@ fun SignUpScreen(
             SignupTermsText()
             Spacer(modifier = Modifier.height(16.dp))
             SePrimaryButton(
-                text = stringResource(R.string.action_done),
+                text = stringResource(R.string.action_signup),
                 onClick = {
                     onSignUp(
                         email.trim(),
@@ -534,9 +534,11 @@ private fun ProfilePhotoButton(
         remember(photoUri) {
             photoUri?.let { raw ->
                 runCatching {
-                    context.contentResolver.openInputStream(Uri.parse(raw))?.use { stream ->
-                        BitmapFactory.decodeStream(stream)?.asImageBitmap()
-                    }
+                    AvatarImageIO.decodeScaled(
+                        context = context,
+                        photoUrl = raw,
+                        maxSidePx = AvatarImageIO.PREVIEW_MAX_SIDE_PX,
+                    )?.asImageBitmap()
                 }.getOrNull()
             }
         }

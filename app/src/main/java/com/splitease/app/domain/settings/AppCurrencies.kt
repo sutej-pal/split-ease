@@ -1,172 +1,46 @@
 package com.splitease.app.domain.settings
 
 /**
- * ISO 4217 currency catalog for Settings (100+ common / circulating codes).
+ * Supported app currencies (ISO 4217).
  *
- * Labels are English display names; localization is Phase 9.
+ * Keep this as the single source of truth for codes and picker labels —
+ * do not hardcode `"INR"` / `"USD"` elsewhere in production code.
  */
 object AppCurrencies {
-    /** Default when the user has not chosen yet. */
-    const val DEFAULT = "INR"
+    const val INR = "INR"
+    const val USD = "USD"
 
-    /** code → English name. */
+    /** Default when the user has not chosen yet. */
+    const val DEFAULT = INR
+
+    /** code → English display name (order shown in pickers). */
     val OPTIONS: List<Pair<String, String>> =
         listOf(
-            "AED" to "UAE Dirham",
-            "AFN" to "Afghan Afghani",
-            "ALL" to "Albanian Lek",
-            "AMD" to "Armenian Dram",
-            "ANG" to "Netherlands Antillean Guilder",
-            "AOA" to "Angolan Kwanza",
-            "ARS" to "Argentine Peso",
-            "AUD" to "Australian Dollar",
-            "AWG" to "Aruban Florin",
-            "AZN" to "Azerbaijani Manat",
-            "BAM" to "Bosnia-Herzegovina Convertible Mark",
-            "BBD" to "Barbadian Dollar",
-            "BDT" to "Bangladeshi Taka",
-            "BGN" to "Bulgarian Lev",
-            "BHD" to "Bahraini Dinar",
-            "BIF" to "Burundian Franc",
-            "BMD" to "Bermudan Dollar",
-            "BND" to "Brunei Dollar",
-            "BOB" to "Bolivian Boliviano",
-            "BRL" to "Brazilian Real",
-            "BSD" to "Bahamian Dollar",
-            "BTN" to "Bhutanese Ngultrum",
-            "BWP" to "Botswanan Pula",
-            "BYN" to "Belarusian Ruble",
-            "BZD" to "Belize Dollar",
-            "CAD" to "Canadian Dollar",
-            "CDF" to "Congolese Franc",
-            "CHF" to "Swiss Franc",
-            "CLP" to "Chilean Peso",
-            "CNY" to "Chinese Yuan",
-            "COP" to "Colombian Peso",
-            "CRC" to "Costa Rican Colón",
-            "CUP" to "Cuban Peso",
-            "CVE" to "Cape Verdean Escudo",
-            "CZK" to "Czech Koruna",
-            "DJF" to "Djiboutian Franc",
-            "DKK" to "Danish Krone",
-            "DOP" to "Dominican Peso",
-            "DZD" to "Algerian Dinar",
-            "EGP" to "Egyptian Pound",
-            "ERN" to "Eritrean Nakfa",
-            "ETB" to "Ethiopian Birr",
-            "EUR" to "Euro",
-            "FJD" to "Fijian Dollar",
-            "FKP" to "Falkland Islands Pound",
-            "GBP" to "British Pound",
-            "GEL" to "Georgian Lari",
-            "GHS" to "Ghanaian Cedi",
-            "GIP" to "Gibraltar Pound",
-            "GMD" to "Gambian Dalasi",
-            "GNF" to "Guinean Franc",
-            "GTQ" to "Guatemalan Quetzal",
-            "GYD" to "Guyanaese Dollar",
-            "HKD" to "Hong Kong Dollar",
-            "HNL" to "Honduran Lempira",
-            "HRK" to "Croatian Kuna",
-            "HTG" to "Haitian Gourde",
-            "HUF" to "Hungarian Forint",
-            "IDR" to "Indonesian Rupiah",
-            "ILS" to "Israeli New Shekel",
-            "INR" to "Indian Rupee",
-            "IQD" to "Iraqi Dinar",
-            "IRR" to "Iranian Rial",
-            "ISK" to "Icelandic Króna",
-            "JMD" to "Jamaican Dollar",
-            "JOD" to "Jordanian Dinar",
-            "JPY" to "Japanese Yen",
-            "KES" to "Kenyan Shilling",
-            "KGS" to "Kyrgystani Som",
-            "KHR" to "Cambodian Riel",
-            "KMF" to "Comorian Franc",
-            "KRW" to "South Korean Won",
-            "KWD" to "Kuwaiti Dinar",
-            "KYD" to "Cayman Islands Dollar",
-            "KZT" to "Kazakhstani Tenge",
-            "LAK" to "Laotian Kip",
-            "LBP" to "Lebanese Pound",
-            "LKR" to "Sri Lankan Rupee",
-            "LRD" to "Liberian Dollar",
-            "LSL" to "Lesotho Loti",
-            "LYD" to "Libyan Dinar",
-            "MAD" to "Moroccan Dirham",
-            "MDL" to "Moldovan Leu",
-            "MGA" to "Malagasy Ariary",
-            "MKD" to "Macedonian Denar",
-            "MMK" to "Myanmar Kyat",
-            "MNT" to "Mongolian Tugrik",
-            "MOP" to "Macanese Pataca",
-            "MRU" to "Mauritanian Ouguiya",
-            "MUR" to "Mauritian Rupee",
-            "MVR" to "Maldivian Rufiyaa",
-            "MWK" to "Malawian Kwacha",
-            "MXN" to "Mexican Peso",
-            "MYR" to "Malaysian Ringgit",
-            "MZN" to "Mozambican Metical",
-            "NAD" to "Namibian Dollar",
-            "NGN" to "Nigerian Naira",
-            "NIO" to "Nicaraguan Córdoba",
-            "NOK" to "Norwegian Krone",
-            "NPR" to "Nepalese Rupee",
-            "NZD" to "New Zealand Dollar",
-            "OMR" to "Omani Rial",
-            "PAB" to "Panamanian Balboa",
-            "PEN" to "Peruvian Sol",
-            "PGK" to "Papua New Guinean Kina",
-            "PHP" to "Philippine Peso",
-            "PKR" to "Pakistani Rupee",
-            "PLN" to "Polish Zloty",
-            "PYG" to "Paraguayan Guarani",
-            "QAR" to "Qatari Rial",
-            "RON" to "Romanian Leu",
-            "RSD" to "Serbian Dinar",
-            "RUB" to "Russian Ruble",
-            "RWF" to "Rwandan Franc",
-            "SAR" to "Saudi Riyal",
-            "SBD" to "Solomon Islands Dollar",
-            "SCR" to "Seychellois Rupee",
-            "SDG" to "Sudanese Pound",
-            "SEK" to "Swedish Krona",
-            "SGD" to "Singapore Dollar",
-            "SHP" to "Saint Helena Pound",
-            "SLE" to "Sierra Leonean Leone",
-            "SOS" to "Somali Shilling",
-            "SRD" to "Surinamese Dollar",
-            "SSP" to "South Sudanese Pound",
-            "STN" to "São Tomé and Príncipe Dobra",
-            "SYP" to "Syrian Pound",
-            "SZL" to "Swazi Lilangeni",
-            "THB" to "Thai Baht",
-            "TJS" to "Tajikistani Somoni",
-            "TMT" to "Turkmenistani Manat",
-            "TND" to "Tunisian Dinar",
-            "TOP" to "Tongan Paʻanga",
-            "TRY" to "Turkish Lira",
-            "TTD" to "Trinidad and Tobago Dollar",
-            "TWD" to "New Taiwan Dollar",
-            "TZS" to "Tanzanian Shilling",
-            "UAH" to "Ukrainian Hryvnia",
-            "UGX" to "Ugandan Shilling",
-            "USD" to "US Dollar",
-            "UYU" to "Uruguayan Peso",
-            "UZS" to "Uzbekistan Som",
-            "VES" to "Venezuelan Bolívar",
-            "VND" to "Vietnamese Dong",
-            "VUV" to "Vanuatu Vatu",
-            "WST" to "Samoan Tala",
-            "XAF" to "Central African CFA Franc",
-            "XCD" to "East Caribbean Dollar",
-            "XOF" to "West African CFA Franc",
-            "XPF" to "CFP Franc",
-            "YER" to "Yemeni Rial",
-            "ZAR" to "South African Rand",
-            "ZMW" to "Zambian Kwacha",
-            "ZWL" to "Zimbabwean Dollar",
+            INR to "Indian Rupee",
+            USD to "US Dollar",
         )
+
+    private val supportedCodes: Set<String> = OPTIONS.map { it.first }.toSet()
+
+    /**
+     * Returns true when [code] is one of the supported currencies.
+     */
+    fun isSupported(code: String): Boolean = code.trim().uppercase() in supportedCodes
+
+    /**
+     * Normalizes [code] to a supported currency, or [DEFAULT] when blank/unknown.
+     */
+    fun normalizeOrDefault(code: String?): String {
+        val normalized = code?.trim()?.uppercase().orEmpty()
+        return if (normalized in supportedCodes) normalized else DEFAULT
+    }
+
+    /**
+     * English label for [code], or the code itself when unknown.
+     */
+    fun labelOf(code: String): String =
+        OPTIONS.firstOrNull { it.first == code.trim().uppercase() }?.second
+            ?: code.trim().uppercase()
 
     /**
      * Filters [OPTIONS] by code or name substring (case-insensitive).

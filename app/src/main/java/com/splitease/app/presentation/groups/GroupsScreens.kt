@@ -72,6 +72,7 @@ import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.balances.GroupBalanceHeader
 import com.splitease.app.presentation.common.MoneyFormat
@@ -662,7 +663,7 @@ private fun GroupOverallBalanceBlock(
             Box(modifier = Modifier.weight(1f)) {
                 GroupOverallHeadline(
                     nets = nets,
-                    currencyFallback = currencyFallback.ifBlank { "INR" },
+                    currencyFallback = currencyFallback.ifBlank { AppCurrencies.DEFAULT },
                 )
             }
             if (myDebts.isNotEmpty()) {

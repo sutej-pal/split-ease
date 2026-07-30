@@ -1,5 +1,6 @@
 package com.splitease.app.domain.payment
 
+import com.splitease.app.domain.settings.AppCurrencies
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.net.URLEncoder
@@ -15,10 +16,10 @@ object PaymentDeepLinks {
      * Recommended pay actions for a settlement currency.
      */
     fun actionsForCurrency(currencyCode: String): List<PayActionKind> {
-        val code = currencyCode.trim().uppercase()
+        val code = AppCurrencies.normalizeOrDefault(currencyCode)
         return when (code) {
-            "INR" -> listOf(PayActionKind.UPI, PayActionKind.PAYPAL, PayActionKind.SHARE)
-            "USD" -> listOf(PayActionKind.VENMO, PayActionKind.PAYPAL, PayActionKind.SHARE)
+            AppCurrencies.INR -> listOf(PayActionKind.UPI, PayActionKind.PAYPAL, PayActionKind.SHARE)
+            AppCurrencies.USD -> listOf(PayActionKind.VENMO, PayActionKind.PAYPAL, PayActionKind.SHARE)
             else -> listOf(PayActionKind.PAYPAL, PayActionKind.SHARE)
         }
     }
@@ -28,7 +29,7 @@ object PaymentDeepLinks {
      */
     fun upiPayUri(
         amount: BigDecimal,
-        currencyCode: String = "INR",
+        currencyCode: String = AppCurrencies.INR,
         payeeName: String,
         payeeVpa: String = "",
         note: String = "SplitEase settlement",
@@ -37,7 +38,7 @@ object PaymentDeepLinks {
         val pn = encode(payeeName)
         val tn = encode(note)
         val pa = encode(payeeVpa)
-        val cu = currencyCode.trim().uppercase().ifBlank { "INR" }
+        val cu = AppCurrencies.normalizeOrDefault(currencyCode)
         return "upi://pay?pa=$pa&pn=$pn&am=$am&cu=$cu&tn=$tn"
     }
 
@@ -52,7 +53,7 @@ object PaymentDeepLinks {
         paypalUsername: String = "",
     ): String {
         val am = amount.setScale(2, RoundingMode.HALF_UP).toPlainString()
-        val cu = currencyCode.trim().uppercase().ifBlank { "USD" }
+        val cu = AppCurrencies.normalizeOrDefault(currencyCode)
         val user = paypalUsername.trim().removePrefix("@")
         return if (user.isNotEmpty()) {
             "https://www.paypal.me/$user/$am$cu"
@@ -91,7 +92,7 @@ object PaymentDeepLinks {
         note: String? = null,
     ): String {
         val am = amount.setScale(2, RoundingMode.HALF_UP).toPlainString()
-        val cu = currencyCode.trim().uppercase()
+        val cu = AppCurrencies.normalizeOrDefault(currencyCode)
         val base = "SplitEase settlement: please pay $cu $am to settle up with $counterpartyLabel."
         return if (note.isNullOrBlank()) base else "$base Note: ${note.trim()}"
     }

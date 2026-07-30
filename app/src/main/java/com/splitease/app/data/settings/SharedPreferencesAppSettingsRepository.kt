@@ -51,7 +51,7 @@ class SharedPreferencesAppSettingsRepository
             }
 
         override suspend fun setCurrencyCode(code: String) {
-            val normalized = code.trim().uppercase().ifBlank { AppCurrencies.DEFAULT }
+            val normalized = AppCurrencies.normalizeOrDefault(code)
             withContext(Dispatchers.IO) {
                 prefs.edit { putString(KEY_CURRENCY, normalized) }
             }
@@ -270,11 +270,7 @@ class SharedPreferencesAppSettingsRepository
         }
 
         private fun readCurrency(): String =
-            prefs.getString(KEY_CURRENCY, AppCurrencies.DEFAULT)
-                ?.trim()
-                ?.uppercase()
-                ?.ifBlank { AppCurrencies.DEFAULT }
-                ?: AppCurrencies.DEFAULT
+            AppCurrencies.normalizeOrDefault(prefs.getString(KEY_CURRENCY, AppCurrencies.DEFAULT))
 
         private fun readThemeMode(): ThemeMode =
             ThemeMode.fromStorage(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name))

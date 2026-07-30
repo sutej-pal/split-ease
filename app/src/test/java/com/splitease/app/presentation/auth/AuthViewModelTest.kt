@@ -23,6 +23,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -50,6 +51,8 @@ class AuthViewModelTest {
             "You're not registered with us. Please sign up."
         every { context.getString(R.string.verify_email_sent) } returns
             "Account created. Check your email for a verification code."
+        every { context.getString(R.string.verify_login_otp_sent) } returns
+            "Check your email for a verification code to finish signing in."
         every { context.getString(R.string.verify_email_resent) } returns
             "Verification code resent. Check your inbox."
         every { context.getString(R.string.verify_email_invalid_code) } returns
@@ -70,24 +73,54 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `signIn success clears loading and leaves no error`() =
+    fun `signIn success gates on login OTP and signs out password session`() =
         runTest {
             coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
             viewModel.signIn("a@b.com", "secret1")
             advanceUntilIdle()
             assertFalse(viewModel.formState.value.isLoading)
+            assertFalse(viewModel.formState.value.holdSignedInForOtp)
             assertNull(viewModel.formState.value.errorMessage)
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals(PendingOtpPurpose.LOGIN, viewModel.formState.value.pendingOtpPurpose)
+            assertEquals(
+                "Check your email for a verification code to finish signing in.",
+                viewModel.formState.value.infoMessage,
+            )
             coVerify(exactly = 1) { repository.signIn("a@b.com", "secret1") }
+            coVerify(exactly = 1) { repository.signOut() }
+            coVerify(exactly = 1) { repository.sendLoginOtp("a@b.com") }
         }
 
     @Test
-    fun `signIn failure surfaces error message`() =
+    fun `signIn arms hold before password auth completes`() =
+        runTest {
+            coEvery { repository.signIn(any(), any()) } coAnswers {
+                assertTrue(viewModel.formState.value.holdSignedInForOtp)
+                Result.success(Unit)
+            }
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
+            viewModel.signIn("a@b.com", "secret1")
+            advanceUntilIdle()
+            assertFalse(viewModel.formState.value.holdSignedInForOtp)
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+        }
+
+    @Test
+    fun `signIn failure clears hold and does not send OTP`() =
         runTest {
             coEvery { repository.signIn(any(), any()) } returns
                 Result.failure(IllegalStateException("Invalid login"))
+            coEvery { repository.signOut() } returns Result.success(Unit)
             viewModel.signIn("a@b.com", "bad")
             advanceUntilIdle()
             assertEquals("Invalid login", viewModel.formState.value.errorMessage)
+            assertFalse(viewModel.formState.value.holdSignedInForOtp)
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            coVerify(exactly = 0) { repository.sendLoginOtp(any()) }
         }
 
     @Test
@@ -136,6 +169,7 @@ class AuthViewModelTest {
             viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
             assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals(PendingOtpPurpose.SIGNUP, viewModel.formState.value.pendingOtpPurpose)
             assertEquals(
                 "Account created. Check your email for a verification code.",
                 viewModel.formState.value.infoMessage,
@@ -143,40 +177,47 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `signUp skips OTP gate when repository returns SignedIn`() =
+    fun `signUp with SignedIn still gates on login OTP and does not open app`() =
         runTest {
             coEvery {
                 repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
             } returns Result.success(SignUpResult.SignedIn)
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
             viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
-            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals(PendingOtpPurpose.LOGIN, viewModel.formState.value.pendingOtpPurpose)
+            assertFalse(viewModel.formState.value.holdSignedInForOtp)
             assertEquals(
-                "Signup complete. You can continue to the app.",
+                "Account created. Check your email for a verification code.",
                 viewModel.formState.value.infoMessage,
             )
+            coVerify(exactly = 1) { repository.signOut() }
+            coVerify(exactly = 1) { repository.sendLoginOtp("a@b.com") }
         }
 
     @Test
-    fun `verifySignupOtp rejects wrong length code`() =
+    fun `verifyPendingOtp rejects wrong length code`() =
         runTest {
-            viewModel.verifySignupOtp("a@b.com", "9999")
+            viewModel.verifyPendingOtp("a@b.com", "9999")
+            advanceUntilIdle()
+            assertEquals("Enter a valid 6-digit code.", viewModel.formState.value.errorMessage)
+            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
+            coVerify(exactly = 0) { repository.verifyLoginOtp(any(), any()) }
+        }
+
+    @Test
+    fun `verifyPendingOtp rejects 8-digit code`() =
+        runTest {
+            viewModel.verifyPendingOtp("a@b.com", "12345678")
             advanceUntilIdle()
             assertEquals("Enter a valid 6-digit code.", viewModel.formState.value.errorMessage)
             coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
         }
 
     @Test
-    fun `verifySignupOtp rejects 8-digit code`() =
-        runTest {
-            viewModel.verifySignupOtp("a@b.com", "12345678")
-            advanceUntilIdle()
-            assertEquals("Enter a valid 6-digit code.", viewModel.formState.value.errorMessage)
-            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
-        }
-
-    @Test
-    fun `verifySignupOtp with valid 6-digit code calls repository and clears pending`() =
+    fun `verifyPendingOtp with valid signup code calls repository and clears pending`() =
         runTest {
             coEvery {
                 repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
@@ -184,16 +225,52 @@ class AuthViewModelTest {
             coEvery { repository.verifySignupOtp(any(), any()) } returns Result.success(Unit)
             viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
-            viewModel.verifySignupOtp("a@b.com", "123456")
+            viewModel.verifyPendingOtp("a@b.com", "123456")
             advanceUntilIdle()
             assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            assertNull(viewModel.formState.value.pendingOtpPurpose)
             coVerify(exactly = 1) { repository.verifySignupOtp("a@b.com", "123456") }
         }
 
     @Test
-    fun `resendConfirmation calls repository resend`() =
+    fun `verifyPendingOtp with valid login code calls login verify`() =
         runTest {
+            coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
+            coEvery { repository.verifyLoginOtp(any(), any()) } returns Result.success(Unit)
+            viewModel.signIn("a@b.com", "secret1")
+            advanceUntilIdle()
+            viewModel.verifyPendingOtp("a@b.com", "654321")
+            advanceUntilIdle()
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            coVerify(exactly = 1) { repository.verifyLoginOtp("a@b.com", "654321") }
+            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
+        }
+
+    @Test
+    fun `resendConfirmation calls login otp send when purpose is login`() =
+        runTest {
+            coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
+            viewModel.signIn("a@b.com", "secret1")
+            advanceUntilIdle()
+            viewModel.resendConfirmation("a@b.com")
+            advanceUntilIdle()
+            coVerify(atLeast = 2) { repository.sendLoginOtp("a@b.com") }
+            coVerify(exactly = 0) { repository.resendSignupConfirmation(any()) }
+        }
+
+    @Test
+    fun `resendConfirmation calls repository resend for signup`() =
+        runTest {
+            coEvery {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            } returns Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
             coEvery { repository.resendSignupConfirmation(any()) } returns Result.success(Unit)
+            viewModel.signUp("a@b.com", "secret12", "Ada")
+            advanceUntilIdle()
             viewModel.resendConfirmation("a@b.com")
             advanceUntilIdle()
             coVerify(exactly = 1) { repository.resendSignupConfirmation("a@b.com") }

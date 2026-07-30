@@ -99,7 +99,7 @@ class GroupInviteLinkViewModel
                         groupName = link?.groupName.orEmpty(),
                         inviteUrl = link?.url,
                         shareText = link?.shareText,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = friendlyInviteError(result.exceptionOrNull()),
                     )
                 }
             }
@@ -179,7 +179,7 @@ class GroupInviteLinkViewModel
                         groupName = link?.groupName ?: it.groupName,
                         inviteUrl = link?.url,
                         shareText = link?.shareText,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = friendlyInviteError(result.exceptionOrNull()),
                         infoMessage =
                             if (link != null) {
                                 appContext.getString(R.string.invite_link_changed)
@@ -194,5 +194,20 @@ class GroupInviteLinkViewModel
         private suspend fun currentUserId(): String? {
             val session = authRepository.observeSession().first { it !is AuthSession.Loading }
             return (session as? AuthSession.SignedIn)?.user?.userId
+        }
+        private fun friendlyInviteError(error: Throwable?): String? {
+            if (error == null) return null
+            val raw = error.message.orEmpty()
+            val lower = raw.lowercase()
+            return when {
+                "row-level security" in lower || "42501" in lower ->
+                    appContext.getString(R.string.msg_group_sync_rls)
+                raw.isNotBlank() && raw.length <= 160 &&
+                    "url:" !in lower && "headers:" !in lower ->
+                    raw.lineSequence().firstOrNull()?.trim().orEmpty().ifBlank {
+                        appContext.getString(R.string.error_generic)
+                    }
+                else -> appContext.getString(R.string.error_generic)
+            }
         }
     }

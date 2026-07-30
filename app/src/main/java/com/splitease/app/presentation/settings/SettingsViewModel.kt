@@ -2,6 +2,7 @@ package com.splitease.app.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AppSettingsRepository
@@ -19,6 +20,7 @@ class SettingsViewModel
     @Inject
     constructor(
         private val appSettingsRepository: AppSettingsRepository,
+        private val authRepository: AuthRepository,
     ) : ViewModel() {
         val currencyCode: StateFlow<String> =
             appSettingsRepository
@@ -48,6 +50,7 @@ class SettingsViewModel
         fun setCurrency(code: String) {
             viewModelScope.launch {
                 appSettingsRepository.setCurrencyCode(code)
+                runCatching { authRepository.updatePreferredCurrency(code) }
             }
         }
 

@@ -29,6 +29,7 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.onboarding.OnboardingViewModel
 import kotlinx.coroutines.delay
+import com.splitease.app.presentation.account.AccountProfileSettingsScreen
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
@@ -76,6 +77,7 @@ object Routes {
     const val TAB_ACCOUNT = "tab_account"
 
     const val SETTINGS = "settings"
+    const val ACCOUNT_PROFILE_SETTINGS = "account_profile_settings"
     const val APPEARANCE_SETTINGS = "appearance_settings"
     const val SECURITY_SETTINGS = "security_settings"
     const val LANGUAGE_SETTINGS = "language_settings"
@@ -190,18 +192,25 @@ fun SplitEaseNavHost(
     val resetSent = stringResource(R.string.reset_sent)
 
     val pendingEmail = formState.pendingConfirmationEmail
-    // OTP gate after signup — shown even when Supabase already created a session.
+    // OTP gate after signup / login — blocks Home until the code is verified.
     if (pendingEmail != null && session !is AuthSession.Loading) {
         VerifyEmailScreen(
             email = pendingEmail,
             formState = formState,
-            onVerify = { code -> authViewModel.verifySignupOtp(pendingEmail, code) },
+            onVerify = { code -> authViewModel.verifyPendingOtp(pendingEmail, code) },
             onResend = { authViewModel.resendConfirmation(pendingEmail) },
             onBackToLogin = {
                 authViewModel.clearPendingConfirmation()
                 authViewModel.clearMessages()
             },
         )
+        return
+    }
+    // Password auth emits SignedIn before OTP is armed — hold Home closed.
+    if (formState.holdSignedInForOtp && session is AuthSession.SignedIn) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
         return
     }
 
@@ -350,7 +359,6 @@ fun SplitEaseNavHost(
             }
             SignedInNavHost(
                 userId = current.user.userId,
-                displayName = current.user.displayName,
                 onSignOut = authViewModel::signOut,
                 pendingInviteToken = pendingInviteToken,
                 claimInviteAndConsumeOpenTarget = authViewModel::claimInviteAndConsumeOpenTarget,
@@ -366,7 +374,6 @@ fun SplitEaseNavHost(
 @Composable
 private fun SignedInNavHost(
     userId: String,
-    displayName: String,
     onSignOut: () -> Unit,
     pendingInviteToken: String?,
     claimInviteAndConsumeOpenTarget: suspend () -> String?,
@@ -453,11 +460,18 @@ private fun SignedInNavHost(
             }
             composable(Routes.TAB_ACCOUNT) {
                 AccountScreen(
-                    displayName = displayName,
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                    onOpenAccountProfile = { navController.navigate(Routes.ACCOUNT_PROFILE_SETTINGS) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
                     onOpenImport = { navController.navigate(Routes.IMPORT) },
                     onSignOut = onSignOut,
+                )
+            }
+            composable(Routes.ACCOUNT_PROFILE_SETTINGS) {
+                AccountProfileSettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenCurrency = { navController.navigate(Routes.CURRENCY_SETTINGS) },
+                    onOpenLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
                 )
             }
             composable(Routes.SETTINGS) {
@@ -465,8 +479,6 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
                     onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
-                    onOpenLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
-                    onOpenCurrency = { navController.navigate(Routes.CURRENCY_SETTINGS) },
                 )
             }
             composable(Routes.APPEARANCE_SETTINGS) {

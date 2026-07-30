@@ -16,9 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,15 +65,10 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenSecurity: () -> Unit,
-    onOpenLanguage: () -> Unit,
-    onOpenCurrency: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val currency by viewModel.currencyCode.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val biometricLock by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
-    val appLocale by viewModel.appLocale.collectAsStateWithLifecycle()
-    val currencyLabel = AppCurrencies.filter("").firstOrNull { it.first == currency }?.second ?: currency
 
     SeScreen(
         title = stringResource(R.string.settings_title),
@@ -134,52 +127,6 @@ fun SettingsScreen(
                         )
                     },
                     onClick = onOpenSecurity,
-                    showDivider = false,
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-                HorizontalDivider(color = SplitEaseColors.Outline)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                SeSectionHeader(text = stringResource(R.string.settings_general_section))
-                SeListRow(
-                    title = stringResource(R.string.settings_language),
-                    subtitle = appLocaleLabel(appLocale),
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Translate,
-                            tint = SplitEaseColors.IconOther,
-                            size = 40,
-                        )
-                    },
-                    trailing = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
-                        )
-                    },
-                    onClick = onOpenLanguage,
-                    showDivider = true,
-                )
-                SeListRow(
-                    title = stringResource(R.string.settings_currency_item),
-                    subtitle = "$currency · $currencyLabel",
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Payments,
-                            tint = SplitEaseColors.IconFriends,
-                            size = 40,
-                        )
-                    },
-                    trailing = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
-                        )
-                    },
-                    onClick = onOpenCurrency,
                     showDivider = false,
                 )
             }

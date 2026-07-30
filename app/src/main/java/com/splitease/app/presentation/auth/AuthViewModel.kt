@@ -25,6 +25,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * Which email OTP flow is currently gated on the verify screen.
+ */
+enum class PendingOtpPurpose {
+    /** Post-signup confirmation (`OtpType.Email.SIGNUP`). */
+    SIGNUP,
+
+    /** Post-password login step-up (`OtpType.Email.EMAIL`). */
+    LOGIN,
+}
+
+/**
  * UI state for email/password auth forms.
  *
  * @property isLoading True while a network auth call is in flight.
@@ -32,12 +43,17 @@ import javax.inject.Inject
  * @property infoMessage User-visible success/info, if any.
  * @property pendingConfirmationEmail When set, show the verify-email OTP screen
  *   (blocks Home even if a session already exists).
+ * @property pendingOtpPurpose Which verify/resend API to use while gated.
+ * @property holdSignedInForOtp When true, a transient SignedIn session must not open Home
+ *   (set before password auth completes so the OTP gate cannot race).
  */
 data class AuthFormState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingConfirmationEmail: String? = null,
+    val pendingOtpPurpose: PendingOtpPurpose? = null,
+    val holdSignedInForOtp: Boolean = false,
 )
 
 /**
@@ -123,8 +139,10 @@ class AuthViewModel
             viewModelScope.launch {
                 session.collect { current ->
                     // Hydrate profile only after OTP onboarding is done.
+                    val form = _formState.value
                     if (current is AuthSession.SignedIn &&
-                        _formState.value.pendingConfirmationEmail == null
+                        form.pendingConfirmationEmail == null &&
+                        !form.holdSignedInForOtp
                     ) {
                         authRepository.ensureLocalProfile()
                     }
@@ -158,7 +176,13 @@ class AuthViewModel
 
         /** Leaves the pending-confirmation screen without completing OTP. */
         fun clearPendingConfirmation() {
-            _formState.update { it.copy(pendingConfirmationEmail = null) }
+            _formState.update {
+                it.copy(
+                    pendingConfirmationEmail = null,
+                    pendingOtpPurpose = null,
+                    holdSignedInForOtp = false,
+                )
+            }
             viewModelScope.launch {
                 // Abandoning OTP must not leave a half-created session into the app.
                 runCatching { authRepository.signOut() }
@@ -166,39 +190,75 @@ class AuthViewModel
         }
 
         /**
-         * Signs in with email and password.
+         * Validates email/password, then gates the app until a login email OTP is verified.
          *
          * @param email Account email.
          * @param password Account password.
          */
         fun signIn(email: String, password: String) {
             viewModelScope.launch {
-                _formState.update {
-                    it.copy(isLoading = true, errorMessage = null, infoMessage = null)
-                }
                 val trimmedEmail = email.trim()
+                // Hold Home closed before password auth — signIn emits SignedIn immediately.
+                _formState.update {
+                    it.copy(
+                        isLoading = true,
+                        errorMessage = null,
+                        infoMessage = null,
+                        pendingConfirmationEmail = null,
+                        pendingOtpPurpose = null,
+                        holdSignedInForOtp = true,
+                    )
+                }
                 val result = authRepository.signIn(trimmedEmail, password)
-                if (result.isSuccess) {
+                if (result.isFailure) {
+                    runCatching { authRepository.signOut() }
+                    val err = result.exceptionOrNull()
+                    val message =
+                        if (isInvalidCredentials(err)) {
+                            val registered =
+                                authRepository.isEmailRegistered(trimmedEmail).getOrDefault(true)
+                            if (!registered) {
+                                appContext.getString(R.string.error_not_registered)
+                            } else {
+                                appContext.getString(R.string.error_invalid_credentials)
+                            }
+                        } else {
+                            friendlyAuthError(err)
+                        }
                     _formState.update {
-                        it.copy(isLoading = false, errorMessage = null, infoMessage = null)
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = message,
+                            holdSignedInForOtp = false,
+                            pendingConfirmationEmail = null,
+                            pendingOtpPurpose = null,
+                        )
                     }
                     return@launch
                 }
-                val err = result.exceptionOrNull()
-                val message =
-                    if (isInvalidCredentials(err)) {
-                        val registered =
-                            authRepository.isEmailRegistered(trimmedEmail).getOrDefault(true)
-                        if (!registered) {
-                            appContext.getString(R.string.error_not_registered)
-                        } else {
-                            appContext.getString(R.string.error_invalid_credentials)
-                        }
-                    } else {
-                        friendlyAuthError(err)
+                // Drop the password session so Home cannot open until OTP succeeds.
+                runCatching { authRepository.signOut() }
+                val otpResult = authRepository.sendLoginOtp(trimmedEmail)
+                if (otpResult.isFailure) {
+                    _formState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = friendlyAuthError(otpResult.exceptionOrNull()),
+                            holdSignedInForOtp = false,
+                            pendingConfirmationEmail = null,
+                            pendingOtpPurpose = null,
+                        )
                     }
+                    return@launch
+                }
                 _formState.update {
-                    it.copy(isLoading = false, errorMessage = message)
+                    AuthFormState(
+                        isLoading = false,
+                        pendingConfirmationEmail = trimmedEmail,
+                        pendingOtpPurpose = PendingOtpPurpose.LOGIN,
+                        holdSignedInForOtp = false,
+                        infoMessage = appContext.getString(R.string.verify_login_otp_sent),
+                    )
                 }
             }
         }
@@ -243,15 +303,18 @@ class AuthViewModel
                 return
             }
             viewModelScope.launch {
+                val trimmedEmail = email.trim()
+                // Hold Home closed if signup returns a session before OTP.
                 _formState.update {
                     it.copy(
                         isLoading = true,
                         errorMessage = null,
                         infoMessage = null,
                         pendingConfirmationEmail = null,
+                        pendingOtpPurpose = null,
+                        holdSignedInForOtp = true,
                     )
                 }
-                val trimmedEmail = email.trim()
                 appSettingsRepository.setCurrencyCode(currencyCode)
                 val result =
                     authRepository.signUp(
@@ -263,28 +326,49 @@ class AuthViewModel
                         currencyCode = currencyCode,
                         photoUri = photoUri,
                     )
-                _formState.update {
-                    if (result.isFailure) {
+                if (result.isFailure) {
+                    runCatching { authRepository.signOut() }
+                    _formState.update {
                         AuthFormState(
                             isLoading = false,
                             errorMessage = friendlyAuthError(result.exceptionOrNull()),
                         )
-                    } else {
-                        when (val outcome = result.getOrNull()) {
-                            is SignUpResult.PendingEmailConfirmation ->
-                                // Confirm-email ON: gate until OTP is verified.
+                    }
+                    return@launch
+                }
+                when (val outcome = result.getOrNull()) {
+                    is SignUpResult.PendingEmailConfirmation ->
+                        _formState.update {
+                            AuthFormState(
+                                isLoading = false,
+                                pendingConfirmationEmail = outcome.email,
+                                pendingOtpPurpose = PendingOtpPurpose.SIGNUP,
+                                holdSignedInForOtp = false,
+                                infoMessage = appContext.getString(R.string.verify_email_sent),
+                            )
+                        }
+                    is SignUpResult.SignedIn, null -> {
+                        // Autoconfirm / session-before-OTP: still require email OTP and
+                        // do not open the app until verify succeeds.
+                        runCatching { authRepository.signOut() }
+                        val otpResult = authRepository.sendLoginOtp(trimmedEmail)
+                        if (otpResult.isFailure) {
+                            _formState.update {
                                 AuthFormState(
                                     isLoading = false,
-                                    pendingConfirmationEmail = outcome.email,
-                                    infoMessage = appContext.getString(R.string.verify_email_sent),
+                                    errorMessage = friendlyAuthError(otpResult.exceptionOrNull()),
                                 )
-                            is SignUpResult.SignedIn, null ->
-                                // Confirm-email OFF / autoconfirm: session is ready.
-                                AuthFormState(
-                                    isLoading = false,
-                                    pendingConfirmationEmail = null,
-                                    infoMessage = appContext.getString(R.string.signup_complete_message),
-                                )
+                            }
+                            return@launch
+                        }
+                        _formState.update {
+                            AuthFormState(
+                                isLoading = false,
+                                pendingConfirmationEmail = trimmedEmail,
+                                pendingOtpPurpose = PendingOtpPurpose.LOGIN,
+                                holdSignedInForOtp = false,
+                                infoMessage = appContext.getString(R.string.verify_email_sent),
+                            )
                         }
                     }
                 }
@@ -295,16 +379,23 @@ class AuthViewModel
          * @param email Pending confirmation email.
          */
         fun resendConfirmation(email: String) {
-            submit(successMessage = appContext.getString(R.string.verify_email_resent)) {
-                authRepository.resendSignupConfirmation(email)
+            val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
+            val successMessage = appContext.getString(R.string.verify_email_resent)
+            submit(successMessage = successMessage) {
+                when (purpose) {
+                    PendingOtpPurpose.SIGNUP -> authRepository.resendSignupConfirmation(email)
+                    PendingOtpPurpose.LOGIN -> authRepository.sendLoginOtp(email)
+                }
             }
         }
 
         /**
+         * Verifies the pending signup or login OTP and opens the app on success.
+         *
          * @param email Pending confirmation email.
          * @param token User-entered OTP.
          */
-        fun verifySignupOtp(email: String, token: String) {
+        fun verifyPendingOtp(email: String, token: String) {
             val code = token.trim()
             if (code.length != SIGNUP_OTP_LENGTH || code.any { !it.isDigit() }) {
                 _formState.update {
@@ -315,16 +406,24 @@ class AuthViewModel
                 }
                 return
             }
+            val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
             viewModelScope.launch {
                 _formState.update {
                     it.copy(isLoading = true, errorMessage = null, infoMessage = null)
                 }
-                val result = authRepository.verifySignupOtp(email.trim(), code)
+                val result =
+                    when (purpose) {
+                        PendingOtpPurpose.SIGNUP ->
+                            authRepository.verifySignupOtp(email.trim(), code)
+                        PendingOtpPurpose.LOGIN ->
+                            authRepository.verifyLoginOtp(email.trim(), code)
+                    }
                 if (result.isSuccess) {
                     _formState.update {
                         it.copy(
                             isLoading = false,
                             pendingConfirmationEmail = null,
+                            pendingOtpPurpose = null,
                             errorMessage = null,
                             infoMessage = null,
                         )
@@ -354,7 +453,13 @@ class AuthViewModel
 
         /** Signs out the current user. */
         fun signOut() {
-            _formState.update { it.copy(pendingConfirmationEmail = null) }
+            _formState.update {
+                it.copy(
+                    pendingConfirmationEmail = null,
+                    pendingOtpPurpose = null,
+                    holdSignedInForOtp = false,
+                )
+            }
             submit {
                 authRepository.signOut()
             }

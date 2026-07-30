@@ -69,6 +69,7 @@ import com.splitease.app.R
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
@@ -850,11 +851,9 @@ fun ExpenseListSection(
 }
 
 private fun currencySymbol(code: String): String =
-    when (code.uppercase()) {
-        "INR" -> "₹"
-        "USD" -> "$"
-        "EUR" -> "€"
-        "GBP" -> "£"
+    when (AppCurrencies.normalizeOrDefault(code)) {
+        AppCurrencies.INR -> "₹"
+        AppCurrencies.USD -> "$"
         else -> code
     }
 

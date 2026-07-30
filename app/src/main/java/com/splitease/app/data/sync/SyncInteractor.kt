@@ -95,10 +95,20 @@ class SyncInteractor
 
             groupRepository.getPendingGroups().forEach { group ->
                 runCatching {
-                    socialRemote.upsertGroup(group.toDto())
+                    val sessionUserId = supabase.auth.currentUserOrNull()?.id
+                    val toUpload =
+                        if (sessionUserId != null && group.createdByUserId != sessionUserId) {
+                            // Stale local creator after re-signup — RLS requires auth.uid().
+                            group.copy(createdByUserId = sessionUserId).also {
+                                groupRepository.upsertGroup(it)
+                            }
+                        } else {
+                            group
+                        }
+                    socialRemote.upsertGroup(toUpload.toDto())
                     groupRepository.upsertGroup(
-                        group.copy(
-                            remoteId = group.remoteId ?: group.id,
+                        toUpload.copy(
+                            remoteId = toUpload.remoteId ?: toUpload.id,
                             syncStatus = SyncStatus.SYNCED,
                             updatedAtEpochMs = System.currentTimeMillis(),
                         ),

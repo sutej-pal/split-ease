@@ -28,6 +28,7 @@ import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeIconTileWithAvatar
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
@@ -96,11 +97,27 @@ private fun ActivityRow(
             ActivityKind.PAYMENT -> Icons.Filled.Payments to SplitEaseColors.OwedToYou
             ActivityKind.GROUP_CREATED -> Icons.Filled.Group to SplitEaseColors.IconFriends
         }
+    val isExpenseKind =
+        item.kind == ActivityKind.EXPENSE ||
+            item.kind == ActivityKind.EXPENSE_UPDATED ||
+            item.kind == ActivityKind.EXPENSE_DELETED
     SeListRow(
         title = item.title,
         subtitle = item.subtitle,
         onClick = onClick,
-        leading = { SeIconTile(icon = icon, tint = tint, size = 44) },
+        leading = {
+            if (isExpenseKind && !item.actorDisplayName.isNullOrBlank()) {
+                SeIconTileWithAvatar(
+                    icon = icon,
+                    tint = tint,
+                    actorName = item.actorDisplayName,
+                    actorPhotoUrl = item.actorPhotoUrl,
+                    size = 44,
+                )
+            } else {
+                SeIconTile(icon = icon, tint = tint, size = 44)
+            }
+        },
         trailing =
             if (item.amountLabel.isBlank()) {
                 null
@@ -125,9 +142,10 @@ private fun ActivityScreenPreview() {
                     id = "1",
                     kind = ActivityKind.EXPENSE,
                     title = "Dinner",
-                    subtitle = "Roommates · you paid · 22 Jul 2026",
+                    subtitle = "Roommates · Added by You · 22 Jul 2026",
                     amountLabel = "INR 1200.00",
                     sortEpochMs = 0L,
+                    actorDisplayName = "You",
                 ),
             )
             ActivityRow(
@@ -135,9 +153,10 @@ private fun ActivityScreenPreview() {
                     id = "2",
                     kind = ActivityKind.EXPENSE_UPDATED,
                     title = "Updated: Dinner",
-                    subtitle = "Roommates · 22 Jul 2026",
+                    subtitle = "Roommates · Updated by You · 22 Jul 2026",
                     amountLabel = "INR 1400.00",
                     sortEpochMs = 0L,
+                    actorDisplayName = "You",
                 ),
             )
             ActivityRow(

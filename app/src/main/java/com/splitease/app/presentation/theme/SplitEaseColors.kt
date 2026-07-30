@@ -15,71 +15,71 @@ import androidx.compose.ui.graphics.Color
  */
 object SplitEaseColors {
     // Brand / surface roles (theme-aware)
+    @get:Composable
+    @get:ReadOnlyComposable
     val Primary: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.primary
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val PrimaryDark: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.primary
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val PrimarySoft: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.primaryContainer
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val Secondary: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.secondary
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val Accent: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.tertiary
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val AccentSoft: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.tertiaryContainer
 
     /** Body / heading text on background and surface. */
+    @get:Composable
+    @get:ReadOnlyComposable
     val Navy: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.onSurface
 
     /** Captions, hints, muted labels. */
+    @get:Composable
+    @get:ReadOnlyComposable
     val NavyMuted: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.onSurfaceVariant
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val Background: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.background
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val Surface: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.surface
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val SurfaceMuted: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.surfaceVariant
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val Outline: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.outlineVariant
 
+    @get:Composable
+    @get:ReadOnlyComposable
     val OutlineStrong: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.outline
 
     // TODO(design): Confirm semantic balance colors before shipping.
@@ -87,9 +87,9 @@ object SplitEaseColors {
     val YouOwe = ErrorPlaceholder
     /** PLACEHOLDER — "you're owed" / positive. */
     val OwedToYou = PositivePlaceholder
+    @get:Composable
+    @get:ReadOnlyComposable
     val Settled: Color
-        @Composable
-        @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.onSurfaceVariant
 
     // Group type tiles (tint accents; may revisit with brand)

@@ -52,6 +52,10 @@ data class ActivityUiItem(
     val sortEpochMs: Long,
     /** When set and the expense still exists, Activity can open expense details. */
     val relatedExpenseId: String? = null,
+    /** Display name of who added/updated/deleted (expense rows only). */
+    val actorDisplayName: String? = null,
+    /** Optional avatar URL for [actorDisplayName]. */
+    val actorPhotoUrl: String? = null,
 )
 
 @HiltViewModel
@@ -100,6 +104,7 @@ class ActivityViewModel
                         ) { sources, events ->
                             val groupNames = sources.groups.associate { it.id to it.name }
                             val userNames = sources.users.associate { it.id to it.displayName }
+                            val userPhotos = sources.users.associate { it.id to it.photoUrl }
                             val friendNames =
                                 sources.friends.associate { it.friendUserId to it.displayNameSnapshot }
 
@@ -112,15 +117,17 @@ class ActivityViewModel
                                             ?: id.take(8)
                                 }
 
+                            fun photoOf(id: String): String? = userPhotos[id]
+
                             val expenseIdsWithEvents =
                                 events.mapNotNull { it.relatedExpenseId }.toSet()
                             val legacyExpenseItems =
                                 sources.expenses
                                     .filter { it.id !in expenseIdsWithEvents }
                                     .map { expense ->
-                                        expense.toUi(me, groupNames, ::nameOf)
+                                        expense.toUi(groupNames, ::nameOf, ::photoOf)
                                     }
-                            val eventItems = events.map { it.toUi() }
+                            val eventItems = events.map { it.toUi(::nameOf, ::photoOf) }
                             val paymentItems =
                                 sources.payments.map { payment ->
                                     payment.toUi(me, groupNames, ::nameOf)
@@ -145,22 +152,37 @@ class ActivityViewModel
             }
         }
 
-        private fun ActivityEvent.toUi(): ActivityUiItem {
+        private fun ActivityEvent.toUi(
+            nameOf: (String) -> String,
+            photoOf: (String) -> String?,
+        ): ActivityUiItem {
             val uiKind =
                 when (kind) {
                     ActivityEventKind.EXPENSE_ADDED -> ActivityKind.EXPENSE
                     ActivityEventKind.EXPENSE_UPDATED -> ActivityKind.EXPENSE_UPDATED
                     ActivityEventKind.EXPENSE_DELETED -> ActivityKind.EXPENSE_DELETED
                 }
+            val actorName = nameOf(actorUserId)
+            val byLabel =
+                when (kind) {
+                    ActivityEventKind.EXPENSE_ADDED ->
+                        appContext.getString(R.string.activity_added_by, actorName)
+                    ActivityEventKind.EXPENSE_UPDATED ->
+                        appContext.getString(R.string.activity_updated_by, actorName)
+                    ActivityEventKind.EXPENSE_DELETED ->
+                        appContext.getString(R.string.activity_deleted_by, actorName)
+                }
             return ActivityUiItem(
                 id = "event-$id",
                 kind = uiKind,
                 title = title,
-                subtitle = subtitle,
+                subtitle = subtitleWithActor(subtitle, byLabel),
                 amountLabel = amountLabel,
                 sortEpochMs = sortEpochMs,
                 relatedExpenseId =
                     relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
+                actorDisplayName = actorName,
+                actorPhotoUrl = photoOf(actorUserId),
             )
         }
 
@@ -177,28 +199,40 @@ class ActivityViewModel
         }
 
         private fun Expense.toUi(
-            me: String,
             groupNames: Map<String, String>,
             nameOf: (String) -> String,
+            photoOf: (String) -> String?,
         ): ActivityUiItem {
             val context =
                 groupId?.let { groupNames[it] } ?: appContext.getString(R.string.non_group_expenses)
-            val payer =
-                if (paidByUserId == me) {
-                    "you paid"
-                } else {
-                    "${nameOf(paidByUserId)} paid"
-                }
+            val actorName = nameOf(paidByUserId)
+            val addedBy = appContext.getString(R.string.activity_added_by, actorName)
             val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(expenseDateEpochMs))
             return ActivityUiItem(
                 id = "expense-$id",
                 kind = ActivityKind.EXPENSE,
                 title = description,
-                subtitle = "$context · $payer · $date",
+                subtitle = "$context · $addedBy · $date",
                 amountLabel = "$currencyCode ${amount.toPlainString()}",
                 sortEpochMs = expenseDateEpochMs.coerceAtLeast(createdAtEpochMs),
                 relatedExpenseId = id,
+                actorDisplayName = actorName,
+                actorPhotoUrl = photoOf(paidByUserId),
             )
+        }
+
+        /** Inserts the actor label before the trailing date segment when present. */
+        private fun subtitleWithActor(
+            subtitle: String,
+            byLabel: String,
+        ): String {
+            if (subtitle.isBlank()) return byLabel
+            val parts = subtitle.split(" · ").map { it.trim() }.filter { it.isNotEmpty() }
+            return if (parts.size >= 2) {
+                (parts.dropLast(1) + byLabel + parts.last()).joinToString(" · ")
+            } else {
+                "$subtitle · $byLabel"
+            }
         }
 
         private fun Payment.toUi(

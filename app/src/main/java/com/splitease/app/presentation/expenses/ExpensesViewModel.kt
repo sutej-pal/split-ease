@@ -26,6 +26,7 @@ import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -78,7 +79,7 @@ data class LedgerListItem(
     /** Display name of who paid (e.g. "You" or a friend). */
     val payerLabel: String? = null,
     val paidAmount: BigDecimal? = null,
-    val currencyCode: String = "INR",
+    val currencyCode: String = AppCurrencies.DEFAULT,
     val balanceSide: LedgerBalanceSide? = null,
     val balanceAmount: BigDecimal? = null,
 )
@@ -146,7 +147,7 @@ class ExpensesViewModel
         val currencyCode: StateFlow<String> =
             appSettingsRepository
                 .observeCurrencyCode()
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "INR")
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppCurrencies.DEFAULT)
 
         fun currentUserId(): String? = userId.value
 
@@ -482,22 +483,24 @@ class ExpensesViewModel
                     }
                 val result =
                     expenseInteractor.createExpense(
-                        CreateExpenseInput(
-                            description = description,
-                            amount = amount,
-                            currencyCode = currencyCode,
-                            paidByUserId = paidByUserId,
-                            participantIds = participantIds,
-                            splitType = splitType,
-                            groupId = groupId,
-                            unequalAmounts = unequalAmounts,
-                            percentages = percentages,
-                            shares = shares,
-                            recurrenceFrequency = recurrenceFrequency,
-                            categoryId = categoryId,
-                            notes = notes,
-                            expenseDateEpochMs = expenseDateEpochMs,
-                        ),
+                        input =
+                            CreateExpenseInput(
+                                description = description,
+                                amount = amount,
+                                currencyCode = currencyCode,
+                                paidByUserId = paidByUserId,
+                                participantIds = participantIds,
+                                splitType = splitType,
+                                groupId = groupId,
+                                unequalAmounts = unequalAmounts,
+                                percentages = percentages,
+                                shares = shares,
+                                recurrenceFrequency = recurrenceFrequency,
+                                categoryId = categoryId,
+                                notes = notes,
+                                expenseDateEpochMs = expenseDateEpochMs,
+                            ),
+                        actorUserId = userId.value,
                     )
                 _uiState.update {
                     it.copy(
@@ -631,6 +634,7 @@ class ExpensesViewModel
                                 expenseDateEpochMs = expenseDateEpochMs ?: existing.expenseDateEpochMs,
                                 recurringTemplateId = existing.recurringTemplateId,
                             ),
+                        actorUserId = userId.value,
                     )
                 _uiState.update {
                     it.copy(

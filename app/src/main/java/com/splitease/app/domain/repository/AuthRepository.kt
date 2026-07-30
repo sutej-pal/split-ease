@@ -3,6 +3,7 @@ package com.splitease.app.domain.repository
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SignUpResult
+import com.splitease.app.domain.settings.AppCurrencies
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -41,12 +42,15 @@ interface AuthRepository {
         displayName: String,
         phoneCountryCode: String = "+91",
         phoneNumber: String = "",
-        currencyCode: String = "INR",
+        currencyCode: String = AppCurrencies.DEFAULT,
         photoUri: String? = null,
     ): Result<SignUpResult>
 
     /**
-     * Signs in with email and password.
+     * Validates email and password with Supabase.
+     *
+     * Does **not** leave a usable app session — callers must complete [sendLoginOtp] /
+     * [verifyLoginOtp] (or [verifySignupOtp]) before hydrating local data.
      *
      * @param email User email.
      * @param password Password.
@@ -62,6 +66,24 @@ interface AuthRepository {
      * @return true when registered; false when not; failure when the check could not run.
      */
     suspend fun isEmailRegistered(email: String): Result<Boolean>
+
+    /**
+     * Sends a 6-digit email OTP for the post-password login gate.
+     * Does not create new accounts (`createUser = false`).
+     *
+     * @param email Account email that just passed password sign-in.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun sendLoginOtp(email: String): Result<Unit>
+
+    /**
+     * Verifies the login email OTP and hydrates the local profile.
+     *
+     * @param email Account email that received the code.
+     * @param token Six-digit OTP from the email (`{{ .Token }}` in Magic Link template).
+     * @return [Result] success or failure with message.
+     */
+    suspend fun verifyLoginOtp(email: String, token: String): Result<Unit>
 
     /**
      * Resends the signup confirmation email (with a fresh OTP) when Confirm email is enabled.
@@ -106,6 +128,26 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun updateDisplayName(displayName: String): Result<Unit>
+
+    /**
+     * Updates the signed-in user's profile photo. Copies [photoUri] into app-private storage,
+     * then persists the local path in Supabase metadata, Room, and remote `profiles`.
+     *
+     * @param photoUri Content or file URI string from gallery / camera.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun updateProfilePhoto(photoUri: String): Result<Unit>
+
+    /**
+     * Updates the signed-in user's preferred currency in Supabase metadata, Room, and
+     * remote `profiles` (best-effort). Does not change the local app default currency
+     * preference — callers should update [com.splitease.app.domain.settings.AppSettingsRepository]
+     * separately when needed.
+     *
+     * @param currencyCode ISO 4217 code (e.g. `INR`).
+     * @return [Result] success or failure with message.
+     */
+    suspend fun updatePreferredCurrency(currencyCode: String): Result<Unit>
 
     /**
      * Ensures the signed-in auth user exists in local Room (and remote profiles best-effort),

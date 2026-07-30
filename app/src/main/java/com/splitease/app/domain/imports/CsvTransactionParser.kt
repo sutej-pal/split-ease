@@ -1,5 +1,6 @@
 package com.splitease.app.domain.imports
 
+import com.splitease.app.domain.settings.AppCurrencies
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -46,7 +47,7 @@ object CsvTransactionParser {
      */
     fun parse(
         csv: String,
-        defaultCurrency: String = "INR",
+        defaultCurrency: String = AppCurrencies.DEFAULT,
     ): List<ImportedTransaction> {
         val lines =
             csv.lineSequence()

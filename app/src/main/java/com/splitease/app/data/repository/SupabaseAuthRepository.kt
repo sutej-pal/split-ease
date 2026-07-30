@@ -1,5 +1,7 @@
 package com.splitease.app.data.repository
 
+import android.content.Context
+import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.sync.SyncInteractor
@@ -11,19 +13,25 @@ import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppCurrencies
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -35,6 +43,7 @@ import javax.inject.Singleton
 class SupabaseAuthRepository
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         private val supabase: SupabaseClient,
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
@@ -83,7 +92,7 @@ class SupabaseAuthRepository
                 val trimmedName = displayName.trim()
                 val dialCode = phoneCountryCode.trim().ifBlank { "+91" }
                 val nationalNumber = phoneNumber.trim()
-                val currency = currencyCode.trim().uppercase().ifBlank { "INR" }
+                val currency = AppCurrencies.normalizeOrDefault(currencyCode)
                 supabase.auth.signUpWith(Email) {
                     this.email = trimmedEmail
                     this.password = password
@@ -102,9 +111,7 @@ class SupabaseAuthRepository
                 if (session == null) {
                     SignUpResult.PendingEmailConfirmation(trimmedEmail)
                 } else {
-                    persistCurrentUser()
-                    categoryRepository.ensureDefaults()
-                    hydrateCloudData()
+                    // Do not write Room/profiles yet — OTP verify finalizes the account.
                     SignUpResult.SignedIn
                 }
             }
@@ -115,9 +122,8 @@ class SupabaseAuthRepository
                     this.email = email.trim()
                     this.password = password
                 }
-                persistCurrentUser()
-                categoryRepository.ensureDefaults()
-                hydrateCloudData()
+                // Password alone is not enough — ViewModel sends login OTP next and
+                // clears this session so the app stays gated until verifyLoginOtp.
             }
 
         override suspend fun isEmailRegistered(email: String): Result<Boolean> =
@@ -134,6 +140,24 @@ class SupabaseAuthRepository
                     ).decodeAs<Boolean>()
             }
 
+        override suspend fun sendLoginOtp(email: String): Result<Unit> =
+            runCatching {
+                supabase.auth.signInWith(OTP) {
+                    this.email = email.trim()
+                    createUser = false
+                }
+            }
+
+        override suspend fun verifyLoginOtp(email: String, token: String): Result<Unit> =
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type = OtpType.Email.EMAIL,
+                    email = email.trim(),
+                    token = token.trim(),
+                )
+                finalizeAuthenticatedSession()
+            }
+
         override suspend fun resendSignupConfirmation(email: String): Result<Unit> =
             runCatching {
                 supabase.auth.resendEmail(OtpType.Email.SIGNUP, email.trim())
@@ -146,23 +170,57 @@ class SupabaseAuthRepository
                     email = email.trim(),
                     token = token.trim(),
                 )
-                val sessionUser = supabase.auth.currentUserOrNull()
-                    ?: error("Email verified but session is missing. Try signing in.")
-                persistCurrentUser()
-                val local = userRepository.getUserById(sessionUser.id)
-                require(local != null) { "Could not save your local profile. Try signing in again." }
-                categoryRepository.ensureDefaults()
-                hydrateCloudData()
+                finalizeAuthenticatedSession()
             }
+
+        private suspend fun finalizeAuthenticatedSession() {
+            val sessionUser =
+                supabase.auth.currentUserOrNull()
+                    ?: error("Email verified but session is missing. Try signing in.")
+            persistCurrentUser()
+            val local = userRepository.getUserById(sessionUser.id)
+            require(local != null) { "Could not save your local profile. Try signing in again." }
+            categoryRepository.ensureDefaults()
+            hydrateCloudData()
+        }
 
         override suspend fun updateDisplayName(displayName: String): Result<Unit> =
             runCatching {
-                val trimmed = displayName.trim()
-                require(trimmed.isNotBlank()) { "Display name cannot be empty." }
-                supabase.auth.updateUser {
-                    data = buildJsonObject { put("display_name", trimmed) }
+                withContext(Dispatchers.IO) {
+                    val trimmed = displayName.trim()
+                    require(trimmed.isNotBlank()) { "Display name cannot be empty." }
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("display_name", trimmed) }
+                    }
+                    persistCurrentUser()
                 }
-                persistCurrentUser()
+            }
+
+        override suspend fun updateProfilePhoto(photoUri: String): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val userId =
+                        supabase.auth.currentUserOrNull()?.id
+                            ?: error("Not signed in.")
+                    val localPath = copyAvatarToInternalStorage(userId, photoUri)
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("photo_url", localPath) }
+                    }
+                    persistCurrentUser()
+                }
+            }
+
+        override suspend fun updatePreferredCurrency(currencyCode: String): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val currency = currencyCode.trim().uppercase()
+                    require(currency.length == 3) { "Currency code must be a 3-letter ISO code." }
+                    require(AppCurrencies.isSupported(currency)) { "Unsupported currency: $currency" }
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("preferred_currency", currency) }
+                    }
+                    persistCurrentUser()
+                }
             }
 
         override suspend fun sendPasswordReset(email: String): Result<Unit> =
@@ -189,6 +247,8 @@ class SupabaseAuthRepository
 
         private suspend fun persistCurrentUser() {
             val info = supabase.auth.currentUserOrNull() ?: return
+            // Unverified accounts must not appear in public.profiles yet.
+            if (info.emailConfirmedAt == null) return
             val authUser = info.toAuthUser()
             val now = System.currentTimeMillis()
             val existing = userRepository.getUserById(authUser.userId)
@@ -249,6 +309,19 @@ class SupabaseAuthRepository
                     email = "local+${conflict.id}@users.local",
                     updatedAtEpochMs = System.currentTimeMillis(),
                 ),
+            )
+        }
+
+        private fun copyAvatarToInternalStorage(
+            userId: String,
+            photoUri: String,
+        ): String {
+            val dir = File(appContext.filesDir, "avatars").apply { mkdirs() }
+            val dest = File(dir, "$userId.jpg")
+            return AvatarImageIO.copyScaledJpeg(
+                context = appContext,
+                photoUri = photoUri,
+                destFile = dest,
             )
         }
     }

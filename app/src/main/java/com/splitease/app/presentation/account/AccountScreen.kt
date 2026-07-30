@@ -1,69 +1,301 @@
 package com.splitease.app.presentation.account
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SeModalBody
+import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextButton
+import java.io.File
 
 @Composable
 fun AccountScreen(
-    displayName: String,
     onOpenSettings: () -> Unit,
+    onOpenAccountProfile: () -> Unit,
     onOpenSpending: () -> Unit,
     onOpenImport: () -> Unit,
     onSignOut: () -> Unit,
+    viewModel: AccountViewModel = hiltViewModel(),
 ) {
+    val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var showPhotoSource by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val galleryPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.toString()?.let(viewModel::updatePhoto)
+        }
+
+    val takePicture =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            val uri = pendingCameraUri
+            pendingCameraUri = null
+            if (success && uri != null) {
+                viewModel.updatePhoto(uri.toString())
+            }
+        }
+
+    val cameraPermission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                val uri = createCameraCaptureUri(context) ?: return@rememberLauncherForActivityResult
+                pendingCameraUri = uri
+                takePicture.launch(uri)
+            } else {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.msg_camera_permission_denied),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+
+    LaunchedEffect(settings.infoMessage, settings.errorMessage) {
+        val message = settings.infoMessage ?: settings.errorMessage
+        if (message != null) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+    }
+
     SeScreen(
         title = stringResource(R.string.nav_account),
     ) { padding ->
-        androidx.compose.foundation.layout.Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding.values)
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-            ) {
-                Text(text = displayName, style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(20.dp))
-                SeSectionHeader(text = stringResource(R.string.settings_title))
-                SeListRow(
-                    title = stringResource(R.string.settings_title),
-                    subtitle = stringResource(R.string.settings_hub_subtitle),
-                    onClick = onOpenSettings,
-                )
-                SeListRow(
-                    title = stringResource(R.string.spending_title),
-                    subtitle = stringResource(R.string.spending_hub_subtitle),
-                    onClick = onOpenSpending,
-                )
-                SeListRow(
-                    title = stringResource(R.string.import_title),
-                    subtitle = stringResource(R.string.import_hub_subtitle),
-                    onClick = onOpenImport,
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                SePrimaryButton(text = stringResource(R.string.action_sign_out), onClick = onSignOut)
-            }
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding.values)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+        ) {
+            AccountProfileHeader(
+                displayName = profile.displayName.ifBlank { stringResource(R.string.account_name_fallback) },
+                email = profile.email,
+                photoUrl = profile.photoUrl,
+                isBusy = settings.isSaving,
+                onEditProfile = onOpenAccountProfile,
+                onChangePhoto = { showPhotoSource = true },
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            SeSectionHeader(text = stringResource(R.string.settings_title))
+            SeListRow(
+                title = stringResource(R.string.settings_title),
+                subtitle = stringResource(R.string.settings_hub_subtitle),
+                onClick = onOpenSettings,
+            )
+            SeListRow(
+                title = stringResource(R.string.spending_title),
+                subtitle = stringResource(R.string.spending_hub_subtitle),
+                onClick = onOpenSpending,
+            )
+            SeListRow(
+                title = stringResource(R.string.import_title),
+                subtitle = stringResource(R.string.import_hub_subtitle),
+                onClick = onOpenImport,
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            SePrimaryButton(text = stringResource(R.string.action_sign_out), onClick = onSignOut)
+        }
+    }
+
+    if (showPhotoSource) {
+        SeModal(onDismissRequest = { showPhotoSource = false }) {
+            SeModalTitle(text = stringResource(R.string.account_photo_source_title))
+            Spacer(modifier = Modifier.height(8.dp))
+            SeModalBody(text = stringResource(R.string.account_photo_source_body))
+            Spacer(modifier = Modifier.height(16.dp))
+            SePrimaryButton(
+                text = stringResource(R.string.account_photo_gallery),
+                onClick = {
+                    showPhotoSource = false
+                    galleryPicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SePrimaryButton(
+                text = stringResource(R.string.account_photo_camera),
+                onClick = {
+                    showPhotoSource = false
+                    val hasPermission =
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                            PackageManager.PERMISSION_GRANTED
+                    if (hasPermission) {
+                        val uri = createCameraCaptureUri(context) ?: return@SePrimaryButton
+                        pendingCameraUri = uri
+                        takePicture.launch(uri)
+                    } else {
+                        cameraPermission.launch(Manifest.permission.CAMERA)
+                    }
+                },
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            SeTextButton(
+                text = stringResource(R.string.action_cancel),
+                onClick = { showPhotoSource = false },
+            )
+        }
     }
 }
+
+@Composable
+private fun AccountProfileHeader(
+    displayName: String,
+    email: String,
+    photoUrl: String?,
+    isBusy: Boolean,
+    onEditProfile: () -> Unit,
+    onChangePhoto: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(72.dp)
+                    .clickable(onClick = onChangePhoto),
+        ) {
+            SeAvatarBadge(
+                name = displayName,
+                photoUrl = photoUrl,
+                size = 72.dp,
+                borderWidth = 1.dp,
+                borderColor = SplitEaseColors.OutlineStrong,
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White)
+                        .border(1.dp, SplitEaseColors.Outline, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isBusy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = SplitEaseColors.Primary,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.PhotoCamera,
+                        contentDescription = stringResource(R.string.cd_change_profile_photo),
+                        tint = SplitEaseColors.Navy,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = displayName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = SplitEaseColors.Navy,
+            )
+            if (email.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SplitEaseColors.NavyMuted,
+                )
+            }
+        }
+        SeTextButton(
+            text = stringResource(R.string.action_edit),
+            onClick = onEditProfile,
+        )
+    }
+}
+
+private fun createCameraCaptureUri(context: android.content.Context): Uri? =
+    runCatching {
+        val dir = File(context.cacheDir, "avatars").apply { mkdirs() }
+        val file = File(dir, "capture_${System.currentTimeMillis()}.jpg")
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file,
+        )
+    }.getOrNull()
 
 @Preview(showBackground = true, heightDp = 520)
 @Composable
 private fun AccountScreenPreview() {
     SePreview {
-        Text("Preview")
+        Column(modifier = Modifier.padding(20.dp)) {
+            AccountProfileHeader(
+                displayName = "sutejpal234",
+                email = "sutejpal234@gmail.com",
+                photoUrl = null,
+                isBusy = false,
+                onEditProfile = {},
+                onChangePhoto = {},
+            )
+        }
     }
 }

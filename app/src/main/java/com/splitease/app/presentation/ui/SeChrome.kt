@@ -118,6 +118,7 @@ fun SeScreen(
     centeredTitle: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
     content: @Composable (padding: PaddingValuesAware) -> Unit,
 ) {
     val bg = MaterialTheme.colorScheme.background
@@ -141,6 +142,7 @@ fun SeScreen(
             )
         },
         floatingActionButton = floatingActionButton,
+        snackbarHost = snackbarHost,
     ) { padding ->
         content(PaddingValuesAware(padding))
     }

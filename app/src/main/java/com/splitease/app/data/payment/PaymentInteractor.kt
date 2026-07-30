@@ -8,6 +8,7 @@ import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppCurrencies
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
@@ -63,7 +64,7 @@ class PaymentInteractor
                         fromUserId = input.fromUserId,
                         toUserId = input.toUserId,
                         amount = input.amount.setScale(2, RoundingMode.HALF_UP),
-                        currencyCode = input.currencyCode.trim().ifBlank { "INR" }.uppercase(),
+                        currencyCode = AppCurrencies.normalizeOrDefault(input.currencyCode),
                         groupId = input.groupId,
                         note = input.note?.trim()?.ifBlank { null },
                         paidAtEpochMs = now,

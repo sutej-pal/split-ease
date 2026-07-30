@@ -22,6 +22,7 @@ import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppCurrencies
 import kotlinx.coroutines.flow.first
 import java.util.UUID
 import javax.inject.Inject
@@ -467,7 +468,7 @@ class SocialInteractor
                     Group(
                         id = groupId,
                         name = name.trim(),
-                        defaultCurrencyCode = currencyCode.trim().ifBlank { "INR" }.uppercase(),
+                        defaultCurrencyCode = AppCurrencies.normalizeOrDefault(currencyCode),
                         groupType = groupType,
                         createdByUserId = creatorUserId,
                         remoteId = null,
@@ -511,6 +512,7 @@ class SocialInteractor
                 // (e.g. invite placeholders that are not auth.users yet).
                 val cloudError =
                     runCatching {
+                        // RLS: created_by_user_id must equal auth.uid().
                         remote.upsertGroup(group.toDto(updatedAtEpochMs = now))
                         remote.upsertGroupMember(ownerMember.toDto())
                         groupRepository.upsertGroup(group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED))
@@ -1000,7 +1002,7 @@ class SocialInteractor
          * @param invite Local pending invite to push.
          */
         private suspend fun pushInviteToCloud(invite: Invite) {
-            invite.groupId?.let { ensureGroupSyncedToCloud(it) }
+            invite.groupId?.let { ensureGroupSyncedToCloud(it, invite.inviterUserId) }
             remote.upsertInvite(invite.toDto())
             inviteRepository.upsert(invite.copy(syncStatus = SyncStatus.SYNCED))
         }
@@ -1008,21 +1010,66 @@ class SocialInteractor
         /**
          * Ensures [groupId] exists in Supabase before writing a GROUP invite (FK-safe).
          *
+         * Local `createdByUserId` can be stale after re-signup on the same device; RLS requires
+         * `created_by_user_id = auth.uid()`, so unsynced local groups are re-attributed to
+         * [currentUserId] before insert.
+         *
          * @param groupId Local / remote group id.
+         * @param currentUserId Signed-in user performing the invite sync.
          */
-        private suspend fun ensureGroupSyncedToCloud(groupId: String) {
+        private suspend fun ensureGroupSyncedToCloud(
+            groupId: String,
+            currentUserId: String,
+        ) {
             val group = groupRepository.getGroupById(groupId) ?: return
-            // Always upsert before invite write — local SYNCED can be stale when a prior
-            // cloud upsert failed under RLS (token must never be shared without a cloud row).
             val now = System.currentTimeMillis()
-            remote.upsertGroup(group.toDto(updatedAtEpochMs = now))
-            groupRepository.upsertGroup(
-                group.copy(remoteId = group.id, syncStatus = SyncStatus.SYNCED, updatedAtEpochMs = now),
-            )
-            val owner = groupRepository.getMember(groupId, group.createdByUserId)
-            if (owner != null && owner.syncStatus != SyncStatus.SYNCED) {
-                remote.upsertGroupMember(owner.toDto())
-                groupRepository.upsertMember(owner.copy(syncStatus = SyncStatus.SYNCED))
+            val remoteExisting = runCatching { remote.fetchGroup(groupId) }.getOrNull()
+            if (remoteExisting != null) {
+                groupRepository.upsertGroup(
+                    group.copy(
+                        remoteId = group.id,
+                        syncStatus = SyncStatus.SYNCED,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+            } else {
+                val toUpload =
+                    if (group.createdByUserId == currentUserId) {
+                        group
+                    } else {
+                        group
+                            .copy(
+                                createdByUserId = currentUserId,
+                                syncStatus = SyncStatus.PENDING,
+                                updatedAtEpochMs = now,
+                            ).also { groupRepository.upsertGroup(it) }
+                    }
+                remote.upsertGroup(toUpload.toDto(updatedAtEpochMs = now))
+                groupRepository.upsertGroup(
+                    toUpload.copy(
+                        remoteId = toUpload.id,
+                        syncStatus = SyncStatus.SYNCED,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+            }
+
+            var membership = groupRepository.getMember(groupId, currentUserId)
+            if (membership == null) {
+                membership =
+                    GroupMember(
+                        id = UUID.randomUUID().toString(),
+                        groupId = groupId,
+                        userId = currentUserId,
+                        role = MemberRole.OWNER,
+                        joinedAtEpochMs = now,
+                        syncStatus = SyncStatus.PENDING,
+                    )
+                groupRepository.upsertMember(membership)
+            }
+            if (membership.syncStatus != SyncStatus.SYNCED) {
+                remote.upsertGroupMember(membership.toDto())
+                groupRepository.upsertMember(membership.copy(syncStatus = SyncStatus.SYNCED))
             }
         }
     }

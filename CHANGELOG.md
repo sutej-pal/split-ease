@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Group invite links failed when the group had not synced to Supabase (FK); invites are now pushed after ensuring the group exists, and pending invites are flushed on sync
 
 ### Added
+- Account profile header with gallery/camera photo picker; Account settings screen for display name, default currency, and language
 - Sign-up screen redesigned (welcome header, full name + photo, phone + dial code, currency preference, terms links, Done CTA); profile fields `phone_country_code`, `phone_number`, `preferred_currency` on Supabase `profiles` + Room `users` ([sql/phase-auth-signup-profile.sql](docs/sql/phase-auth-signup-profile.sql))
 - Group Pin Board — shared per-group notepad (Markdown) accessible from the group detail action chips; auto-saves with 2-second debounce; online-only via Supabase `pin_boards` table
 - Live group ledger via Supabase Realtime while group detail is open (`GroupLiveSync` + [sql/migration_db.sql](docs/sql/migration_db.sql))

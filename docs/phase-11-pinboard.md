@@ -9,7 +9,7 @@ Add a shared per-group "Pin Board" — a single rich-text notepad visible and ed
 ### In
 - Supabase `pin_boards` table (one row per group, RLS by membership)
 - Online-only read/write via PostgREST
-- Markdown-based content with toolbar (bold, italic, checklist, link, image)
+- Markdown-based content with toolbar (bold, italic, checklist, gallery image)
 - Auto-save with 2-second debounce; save on back navigation
 - "Last edited by" footer
 - Accessible via action chip on group detail screen
@@ -18,7 +18,7 @@ Add a shared per-group "Pin Board" — a single rich-text notepad visible and ed
 - Offline (Room) cache for the board
 - Conflict resolution / real-time collaborative editing
 - Rich text rendering (content stored/displayed as Markdown source)
-- Image uploads (images referenced by URL only)
+- Cloud image uploads (gallery images are stored on-device and referenced in Markdown)
 
 ## Architecture Decisions
 
@@ -59,7 +59,7 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 
 - **PinBoardScreen** — full-screen Markdown editor with:
   - `SeTopBar` with back arrow
-  - Toolbar row (Bold, Italic, Checklist, Link, Image)
+  - Toolbar row (Bold, Italic, Checklist, Image)
   - `BasicTextField` for editing
   - Footer showing saving state or last editor name
 
@@ -77,7 +77,7 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 - No offline cache — board requires network connectivity.
 - No real-time push — second device sees updates only on (re-)open, not live.
 - Content is raw Markdown source, not rendered. A Markdown renderer can be added later.
-- No image upload — images must be pasted as external URLs.
+- No image cloud sync — gallery inserts are local file paths in Markdown (visible on the same device).
 
 ## Screenshots
 

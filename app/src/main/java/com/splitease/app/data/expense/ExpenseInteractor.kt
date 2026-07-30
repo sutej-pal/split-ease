@@ -20,6 +20,7 @@ import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.split.SplitCalculator
 import java.math.BigDecimal
 import java.text.DateFormat
@@ -87,17 +88,22 @@ class ExpenseInteractor
          * Creates an expense with calculated splits and best-effort cloud sync.
          *
          * @param input Creation payload.
+         * @param actorUserId User who added the expense (activity feed); defaults to payer.
          * @return Persisted [Expense].
          */
-        suspend fun createExpense(input: CreateExpenseInput): Result<Expense> =
+        suspend fun createExpense(
+            input: CreateExpenseInput,
+            actorUserId: String? = null,
+        ): Result<Expense> =
             runCatching {
                 val built = buildExpenseAndSplits(input = input, existing = null)
                 val synced = pushAndPersistSynced(expense = built.expense, splits = built.splits)
+                val actor = actorUserId?.takeIf { it.isNotBlank() } ?: synced.paidByUserId
                 recordExpenseActivity(
                     kind = ActivityEventKind.EXPENSE_ADDED,
                     expense = synced,
                     participantIds = built.splits.map { it.userId },
-                    actorUserId = synced.paidByUserId,
+                    actorUserId = actor,
                 )
                 synced
             }
@@ -107,11 +113,13 @@ class ExpenseInteractor
          *
          * @param expenseId Existing expense id.
          * @param input Updated fields (same shape as create).
+         * @param actorUserId User who performed the update (activity feed); defaults to payer.
          * @return Persisted [Expense].
          */
         suspend fun updateExpense(
             expenseId: String,
             input: CreateExpenseInput,
+            actorUserId: String? = null,
         ): Result<Expense> =
             runCatching {
                 val existing =
@@ -119,11 +127,12 @@ class ExpenseInteractor
                         ?: error("Expense not found.")
                 val built = buildExpenseAndSplits(input = input, existing = existing)
                 val synced = pushAndPersistSynced(expense = built.expense, splits = built.splits)
+                val actor = actorUserId?.takeIf { it.isNotBlank() } ?: synced.paidByUserId
                 recordExpenseActivity(
                     kind = ActivityEventKind.EXPENSE_UPDATED,
                     expense = synced,
                     participantIds = built.splits.map { it.userId },
-                    actorUserId = synced.paidByUserId,
+                    actorUserId = actor,
                 )
                 synced
             }
@@ -339,7 +348,7 @@ class ExpenseInteractor
                     id = expenseId,
                     description = input.description.trim(),
                     amount = input.amount,
-                    currencyCode = input.currencyCode.trim().ifBlank { "INR" }.uppercase(),
+                    currencyCode = AppCurrencies.normalizeOrDefault(input.currencyCode),
                     categoryId = input.categoryId,
                     paidByUserId = input.paidByUserId,
                     groupId = input.groupId ?: existing?.groupId,

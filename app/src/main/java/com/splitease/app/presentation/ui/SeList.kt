@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,11 +9,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -23,14 +27,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
 
 @Composable
@@ -55,6 +67,107 @@ fun SeIconTile(
             modifier = Modifier.size((size * 0.5f).dp),
         )
     }
+}
+
+/**
+ * Expense-style icon tile with a small actor avatar badge at the bottom-end corner.
+ */
+@Composable
+fun SeIconTileWithAvatar(
+    icon: ImageVector,
+    tint: Color,
+    actorName: String,
+    actorPhotoUrl: String?,
+    modifier: Modifier = Modifier,
+    size: Int = 44,
+) {
+    Box(modifier = modifier.size(size.dp)) {
+        SeIconTile(icon = icon, tint = tint, size = size)
+        SeAvatarBadge(
+            name = actorName,
+            photoUrl = actorPhotoUrl,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 2.dp, y = 2.dp),
+            size = 18.dp,
+        )
+    }
+}
+
+/**
+ * Circular avatar showing a local photo when available, otherwise initials.
+ */
+@Composable
+fun SeAvatarBadge(
+    name: String,
+    photoUrl: String?,
+    modifier: Modifier = Modifier,
+    size: Dp = 18.dp,
+    borderWidth: Dp = 1.5.dp,
+    borderColor: Color = Color.White,
+) {
+    val context = LocalContext.current
+    val bitmap =
+        remember(photoUrl) {
+            loadLocalAvatarBitmap(context, photoUrl)
+        }
+    Box(
+        modifier =
+            modifier
+                .size(size)
+                .then(
+                    if (borderWidth > 0.dp) {
+                        Modifier.border(borderWidth, borderColor, CircleShape)
+                    } else {
+                        Modifier
+                    },
+                )
+                .clip(CircleShape)
+                .background(SplitEaseColors.PrimaryDark),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Text(
+                text = initialsOf(name),
+                color = Color.White,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                fontSize = (size.value * 0.38f).sp,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+private fun initialsOf(name: String): String {
+    val parts = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    return when {
+        parts.isEmpty() -> "?"
+        parts.size == 1 -> parts[0].take(1).uppercase()
+        else -> "${parts[0].first()}${parts.last().first()}".uppercase()
+    }
+}
+
+private fun loadLocalAvatarBitmap(
+    context: android.content.Context,
+    photoUrl: String?,
+): ImageBitmap? {
+    if (photoUrl.isNullOrBlank()) return null
+    return runCatching {
+        AvatarImageIO.decodeScaled(
+            context = context,
+            photoUrl = photoUrl,
+            maxSidePx = AvatarImageIO.PREVIEW_MAX_SIDE_PX,
+        )?.asImageBitmap()
+    }.getOrNull()
 }
 
 @Composable
