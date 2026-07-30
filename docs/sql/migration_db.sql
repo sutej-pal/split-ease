@@ -677,9 +677,19 @@ drop policy if exists "expenses_insert" on public.expenses;
 drop policy if exists "expenses_update" on public.expenses;
 drop policy if exists "expenses_delete" on public.expenses;
 
+-- Inline column checks (not can_access_expense) so INSERT ... RETURNING works.
+-- can_access_expense() re-queries expenses by id and cannot see the in-flight row.
 create policy "expenses_select"
   on public.expenses for select to authenticated
-  using (public.can_access_expense(id));
+  using (
+    paid_by_user_id = auth.uid()
+    or exists (
+      select 1 from public.expense_splits s
+      where s.expense_id = expenses.id and s.user_id = auth.uid()
+    )
+    or (group_id is not null and public.is_group_member(group_id))
+    or (group_id is not null and public.is_group_creator(group_id))
+  );
 
 create policy "expenses_insert"
   on public.expenses for insert to authenticated
@@ -691,8 +701,24 @@ create policy "expenses_insert"
 
 create policy "expenses_update"
   on public.expenses for update to authenticated
-  using (public.can_access_expense(id))
-  with check (public.can_access_expense(id));
+  using (
+    paid_by_user_id = auth.uid()
+    or exists (
+      select 1 from public.expense_splits s
+      where s.expense_id = expenses.id and s.user_id = auth.uid()
+    )
+    or (group_id is not null and public.is_group_member(group_id))
+    or (group_id is not null and public.is_group_creator(group_id))
+  )
+  with check (
+    paid_by_user_id = auth.uid()
+    or exists (
+      select 1 from public.expense_splits s
+      where s.expense_id = expenses.id and s.user_id = auth.uid()
+    )
+    or (group_id is not null and public.is_group_member(group_id))
+    or (group_id is not null and public.is_group_creator(group_id))
+  );
 
 create policy "expenses_delete"
   on public.expenses for delete to authenticated
@@ -741,7 +767,12 @@ create policy "expense_splits_delete"
   using (
     exists (
       select 1 from public.expenses e
-      where e.id = expense_id and e.paid_by_user_id = auth.uid()
+      where e.id = expense_id
+        and (
+          e.paid_by_user_id = auth.uid()
+          or (e.group_id is not null and public.is_group_member(e.group_id))
+          or (e.group_id is not null and public.is_group_creator(e.group_id))
+        )
     )
   );
 
@@ -866,6 +897,13 @@ create policy "expense_splits_insert"
         )
     )
   );
+
+
+-- ============================================
+-- BEGIN: docs/sql/phase-4c-fix-expense-select-rls-returning.sql
+-- ============================================
+-- See docs/sql/phase-4c-fix-expense-select-rls-returning.sql
+-- (expenses_select / expenses_update already inlined above; split delete widened above.)
 
 
 -- ============================================

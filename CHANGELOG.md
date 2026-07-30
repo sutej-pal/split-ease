@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Group expenses never reached Supabase: `expenses_select` used `can_access_expense(id)`, which re-queries `expenses` and cannot see the in-flight row during PostgREST `INSERT … RETURNING`, so upserts rolled back while Room kept a local PENDING copy ([sql/phase-4c-fix-expense-select-rls-returning.sql](docs/sql/phase-4c-fix-expense-select-rls-returning.sql)); expense push now also re-upserts the group before FK write
 - Dark theme text was near-invisible: `SplitEaseColors` light-only aliases (`Navy`, surfaces, etc.) now resolve from `MaterialTheme.colorScheme`; status/nav bar icon contrast follows background luminance
 - Group invite share links opened the app but never joined the group: share-link invites stored the inviter's email, so `accept_pending_invites` auto-accepted (burned) the link on the inviter's next sync; share links now use a placeholder email, email-accept skips token-only rows, and token-accept keeps share links multi-use ([sql/phase-3f-fix-group-share-invite-burn.sql](docs/sql/phase-3f-fix-group-share-invite-burn.sql))
 - Expense create/update now warns when cloud sync fails (local-only save); co-members cannot see expenses that never reached Supabase

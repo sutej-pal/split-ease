@@ -1,8 +1,10 @@
 package com.splitease.app.data.expense
 
 import com.splitease.app.data.remote.ExpenseRemoteDataSource
+import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ExpenseDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
+import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
@@ -78,6 +80,7 @@ class ExpenseInteractor
         private val groupRepository: GroupRepository,
         private val activityEventRepository: ActivityEventRepository,
         private val remote: ExpenseRemoteDataSource,
+        private val socialRemote: SocialRemoteDataSource,
         private val syncInteractor: Provider<SyncInteractor>,
     ) {
         /**
@@ -380,6 +383,7 @@ class ExpenseInteractor
         ): Expense {
             // Ensure group/member rows exist remotely before expense FK upsert.
             runCatching { syncInteractor.get().flushPending() }
+            runCatching { ensureGroupOnCloud(expense.groupId) }
 
             val pushError =
                 runCatching {
@@ -390,8 +394,9 @@ class ExpenseInteractor
                 return persistSyncedExpense(expense, splits)
             }
 
-            // Retry once after another social flush (group may have been PENDING).
+            // Retry once after another social flush (group may have been PENDING / stale SYNCED).
             runCatching { syncInteractor.get().flushPending() }
+            runCatching { ensureGroupOnCloud(expense.groupId) }
             val retryError =
                 runCatching {
                     pushExpense(expense, splits)
@@ -411,6 +416,29 @@ class ExpenseInteractor
             )
             expenseRepository.upsertExpenseWithSplits(expense, splits)
             return expense
+        }
+
+        /**
+         * Re-upserts the group (and owner membership) even when local status is SYNCED.
+         * Local SYNCED can be stale if a prior cloud write was rolled back.
+         */
+        private suspend fun ensureGroupOnCloud(groupId: String?) {
+            if (groupId.isNullOrBlank()) return
+            val group = groupRepository.getGroupById(groupId) ?: return
+            val now = System.currentTimeMillis()
+            socialRemote.upsertGroup(group.toDto(updatedAtEpochMs = now))
+            groupRepository.upsertGroup(
+                group.copy(
+                    remoteId = group.id,
+                    syncStatus = SyncStatus.SYNCED,
+                    updatedAtEpochMs = now,
+                ),
+            )
+            val owner = groupRepository.getMember(groupId, group.createdByUserId)
+            if (owner != null) {
+                socialRemote.upsertGroupMember(owner.toDto())
+                groupRepository.upsertMember(owner.copy(syncStatus = SyncStatus.SYNCED))
+            }
         }
 
         private suspend fun persistSyncedExpense(

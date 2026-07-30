@@ -46,5 +46,6 @@ Track development phases. Always check this file at the start of a session to de
 - **FX rates** — multi-currency remains per-bucket; live FX is still deferred.
 - **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
 - **Social PENDING flush** — groups/members are now flushed in `SyncInteractor` before expenses (still verify Supabase SQL is applied).
+- **Expense SELECT RLS (fixed 2026-07-30)** — Apply [sql/phase-4c-fix-expense-select-rls-returning.sql](docs/sql/phase-4c-fix-expense-select-rls-returning.sql) on existing Supabase projects if not yet run (already applied on the primary project).
 - **Store assets** — feature graphic, phone screenshots, privacy policy URL (`docs/store-listing.md`).
 - **TODO(i18n-last)** — Localization is deferred until the end of the product. Locale overlays (`values-de/es/fr/hi/it/ja/pt`) currently fall back to English; restore and expand full translations last.
