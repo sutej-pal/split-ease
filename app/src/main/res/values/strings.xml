@@ -159,6 +159,11 @@
     <string name="groups_empty_home">No groups yet. Create one to start splitting.</string>
     <string name="groups_hiding_settled">Hiding groups that are settled up.</string>
     <string name="groups_show_settled">Show %1$d settled-up groups</string>
+    <string name="cd_filter_groups">Filter groups</string>
+    <string name="groups_filter_all">All groups</string>
+    <string name="groups_filter_outstanding">Outstanding balances</string>
+    <string name="groups_filter_you_owe">Groups you owe</string>
+    <string name="groups_filter_owed_to_you">Groups that owe you</string>
     <string name="pick_group_for_expense">Choose a group</string>
     <string name="activity_empty">No activity yet. Create a group, add an expense, or record a payment to see it here.</string>
     <string name="activity_added_by">Added by %1$s</string>

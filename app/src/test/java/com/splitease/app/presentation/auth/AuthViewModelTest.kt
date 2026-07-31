@@ -81,44 +81,26 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `signIn success gates on login OTP and signs out password session`() =
+    fun `signIn success opens app without login OTP`() =
         runTest {
             coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
-            coEvery { repository.signOut() } returns Result.success(Unit)
-            coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
+            coEvery { repository.ensureLocalProfile() } returns Result.success(Unit)
             viewModel.signIn("a@b.com", "secret1")
             advanceUntilIdle()
             assertFalse(viewModel.formState.value.isLoading)
             assertFalse(viewModel.formState.value.holdSignedInForOtp)
             assertNull(viewModel.formState.value.errorMessage)
-            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
-            assertEquals(PendingOtpPurpose.LOGIN, viewModel.formState.value.pendingOtpPurpose)
-            assertEquals(
-                "Check your email for a verification code to finish signing in.",
-                viewModel.formState.value.infoMessage,
-            )
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            assertNull(viewModel.formState.value.pendingOtpPurpose)
+            assertNull(viewModel.formState.value.infoMessage)
             coVerify(exactly = 1) { repository.signIn("a@b.com", "secret1") }
-            coVerify(exactly = 1) { repository.signOut() }
-            coVerify(exactly = 1) { repository.sendLoginOtp("a@b.com") }
+            coVerify(exactly = 1) { repository.ensureLocalProfile() }
+            coVerify(exactly = 0) { repository.signOut() }
+            coVerify(exactly = 0) { repository.sendLoginOtp(any()) }
         }
 
     @Test
-    fun `signIn arms hold before password auth completes`() =
-        runTest {
-            coEvery { repository.signIn(any(), any()) } coAnswers {
-                assertTrue(viewModel.formState.value.holdSignedInForOtp)
-                Result.success(Unit)
-            }
-            coEvery { repository.signOut() } returns Result.success(Unit)
-            coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
-            viewModel.signIn("a@b.com", "secret1")
-            advanceUntilIdle()
-            assertFalse(viewModel.formState.value.holdSignedInForOtp)
-            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
-        }
-
-    @Test
-    fun `signIn failure clears hold and does not send OTP`() =
+    fun `signIn failure does not send OTP`() =
         runTest {
             coEvery { repository.signIn(any(), any()) } returns
                 Result.failure(IllegalStateException("Invalid login"))
@@ -129,6 +111,7 @@ class AuthViewModelTest {
             assertFalse(viewModel.formState.value.holdSignedInForOtp)
             assertNull(viewModel.formState.value.pendingConfirmationEmail)
             coVerify(exactly = 0) { repository.sendLoginOtp(any()) }
+            coVerify(exactly = 0) { repository.ensureLocalProfile() }
         }
 
     @Test
@@ -280,11 +263,14 @@ class AuthViewModelTest {
     @Test
     fun `verifyPendingOtp with valid login code calls login verify`() =
         runTest {
-            coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
+            // Autoconfirm signup still uses the LOGIN OTP gate.
+            coEvery {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            } returns Result.success(SignUpResult.SignedIn)
             coEvery { repository.signOut() } returns Result.success(Unit)
             coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
             coEvery { repository.verifyLoginOtp(any(), any()) } returns Result.success(Unit)
-            viewModel.signIn("a@b.com", "secret1")
+            viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
             viewModel.verifyPendingOtp("a@b.com", "654321")
             advanceUntilIdle()
@@ -296,10 +282,12 @@ class AuthViewModelTest {
     @Test
     fun `resendConfirmation calls login otp send when purpose is login`() =
         runTest {
-            coEvery { repository.signIn(any(), any()) } returns Result.success(Unit)
+            coEvery {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            } returns Result.success(SignUpResult.SignedIn)
             coEvery { repository.signOut() } returns Result.success(Unit)
             coEvery { repository.sendLoginOtp(any()) } returns Result.success(Unit)
-            viewModel.signIn("a@b.com", "secret1")
+            viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
             viewModel.resendConfirmation("a@b.com")
             advanceUntilIdle()

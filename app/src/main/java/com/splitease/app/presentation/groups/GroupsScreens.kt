@@ -177,7 +177,7 @@ fun CreateGroupScreen(
     val canDone = name.isNotBlank() && !uiState.isSubmitting
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             SeTopBar(
                 title = stringResource(R.string.create_group_title),

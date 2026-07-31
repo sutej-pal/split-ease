@@ -31,7 +31,10 @@ enum class PendingOtpPurpose {
     /** Post-signup confirmation (`OtpType.Email.SIGNUP`). */
     SIGNUP,
 
-    /** Post-password login step-up (`OtpType.Email.EMAIL`). */
+    /**
+     * Post-signup step-up when Supabase returns a session before email confirm
+     * (`OtpType.Email.EMAIL`). Not used for password login.
+     */
     LOGIN,
 }
 
@@ -190,7 +193,7 @@ class AuthViewModel
         }
 
         /**
-         * Validates email/password, then gates the app until a login email OTP is verified.
+         * Validates email/password and opens the app (no login OTP step).
          *
          * @param email Account email.
          * @param password Account password.
@@ -198,7 +201,6 @@ class AuthViewModel
         fun signIn(email: String, password: String) {
             viewModelScope.launch {
                 val trimmedEmail = email.trim()
-                // Hold Home closed before password auth — signIn emits SignedIn immediately.
                 _formState.update {
                     it.copy(
                         isLoading = true,
@@ -206,7 +208,7 @@ class AuthViewModel
                         infoMessage = null,
                         pendingConfirmationEmail = null,
                         pendingOtpPurpose = null,
-                        holdSignedInForOtp = true,
+                        holdSignedInForOtp = false,
                     )
                 }
                 val result = authRepository.signIn(trimmedEmail, password)
@@ -236,33 +238,9 @@ class AuthViewModel
                     }
                     return@launch
                 }
-                // Arm OTP gate BEFORE signOut — otherwise SignedOut briefly rebuilds Welcome.
-                _formState.update {
-                    AuthFormState(
-                        isLoading = true,
-                        pendingConfirmationEmail = trimmedEmail,
-                        pendingOtpPurpose = PendingOtpPurpose.LOGIN,
-                        holdSignedInForOtp = false,
-                    )
-                }
-                // Drop the password session so Home cannot open until OTP succeeds.
-                runCatching { authRepository.signOut() }
-                val otpResult = authRepository.sendLoginOtp(trimmedEmail)
-                if (otpResult.isFailure) {
-                    _formState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = friendlyAuthError(otpResult.exceptionOrNull()),
-                        )
-                    }
-                    return@launch
-                }
-                _formState.update {
-                    it.copy(
-                        isLoading = false,
-                        infoMessage = appContext.getString(R.string.verify_login_otp_sent),
-                    )
-                }
+                // Password auth is enough — hydrate profile and leave the auth gate.
+                runCatching { authRepository.ensureLocalProfile() }
+                _formState.update { AuthFormState(isLoading = false) }
             }
         }
 

@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,11 +21,15 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -61,18 +66,25 @@ import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeTopBar
 import java.math.BigDecimal
 
+/** How the groups list on Home is filtered. */
+private enum class GroupsHomeFilter {
+    ALL,
+    OUTSTANDING,
+    YOU_OWE,
+    OWED_TO_YOU,
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupsHomeScreen(
     onOpenGroup: (String) -> Unit,
     onCreateGroup: () -> Unit,
     onAddExpenseForGroup: (String) -> Unit,
-    onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
     viewModel: GroupsHomeViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    var showSettled by remember { mutableStateOf(false) }
+    var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
     var showExpensePicker by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
@@ -88,13 +100,34 @@ fun GroupsHomeScreen(
                     simplifiedDebts = emptyList(),
                 )
         }
-    val unsettled = groupRows.filter { it.myNetByCurrency.isNotEmpty() }
     val settled = groupRows.filter { it.myNetByCurrency.isEmpty() }
-    val visibleGroups = if (showSettled) groupRows else unsettled.ifEmpty { groupRows }
-    val hiddenSettledCount = if (showSettled) 0 else settled.size
-    val hasNonGroup =
+    val filteredGroups = groupRows.filter { it.matches(listFilter) }
+    // If outstanding filter matches nothing, fall back to all groups (same as before).
+    val visibleGroups =
+        if (listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isEmpty()) {
+            groupRows
+        } else {
+            filteredGroups
+        }
+    val hiddenSettledCount =
+        if (listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isNotEmpty()) {
+            settled.size
+        } else {
+            0
+        }
+    val nonGroupNet = balances?.nonGroupMyNetByCurrency.orEmpty()
+    val showNonGroup =
         balances != null &&
-            (balances.nonGroupMyNetByCurrency.isNotEmpty() || balances.nonGroupDebts.isNotEmpty())
+            (nonGroupNet.isNotEmpty() || balances.nonGroupDebts.isNotEmpty()) &&
+            when (listFilter) {
+                GroupsHomeFilter.ALL -> true
+                GroupsHomeFilter.OUTSTANDING ->
+                    nonGroupNet.matches(GroupsHomeFilter.OUTSTANDING) ||
+                        balances.nonGroupDebts.isNotEmpty()
+                GroupsHomeFilter.YOU_OWE,
+                GroupsHomeFilter.OWED_TO_YOU,
+                -> nonGroupNet.matches(listFilter)
+            }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -142,12 +175,13 @@ fun GroupsHomeScreen(
                         iOwe = balances?.totalIOweByCurrency.orEmpty(),
                         owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
                         currencyCode = ui.currencyCode,
-                        onFilterClick = onOpenSettings,
+                        selectedFilter = listFilter,
+                        onFilterSelected = { listFilter = it },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                if (ui.allGroups.isEmpty() && !hasNonGroup) {
+                if (ui.allGroups.isEmpty() && !showNonGroup) {
                     item {
                         SeEmptyState(
                             message = stringResource(R.string.groups_empty_home),
@@ -168,7 +202,7 @@ fun GroupsHomeScreen(
                     )
                 }
 
-                if (hasNonGroup && balances != null) {
+                if (showNonGroup && balances != null) {
                     item {
                         NonGroupListItem(
                             myNet = balances.nonGroupMyNetByCurrency,
@@ -189,7 +223,7 @@ fun GroupsHomeScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         SeOutlinedButton(
                             text = stringResource(R.string.groups_show_settled, hiddenSettledCount),
-                            onClick = { showSettled = true },
+                            onClick = { listFilter = GroupsHomeFilter.ALL },
                         )
                     }
                 }
@@ -249,8 +283,10 @@ private fun OverallSummaryRow(
     iOwe: Map<String, BigDecimal>,
     owedToMe: Map<String, BigDecimal>,
     currencyCode: String,
-    onFilterClick: () -> Unit,
+    selectedFilter: GroupsHomeFilter,
+    onFilterSelected: (GroupsHomeFilter) -> Unit,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -287,13 +323,66 @@ private fun OverallSummaryRow(
                 )
             }
         }
-        IconButton(onClick = onFilterClick) {
-            Icon(
-                Icons.Filled.Tune,
-                contentDescription = stringResource(R.string.settings_title),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(
+                    Icons.Filled.Tune,
+                    contentDescription = stringResource(R.string.cd_filter_groups),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                GroupsHomeFilter.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(text = stringResource(option.labelRes))
+                        },
+                        onClick = {
+                            onFilterSelected(option)
+                            menuExpanded = false
+                        },
+                        leadingIcon = {
+                            RadioButton(
+                                selected = selectedFilter == option,
+                                onClick = {
+                                    onFilterSelected(option)
+                                    menuExpanded = false
+                                },
+                                colors =
+                                    RadioButtonDefaults.colors(
+                                        selectedColor = SplitEaseColors.Primary,
+                                    ),
+                            )
+                        },
+                    )
+                }
+            }
         }
+    }
+}
+
+private val GroupsHomeFilter.labelRes: Int
+    get() =
+        when (this) {
+            GroupsHomeFilter.ALL -> R.string.groups_filter_all
+            GroupsHomeFilter.OUTSTANDING -> R.string.groups_filter_outstanding
+            GroupsHomeFilter.YOU_OWE -> R.string.groups_filter_you_owe
+            GroupsHomeFilter.OWED_TO_YOU -> R.string.groups_filter_owed_to_you
+        }
+
+private fun GroupBalanceUi.matches(filter: GroupsHomeFilter): Boolean =
+    myNetByCurrency.matches(filter)
+
+private fun Map<String, BigDecimal>.matches(filter: GroupsHomeFilter): Boolean {
+    val nets = values
+    return when (filter) {
+        GroupsHomeFilter.ALL -> true
+        GroupsHomeFilter.OUTSTANDING -> nets.any { it.compareTo(BigDecimal.ZERO) != 0 }
+        GroupsHomeFilter.YOU_OWE -> nets.any { it < BigDecimal.ZERO }
+        GroupsHomeFilter.OWED_TO_YOU -> nets.any { it > BigDecimal.ZERO }
     }
 }
 

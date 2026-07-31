@@ -439,7 +439,6 @@ private fun SignedInNavHost(
                     onAddExpenseForGroup = { id ->
                         navController.navigate(Routes.addExpenseForGroup(id))
                     },
-                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 )
             }

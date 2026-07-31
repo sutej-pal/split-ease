@@ -122,8 +122,6 @@ class SupabaseAuthRepository
                     this.email = email.trim()
                     this.password = password
                 }
-                // Password alone is not enough — ViewModel sends login OTP next and
-                // clears this session so the app stays gated until verifyLoginOtp.
             }
 
         override suspend fun isEmailRegistered(email: String): Result<Boolean> =

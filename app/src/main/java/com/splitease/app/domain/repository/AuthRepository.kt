@@ -47,10 +47,8 @@ interface AuthRepository {
     ): Result<SignUpResult>
 
     /**
-     * Validates email and password with Supabase.
-     *
-     * Does **not** leave a usable app session — callers must complete [sendLoginOtp] /
-     * [verifyLoginOtp] (or [verifySignupOtp]) before hydrating local data.
+     * Signs in with email and password. On success a session is established;
+     * callers should hydrate local data via [ensureLocalProfile].
      *
      * @param email User email.
      * @param password Password.
