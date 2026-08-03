@@ -433,7 +433,7 @@ class SocialInteractor
                             profile.email,
                             displayName?.takeIf { it.isNotBlank() } ?: profile.displayName,
                         )
-                    addMemberToGroup(groupId, profile.id).getOrThrow()
+                    addMemberToGroup(groupId, profile.id, actingUserId = ownerUserId).getOrThrow()
                     return friendOutcome
                 }
             }
@@ -949,19 +949,123 @@ class SocialInteractor
             }
 
         /**
+         * Adds an existing friend list entry into a group from Find people.
+         *
+         * Registered friends are written to Supabase `group_members`. Pending invite
+         * friends get a GROUP invite (so accept_pending_invites can join them) instead of
+         * a doomed cloud membership with a placeholder user id.
+         *
+         * @param ownerUserId Current signed-in user.
+         * @param groupId Target group.
+         * @param friendUserId Friend's user id (or invite placeholder).
+         * @return Outcome with optional share text when an invite is still pending.
+         */
+        suspend fun addExistingFriendToGroup(
+            ownerUserId: String,
+            groupId: String,
+            friendUserId: String,
+        ): Result<AddPersonOutcome> =
+            runCatching {
+                val friend =
+                    friendRepository.getByFriendUserId(friendUserId)
+                        ?.takeIf { it.ownerUserId == ownerUserId }
+                        ?: error("Friend not found.")
+                val pendingInvite = inviteRepository.getByFriendRowId(friend.id)
+                val isPending =
+                    pendingInvite?.status == InviteStatus.PENDING ||
+                        friend.displayNameSnapshot.contains("(invited)", ignoreCase = true)
+
+                if (isPending) {
+                    val email = friend.emailSnapshot.trim()
+                    if (email.contains("@")) {
+                        val profile = runCatching { remote.findProfileByEmail(email) }.getOrNull()
+                        if (profile != null && profile.id != ownerUserId) {
+                            if (pendingInvite != null) {
+                                promotePendingInviteIfJoined(ownerUserId, pendingInvite)
+                            }
+                            addMemberToGroup(
+                                groupId = groupId,
+                                userId = profile.id,
+                                actingUserId = ownerUserId,
+                            ).getOrThrow()
+                            val linked =
+                                friendRepository.getByFriendUserId(profile.id)
+                                    ?: friend.copy(friendUserId = profile.id)
+                            return@runCatching AddPersonOutcome(
+                                friend = linked,
+                                inviteShareText = null,
+                                isInvitePending = false,
+                            )
+                        }
+                    }
+                    return@runCatching ensureGroupInviteForPendingFriend(
+                        ownerUserId = ownerUserId,
+                        friend = friend,
+                        groupId = groupId,
+                    )
+                }
+
+                addMemberToGroup(
+                    groupId = groupId,
+                    userId = friendUserId,
+                    actingUserId = ownerUserId,
+                ).getOrThrow()
+                AddPersonOutcome(
+                    friend = friend,
+                    inviteShareText = null,
+                    isInvitePending = false,
+                )
+            }
+
+        /**
          * Adds a friend as a group member (must be a real auth user id, not an invite placeholder).
+         *
+         * Ensures the group exists on Supabase first, then upserts membership. Cloud failures
+         * are returned to the caller (local PENDING is kept for retry).
          *
          * @param groupId Group id.
          * @param userId Member user id.
+         * @param actingUserId Signed-in user performing the add (for group cloud sync / RLS).
          */
-        suspend fun addMemberToGroup(groupId: String, userId: String): Result<Unit> =
+        suspend fun addMemberToGroup(
+            groupId: String,
+            userId: String,
+            actingUserId: String? = null,
+        ): Result<Unit> =
             runCatching {
+                val group =
+                    groupRepository.getGroupById(groupId)
+                        ?: error("Group not found.")
+                val actor = actingUserId?.takeIf { it.isNotBlank() } ?: group.createdByUserId
+
                 val friend = friendRepository.getByFriendUserId(userId)
+                val pendingInvite = friend?.let { inviteRepository.getByFriendRowId(it.id) }
+                val isPlaceholder =
+                    pendingInvite?.status == InviteStatus.PENDING ||
+                        friend?.displayNameSnapshot?.contains("(invited)", ignoreCase = true) == true
+                if (isPlaceholder) {
+                    error(
+                        "This person hasn't joined SplitEase yet. Send them a group invite instead.",
+                    )
+                }
+
                 ensureLocalUserExists(
                     userId = userId,
                     email = friend?.emailSnapshot.orEmpty(),
-                    displayName = friend?.displayNameSnapshot?.takeIf { it.isNotBlank() } ?: "Member",
+                    displayName =
+                        friend?.displayNameSnapshot?.takeIf { it.isNotBlank() } ?: "Member",
                 )
+                ensureGroupSyncedToCloud(groupId, actor)
+
+                val existing = groupRepository.getMember(groupId, userId)
+                if (existing != null) {
+                    if (existing.syncStatus != SyncStatus.SYNCED) {
+                        remote.upsertGroupMember(existing.toDto())
+                        groupRepository.upsertMember(existing.copy(syncStatus = SyncStatus.SYNCED))
+                    }
+                    return@runCatching
+                }
+
                 val now = System.currentTimeMillis()
                 val member =
                     GroupMember(
@@ -973,11 +1077,86 @@ class SocialInteractor
                         syncStatus = SyncStatus.PENDING,
                     )
                 groupRepository.upsertMember(member)
-                runCatching {
-                    remote.upsertGroupMember(member.toDto())
-                    groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
-                }
+                remote.upsertGroupMember(member.toDto())
+                groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
             }
+
+        /**
+         * Upgrades / creates a GROUP invite for a pending friend so accept_pending_invites
+         * can add them when they sign up. Keeps a LOCAL_ONLY placeholder membership for UI.
+         */
+        private suspend fun ensureGroupInviteForPendingFriend(
+            ownerUserId: String,
+            friend: Friend,
+            groupId: String,
+        ): AddPersonOutcome {
+            val group =
+                groupRepository.getGroupById(groupId)
+                    ?: error("Group not found.")
+            val email = friend.emailSnapshot.trim()
+            require(email.contains("@")) {
+                "This invite needs an email address before they can join the group."
+            }
+
+            val existingInvite = inviteRepository.getByFriendRowId(friend.id)
+            val invite =
+                when {
+                    existingInvite?.status == InviteStatus.PENDING &&
+                        existingInvite.kind == InviteKind.GROUP &&
+                        existingInvite.groupId == groupId -> {
+                        if (existingInvite.syncStatus != SyncStatus.SYNCED) {
+                            pushInviteToCloud(existingInvite)
+                        }
+                        existingInvite
+                    }
+                    existingInvite?.status == InviteStatus.PENDING -> {
+                        val upgraded =
+                            existingInvite.copy(
+                                kind = InviteKind.GROUP,
+                                groupId = groupId,
+                                syncStatus = SyncStatus.PENDING,
+                            )
+                        inviteRepository.upsert(upgraded)
+                        pushInviteToCloud(upgraded)
+                        upgraded
+                    }
+                    else -> {
+                        val created =
+                            buildPendingInvite(
+                                inviterUserId = ownerUserId,
+                                email = email,
+                                kind = InviteKind.GROUP,
+                                groupId = groupId,
+                                friendRowId = friend.id,
+                            )
+                        inviteRepository.upsert(created)
+                        pushInviteToCloud(created)
+                        created
+                    }
+                }
+
+            if (groupRepository.getMember(groupId, friend.friendUserId) == null) {
+                groupRepository.upsertMember(
+                    GroupMember(
+                        id = UUID.randomUUID().toString(),
+                        groupId = groupId,
+                        userId = friend.friendUserId,
+                        role = MemberRole.MEMBER,
+                        joinedAtEpochMs = System.currentTimeMillis(),
+                        syncStatus = SyncStatus.LOCAL_ONLY,
+                    ),
+                )
+            }
+
+            val inviterName =
+                userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
+            return AddPersonOutcome(
+                friend = friend,
+                inviteShareText =
+                    InviteLinks.groupShareText(inviterName, group.name, invite.token),
+                isInvitePending = true,
+            )
+        }
 
         /**
          * Removes the current user from a group. If they are the last member, deletes the group.

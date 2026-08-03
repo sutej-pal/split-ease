@@ -79,6 +79,7 @@
     <string name="find_people_friends_section">Friends on SplitEase</string>
     <string name="find_people_contacts_section">From your contacts</string>
     <string name="find_people_already_in_group">Already in group</string>
+    <string name="find_people_tap_to_sync_member">On this device only — tap to sync / invite</string>
     <string name="find_people_no_friends">No friends match your search.</string>
     <string name="find_people_no_contacts">No contacts match your search.</string>
     <string name="find_people_loading_contacts">Loading contacts…</string>

@@ -228,15 +228,20 @@ fun FindPeopleScreen(
                 }
             } else {
                 items(filteredFriends, key = { it.id }) { friend ->
-                    val alreadyInGroup =
-                        isGroupMode && friend.friendUserId in uiState.memberUserIds
+                    val syncedInGroup =
+                        isGroupMode && friend.friendUserId in uiState.syncedMemberUserIds
+                    val locallyOnly =
+                        isGroupMode &&
+                            friend.friendUserId in uiState.memberUserIds &&
+                            !syncedInGroup
                     FriendPickRow(
                         friend = friend,
-                        alreadyInGroup = alreadyInGroup,
-                        enabled = !uiState.isSubmitting && (!isGroupMode || !alreadyInGroup),
+                        alreadyInGroup = syncedInGroup,
+                        locallyPending = locallyOnly,
+                        enabled = !uiState.isSubmitting && (!isGroupMode || !syncedInGroup),
                         onClick = {
-                            if (isGroupMode && !alreadyInGroup) {
-                                viewModel.addFriendToGroup(friend.friendUserId) { }
+                            if (isGroupMode && !syncedInGroup) {
+                                viewModel.addFriendToGroup(friend.friendUserId)
                             }
                         },
                     )
@@ -337,6 +342,7 @@ private fun FindPeopleActionTile(
 private fun FriendPickRow(
     friend: Friend,
     alreadyInGroup: Boolean,
+    locallyPending: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
@@ -357,18 +363,28 @@ private fun FriendPickRow(
                 color = SplitEaseColors.Navy,
                 fontWeight = FontWeight.SemiBold,
             )
-            if (alreadyInGroup) {
-                Text(
-                    text = stringResource(R.string.find_people_already_in_group),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SplitEaseColors.NavyMuted,
-                )
-            } else if (friend.emailSnapshot.isNotBlank()) {
-                Text(
-                    text = friend.emailSnapshot,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SplitEaseColors.NavyMuted,
-                )
+            when {
+                alreadyInGroup -> {
+                    Text(
+                        text = stringResource(R.string.find_people_already_in_group),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SplitEaseColors.NavyMuted,
+                    )
+                }
+                locallyPending -> {
+                    Text(
+                        text = stringResource(R.string.find_people_tap_to_sync_member),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SplitEaseColors.Primary,
+                    )
+                }
+                friend.emailSnapshot.isNotBlank() -> {
+                    Text(
+                        text = friend.emailSnapshot,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SplitEaseColors.NavyMuted,
+                    )
+                }
             }
         }
         if (alreadyInGroup) {

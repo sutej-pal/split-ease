@@ -10,6 +10,7 @@ import com.splitease.app.data.contacts.DeviceContactsDataSource
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
+import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
@@ -44,7 +45,10 @@ data class FindPeopleUiState(
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingShareText: String? = null,
+    /** All local group member user ids (including LOCAL_ONLY placeholders). */
     val memberUserIds: Set<String> = emptySet(),
+    /** Members confirmed SYNCED to Supabase. */
+    val syncedMemberUserIds: Set<String> = emptySet(),
 )
 
 /**
@@ -85,14 +89,21 @@ class FindPeopleViewModel
                 combine(groupIdFlow, userId) { groupId, _ -> groupId }
                     .flatMapLatest { groupId ->
                         if (groupId.isNullOrBlank()) {
-                            flowOf(emptySet())
+                            flowOf(emptyList())
                         } else {
-                            groupRepository.observeMembers(groupId).map { members ->
-                                members.map { it.userId }.toSet()
-                            }
+                            groupRepository.observeMembers(groupId)
                         }
-                    }.collect { ids ->
-                        _uiState.update { it.copy(memberUserIds = ids) }
+                    }.collect { members ->
+                        _uiState.update {
+                            it.copy(
+                                memberUserIds = members.map { m -> m.userId }.toSet(),
+                                syncedMemberUserIds =
+                                    members
+                                        .filter { m -> m.syncStatus == SyncStatus.SYNCED }
+                                        .map { m -> m.userId }
+                                        .toSet(),
+                            )
+                        }
                     }
             }
             refreshPermissionAndContacts()
@@ -197,18 +208,48 @@ class FindPeopleViewModel
             return all.filter { it.searchable().contains(q) }
         }
 
-        fun addFriendToGroup(friendUserId: String, onDone: () -> Unit) {
+        fun addFriendToGroup(friendUserId: String, onDone: () -> Unit = {}) {
             val groupId = groupIdFlow.value ?: return
             viewModelScope.launch {
-                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
-                val result = socialInteractor.addMemberToGroup(groupId, friendUserId)
+                val ownerId =
+                    userId.value
+                        ?: (authRepository.observeSession().first { it !is AuthSession.Loading }
+                            as? AuthSession.SignedIn)
+                            ?.user
+                            ?.userId
+                if (ownerId == null) {
+                    _uiState.update {
+                        it.copy(errorMessage = appContext.getString(R.string.msg_not_signed_in))
+                    }
+                    return@launch
+                }
+                _uiState.update {
+                    it.copy(isSubmitting = true, errorMessage = null, infoMessage = null)
+                }
+                val result =
+                    socialInteractor.addExistingFriendToGroup(
+                        ownerUserId = ownerId,
+                        groupId = groupId,
+                        friendUserId = friendUserId,
+                    )
+                val outcome = result.getOrNull()
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
+                        pendingShareText = outcome?.inviteShareText,
+                        infoMessage =
+                            when {
+                                outcome == null -> null
+                                outcome.isInvitePending ->
+                                    appContext.getString(R.string.msg_invite_ready)
+                                else -> appContext.getString(R.string.msg_member_added)
+                            },
                     )
                 }
-                if (result.isSuccess) onDone()
+                if (outcome != null && !outcome.isInvitePending) {
+                    onDone()
+                }
             }
         }
 

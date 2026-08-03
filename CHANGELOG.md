@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs
 
 ### Fixed
+- Adding a friend from Find people → Friends on SplitEase now syncs `group_members` to Supabase (group pushed first; cloud errors surfaced). Pending invite friends get a GROUP invite instead of a local-only placeholder membership
 - Friend/group expenses invisible on the other account: inviter reconcile remapped splits only in Room then marked invites `ACCEPTED` (so `accept_pending_invites` never remapped remote `expense_splits`), and friendships were one-way so the invitee had no Friends list entry; now remaps remote splits (RPC + re-push heal), creates reciprocal friendships on link/accept, and backfills friends from shared activity ([sql/phase-3g-fix-reciprocal-friends-expense-remap.sql](docs/sql/phase-3g-fix-reciprocal-friends-expense-remap.sql))
 - Sign-in briefly flashed Welcome before verify OTP: OTP gate is armed before password session sign-out
 - Group expenses never reached Supabase: `expenses_select` used `can_access_expense(id)`, which re-queries `expenses` and cannot see the in-flight row during PostgREST `INSERT … RETURNING`, so upserts rolled back while Room kept a local PENDING copy ([sql/phase-4c-fix-expense-select-rls-returning.sql](docs/sql/phase-4c-fix-expense-select-rls-returning.sql)); expense push now also re-upserts the group before FK write

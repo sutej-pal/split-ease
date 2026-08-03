@@ -368,13 +368,24 @@ class GroupsViewModel
 
         fun addMember(groupId: String, userId: String) {
             viewModelScope.launch {
+                val ownerId = requireUserId()
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
-                val result = socialInteractor.addMemberToGroup(groupId, userId)
+                val result =
+                    socialInteractor.addMemberToGroup(
+                        groupId = groupId,
+                        userId = userId,
+                        actingUserId = ownerId,
+                    )
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_member_added) else null,
+                        infoMessage =
+                            if (result.isSuccess) {
+                                appContext.getString(R.string.msg_member_added)
+                            } else {
+                                null
+                            },
                     )
                 }
             }
