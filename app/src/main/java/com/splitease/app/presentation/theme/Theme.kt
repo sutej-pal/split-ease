@@ -24,11 +24,11 @@ private val LightColorScheme =
     lightColorScheme(
         primary = IndigoLight,
         onPrimary = Color.White, // WCAG vs IndigoLight ≈ 6.29:1
-        primaryContainer = BackgroundLight,
+        primaryContainer = PrimaryContainerLight,
         onPrimaryContainer = TextPrimaryLight,
         secondary = IndigoLight,
         onSecondary = Color.White,
-        secondaryContainer = BackgroundLight,
+        secondaryContainer = PrimaryContainerLight,
         onSecondaryContainer = TextPrimaryLight,
         tertiary = AmberLight,
         onTertiary = TextPrimaryLight, // amber is light; dark indigo text reads better than white
@@ -38,11 +38,11 @@ private val LightColorScheme =
         onBackground = TextPrimaryLight,
         surface = SurfaceLight,
         onSurface = TextPrimaryLight,
-        // Light muted text not in brand table — soft indigo-gray pending confirmation.
-        surfaceVariant = BackgroundLight,
+        // Light muted text not in brand table — neutral gray pending confirmation.
+        surfaceVariant = Color(0xFFF3F4F6),
         onSurfaceVariant = Color(0xFF5C5878),
         outline = IndigoLight,
-        outlineVariant = Color(0xFFC5C7E8),
+        outlineVariant = Color(0xFFE5E7EB),
         // TODO(design): error* are PLACEHOLDERs for "you owe" — confirm before shipping.
         error = ErrorPlaceholder,
         onError = Color.White,

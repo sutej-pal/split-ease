@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.ui
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
+import java.io.File
 
 @Composable
 fun SeIconTile(
@@ -65,6 +67,47 @@ fun SeIconTile(
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size((size * 0.5f).dp),
+        )
+    }
+}
+
+/**
+ * Group icon tile that prefers a custom [photoUrl], otherwise falls back to the type icon.
+ */
+@Composable
+fun SeGroupIconTile(
+    photoUrl: String?,
+    fallbackIcon: ImageVector,
+    fallbackTint: Color,
+    modifier: Modifier = Modifier,
+    size: Int = 56,
+) {
+    val context = LocalContext.current
+    val contentStamp = localAvatarContentStamp(photoUrl)
+    val bitmap =
+        remember(photoUrl, contentStamp) {
+            loadLocalAvatarBitmap(context, photoUrl)
+        }
+    if (bitmap != null) {
+        Box(
+            modifier =
+                modifier
+                    .size(size.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+        ) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    } else {
+        SeIconTile(
+            icon = fallbackIcon,
+            tint = fallbackTint,
+            modifier = modifier,
+            size = size,
         )
     }
 }
@@ -108,8 +151,10 @@ fun SeAvatarBadge(
     borderColor: Color = Color.White,
 ) {
     val context = LocalContext.current
+    // Include file mtime so overwriting the same path still reloads the bitmap.
+    val contentStamp = localAvatarContentStamp(photoUrl)
     val bitmap =
-        remember(photoUrl) {
+        remember(photoUrl, contentStamp) {
             loadLocalAvatarBitmap(context, photoUrl)
         }
     Box(
@@ -168,6 +213,25 @@ private fun loadLocalAvatarBitmap(
             maxSidePx = AvatarImageIO.PREVIEW_MAX_SIDE_PX,
         )?.asImageBitmap()
     }.getOrNull()
+}
+
+/** Local file last-modified (0 for remote/content URIs) used to bust avatar bitmap cache. */
+private fun localAvatarContentStamp(photoUrl: String?): Long {
+    if (photoUrl.isNullOrBlank()) return 0L
+    if (
+        photoUrl.startsWith("http://", ignoreCase = true) ||
+        photoUrl.startsWith("https://", ignoreCase = true) ||
+        photoUrl.startsWith("content:", ignoreCase = true)
+    ) {
+        return 0L
+    }
+    val path =
+        if (photoUrl.startsWith("file:", ignoreCase = true)) {
+            Uri.parse(photoUrl).path
+        } else {
+            photoUrl
+        } ?: return 0L
+    return File(path).takeIf { it.isFile }?.lastModified() ?: 0L
 }
 
 @Composable
@@ -263,11 +327,22 @@ fun SeActionChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    enabled: Boolean = true,
     icon: ImageVector? = null,
 ) {
     val bg = if (selected) SplitEaseColors.PrimarySoft else SplitEaseColors.Surface
-    val content = if (selected) SplitEaseColors.PrimaryDark else SplitEaseColors.Navy
-    val border = if (selected) SplitEaseColors.Primary else SplitEaseColors.Outline
+    val content =
+        when {
+            !enabled -> SplitEaseColors.OutlineStrong
+            selected -> SplitEaseColors.PrimaryDark
+            else -> SplitEaseColors.Navy
+        }
+    val border =
+        when {
+            !enabled -> SplitEaseColors.Outline
+            selected -> SplitEaseColors.Primary
+            else -> SplitEaseColors.Outline
+        }
     Row(
         modifier =
             modifier
@@ -275,7 +350,7 @@ fun SeActionChip(
                 .clip(RoundedCornerShape(20.dp))
                 .background(bg)
                 .border(1.dp, border, RoundedCornerShape(20.dp))
-                .clickable(onClick = onClick)
+                .clickable(enabled = enabled, onClick = onClick)
                 .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),

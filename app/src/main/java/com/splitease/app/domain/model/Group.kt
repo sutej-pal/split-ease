@@ -7,6 +7,7 @@ package com.splitease.app.domain.model
  * @property name Group display name.
  * @property defaultCurrencyCode ISO 4217 code used for new expenses (e.g. `"INR"`).
  * @property groupType Friends / Home / Other category for UI.
+ * @property photoUrl Optional local path to a custom group image.
  * @property createdByUserId User who created the group.
  * @property remoteId Cloud id when synced.
  * @property createdAtEpochMs Creation timestamp.
@@ -18,6 +19,7 @@ data class Group(
     val name: String,
     val defaultCurrencyCode: String,
     val groupType: GroupType = GroupType.OTHER,
+    val photoUrl: String? = null,
     val createdByUserId: String,
     val remoteId: String? = null,
     val createdAtEpochMs: Long,

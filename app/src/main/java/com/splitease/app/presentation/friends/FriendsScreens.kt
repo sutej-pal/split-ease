@@ -1,6 +1,9 @@
 package com.splitease.app.presentation.friends
 
 import android.content.Intent
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,62 +12,145 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.data.balance.FriendBalanceUi
+import com.splitease.app.data.balance.FriendContextBalanceUi
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Friend
+import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeFab
+import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
-import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeMoneyText
+import com.splitease.app.presentation.ui.SeMoneyTone
+import com.splitease.app.presentation.ui.SeOutlinedButton
+import com.splitease.app.presentation.ui.SeOverallSummary
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.ui.SeTopBar
+import java.math.BigDecimal
 
+/** How the friends list is filtered. */
+private enum class FriendsListFilter {
+    ALL,
+    OUTSTANDING,
+    YOU_OWE,
+    OWED_TO_YOU,
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsListScreen(
     onAddFriend: () -> Unit,
     onOpenFriend: (String) -> Unit,
     onOpenSearch: () -> Unit,
-    onBack: (() -> Unit)? = null,
+    onAddExpenseForFriend: (String) -> Unit,
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val friends by viewModel.friends.collectAsStateWithLifecycle()
+    val inviteFlags by viewModel.inviteFlags.collectAsStateWithLifecycle()
+    val balances by viewModel.overallBalances.collectAsStateWithLifecycle()
+    val currencyCode by viewModel.currencyCode.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
+
+    var listFilter by remember { mutableStateOf(FriendsListFilter.OUTSTANDING) }
+    var showSettledFriends by remember { mutableStateOf(false) }
+    var showExpensePicker by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
+    val balanceByFriendId =
+        remember(balances) {
+            balances?.friendBalances?.associateBy { it.friendUserId }.orEmpty()
+        }
+    val settledFriends =
+        remember(friends, balanceByFriendId, inviteFlags) {
+            friends.filter { friend ->
+                balanceByFriendId[friend.friendUserId] == null &&
+                    !friend.isPendingInvite(inviteFlags)
+            }
+        }
+    val filteredFriends =
+        remember(friends, balanceByFriendId, listFilter, inviteFlags) {
+            friends.filter { friend ->
+                friend.matches(
+                    filter = listFilter,
+                    netByCurrency = balanceByFriendId[friend.friendUserId]?.netByCurrency.orEmpty(),
+                    inviteFlags = inviteFlags,
+                )
+            }
+        }
+    val outstandingWithSettledHidden =
+        listFilter == FriendsListFilter.OUTSTANDING && filteredFriends.isNotEmpty()
+    val visibleFriends =
+        when {
+            listFilter == FriendsListFilter.OUTSTANDING && filteredFriends.isEmpty() -> friends
+            outstandingWithSettledHidden && showSettledFriends -> filteredFriends + settledFriends
+            else -> filteredFriends
+        }
+    val hiddenSettledCount =
+        if (outstandingWithSettledHidden && !showSettledFriends) settledFriends.size else 0
+    val canHideSettled =
+        outstandingWithSettledHidden && showSettledFriends && settledFriends.isNotEmpty()
+    val expenseFriends =
+        remember(friends, inviteFlags) { friends.filter { !it.isPendingInvite(inviteFlags) } }
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -82,112 +168,551 @@ fun FriendsListScreen(
         viewModel.consumeShareText()
     }
 
-    SeScreen(
-        title = stringResource(R.string.friends_title),
-        onBack = onBack,
-        actions = {
-            IconButton(onClick = onOpenSearch) {
-                Icon(
-                    Icons.Filled.Search,
-                    contentDescription = stringResource(R.string.cd_search),
-                    tint = SplitEaseColors.Navy,
-                )
-            }
-        },
-        floatingActionButton = {
-            SeFab(
-                onClick = onAddFriend,
-                contentDescription = stringResource(R.string.action_add_friend),
-                icon = Icons.Filled.Add,
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            SeTopBar(
+                title = stringResource(R.string.friends_title),
+                actions = {
+                    IconButton(onClick = onOpenSearch) {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.cd_search),
+                        )
+                    }
+                    IconButton(onClick = onAddFriend) {
+                        Icon(
+                            Icons.Filled.PersonAdd,
+                            contentDescription = stringResource(R.string.action_add_friend),
+                        )
+                    }
+                },
             )
         },
-        content = { padding ->
-            SePullRefreshBox(
-                isRefreshing = uiState.isRefreshing,
-                onRefresh = viewModel::refresh,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding.values),
+        floatingActionButton = {
+            SeExtendedFab(
+                text = stringResource(R.string.action_add_expense),
+                onClick = {
+                    when {
+                        expenseFriends.size == 1 ->
+                            onAddExpenseForFriend(expenseFriends.first().friendUserId)
+                        else -> showExpensePicker = true
+                    }
+                },
+                icon = Icons.Filled.Receipt,
+            )
+        },
+    ) { padding ->
+        SePullRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = viewModel::refresh,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 96.dp),
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    uiState.errorMessage?.let {
-                        SeErrorText(it, modifier = Modifier.padding(16.dp))
+                uiState.errorMessage?.let { message ->
+                    item {
+                        SeErrorText(message, modifier = Modifier.padding(bottom = 8.dp))
                     }
-                    uiState.infoMessage?.let {
-                        SeInfoText(it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                }
+                uiState.infoMessage?.let { message ->
+                    item {
+                        SeInfoText(message, modifier = Modifier.padding(bottom = 8.dp))
                     }
-                    if (friends.isEmpty()) {
+                }
+
+                item {
+                    FriendsSummaryRow(
+                        iOwe = balances?.totalIOweByCurrency.orEmpty(),
+                        owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
+                        currencyCode = currencyCode,
+                        selectedFilter = listFilter,
+                        onFilterSelected = {
+                            listFilter = it
+                            showSettledFriends = false
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (friends.isEmpty()) {
+                    item {
                         SeEmptyState(
                             message = stringResource(R.string.friends_empty),
-                            modifier = Modifier.padding(horizontal = 20.dp),
                             actionLabel = stringResource(R.string.action_add_friend),
                             onAction = onAddFriend,
                         )
-                    } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                        ) {
-                            items(friends, key = { it.id }) { friend ->
-                                FriendRow(
-                                    friend = friend,
-                                    onClick = { onOpenFriend(friend.friendUserId) },
-                                    onCopyInvite = { viewModel.copyInviteLink(friend.id) },
-                                    onShareInvite = { viewModel.shareInviteAgain(friend.id) },
-                                )
-                            }
-                        }
+                    }
+                } else if (visibleFriends.isEmpty()) {
+                    item {
+                        SeEmptyState(
+                            message = stringResource(R.string.friends_empty_filtered),
+                        )
+                    }
+                } else {
+                    items(visibleFriends, key = { it.id }) { friend ->
+                        FriendBalanceListItem(
+                            friend = friend,
+                            pending = friend.isPendingInvite(inviteFlags),
+                            balance = balanceByFriendId[friend.friendUserId],
+                            isSettled =
+                                settledFriends.any { it.friendUserId == friend.friendUserId },
+                            currencyFallback = currencyCode,
+                            onClick = { onOpenFriend(friend.friendUserId) },
+                            onCopyInvite = { viewModel.copyInviteLink(friend.id) },
+                            onShareInvite = { viewModel.shareInviteAgain(friend.id) },
+                        )
+                    }
+                }
+
+                if (hiddenSettledCount > 0) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.friends_hiding_settled),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeOutlinedButton(
+                            text =
+                                stringResource(
+                                    R.string.friends_show_settled,
+                                    hiddenSettledCount,
+                                ),
+                            onClick = { showSettledFriends = true },
+                        )
+                    }
+                } else if (canHideSettled) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeTextButton(
+                            text = stringResource(R.string.friends_hide_settled),
+                            onClick = { showSettledFriends = false },
+                        )
                     }
                 }
             }
-        },
-    )
+        }
+    }
+
+    if (showExpensePicker) {
+        ModalBottomSheet(
+            onDismissRequest = { showExpensePicker = false },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Text(
+                text = stringResource(R.string.pick_friend_for_expense),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            )
+            if (expenseFriends.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.friends_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+                SeOutlinedButton(
+                    text = stringResource(R.string.action_add_friend),
+                    onClick = {
+                        showExpensePicker = false
+                        onAddFriend()
+                    },
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            } else {
+                expenseFriends.forEach { friend ->
+                    Text(
+                        text = friend.displayNameSnapshot,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showExpensePicker = false
+                                    onAddExpenseForFriend(friend.friendUserId)
+                                }
+                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
 }
 
 @Composable
-private fun FriendRow(
+private fun FriendsSummaryRow(
+    iOwe: Map<String, BigDecimal>,
+    owedToMe: Map<String, BigDecimal>,
+    currencyCode: String,
+    selectedFilter: FriendsListFilter,
+    onFilterSelected: (FriendsListFilter) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val summaryModifier = Modifier.weight(1f)
+        when {
+            iOwe.isNotEmpty() -> {
+                val (code, amount) = iOwe.entries.first()
+                SeOverallSummary(
+                    prefix = stringResource(R.string.overall_you_owe_prefix),
+                    amount = amount,
+                    currencyCode = code.ifBlank { currencyCode },
+                    tone = SeMoneyTone.YOU_OWE,
+                    modifier = summaryModifier,
+                )
+            }
+            owedToMe.isNotEmpty() -> {
+                val (code, amount) = owedToMe.entries.first()
+                SeOverallSummary(
+                    prefix = stringResource(R.string.overall_owed_to_you_prefix),
+                    amount = amount,
+                    currencyCode = code.ifBlank { currencyCode },
+                    tone = SeMoneyTone.OWED_TO_YOU,
+                    modifier = summaryModifier,
+                )
+            }
+            else -> {
+                SeOverallSummary(
+                    prefix = stringResource(R.string.overall_settled),
+                    amount = null,
+                    currencyCode = currencyCode,
+                    tone = SeMoneyTone.SETTLED,
+                    modifier = summaryModifier,
+                )
+            }
+        }
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(
+                    Icons.Filled.Tune,
+                    contentDescription = stringResource(R.string.cd_filter_friends),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                FriendsListFilter.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(text = stringResource(option.labelRes))
+                        },
+                        onClick = {
+                            onFilterSelected(option)
+                            menuExpanded = false
+                        },
+                        leadingIcon = {
+                            RadioButton(
+                                selected = selectedFilter == option,
+                                onClick = {
+                                    onFilterSelected(option)
+                                    menuExpanded = false
+                                },
+                                colors =
+                                    RadioButtonDefaults.colors(
+                                        selectedColor = SplitEaseColors.Accent,
+                                    ),
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val FriendsListFilter.labelRes: Int
+    get() =
+        when (this) {
+            FriendsListFilter.ALL -> R.string.friends_filter_all
+            FriendsListFilter.OUTSTANDING -> R.string.friends_filter_outstanding
+            FriendsListFilter.YOU_OWE -> R.string.friends_filter_you_owe
+            FriendsListFilter.OWED_TO_YOU -> R.string.friends_filter_owed_to_you
+        }
+
+private fun Friend.isPendingInvite(flags: FriendInviteFlags): Boolean {
+    if (id in flags.pendingFriendRowIds) return true
+    if (id in flags.acceptedFriendRowIds) return false
+    return displayNameSnapshot.contains("(invited)", ignoreCase = true)
+}
+
+private fun Friend.matches(
+    filter: FriendsListFilter,
+    netByCurrency: Map<String, BigDecimal>,
+    inviteFlags: FriendInviteFlags,
+): Boolean {
+    val nets = netByCurrency.values
+    val pending = isPendingInvite(inviteFlags)
+    return when (filter) {
+        FriendsListFilter.ALL -> true
+        FriendsListFilter.OUTSTANDING ->
+            pending || nets.any { it.compareTo(BigDecimal.ZERO) != 0 }
+        FriendsListFilter.YOU_OWE -> nets.any { it < BigDecimal.ZERO }
+        FriendsListFilter.OWED_TO_YOU -> nets.any { it > BigDecimal.ZERO }
+    }
+}
+
+@Composable
+private fun FriendBalanceListItem(
     friend: Friend,
+    pending: Boolean,
+    balance: FriendBalanceUi?,
+    isSettled: Boolean,
+    currencyFallback: String,
     onClick: () -> Unit,
     onCopyInvite: () -> Unit,
     onShareInvite: () -> Unit,
 ) {
-    val pending = friend.displayNameSnapshot.contains("(invited)", ignoreCase = true)
-    SeListRow(
-        title = friend.displayNameSnapshot,
-        subtitle =
+    val contexts = balance?.contexts.orEmpty()
+    val showBreakdown = contexts.size > 1
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 56)
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text =
+                        if (pending) {
+                            friend.displayNameSnapshot
+                        } else {
+                            friend.displayNameSnapshot
+                                .replace(Regex("\\s*\\(invited\\)\\s*", RegexOption.IGNORE_CASE), "")
+                                .trim()
+                                .ifBlank { friend.displayNameSnapshot }
+                        },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                when {
+                    pending ->
+                        Text(
+                            text =
+                                "${friend.emailSnapshot} · ${stringResource(R.string.invite_pending_label)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    balance != null ->
+                        FriendNetStatus(
+                            netByCurrency = balance.netByCurrency,
+                            currencyFallback = currencyFallback,
+                        )
+                    isSettled ->
+                        Text(
+                            text = stringResource(R.string.balances_settled_up).lowercase(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    else ->
+                        Text(
+                            text = stringResource(R.string.friends_no_expenses),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                }
+            }
             if (pending) {
-                "${friend.emailSnapshot} · ${stringResource(R.string.invite_pending_label)}"
-            } else {
-                friend.emailSnapshot
-            },
-        leading = { SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 48) },
-        trailing =
-            if (pending) {
-                {
-                    Row {
-                        IconButton(onClick = onCopyInvite) {
-                            Icon(
-                                Icons.Filled.ContentCopy,
-                                contentDescription = stringResource(R.string.cd_copy_invite_link),
-                                tint = SplitEaseColors.Primary,
-                            )
-                        }
-                        IconButton(onClick = onShareInvite) {
-                            Icon(
-                                Icons.Filled.Share,
-                                contentDescription = stringResource(R.string.cd_share_invite_again),
-                                tint = SplitEaseColors.Primary,
-                            )
-                        }
+                Row {
+                    IconButton(onClick = onCopyInvite) {
+                        Icon(
+                            Icons.Filled.ContentCopy,
+                            contentDescription = stringResource(R.string.cd_copy_invite_link),
+                            tint = SplitEaseColors.Primary,
+                        )
+                    }
+                    IconButton(onClick = onShareInvite) {
+                        Icon(
+                            Icons.Filled.Share,
+                            contentDescription = stringResource(R.string.cd_share_invite_again),
+                            tint = SplitEaseColors.Primary,
+                        )
                     }
                 }
-            } else {
-                null
+            }
+        }
+        if (showBreakdown) {
+            FriendContextBreakdown(
+                displayName = friend.displayNameSnapshot,
+                contexts = contexts,
+                currencyFallback = currencyFallback,
+                modifier = Modifier.padding(start = 70.dp, bottom = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FriendContextBreakdown(
+    displayName: String,
+    contexts: List<FriendContextBalanceUi>,
+    currencyFallback: String,
+    modifier: Modifier = Modifier,
+) {
+    val shortName = remember(displayName) { shortFriendName(displayName) }
+    val lineColor = MaterialTheme.colorScheme.outlineVariant
+    val density = LocalDensity.current
+    val strokeWidth = with(density) { 1.5.dp.toPx() }
+    val rows =
+        remember(contexts) {
+            contexts.flatMap { context ->
+                context.netByCurrency.toSortedMap().mapNotNull { (currency, net) ->
+                    if (net.compareTo(BigDecimal.ZERO) == 0) {
+                        null
+                    } else {
+                        Triple(context.contextName, currency, net)
+                    }
+                }
+            }
+        }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        rows.forEachIndexed { index, (contextName, currency, net) ->
+            val isLast = index == rows.lastIndex
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Canvas(modifier = Modifier.size(width = 20.dp, height = 28.dp)) {
+                    val x = size.width * 0.35f
+                    val midY = size.height / 2f
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, 0f),
+                        end = Offset(x, if (isLast) midY else size.height),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, midY),
+                        end = Offset(size.width, midY),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                FriendContextLine(
+                    shortName = shortName,
+                    contextName = contextName,
+                    amount = net.abs(),
+                    currencyCode = currency.ifBlank { currencyFallback },
+                    youOwe = net < BigDecimal.ZERO,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FriendContextLine(
+    shortName: String,
+    contextName: String,
+    amount: BigDecimal,
+    currencyCode: String,
+    youOwe: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val money = MoneyFormat.format(amount, currencyCode)
+    val accent = if (youOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou
+    val body = MaterialTheme.colorScheme.onSurfaceVariant
+    Text(
+        text =
+            buildAnnotatedString {
+                if (youOwe) {
+                    withStyle(SpanStyle(color = body)) {
+                        append("You owe $shortName ")
+                    }
+                    withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Medium)) {
+                        append(money)
+                    }
+                    withStyle(SpanStyle(color = body)) {
+                        append(" for '$contextName'")
+                    }
+                } else {
+                    withStyle(SpanStyle(color = body)) {
+                        append("$shortName owes you ")
+                    }
+                    withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Medium)) {
+                        append(money)
+                    }
+                    withStyle(SpanStyle(color = body)) {
+                        append(" for '$contextName'")
+                    }
+                }
             },
-        onClick = onClick,
+        modifier = modifier,
+        style = MaterialTheme.typography.bodySmall,
     )
+}
+
+/** Splitwise-style short label: "Deepak joshi" → "Deepak j." */
+private fun shortFriendName(name: String): String {
+    val cleaned = name.replace(Regex("\\s*\\(invited\\)\\s*", RegexOption.IGNORE_CASE), "").trim()
+    val parts = cleaned.split(Regex("\\s+")).filter { it.isNotEmpty() }
+    return when {
+        parts.size >= 2 -> "${parts[0]} ${parts[1].first().lowercaseChar()}."
+        parts.isNotEmpty() -> parts[0]
+        else -> name
+    }
+}
+
+@Composable
+private fun FriendNetStatus(
+    netByCurrency: Map<String, BigDecimal>,
+    currencyFallback: String,
+) {
+    if (netByCurrency.isEmpty()) {
+        SeMoneyText(
+            amount = BigDecimal.ZERO,
+            currencyCode = currencyFallback,
+            tone = SeMoneyTone.SETTLED,
+            prefix = stringResource(R.string.balances_settled_up).lowercase(),
+        )
+        return
+    }
+    netByCurrency.toSortedMap().forEach { (currency, net) ->
+        val code = currency.ifBlank { currencyFallback }
+        when {
+            net < BigDecimal.ZERO ->
+                SeMoneyText(
+                    amount = net.abs(),
+                    currencyCode = code,
+                    tone = SeMoneyTone.YOU_OWE,
+                    prefix = stringResource(R.string.friends_you_owe),
+                )
+            net > BigDecimal.ZERO ->
+                SeMoneyText(
+                    amount = net,
+                    currencyCode = code,
+                    tone = SeMoneyTone.OWED_TO_YOU,
+                    prefix = stringResource(R.string.friends_owes_you),
+                )
+        }
+    }
 }
 
 @Composable
@@ -195,7 +720,7 @@ fun AddFriendScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
     groupId: String? = null,
-    prefillName: String = "",   
+    prefillName: String = "",
     prefillContact: String = "",
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {

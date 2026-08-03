@@ -23,7 +23,10 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -60,13 +63,15 @@ import com.splitease.app.presentation.ui.SeTopBar
  *
  * @param groupId When set, selecting a friend adds them to that group.
  * @param onBack Navigate up.
- * @param onAddNewContact Opens the Add friend form (manual name + email/phone).
+ * @param onManualAdd Opens Edit contact for a manual entry (returns to Review).
+ * @param onReviewSelected Opens Review with selected device contacts.
  */
 @Composable
 fun FindPeopleScreen(
     groupId: String?,
     onBack: () -> Unit,
-    onAddNewContact: (prefillName: String, prefillContact: String) -> Unit,
+    onManualAdd: () -> Unit,
+    onReviewSelected: () -> Unit,
     viewModel: FindPeopleViewModel = hiltViewModel(),
 ) {
     val friends by viewModel.friends.collectAsStateWithLifecycle()
@@ -116,6 +121,7 @@ fun FindPeopleScreen(
     val filteredFriends = viewModel.filteredFriends(friends)
     val filteredContacts = viewModel.filteredContacts()
     val isGroupMode = !groupId.isNullOrBlank()
+    val hasSelection = uiState.selectedContactIds.isNotEmpty()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -123,6 +129,24 @@ fun FindPeopleScreen(
             SeTopBar(
                 title = stringResource(R.string.find_people_title),
                 onBack = onBack,
+                actions = {
+                    if (hasSelection) {
+                        IconButton(
+                            onClick = {
+                                if (viewModel.prepareReview()) {
+                                    onReviewSelected()
+                                }
+                            },
+                            enabled = !uiState.isSubmitting,
+                        ) {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = stringResource(R.string.action_next),
+                                tint = SplitEaseColors.Primary,
+                            )
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
@@ -169,7 +193,10 @@ fun FindPeopleScreen(
                 FindPeopleActionTile(
                     icon = Icons.Filled.PersonAdd,
                     label = stringResource(R.string.find_people_title),
-                    onClick = { onAddNewContact("", "") },
+                    onClick = {
+                        viewModel.prepareManualAdd()
+                        onManualAdd()
+                    },
                 )
             }
 
@@ -266,16 +293,9 @@ fun FindPeopleScreen(
                     items(filteredContacts, key = { it.id }) { contact ->
                         ContactPickRow(
                             contact = contact,
+                            selected = contact.id in uiState.selectedContactIds,
                             enabled = !uiState.isSubmitting,
-                            onClick = {
-                                viewModel.addContact(
-                                    contact = contact,
-                                    onNeedManualAdd = { name, value ->
-                                        onAddNewContact(name, value)
-                                    },
-                                    onDone = { },
-                                )
-                            },
+                            onClick = { viewModel.toggleContactSelection(contact.id) },
                         )
                     }
                 }
@@ -365,10 +385,11 @@ private fun FriendPickRow(
 @Composable
 private fun ContactPickRow(
     contact: DeviceContact,
+    selected: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val subtitle = contact.email ?: contact.phoneNumber
+    val subtitle = contact.phoneNumber ?: contact.email
     Row(
         modifier =
             Modifier
@@ -394,5 +415,15 @@ private fun ContactPickRow(
                 )
             }
         }
+        Checkbox(
+            checked = selected,
+            onCheckedChange = null,
+            enabled = enabled,
+            colors =
+                CheckboxDefaults.colors(
+                    checkedColor = SplitEaseColors.Primary,
+                    uncheckedColor = SplitEaseColors.OutlineStrong,
+                ),
+        )
     }
 }

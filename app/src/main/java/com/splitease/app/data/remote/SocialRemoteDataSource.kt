@@ -263,6 +263,56 @@ class SocialRemoteDataSource
         }
 
         /**
+         * Remaps placeholder → real user ids on remote expenses/payments/members.
+         *
+         * @param fromUserId Invite placeholder UUID.
+         * @param toUserId Real auth user id.
+         */
+        suspend fun remapPlaceholderUser(
+            fromUserId: String,
+            toUserId: String,
+        ) {
+            if (fromUserId.isBlank() || toUserId.isBlank() || fromUserId == toUserId) return
+            supabase.postgrest.rpc(
+                function = "remap_placeholder_user",
+                parameters =
+                    buildJsonObject {
+                        put("p_from", fromUserId)
+                        put("p_to", toUserId)
+                    },
+            )
+        }
+
+        /**
+         * Ensures a friendship row owned by [ownerUserId] pointing at [friendUserId].
+         *
+         * Used so adding A→B also creates B→A (SECURITY DEFINER).
+         *
+         * @param ownerUserId Owner of the reverse edge (usually the invitee).
+         * @param friendUserId The other party (usually the inviter).
+         * @param email Friend email snapshot.
+         * @param displayName Friend display name snapshot.
+         */
+        suspend fun ensureReciprocalFriend(
+            ownerUserId: String,
+            friendUserId: String,
+            email: String,
+            displayName: String,
+        ) {
+            if (ownerUserId.isBlank() || friendUserId.isBlank() || ownerUserId == friendUserId) return
+            supabase.postgrest.rpc(
+                function = "ensure_reciprocal_friend",
+                parameters =
+                    buildJsonObject {
+                        put("p_owner_user_id", ownerUserId)
+                        put("p_friend_user_id", friendUserId)
+                        put("p_email", email)
+                        put("p_display_name", displayName)
+                    },
+            )
+        }
+
+        /**
          * Loads a public invite preview by token (works for anonymous callers).
          *
          * @param token Opaque invite token from the deep link.

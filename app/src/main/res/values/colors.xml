@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Splash / system bar fallback until Compose theme takes over (brand indigo surface) -->
-    <color name="splitease_background">#E8EAFE</color>
+    <!-- Splash / system bar fallback until Compose theme takes over -->
+    <color name="splitease_background">#FFFFFF</color>
 </resources>

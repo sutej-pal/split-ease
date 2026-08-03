@@ -121,7 +121,7 @@ private fun InviteLandingContent(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .background(SplitEaseColors.Accent)
+                                .background(SplitEaseColors.PrimarySoft)
                                 .padding(vertical = 28.dp),
                         contentAlignment = Alignment.Center,
                     ) {

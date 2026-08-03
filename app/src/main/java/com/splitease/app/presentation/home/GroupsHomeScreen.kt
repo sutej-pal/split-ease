@@ -56,6 +56,7 @@ import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
+import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
@@ -79,6 +80,7 @@ private enum class GroupsHomeFilter {
 @Composable
 fun GroupsHomeScreen(
     onOpenGroup: (String) -> Unit,
+    onOpenNonGroup: () -> Unit,
     onCreateGroup: () -> Unit,
     onAddExpenseForGroup: (String) -> Unit,
     onOpenSearch: () -> Unit,
@@ -120,15 +122,15 @@ fun GroupsHomeScreen(
     val nonGroupNet = balances?.nonGroupMyNetByCurrency.orEmpty()
     val showNonGroup =
         balances != null &&
-            (nonGroupNet.isNotEmpty() || balances.nonGroupDebts.isNotEmpty()) &&
             when (listFilter) {
-                GroupsHomeFilter.ALL -> true
+                GroupsHomeFilter.ALL -> balances.hasNonGroupActivity
                 GroupsHomeFilter.OUTSTANDING ->
                     nonGroupNet.matches(GroupsHomeFilter.OUTSTANDING) ||
                         balances.nonGroupDebts.isNotEmpty()
                 GroupsHomeFilter.YOU_OWE,
                 GroupsHomeFilter.OWED_TO_YOU,
-                -> nonGroupNet.matches(listFilter)
+                ->
+                    balances.hasNonGroupActivity && nonGroupNet.matches(listFilter)
             }
 
     Scaffold(
@@ -200,6 +202,7 @@ fun GroupsHomeScreen(
                     val group = ui.allGroups.firstOrNull { it.id == row.groupId }
                     GroupBalanceListItem(
                         row = row,
+                        photoUrl = group?.photoUrl,
                         icon = groupTypeIcon(group?.groupType),
                         iconTint = groupTypeColor(group?.groupType),
                         currencyFallback = ui.currencyCode,
@@ -213,6 +216,7 @@ fun GroupsHomeScreen(
                             myNet = balances.nonGroupMyNetByCurrency,
                             debts = balances.nonGroupDebts,
                             currencyFallback = ui.currencyCode,
+                            onClick = onOpenNonGroup,
                         )
                     }
                 }
@@ -402,6 +406,7 @@ private fun Map<String, BigDecimal>.matches(filter: GroupsHomeFilter): Boolean {
 @Composable
 private fun GroupBalanceListItem(
     row: GroupBalanceUi,
+    photoUrl: String?,
     icon: ImageVector,
     iconTint: Color,
     currencyFallback: String,
@@ -415,7 +420,11 @@ private fun GroupBalanceListItem(
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        SeIconTile(icon = icon, tint = iconTint)
+        SeGroupIconTile(
+            photoUrl = photoUrl,
+            fallbackIcon = icon,
+            fallbackTint = iconTint,
+        )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -440,9 +449,14 @@ private fun NonGroupListItem(
     myNet: Map<String, BigDecimal>,
     debts: List<LabeledDebt>,
     currencyFallback: String,
+    onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeIconTile(icon = Icons.AutoMirrored.Filled.List, tint = SplitEaseColors.IconOther)
@@ -531,6 +545,7 @@ private fun GroupsHomeScreenPreview() {
                         memberNetsByCurrency = emptyMap(),
                         simplifiedDebts = emptyList(),
                     ),
+                photoUrl = null,
                 icon = Icons.Filled.Home,
                 iconTint = SplitEaseColors.IconHome,
                 currencyFallback = "INR",

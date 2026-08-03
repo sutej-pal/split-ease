@@ -4,7 +4,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Orchestrates pin board load / save. Stateless — debounce lives in the ViewModel.
+ * Orchestrates pin board load / save. Stateless — persistence is triggered by explicit Save.
  */
 @Singleton
 class PinBoardInteractor

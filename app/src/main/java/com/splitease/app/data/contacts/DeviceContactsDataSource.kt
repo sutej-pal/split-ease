@@ -7,7 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Reads device contacts (name / phone / email) for the Find people UI.
+ * Reads device contacts (name / phones / emails) for the Find people UI.
  *
  * Requires [android.Manifest.permission.READ_CONTACTS] at runtime.
  */
@@ -31,13 +31,22 @@ class DeviceContactsDataSource
                 DeviceContact(
                     id = id,
                     displayName = names[id].orEmpty().ifBlank {
-                        emails[id] ?: phones[id].orEmpty()
+                        emails[id]?.firstOrNull() ?: phones[id]?.firstOrNull().orEmpty()
                     },
-                    phoneNumber = phones[id],
-                    email = emails[id],
+                    phoneNumbers = phones[id].orEmpty(),
+                    emails = emails[id].orEmpty(),
                 )
             }.sortedBy { it.displayName.lowercase() }
         }
+
+        /**
+         * Loads a single contact by provider id.
+         *
+         * @param contactId Contacts provider id.
+         * @return Matching contact, or null.
+         */
+        fun loadContactById(contactId: String): DeviceContact? =
+            loadContacts().firstOrNull { it.id == contactId }
 
         private fun loadNamesByContactId(): Map<String, String> {
             val out = mutableMapOf<String, String>()
@@ -63,8 +72,8 @@ class DeviceContactsDataSource
             return out
         }
 
-        private fun loadPhonesByContactId(): Map<String, String> {
-            val out = mutableMapOf<String, String>()
+        private fun loadPhonesByContactId(): Map<String, List<String>> {
+            val out = mutableMapOf<String, MutableList<String>>()
             context.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 arrayOf(
@@ -81,16 +90,19 @@ class DeviceContactsDataSource
                     cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(idIdx) ?: continue
-                    if (out.containsKey(id)) continue
                     val number = cursor.getString(numIdx)?.trim().orEmpty()
-                    if (number.isNotEmpty()) out[id] = number
+                    if (number.isEmpty()) continue
+                    val list = out.getOrPut(id) { mutableListOf() }
+                    if (list.none { it.equals(number, ignoreCase = true) }) {
+                        list.add(number)
+                    }
                 }
             }
             return out
         }
 
-        private fun loadEmailsByContactId(): Map<String, String> {
-            val out = mutableMapOf<String, String>()
+        private fun loadEmailsByContactId(): Map<String, List<String>> {
+            val out = mutableMapOf<String, MutableList<String>>()
             context.contentResolver.query(
                 ContactsContract.CommonDataKinds.Email.CONTENT_URI,
                 arrayOf(
@@ -107,9 +119,12 @@ class DeviceContactsDataSource
                     cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.ADDRESS)
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(idIdx) ?: continue
-                    if (out.containsKey(id)) continue
                     val email = cursor.getString(addrIdx)?.trim().orEmpty()
-                    if (email.isNotEmpty()) out[id] = email
+                    if (email.isEmpty()) continue
+                    val list = out.getOrPut(id) { mutableListOf() }
+                    if (list.none { it.equals(email, ignoreCase = true) }) {
+                        list.add(email)
+                    }
                 }
             }
             return out

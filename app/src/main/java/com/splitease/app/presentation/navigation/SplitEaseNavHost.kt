@@ -43,11 +43,14 @@ import com.splitease.app.presentation.invite.InviteLandingScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
-import com.splitease.app.presentation.friends.AddFriendScreen
+import com.splitease.app.presentation.friends.EditContactScreen
 import com.splitease.app.presentation.friends.FindPeopleScreen
+import com.splitease.app.presentation.friends.FriendSettingsScreen
 import com.splitease.app.presentation.friends.FriendsListScreen
+import com.splitease.app.presentation.friends.ReviewFriendsScreen
 import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
+import com.splitease.app.presentation.groups.NonGroupExpensesScreen
 import com.splitease.app.presentation.groups.GroupInviteLinkScreen
 import com.splitease.app.presentation.groups.GroupSettingsScreen
 import com.splitease.app.presentation.home.GroupsHomeScreen
@@ -87,10 +90,16 @@ object Routes {
     const val IMPORT = "import_transactions"
     const val ADD_FRIEND =
         "add_friend?groupId={groupId}&name={name}&contact={contact}"
+    const val EDIT_CONTACT =
+        "edit_contact?groupId={groupId}&friendUserId={friendUserId}&contactId={contactId}" +
+            "&entryId={entryId}&confirmOnly={confirmOnly}&name={name}&contact={contact}"
     const val FIND_PEOPLE = "find_people?groupId={groupId}"
+    const val REVIEW_FRIENDS = "review_friends?groupId={groupId}"
     const val FRIEND_DETAIL = "friend_detail/{friendUserId}"
+    const val FRIEND_SETTINGS = "friend_settings/{friendUserId}"
     const val CREATE_GROUP = "create_group"
     const val GROUP_DETAIL = "group_detail/{groupId}"
+    const val NON_GROUP_EXPENSES = "non_group_expenses"
     const val GROUP_SETTINGS = "group_settings/{groupId}"
     const val GROUP_INVITE_LINK = "group_invite_link/{groupId}"
     const val ADD_EXPENSE =
@@ -110,10 +119,15 @@ object Routes {
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
 
+    fun friendSettings(friendUserId: String) = "friend_settings/$friendUserId"
+
     fun expenseDetail(expenseId: String) = "expense_detail/$expenseId"
 
     fun findPeople(groupId: String? = null) =
         "find_people?groupId=${groupId.orEmpty()}"
+
+    fun reviewFriends(groupId: String? = null) =
+        "review_friends?groupId=${groupId.orEmpty()}"
 
     fun addFriend(
         groupId: String? = null,
@@ -123,6 +137,25 @@ object Routes {
         val n = android.net.Uri.encode(name)
         val c = android.net.Uri.encode(contact)
         return "add_friend?groupId=${groupId.orEmpty()}&name=$n&contact=$c"
+    }
+
+    fun editContact(
+        groupId: String? = null,
+        friendUserId: String? = null,
+        contactId: String? = null,
+        entryId: String? = null,
+        confirmOnly: Boolean = false,
+        name: String = "",
+        contact: String = "",
+    ): String {
+        val n = android.net.Uri.encode(name)
+        val c = android.net.Uri.encode(contact)
+        return "edit_contact?groupId=${groupId.orEmpty()}" +
+            "&friendUserId=${friendUserId.orEmpty()}" +
+            "&contactId=${contactId.orEmpty()}" +
+            "&entryId=${entryId.orEmpty()}" +
+            "&confirmOnly=$confirmOnly" +
+            "&name=$n&contact=$c"
     }
 
     fun addExpenseForGroup(groupId: String) =
@@ -165,6 +198,8 @@ private val bottomBarRoutes =
     tabRoutes +
         setOf(
             Routes.GROUP_DETAIL,
+            Routes.NON_GROUP_EXPENSES,
+            Routes.FRIEND_DETAIL,
         )
 
 /**
@@ -172,8 +207,13 @@ private val bottomBarRoutes =
  * Nested screens (e.g. group detail) stay under their parent tab.
  */
 private fun selectedTabRoute(currentRoute: String?): String? =
-    when (currentRoute) {
-        Routes.GROUP_DETAIL -> Routes.TAB_GROUPS
+    when {
+        currentRoute == Routes.GROUP_DETAIL ||
+            currentRoute == Routes.NON_GROUP_EXPENSES ->
+            Routes.TAB_GROUPS
+        currentRoute == Routes.FRIEND_DETAIL ||
+            currentRoute?.startsWith("friend_detail/") == true ->
+            Routes.TAB_FRIENDS
         else -> currentRoute?.takeIf { it in tabRoutes }
     }
 
@@ -435,6 +475,7 @@ private fun SignedInNavHost(
             composable(Routes.TAB_GROUPS) {
                 GroupsHomeScreen(
                     onOpenGroup = { id -> navController.navigate(Routes.groupDetail(id)) },
+                    onOpenNonGroup = { navController.navigate(Routes.NON_GROUP_EXPENSES) },
                     onCreateGroup = { navController.navigate(Routes.CREATE_GROUP) },
                     onAddExpenseForGroup = { id ->
                         navController.navigate(Routes.addExpenseForGroup(id))
@@ -449,6 +490,9 @@ private fun SignedInNavHost(
                         navController.navigate(Routes.friendDetail(friendUserId))
                     },
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
+                    onAddExpenseForFriend = { friendUserId ->
+                        navController.navigate(Routes.addExpenseForFriend(friendUserId))
+                    },
                 )
             }
             composable(Routes.TAB_ACTIVITY) {
@@ -518,10 +562,99 @@ private fun SignedInNavHost(
                 FindPeopleScreen(
                     groupId = groupId,
                     onBack = { navController.popBackStack() },
-                    onAddNewContact = { name, contact ->
+                    onManualAdd = {
                         navController.navigate(
-                            Routes.addFriend(groupId = groupId, name = name, contact = contact),
+                            Routes.editContact(
+                                groupId = groupId,
+                                confirmOnly = true,
+                            ),
                         )
+                    },
+                    onReviewSelected = {
+                        navController.navigate(Routes.reviewFriends(groupId))
+                    },
+                )
+            }
+            composable(
+                route = Routes.REVIEW_FRIENDS,
+                arguments =
+                    listOf(
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                ReviewFriendsScreen(
+                    onBack = { navController.popBackStack() },
+                    onEditEntry = { reviewEntry ->
+                        navController.navigate(
+                            Routes.editContact(
+                                groupId = groupId,
+                                contactId = reviewEntry.contactId,
+                                entryId = reviewEntry.id,
+                                confirmOnly = true,
+                                name = reviewEntry.displayName,
+                                contact = reviewEntry.contactValue,
+                            ),
+                        )
+                    },
+                    onDone = {
+                        navController.popBackStack(Routes.findPeople(groupId), inclusive = true)
+                    },
+                )
+            }
+            composable(
+                route = Routes.EDIT_CONTACT,
+                arguments =
+                    listOf(
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("friendUserId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("contactId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("entryId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("confirmOnly") {
+                            type = NavType.StringType
+                            defaultValue = "false"
+                        },
+                        navArgument("name") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("contact") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val confirmOnly =
+                    entry.arguments?.getString("confirmOnly").orEmpty() == "true"
+                EditContactScreen(
+                    onBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack() },
+                    onConfirmedForReview = {
+                        val cameFromReview =
+                            navController.previousBackStackEntry
+                                ?.destination
+                                ?.route
+                                ?.startsWith("review_friends") == true
+                        navController.popBackStack()
+                        if (confirmOnly && !cameFromReview) {
+                            navController.navigate(Routes.reviewFriends(groupId))
+                        }
                     },
                 )
             }
@@ -546,13 +679,14 @@ private fun SignedInNavHost(
                 val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
                 val name = entry.arguments?.getString("name").orEmpty()
                 val contact = entry.arguments?.getString("contact").orEmpty()
-                AddFriendScreen(
-                    onBack = { navController.popBackStack() },
-                    onDone = { navController.popBackStack() },
-                    groupId = groupId,
-                    prefillName = name,
-                    prefillContact = contact,
-                )
+                // Legacy route — redirect into Edit contact.
+                LaunchedEffect(groupId, name, contact) {
+                    navController.navigate(
+                        Routes.editContact(groupId = groupId, name = name, contact = contact),
+                    ) {
+                        popUpTo(Routes.ADD_FRIEND) { inclusive = true }
+                    }
+                }
             }
             composable(
                 route = Routes.FRIEND_DETAIL,
@@ -562,6 +696,9 @@ private fun SignedInNavHost(
                 FriendDetailScreen(
                     friendUserId = friendUserId,
                     onBack = { navController.popBackStack() },
+                    onOpenSettings = {
+                        navController.navigate(Routes.friendSettings(friendUserId))
+                    },
                     onAddExpense = {
                         navController.navigate(Routes.addExpenseForFriend(friendUserId))
                     },
@@ -576,6 +713,26 @@ private fun SignedInNavHost(
                                 label = label,
                             ),
                         )
+                    },
+                )
+            }
+            composable(
+                route = Routes.FRIEND_SETTINGS,
+                arguments = listOf(navArgument("friendUserId") { type = NavType.StringType }),
+            ) { entry ->
+                val friendUserId = entry.arguments?.getString("friendUserId").orEmpty()
+                FriendSettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onRemoved = {
+                        navController.popBackStack(Routes.TAB_FRIENDS, inclusive = false)
+                    },
+                    onEditContact = {
+                        navController.navigate(
+                            Routes.editContact(friendUserId = friendUserId),
+                        )
+                    },
+                    onOpenGroup = { groupId ->
+                        navController.navigate(Routes.groupDetail(groupId))
                     },
                 )
             }
@@ -619,6 +776,28 @@ private fun SignedInNavHost(
                             ),
                         )
                     },
+                )
+            }
+            composable(Routes.NON_GROUP_EXPENSES) {
+                NonGroupExpensesScreen(
+                    onBack = { navController.popBackStack() },
+                    onAddExpenseForFriend = { friendUserId ->
+                        navController.navigate(Routes.addExpenseForFriend(friendUserId))
+                    },
+                    onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
+                    onOpenSpending = { navController.navigate(Routes.SPENDING) },
+                    onSettleDebt = { from, to, amount, currency, label ->
+                        navController.navigate(
+                            Routes.settleUp(
+                                fromUserId = from,
+                                toUserId = to,
+                                amount = amount,
+                                currency = currency,
+                                label = label,
+                            ),
+                        )
+                    },
+                    onAddFriend = { navController.navigate(Routes.findPeople()) },
                 )
             }
             composable(

@@ -110,7 +110,15 @@ object SplitEaseMigrations {
             }
         }
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 6. */
+    /** Adds optional custom image path on `groups`. */
+    val MIGRATION_6_7 =
+        object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `groups` ADD COLUMN `photoUrl` TEXT")
+            }
+        }
+
+    /** All migrations from version 1 through [SplitEaseDatabase] version 7. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
@@ -118,5 +126,6 @@ object SplitEaseMigrations {
             MIGRATION_3_4,
             MIGRATION_4_5,
             MIGRATION_5_6,
+            MIGRATION_6_7,
         )
 }

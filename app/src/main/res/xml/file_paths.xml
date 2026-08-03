@@ -6,4 +6,10 @@
     <files-path
         name="avatar_files"
         path="avatars/" />
+    <cache-path
+        name="group_photo_cache"
+        path="group_photos/" />
+    <files-path
+        name="group_photo_files"
+        path="group_photos/" />
 </paths>

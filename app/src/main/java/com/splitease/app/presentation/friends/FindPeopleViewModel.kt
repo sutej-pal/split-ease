@@ -37,6 +37,7 @@ import javax.inject.Inject
 data class FindPeopleUiState(
     val query: String = "",
     val contacts: List<DeviceContact> = emptyList(),
+    val selectedContactIds: Set<String> = emptySet(),
     val contactsPermissionGranted: Boolean = false,
     val isLoadingContacts: Boolean = false,
     val isSubmitting: Boolean = false,
@@ -59,6 +60,7 @@ class FindPeopleViewModel
         private val groupRepository: GroupRepository,
         private val socialInteractor: SocialInteractor,
         private val deviceContactsDataSource: DeviceContactsDataSource,
+        private val reviewStore: PendingFriendReviewStore,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
@@ -102,6 +104,43 @@ class FindPeopleViewModel
 
         fun setQuery(query: String) {
             _uiState.update { it.copy(query = query) }
+        }
+
+        fun toggleContactSelection(contactId: String) {
+            _uiState.update { state ->
+                val next =
+                    if (contactId in state.selectedContactIds) {
+                        state.selectedContactIds - contactId
+                    } else {
+                        state.selectedContactIds + contactId
+                    }
+                state.copy(selectedContactIds = next)
+            }
+        }
+
+        fun clearSelection() {
+            _uiState.update { it.copy(selectedContactIds = emptySet()) }
+        }
+
+        /**
+         * Seeds the Review screen with selected contacts (default phone, else email).
+         *
+         * @return true when at least one contact was queued for review.
+         */
+        fun prepareReview(): Boolean {
+            val selectedIds = _uiState.value.selectedContactIds
+            if (selectedIds.isEmpty()) return false
+            val selected =
+                _uiState.value.contacts.filter { it.id in selectedIds }
+            if (selected.isEmpty()) return false
+            reviewStore.replaceFromDeviceContacts(selected, groupIdFlow.value)
+            return true
+        }
+
+        /** Clears prior review drafts before a manual Add-people entry. */
+        fun prepareManualAdd() {
+            reviewStore.clear()
+            reviewStore.setGroupId(groupIdFlow.value)
         }
 
         fun consumeShareText() {

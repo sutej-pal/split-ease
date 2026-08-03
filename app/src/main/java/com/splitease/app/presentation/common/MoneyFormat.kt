@@ -17,7 +17,8 @@ object MoneyFormat {
             runCatching {
                 Currency.getInstance(currencyCode).getSymbol(locale)
             }.getOrElse { currencyCode }
-        val value = amount.abs().setScale(2).toPlainString()
+        val normalized = amount.abs().setScale(2, java.math.RoundingMode.HALF_UP)
+        val value = normalized.toPlainString()
         return "$symbol$value"
     }
 }

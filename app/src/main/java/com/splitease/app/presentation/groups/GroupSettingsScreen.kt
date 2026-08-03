@@ -70,6 +70,7 @@ import com.splitease.app.domain.model.GroupMember
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
@@ -108,6 +109,10 @@ fun GroupSettingsScreen(
     val context = LocalContext.current
     val me = viewModel.currentUserId()
     val isOwner = group?.createdByUserId == me
+    val photoPicker =
+        rememberGroupPhotoPicker { uri ->
+            viewModel.updateGroupPhoto(groupId, uri)
+        }
 
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
@@ -144,6 +149,7 @@ fun GroupSettingsScreen(
                 GroupSettingsHeader(
                     group = group,
                     onEdit = { showEdit = true },
+                    onChangePhoto = { photoPicker.launch() },
                 )
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -376,6 +382,7 @@ fun GroupSettingsScreen(
 private fun GroupSettingsHeader(
     group: Group?,
     onEdit: () -> Unit,
+    onChangePhoto: () -> Unit,
 ) {
     val type = group?.groupType ?: GroupType.OTHER
     Row(
@@ -385,7 +392,18 @@ private fun GroupSettingsHeader(
                 .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SeIconTile(icon = type.settingsIcon(), tint = type.settingsTint(), size = 64)
+        Box(
+            modifier =
+                Modifier
+                    .clickable(onClick = onChangePhoto),
+        ) {
+            SeGroupIconTile(
+                photoUrl = group?.photoUrl,
+                fallbackIcon = type.settingsIcon(),
+                fallbackTint = type.settingsTint(),
+                size = 64,
+            )
+        }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

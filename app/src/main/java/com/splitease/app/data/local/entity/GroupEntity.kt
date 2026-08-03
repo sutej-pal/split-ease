@@ -18,6 +18,7 @@ data class GroupEntity(
     val name: String,
     val defaultCurrencyCode: String,
     val groupType: GroupType = GroupType.OTHER,
+    val photoUrl: String? = null,
     val createdByUserId: String,
     val remoteId: String? = null,
     val createdAtEpochMs: Long,

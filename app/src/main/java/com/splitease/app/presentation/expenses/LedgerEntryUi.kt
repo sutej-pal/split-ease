@@ -51,6 +51,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.unit.Dp
 
 private val CategoryPastels =
     listOf(
@@ -70,13 +71,17 @@ private val CategoryPastels =
 fun LazyListScope.ledgerEntries(
     items: List<LedgerListItem>,
     onExpenseClick: ((expenseId: String) -> Unit)? = null,
+    horizontalPadding: Dp = 0.dp,
 ) {
     val groups = items.groupByMonth()
     groups.forEach { (monthLabel, monthItems) ->
         item(key = "month-$monthLabel") {
             Text(
                 text = monthLabel,
-                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                modifier =
+                    Modifier
+                        .padding(horizontal = horizontalPadding)
+                        .padding(top = 12.dp, bottom = 4.dp),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.Navy,
@@ -85,6 +90,7 @@ fun LazyListScope.ledgerEntries(
         items(monthItems, key = { it.id }) { entry ->
             LedgerEntryRow(
                 item = entry,
+                modifier = Modifier.padding(horizontal = horizontalPadding),
                 onClick =
                     if (!entry.isPayment && onExpenseClick != null) {
                         {

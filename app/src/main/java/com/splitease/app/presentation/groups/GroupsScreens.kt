@@ -84,7 +84,7 @@ import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeFab
-import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeMoneyText
@@ -147,9 +147,10 @@ fun GroupsListScreen(
                                 SeListRow(
                                     title = group.name,
                                     leading = {
-                                        SeIconTile(
-                                            icon = group.groupType.icon(),
-                                            tint = group.groupType.tint(),
+                                        SeGroupIconTile(
+                                            photoUrl = group.photoUrl,
+                                            fallbackIcon = group.groupType.icon(),
+                                            fallbackTint = group.groupType.tint(),
                                             size = 48,
                                         )
                                     },
@@ -173,8 +174,10 @@ fun CreateGroupScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var name by rememberSaveable { mutableStateOf("") }
     var groupType by rememberSaveable { mutableStateOf(GroupType.OTHER.name) }
+    var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedType = runCatching { GroupType.valueOf(groupType) }.getOrDefault(GroupType.OTHER)
     val canDone = name.isNotBlank() && !uiState.isSubmitting
+    val photoPicker = rememberGroupPhotoPicker { photoUri = it }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -190,6 +193,7 @@ fun CreateGroupScreen(
                             viewModel.createGroup(
                                 name = name,
                                 groupType = selectedType,
+                                photoUri = photoUri,
                                 onSuccess = onCreated,
                             )
                         },
@@ -218,14 +222,23 @@ fun CreateGroupScreen(
                                 shape = RoundedCornerShape(14.dp),
                             )
                             .background(SplitEaseColors.Surface)
-                            .clickable { /* photo later */ },
+                            .clickable(enabled = !uiState.isSubmitting) { photoPicker.launch() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.AddAPhoto,
-                        contentDescription = stringResource(R.string.cd_group_photo),
-                        tint = SplitEaseColors.Primary,
-                    )
+                    if (photoUri != null) {
+                        SeGroupIconTile(
+                            photoUrl = photoUri,
+                            fallbackIcon = Icons.Filled.AddAPhoto,
+                            fallbackTint = SplitEaseColors.Primary,
+                            size = 72,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.AddAPhoto,
+                            contentDescription = stringResource(R.string.cd_group_photo),
+                            tint = SplitEaseColors.Primary,
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 SeTextField(
@@ -613,7 +626,7 @@ private fun GroupDetailBanner(
 }
 
 @Composable
-private fun BannerCircleIconButton(
+internal fun BannerCircleIconButton(
     onClick: () -> Unit,
     imageVector: ImageVector,
     contentDescription: String,
@@ -637,7 +650,7 @@ private fun BannerCircleIconButton(
 }
 
 @Composable
-private fun GroupOverallBalanceBlock(
+internal fun GroupOverallBalanceBlock(
     balance: GroupBalanceUi?,
     currencyFallback: String,
 ) {

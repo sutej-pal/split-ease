@@ -334,12 +334,31 @@ class SupabaseAuthRepository
             photoUri: String,
         ): String {
             val dir = File(appContext.filesDir, "avatars").apply { mkdirs() }
-            val dest = File(dir, "$userId.jpg")
-            return AvatarImageIO.copyScaledJpeg(
-                context = appContext,
-                photoUri = photoUri,
-                destFile = dest,
-            )
+            // Unique path so observers and Compose remember() keys invalidate on replace.
+            val dest = File(dir, "${userId}_${System.currentTimeMillis()}.jpg")
+            val path =
+                AvatarImageIO.copyScaledJpeg(
+                    context = appContext,
+                    photoUri = photoUri,
+                    destFile = dest,
+                )
+            // Keep the newest couple of files so the UI can still decode the previous
+            // path for one frame while profile StateFlow catches up.
+            dir.listFiles()
+                ?.filter { file ->
+                    file.isFile &&
+                        (
+                            file.name.equals("$userId.jpg", ignoreCase = true) ||
+                                (
+                                    file.name.startsWith("${userId}_") &&
+                                        file.name.endsWith(".jpg", ignoreCase = true)
+                                )
+                        )
+                }
+                ?.sortedByDescending { it.lastModified() }
+                ?.drop(2)
+                ?.forEach { it.delete() }
+            return path
         }
     }
 

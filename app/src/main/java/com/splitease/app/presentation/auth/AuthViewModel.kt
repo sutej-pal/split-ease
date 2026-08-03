@@ -541,7 +541,10 @@ class AuthViewModel
          * Maps Supabase/RestException dumps into short user-facing copy.
          */
         private fun friendlyAuthError(throwable: Throwable?): String {
-            val raw = throwable?.localizedMessage.orEmpty()
+            if (throwable != null) {
+                android.util.Log.e(TAG, "Auth error", throwable)
+            }
+            val raw = collectAuthErrorText(throwable)
             val lower = raw.lowercase()
             return when {
                 isAlreadyRegistered(lower) ->
@@ -552,10 +555,13 @@ class AuthViewModel
                     appContext.getString(R.string.error_signup_email_rate_limit)
                 isEmailDeliveryFailure(lower) ->
                     appContext.getString(R.string.error_signup_email_delivery)
+                isInvalidEmail(lower) ->
+                    appContext.getString(R.string.error_invalid_email)
+                isWeakPassword(lower) ->
+                    appContext.getString(R.string.signup_error_password_short)
                 raw.isBlank() -> appContext.getString(R.string.error_generic)
                 // RestException dumps include Url / Headers / Http Method — never show those.
                 "url:" in lower || "headers:" in lower || "http method" in lower ->
-                    // Prefer specific auth/email clues buried in RestException text.
                     when {
                         isAlreadyRegistered(lower) ->
                             appContext.getString(R.string.error_already_registered)
@@ -563,12 +569,58 @@ class AuthViewModel
                             appContext.getString(R.string.error_signup_email_rate_limit)
                         isEmailDeliveryFailure(lower) ->
                             appContext.getString(R.string.error_signup_email_delivery)
+                        isInvalidEmail(lower) ->
+                            appContext.getString(R.string.error_invalid_email)
                         else -> appContext.getString(R.string.error_generic)
                     }
                 else ->
-                    raw.lineSequence().firstOrNull()?.take(160)?.trim().orEmpty()
-                        .ifBlank { appContext.getString(R.string.error_generic) }
+                    extractReadableAuthMessage(raw)
+                        ?: appContext.getString(R.string.error_generic)
             }
+        }
+
+        /** Concatenates message text across the cause chain for pattern matching. */
+        private fun collectAuthErrorText(throwable: Throwable?): String {
+            if (throwable == null) return ""
+            val parts = linkedSetOf<String>()
+            var current: Throwable? = throwable
+            var depth = 0
+            while (current != null && depth < 6) {
+                current.message?.trim()?.takeIf { it.isNotEmpty() }?.let { parts += it }
+                val localized = current.localizedMessage?.trim().orEmpty()
+                if (localized.isNotEmpty()) parts += localized
+                current = current.cause
+                depth++
+            }
+            return parts.joinToString("\n")
+        }
+
+        /**
+         * Pulls a short human message from JSON-ish auth errors when present.
+         */
+        private fun extractReadableAuthMessage(raw: String): String? {
+            val jsonKey =
+                Regex("\"(?:error_description|msg|message|error)\"\\s*:\\s*\"([^\"]+)\"")
+            val queryKey = Regex("error_description=([^&\\s]+)")
+            for (pattern in listOf(jsonKey, queryKey)) {
+                val match = pattern.find(raw)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+                if (match.isNotBlank() &&
+                    "url:" !in match.lowercase() &&
+                    "http" !in match.lowercase()
+                ) {
+                    return match.take(160)
+                }
+            }
+            val firstLine =
+                raw.lineSequence()
+                    .map { it.trim() }
+                    .firstOrNull { line ->
+                        line.isNotEmpty() &&
+                            "url:" !in line.lowercase() &&
+                            "headers:" !in line.lowercase() &&
+                            "http method" !in line.lowercase()
+                    }
+            return firstLine?.take(160)?.takeIf { it.isNotBlank() }
         }
 
         private fun isAlreadyRegistered(lower: String): Boolean =
@@ -590,14 +642,30 @@ class AuthViewModel
                 ("hook" in lower && "email" in lower) ||
                 "send email hook" in lower ||
                 "resend send failed" in lower ||
-                "you can only send testing emails" in lower
+                "you can only send testing emails" in lower ||
+                "email address not authorized" in lower ||
+                ("unable to send" in lower && "email" in lower)
+
+        private fun isInvalidEmail(lower: String): Boolean =
+            "invalid email" in lower ||
+                "email_address_invalid" in lower ||
+                "unable to validate email" in lower ||
+                "email address is invalid" in lower ||
+                ("invalid" in lower && "email" in lower && "format" in lower)
+
+        private fun isWeakPassword(lower: String): Boolean =
+            "weak_password" in lower ||
+                "password should be at least" in lower ||
+                "password is too short" in lower
 
         private fun isInvalidCredentials(throwable: Throwable?): Boolean {
-            val lower = throwable?.localizedMessage.orEmpty().lowercase()
+            val lower = collectAuthErrorText(throwable).lowercase()
             return "invalid_credentials" in lower || "invalid login credentials" in lower
         }
 
         companion object {
+            private const val TAG = "AuthViewModel"
+
             /** Exact digit count for signup email OTP (Supabase mailer OTP length). */
             const val SIGNUP_OTP_LENGTH = 6
 

@@ -231,6 +231,8 @@ class SyncInteractor
             runCatching { socialInteractor.get().refreshSentInvites(uid) }
             runCatching { expenseInteractor.get().refreshExpensesForUser(uid) }
             runCatching { paymentInteractor.get().refreshPaymentsForUser(uid) }
+            // Invitee may already have shared expenses/groups but no A←B friendship row.
+            runCatching { socialInteractor.get().ensureFriendsFromSharedActivity(uid) }
             return flush
         }
 

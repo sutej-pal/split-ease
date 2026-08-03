@@ -291,6 +291,35 @@ class ExpenseInteractor
             }
         }
 
+        /**
+         * Re-pushes local expenses that involve [userId] so remote splits/payer match Room
+         * after an invite placeholder → real-user remap.
+         *
+         * @param userId Participant / payer user id (usually the newly joined friend).
+         */
+        suspend fun republishExpensesInvolving(userId: String) {
+            if (userId.isBlank()) return
+            val expenses = expenseRepository.observeInvolvingUser(userId).first()
+            expenses.forEach { expense ->
+                val splits = expenseRepository.getSplits(expense.id)
+                val involves =
+                    expense.paidByUserId == userId || splits.any { it.userId == userId }
+                if (!involves) return@forEach
+                runCatching {
+                    pushAndPersistSynced(
+                        expense = expense.copy(syncStatus = SyncStatus.PENDING),
+                        splits = splits.map { it.copy(syncStatus = SyncStatus.PENDING) },
+                    )
+                }.onFailure { err ->
+                    android.util.Log.w(
+                        "ExpenseSync",
+                        "Failed to republish expense ${expense.id} after user remap",
+                        err,
+                    )
+                }
+            }
+        }
+
         private data class BuiltExpense(
             val expense: Expense,
             val splits: List<ExpenseSplit>,

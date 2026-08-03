@@ -172,6 +172,7 @@ class ExpensesViewModel
         private val friendLedgerFlows = ConcurrentHashMap<String, StateFlow<List<LedgerListItem>>>()
         private val expenseDetailFlows = ConcurrentHashMap<String, StateFlow<ExpenseDetailUi?>>()
         private val emptyExpenseDetail = MutableStateFlow<ExpenseDetailUi?>(null)
+        private var nonGroupLedgerFlow: StateFlow<List<LedgerListItem>>? = null
 
         fun observeGroupExpenses(groupId: String): StateFlow<List<Expense>> =
             groupExpenseFlows.getOrPut(groupId) {
@@ -224,7 +225,8 @@ class ExpensesViewModel
             }
 
         /**
-         * Non-group expenses and payments between the signed-in user and [friendUserId].
+         * Shared expenses and payments between the signed-in user and [friendUserId]
+         * (non-group and shared-group activity).
          */
         @OptIn(ExperimentalCoroutinesApi::class)
         fun observeFriendLedger(friendUserId: String): StateFlow<List<LedgerListItem>> =
@@ -234,43 +236,116 @@ class ExpensesViewModel
                         if (me == null) {
                             flowOf(emptyList())
                         } else {
-                            expenseRepository
-                                .observeBetweenUsers(me, friendUserId)
-                                .flatMapLatest { expenses ->
-                                    val expenseIds = expenses.map { it.id }
-                                    combine(
-                                        flowOf(expenses),
-                                        paymentRepository.observeBetweenUsers(me, friendUserId),
-                                        expenseRepository.observeSplitsForExpenses(expenseIds),
-                                        userRepository.observeUsers(),
-                                        friendRepository.observeFriends(me),
-                                    ) { exp, payments, splitsByExpenseId, users, friends ->
-                                        LedgerSource(
-                                            expenses = exp,
-                                            payments = payments,
-                                            splitsByExpenseId = splitsByExpenseId,
-                                            users = users,
-                                            friends = friends,
+                            combine(
+                                expenseRepository.observeInvolvingUser(me),
+                                paymentRepository.observeInvolvingUser(me),
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                                groupRepository.observeGroupsForUser(me),
+                            ) { expenses, payments, users, friends, groups ->
+                                FriendLedgerSource(
+                                    expenses = expenses,
+                                    payments = payments,
+                                    users = users,
+                                    friends = friends,
+                                    groups = groups,
+                                )
+                            }.flatMapLatest { source ->
+                                expenseRepository
+                                    .observeSplitsForExpenses(source.expenses.map { it.id })
+                                    .combine(categoryRepository.observeCategories()) { allSplits, categories ->
+                                        val sharedExpenses =
+                                            source.expenses.filter { expense ->
+                                                val splits = allSplits[expense.id].orEmpty()
+                                                val participants =
+                                                    (splits.map { it.userId } + expense.paidByUserId)
+                                                        .toSet()
+                                                me in participants && friendUserId in participants
+                                            }
+                                        val sharedPayments =
+                                            source.payments.filter { payment ->
+                                                (payment.fromUserId == me && payment.toUserId == friendUserId) ||
+                                                    (payment.fromUserId == friendUserId && payment.toUserId == me)
+                                            }
+                                        buildLedger(
+                                            expenses = sharedExpenses,
+                                            payments = sharedPayments,
+                                            me = me,
+                                            categoryById = categories.associateBy { it.id },
+                                            friendNames =
+                                                source.friends.associate {
+                                                    it.friendUserId to it.displayNameSnapshot
+                                                },
+                                            userNames =
+                                                source.users.associate { it.id to it.displayName },
+                                            splitsByExpenseId = allSplits,
+                                            groupNames = source.groups.associate { it.id to it.name },
                                         )
                                     }
-                                }.combine(categoryRepository.observeCategories()) { source, categories ->
-                                    buildLedger(
-                                        expenses = source.expenses,
-                                        payments = source.payments,
-                                        me = me,
-                                        categoryById = categories.associateBy { it.id },
-                                        friendNames =
-                                            source.friends.associate {
-                                                it.friendUserId to it.displayNameSnapshot
-                                            },
-                                        userNames =
-                                            source.users.associate { it.id to it.displayName },
-                                        splitsByExpenseId = source.splitsByExpenseId,
-                                    )
-                                }
+                            }
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
             }
+
+        private data class FriendLedgerSource(
+            val expenses: List<Expense>,
+            val payments: List<Payment>,
+            val users: List<com.splitease.app.domain.model.User>,
+            val friends: List<Friend>,
+            val groups: List<com.splitease.app.domain.model.Group>,
+        )
+
+        /**
+         * All non-group expenses and payments involving the signed-in user.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeNonGroupLedger(): StateFlow<List<LedgerListItem>> {
+            nonGroupLedgerFlow?.let { return it }
+            val flow =
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(emptyList())
+                        } else {
+                            combine(
+                                expenseRepository.observeInvolvingUser(me),
+                                paymentRepository.observeInvolvingUser(me),
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                            ) { expenses, payments, users, friends ->
+                                val nonGroupExpenses = expenses.filter { it.groupId == null }
+                                val nonGroupPayments = payments.filter { it.groupId == null }
+                                LedgerSource(
+                                    expenses = nonGroupExpenses,
+                                    payments = nonGroupPayments,
+                                    splitsByExpenseId = emptyMap(),
+                                    users = users,
+                                    friends = friends,
+                                )
+                            }.flatMapLatest { source ->
+                                expenseRepository
+                                    .observeSplitsForExpenses(source.expenses.map { it.id })
+                                    .combine(categoryRepository.observeCategories()) { splits, categories ->
+                                        buildLedger(
+                                            expenses = source.expenses,
+                                            payments = source.payments,
+                                            me = me,
+                                            categoryById = categories.associateBy { it.id },
+                                            friendNames =
+                                                source.friends.associate {
+                                                    it.friendUserId to it.displayNameSnapshot
+                                                },
+                                            userNames =
+                                                source.users.associate { it.id to it.displayName },
+                                            splitsByExpenseId = splits,
+                                        )
+                                    }
+                            }
+                        }
+                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            nonGroupLedgerFlow = flow
+            return flow
+        }
 
         private fun buildLedger(
             expenses: List<Expense>,
@@ -280,6 +355,7 @@ class ExpensesViewModel
             friendNames: Map<String, String>,
             userNames: Map<String, String>,
             splitsByExpenseId: Map<String, List<ExpenseSplit>>,
+            groupNames: Map<String, String> = emptyMap(),
         ): List<LedgerListItem> {
             fun nameOf(id: String): String =
                 nameOf(id, me, friendNames, userNames)
@@ -289,6 +365,7 @@ class ExpensesViewModel
                     val category = expense.categoryId?.let { categoryById[it] }
                     val categoryLabel = category?.name?.let { " · $it" }.orEmpty()
                     val payerLabel = nameOf(expense.paidByUserId)
+                    val groupName = expense.groupId?.let { groupNames[it] }
                     val (balanceSide, balanceAmount) =
                         viewerBalanceForExpense(
                             me = me,
@@ -300,12 +377,17 @@ class ExpensesViewModel
                         isPayment = false,
                         title = expense.description,
                         subtitle =
-                            "${expense.currencyCode} ${expense.amount.toPlainString()}" +
-                                " · ${expense.splitType.name.lowercase()}$categoryLabel",
+                            when {
+                                !groupName.isNullOrBlank() ->
+                                    appContext.getString(R.string.ledger_shared_group)
+                                else ->
+                                    "${expense.currencyCode} ${expense.amount.toPlainString()}" +
+                                        " · ${expense.splitType.name.lowercase()}$categoryLabel"
+                            },
                         sortEpochMs = expense.expenseDateEpochMs.coerceAtLeast(expense.createdAtEpochMs),
                         categoryIconKey = category?.iconKey ?: "category_general",
-                        payerLabel = payerLabel,
-                        paidAmount = expense.amount,
+                        payerLabel = if (groupName.isNullOrBlank()) payerLabel else null,
+                        paidAmount = if (groupName.isNullOrBlank()) expense.amount else null,
                         currencyCode = expense.currencyCode,
                         balanceSide = balanceSide,
                         balanceAmount = balanceAmount,
@@ -403,11 +485,7 @@ class ExpensesViewModel
                     }.exceptionOrNull()
                 if (refreshError != null) {
                     _uiState.update {
-                        it.copy(
-                            errorMessage =
-                                refreshError.message
-                                    ?: appContext.getString(R.string.msg_could_not_refresh_expenses),
-                        )
+                        it.copy(errorMessage = userFacingRefreshError(refreshError))
                     }
                 }
                 _uiState.update { it.copy(isRefreshing = false) }
@@ -435,12 +513,15 @@ class ExpensesViewModel
             val id = userId.value ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-                runCatching { expenseInteractor.refreshExpensesForUser(id) }
-                    .onFailure { err ->
-                        _uiState.update {
-                            it.copy(errorMessage = err.message ?: appContext.getString(R.string.msg_could_not_refresh_expenses))
-                        }
+                runCatching { syncInteractor.syncForUser(id) }
+                runCatching {
+                    expenseInteractor.refreshExpensesForUser(id)
+                    paymentInteractor.refreshPaymentsForUser(id)
+                }.onFailure { err ->
+                    _uiState.update {
+                        it.copy(errorMessage = userFacingRefreshError(err))
                     }
+                }
                 _uiState.update { it.copy(isRefreshing = false) }
             }
         }
@@ -766,7 +847,33 @@ class ExpensesViewModel
                     appContext.getString(R.string.msg_expense_cloud_rls)
                 lower.contains("violates row-level security policy") ->
                     appContext.getString(R.string.msg_expense_cloud_rls)
+                isNetworkError(raw) ->
+                    appContext.getString(R.string.msg_cloud_unreachable)
                 else -> raw
             }
+        }
+
+        private fun userFacingRefreshError(error: Throwable): String {
+            val raw = error.message.orEmpty()
+            return when {
+                isNetworkError(raw) ->
+                    appContext.getString(R.string.msg_cloud_unreachable)
+                raw.isNotBlank() &&
+                    raw.length <= 120 &&
+                    !raw.contains("http", ignoreCase = true) ->
+                    raw
+                else ->
+                    appContext.getString(R.string.msg_could_not_refresh_expenses)
+            }
+        }
+
+        private fun isNetworkError(raw: String): Boolean {
+            val lower = raw.lowercase()
+            return lower.contains("unable to resolve host") ||
+                lower.contains("unknownhost") ||
+                lower.contains("failed to connect") ||
+                lower.contains("timeout") ||
+                lower.contains("network is unreachable") ||
+                lower.contains("no address associated with hostname")
         }
     }

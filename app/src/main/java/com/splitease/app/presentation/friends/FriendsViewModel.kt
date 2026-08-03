@@ -7,11 +7,17 @@ import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.data.balance.BalanceInteractor
+import com.splitease.app.data.balance.OverallBalancesUi
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
+import com.splitease.app.domain.model.InviteStatus
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
+import com.splitease.app.domain.repository.InviteRepository
+import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,13 +42,22 @@ data class FriendsUiState(
     val pendingShareText: String? = null,
 )
 
+/** Invite-derived pending state for friend list rows. */
+data class FriendInviteFlags(
+    val pendingFriendRowIds: Set<String> = emptySet(),
+    val acceptedFriendRowIds: Set<String> = emptySet(),
+)
+
 @HiltViewModel
 class FriendsViewModel
     @Inject
     constructor(
         private val authRepository: AuthRepository,
         friendRepository: FriendRepository,
+        inviteRepository: InviteRepository,
         private val socialInteractor: SocialInteractor,
+        private val balanceInteractor: BalanceInteractor,
+        appSettingsRepository: AppSettingsRepository,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         // Eagerly: AddFriendScreen only collects uiState, so WhileSubscribed left userId
@@ -59,6 +74,46 @@ class FriendsViewModel
                 .flatMapLatest { id ->
                     if (id == null) flowOf(emptyList()) else friendRepository.observeFriends(id)
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val inviteFlags: StateFlow<FriendInviteFlags> =
+            userId
+                .flatMapLatest { id ->
+                    if (id == null) {
+                        flowOf(FriendInviteFlags())
+                    } else {
+                        inviteRepository.observeSentInvites(id).map { invites ->
+                            FriendInviteFlags(
+                                pendingFriendRowIds =
+                                    invites
+                                        .filter {
+                                            it.status == InviteStatus.PENDING &&
+                                                !it.friendRowId.isNullOrBlank()
+                                        }.mapNotNull { it.friendRowId }
+                                        .toSet(),
+                                acceptedFriendRowIds =
+                                    invites
+                                        .filter {
+                                            it.status == InviteStatus.ACCEPTED &&
+                                                !it.friendRowId.isNullOrBlank()
+                                        }.mapNotNull { it.friendRowId }
+                                        .toSet(),
+                            )
+                        }
+                    }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FriendInviteFlags())
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val overallBalances: StateFlow<OverallBalancesUi?> =
+            userId
+                .flatMapLatest { id ->
+                    if (id == null) flowOf(null) else balanceInteractor.observeOverallBalances(id)
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+        val currencyCode: StateFlow<String> =
+            appSettingsRepository
+                .observeCurrencyCode()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppCurrencies.DEFAULT)
 
         private val _uiState = MutableStateFlow(FriendsUiState())
         val uiState: StateFlow<FriendsUiState> = _uiState.asStateFlow()

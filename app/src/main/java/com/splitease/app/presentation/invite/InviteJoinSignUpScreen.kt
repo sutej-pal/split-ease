@@ -16,6 +16,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,9 +37,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.auth.AuthFormState
+import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 
@@ -70,126 +75,142 @@ fun InviteJoinSignUpScreen(
         }
     }
 
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.Start,
-    ) {
-        Text(
-            text =
-                if (!groupName.isNullOrBlank()) {
-                    stringResource(R.string.invite_join_group_title, groupName)
-                } else {
-                    stringResource(R.string.invite_join_title)
-                },
-            style = MaterialTheme.typography.labelLarge,
-            color = SplitEaseColors.NavyMuted,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        SeTextButton(
-            text = stringResource(R.string.invite_already_have_account),
-            onClick = onNavigateLogin,
-            enabled = !formState.isLoading,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+    val surface = MaterialTheme.colorScheme.surface
+    SeSystemBars(
+        statusBarColor = surface,
+        navigationBarColor = surface,
+        statusBarDarkIcons = true,
+        navigationBarDarkIcons = true,
+    )
 
-        Text(
-            text = stringResource(R.string.invite_signup_name_label),
-            style = MaterialTheme.typography.bodyLarge,
-            color = SplitEaseColors.Navy,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        SeTextField(
-            value = displayName,
-            onValueChange = { displayName = it },
-            label = stringResource(R.string.label_display_name),
-            enabled = !formState.isLoading,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = stringResource(R.string.invite_signup_email_label),
-            style = MaterialTheme.typography.bodyLarge,
-            color = SplitEaseColors.Navy,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        SeTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = stringResource(R.string.label_email),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            enabled = !formState.isLoading,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = stringResource(R.string.invite_signup_password_label),
-            style = MaterialTheme.typography.bodyLarge,
-            color = SplitEaseColors.Navy,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        SeTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = stringResource(R.string.label_password),
-            enabled = !formState.isLoading,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            visualTransformation =
-                if (passwordVisible) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-            trailingIcon = {
-                val icon =
-                    if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
-                val description =
-                    if (passwordVisible) {
-                        stringResource(R.string.cd_hide_password)
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = surface,
+    ) { padding ->
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                text =
+                    if (!groupName.isNullOrBlank()) {
+                        stringResource(R.string.invite_join_group_title, groupName)
                     } else {
-                        stringResource(R.string.cd_show_password)
-                    }
-                IconButton(
-                    onClick = { passwordVisible = !passwordVisible },
-                    enabled = !formState.isLoading,
-                ) {
-                    Icon(imageVector = icon, contentDescription = description)
-                }
-            },
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        SePrimaryButton(
-            text = stringResource(R.string.invite_signup_cta),
-            onClick = { onSignUp(email.trim(), password, displayName.trim()) },
-            enabled =
-                !formState.isLoading &&
-                    displayName.isNotBlank() &&
-                    email.isNotBlank() &&
-                    password.length >= 6,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        SeTextButton(
-            text = stringResource(R.string.action_back),
-            onClick = onBack,
-            enabled = !formState.isLoading,
-        )
-
-        if (formState.isLoading) {
+                        stringResource(R.string.invite_join_title)
+                    },
+                style = MaterialTheme.typography.labelLarge,
+                color = SplitEaseColors.NavyMuted,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SeTextButton(
+                text = stringResource(R.string.invite_already_have_account),
+                onClick = onNavigateLogin,
+                enabled = !formState.isLoading,
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        }
-        formState.errorMessage?.let { message ->
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(text = message, color = MaterialTheme.colorScheme.error)
-        }
-        formState.infoMessage?.let { message ->
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(text = message, color = MaterialTheme.colorScheme.primary)
+
+            Text(
+                text = stringResource(R.string.invite_signup_name_label),
+                style = MaterialTheme.typography.bodyLarge,
+                color = SplitEaseColors.Navy,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SeTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                label = stringResource(R.string.label_display_name),
+                enabled = !formState.isLoading,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = stringResource(R.string.invite_signup_email_label),
+                style = MaterialTheme.typography.bodyLarge,
+                color = SplitEaseColors.Navy,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SeTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = stringResource(R.string.label_email),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                enabled = !formState.isLoading,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = stringResource(R.string.invite_signup_password_label),
+                style = MaterialTheme.typography.bodyLarge,
+                color = SplitEaseColors.Navy,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SeTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = stringResource(R.string.label_password),
+                enabled = !formState.isLoading,
+                supportingText = stringResource(R.string.signup_password_hint),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation =
+                    if (passwordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                trailingIcon = {
+                    val icon =
+                        if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
+                    val description =
+                        if (passwordVisible) {
+                            stringResource(R.string.cd_hide_password)
+                        } else {
+                            stringResource(R.string.cd_show_password)
+                        }
+                    IconButton(
+                        onClick = { passwordVisible = !passwordVisible },
+                        enabled = !formState.isLoading,
+                    ) {
+                        Icon(imageVector = icon, contentDescription = description)
+                    }
+                },
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            SePrimaryButton(
+                text = stringResource(R.string.invite_signup_cta),
+                onClick = { onSignUp(email.trim(), password, displayName.trim()) },
+                enabled =
+                    !formState.isLoading &&
+                        displayName.isNotBlank() &&
+                        email.isNotBlank() &&
+                        password.length >= AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SeTextButton(
+                text = stringResource(R.string.action_back),
+                onClick = onBack,
+                enabled = !formState.isLoading,
+            )
+
+            if (formState.isLoading) {
+                Spacer(modifier = Modifier.height(16.dp))
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+            formState.errorMessage?.let { message ->
+                Spacer(modifier = Modifier.height(12.dp))
+                SeErrorText(message)
+            }
+            formState.infoMessage?.let { message ->
+                Spacer(modifier = Modifier.height(12.dp))
+                SeInfoText(message)
+            }
         }
     }
 }

@@ -113,12 +113,17 @@ fun FriendBalanceHeader(
 
 @Composable
 fun GroupBalanceHeader(
-    groupId: String,
+    groupId: String? = null,
     balance: GroupBalanceUi? = null,
     viewModel: BalancesViewModel = hiltViewModel(),
 ) {
-    val observed by remember(groupId) { viewModel.observeGroupBalance(groupId) }
-        .collectAsStateWithLifecycle()
+    val observed =
+        if (groupId != null) {
+            remember(groupId) { viewModel.observeGroupBalance(groupId) }
+                .collectAsStateWithLifecycle().value
+        } else {
+            null
+        }
     val resolved = balance ?: observed
     Box(
         modifier =

@@ -223,6 +223,7 @@ class GroupsViewModel
             name: String,
             groupType: GroupType,
             memberIds: List<String> = emptyList(),
+            photoUri: String? = null,
             onSuccess: (String) -> Unit,
         ) {
             viewModelScope.launch {
@@ -244,6 +245,7 @@ class GroupsViewModel
                         currencyCode = currency,
                         groupType = groupType,
                         memberFriendUserIds = memberIds,
+                        photoUri = photoUri,
                     )
                 val created = result.getOrNull()
                 if (created == null) {
@@ -295,6 +297,29 @@ class GroupsViewModel
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
                         infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_group_updated) else null,
+                    )
+                }
+            }
+        }
+
+        fun updateGroupPhoto(
+            groupId: String,
+            photoUri: String,
+        ) {
+            if (photoUri.isBlank()) return
+            viewModelScope.launch {
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val result = socialInteractor.updateGroupPhoto(groupId, photoUri)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                        infoMessage =
+                            if (result.isSuccess) {
+                                appContext.getString(R.string.msg_group_photo_saved)
+                            } else {
+                                null
+                            },
                     )
                 }
             }

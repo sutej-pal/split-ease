@@ -46,6 +46,17 @@ class BalancesViewModel
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         @OptIn(ExperimentalCoroutinesApi::class)
+        val nonGroupBalance: StateFlow<GroupBalanceUi?> =
+            userId
+                .flatMapLatest { me ->
+                    if (me == null) {
+                        flowOf(null)
+                    } else {
+                        balanceInteractor.observeNonGroupBalance(me)
+                    }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+        @OptIn(ExperimentalCoroutinesApi::class)
         fun observeGroupBalance(groupId: String): StateFlow<GroupBalanceUi?> =
             groupBalanceFlows.getOrPut(groupId) {
                 userId

@@ -1,5 +1,7 @@
 package com.splitease.app.data.social
 
+import android.content.Context
+import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.toDomain
@@ -21,9 +23,12 @@ import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
+import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
+import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,11 +40,13 @@ import javax.inject.Singleton
 class SocialInteractor
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         private val friendRepository: FriendRepository,
         private val groupRepository: GroupRepository,
         private val inviteRepository: InviteRepository,
         private val userRepository: UserRepository,
         private val expenseRepository: ExpenseRepository,
+        private val paymentRepository: PaymentRepository,
         private val remote: SocialRemoteDataSource,
         private val expenseInteractor: com.splitease.app.data.expense.ExpenseInteractor,
     ) {
@@ -53,6 +60,143 @@ class SocialInteractor
          */
         suspend fun addFriendByEmail(ownerUserId: String, email: String): Result<AddPersonOutcome> =
             addFriendByContact(ownerUserId, contact = email, displayName = null, groupId = null)
+
+        /**
+         * Removes a friend, deletes non-group expenses/payments between the two users,
+         * and cancels any pending invite.
+         *
+         * @param ownerUserId Current user id.
+         * @param friendUserId Friend's user id (or pending placeholder).
+         */
+        suspend fun removeFriend(
+            ownerUserId: String,
+            friendUserId: String,
+        ): Result<Unit> =
+            runCatching {
+                val friend =
+                    friendRepository.getByFriendUserId(friendUserId)
+                        ?.takeIf { it.ownerUserId == ownerUserId }
+                        ?: error("Friend not found.")
+
+                inviteRepository.getByFriendRowId(friend.id)?.let { invite ->
+                    if (invite.status == InviteStatus.PENDING) {
+                        inviteRepository.markStatus(invite, InviteStatus.CANCELLED)
+                    }
+                }
+
+                expenseRepository.observeBetweenUsers(ownerUserId, friendUserId).first().forEach { expense ->
+                    expenseRepository.deleteExpenseById(expense.id)
+                }
+                paymentRepository.observeBetweenUsers(ownerUserId, friendUserId).first()
+                    .filter { it.groupId == null }
+                    .forEach { payment ->
+                        paymentRepository.deleteById(payment.id)
+                    }
+
+                friendRepository.deleteById(friend.id)
+                runCatching { remote.deleteFriend(friend.remoteId ?: friend.id) }
+            }
+
+        /**
+         * Updates a friend's display name and/or contact. For pending invites, regenerates
+         * the invite when the contact changes.
+         *
+         * @param ownerUserId Current user id.
+         * @param friendUserId Friend's user id.
+         * @param displayName New display name.
+         * @param contact New email or phone.
+         * @return Outcome with optional share text when a new invite is pending.
+         */
+        suspend fun updateFriendContact(
+            ownerUserId: String,
+            friendUserId: String,
+            displayName: String,
+            contact: String,
+        ): Result<AddPersonOutcome> =
+            runCatching {
+                val friend =
+                    friendRepository.getByFriendUserId(friendUserId)
+                        ?.takeIf { it.ownerUserId == ownerUserId }
+                        ?: error("Friend not found.")
+                val normalized = contact.trim()
+                require(normalized.isNotBlank()) { "Email or phone is required." }
+                val name = displayName.trim().ifBlank { friend.displayNameSnapshot }
+                val pending =
+                    friend.displayNameSnapshot.contains("(invited)", ignoreCase = true) ||
+                        inviteRepository.getByFriendRowId(friend.id)?.status == InviteStatus.PENDING
+                val now = System.currentTimeMillis()
+
+                if (!pending) {
+                    val updated =
+                        friend.copy(
+                            displayNameSnapshot = name.removeSuffix(" (invited)").trim().ifBlank { name },
+                            emailSnapshot = normalized,
+                            updatedAtEpochMs = now,
+                            syncStatus = SyncStatus.PENDING,
+                        )
+                    friendRepository.upsert(updated)
+                    runCatching {
+                        remote.upsertFriend(updated.toDto(updatedAtEpochMs = now))
+                        friendRepository.upsert(
+                            updated.copy(remoteId = updated.remoteId ?: updated.id, syncStatus = SyncStatus.SYNCED),
+                        )
+                    }
+                    return@runCatching AddPersonOutcome(
+                        friend = updated,
+                        inviteShareText = null,
+                        isInvitePending = false,
+                    )
+                }
+
+                val contactChanged = !normalized.equals(friend.emailSnapshot, ignoreCase = true)
+                if (!contactChanged) {
+                    val baseName = name.removeSuffix(" (invited)").trim().ifBlank { name }
+                    val labeled =
+                        if (baseName.contains("(invited)", ignoreCase = true)) {
+                            baseName
+                        } else {
+                            "$baseName (invited)"
+                        }
+                    val updated =
+                        friend.copy(
+                            displayNameSnapshot = labeled,
+                            updatedAtEpochMs = now,
+                            syncStatus = SyncStatus.PENDING,
+                        )
+                    friendRepository.upsert(updated)
+                    val existingInvite = inviteRepository.getByFriendRowId(friend.id)
+                    val share =
+                        if (existingInvite?.status == InviteStatus.PENDING) {
+                            InviteLinks.friendShareText(
+                                inviterName =
+                                    userRepository.getUserById(ownerUserId)?.displayName ?: "A friend",
+                                token = existingInvite.token,
+                            )
+                        } else {
+                            null
+                        }
+                    return@runCatching AddPersonOutcome(
+                        friend = updated,
+                        inviteShareText = share,
+                        isInvitePending = share != null,
+                    )
+                }
+
+                inviteRepository.getByFriendRowId(friend.id)?.let { invite ->
+                    if (invite.status == InviteStatus.PENDING) {
+                        inviteRepository.markStatus(invite, InviteStatus.CANCELLED)
+                    }
+                }
+                friendRepository.deleteById(friend.id)
+                runCatching { remote.deleteFriend(friend.remoteId ?: friend.id) }
+
+                addFriendByContact(
+                    ownerUserId = ownerUserId,
+                    contact = normalized,
+                    displayName = name.removeSuffix(" (invited)").trim().ifBlank { null },
+                    groupId = null,
+                ).getOrThrow()
+            }
 
         /**
          * Adds or invites a person by email or phone contact string.
@@ -327,6 +471,7 @@ class SocialInteractor
             refreshGroups(userId)
             refreshSentInvites(userId)
             runCatching { expenseInteractor.refreshExpensesForUser(userId) }
+            runCatching { ensureFriendsFromSharedActivity(userId) }
             if (inviteToken.isNullOrBlank()) return true
             if (acceptedByToken) return true
             // RPC returned 0: invite missing/already used, or accept no-oped.
@@ -400,8 +545,7 @@ class SocialInteractor
             remoteFriends.forEach { dto ->
                 val previous = friendRepository.getById(dto.id)
                 if (previous != null && previous.friendUserId != dto.friendUserId) {
-                    expenseRepository.remapUserId(previous.friendUserId, dto.friendUserId)
-                    groupRepository.remapMemberUserId(previous.friendUserId, dto.friendUserId)
+                    remapPlaceholderAcrossDevices(previous.friendUserId, dto.friendUserId)
                 }
                 // group_members FK requires a users row for friendUserId
                 ensureLocalUserExists(
@@ -434,6 +578,243 @@ class SocialInteractor
             remote.fetchInvitesSentBy(inviterUserId).forEach { dto ->
                 inviteRepository.upsert(dto.toDomain())
             }
+            reconcileJoinedInvitees(inviterUserId)
+        }
+
+        /**
+         * Inviter-side heal when someone joined but the local/cloud friendship is still
+         * stuck as "(invited)" / PENDING (accept RPC missed or never ran).
+         *
+         * For each PENDING person invite whose email now has a profile, remaps the
+         * friendship onto that user (Room + remote splits) and marks the invite ACCEPTED.
+         * Also strips a stale "(invited)" label when the invite is already ACCEPTED and
+         * re-pushes expenses so remote splits match any prior local-only remap.
+         */
+        suspend fun reconcileJoinedInvitees(ownerUserId: String) {
+            val sent = remote.fetchInvitesSentBy(ownerUserId).map { it.toDomain() }
+            sent.forEach { invite -> inviteRepository.upsert(invite) }
+
+            for (invite in sent) {
+                val friendRowId = invite.friendRowId ?: continue
+                when (invite.status) {
+                    InviteStatus.ACCEPTED ->
+                        healAcceptedInvite(ownerUserId, friendRowId)
+                    InviteStatus.PENDING ->
+                        promotePendingInviteIfJoined(ownerUserId, invite)
+                    else -> Unit
+                }
+            }
+        }
+
+        private suspend fun promotePendingInviteIfJoined(
+            ownerUserId: String,
+            invite: Invite,
+        ) {
+            val friendRowId = invite.friendRowId ?: return
+            val contact = invite.email.trim()
+            if (!contact.contains("@")) return
+            val profile =
+                runCatching { remote.findProfileByEmail(contact) }.getOrNull() ?: return
+            if (profile.id == ownerUserId) return
+
+            val friend = friendRepository.getById(friendRowId) ?: return
+            val now = System.currentTimeMillis()
+            val cleanedName =
+                profile.displayName
+                    .trim()
+                    .removeSuffix(" (invited)")
+                    .trim()
+                    .ifBlank {
+                        friend.displayNameSnapshot
+                            .removeSuffix(" (invited)")
+                            .trim()
+                    }.ifBlank { contact.substringBefore("@") }
+
+            // Remap Room + remote BEFORE updating friends / burning the invite, so
+            // accept_pending_invites does not lose the placeholder id.
+            val placeholderId = friend.friendUserId
+            if (placeholderId != profile.id) {
+                remapPlaceholderAcrossDevices(placeholderId, profile.id)
+            }
+
+            val existingForProfile =
+                friendRepository
+                    .observeFriends(ownerUserId)
+                    .first()
+                    .firstOrNull { it.friendUserId == profile.id && it.id != friend.id }
+
+            if (existingForProfile != null) {
+                runCatching { remote.deleteFriend(friend.id) }
+                friendRepository.deleteById(friend.id)
+            } else {
+                ensureLocalUserExists(
+                    userId = profile.id,
+                    email = profile.email.ifBlank { contact },
+                    displayName = cleanedName,
+                )
+                val updated =
+                    friend.copy(
+                        friendUserId = profile.id,
+                        emailSnapshot = profile.email.ifBlank { friend.emailSnapshot },
+                        displayNameSnapshot = cleanedName,
+                        updatedAtEpochMs = now,
+                        syncStatus = SyncStatus.SYNCED,
+                        remoteId = friend.remoteId ?: friend.id,
+                    )
+                runCatching { remote.upsertFriend(updated.toDto(updatedAtEpochMs = now)) }
+                friendRepository.upsert(updated)
+            }
+
+            if (invite.kind == InviteKind.GROUP && !invite.groupId.isNullOrBlank()) {
+                val groupId = invite.groupId
+                if (groupRepository.getMember(groupId, profile.id) == null) {
+                    val member =
+                        GroupMember(
+                            id = UUID.randomUUID().toString(),
+                            groupId = groupId,
+                            userId = profile.id,
+                            role = MemberRole.MEMBER,
+                            joinedAtEpochMs = now,
+                            syncStatus = SyncStatus.SYNCED,
+                        )
+                    groupRepository.upsertMember(member)
+                    runCatching { remote.upsertGroupMember(member.toDto()) }
+                }
+            }
+
+            ensureReciprocalWithInviter(
+                inviteeUserId = profile.id,
+                inviterUserId = ownerUserId,
+            )
+
+            val accepted =
+                invite.copy(
+                    status = InviteStatus.ACCEPTED,
+                    email = profile.email.ifBlank { invite.email },
+                    syncStatus = SyncStatus.SYNCED,
+                )
+            runCatching { remote.upsertInvite(accepted.toDto()) }
+            inviteRepository.upsert(accepted)
+        }
+
+        private suspend fun healAcceptedInvite(
+            ownerUserId: String,
+            friendRowId: String,
+        ) {
+            stripStaleInvitedLabel(friendRowId)
+            val friend = friendRepository.getById(friendRowId) ?: return
+            // Prior builds remapped Room only; re-push so remote splits match.
+            runCatching { expenseInteractor.republishExpensesInvolving(friend.friendUserId) }
+            ensureReciprocalWithInviter(
+                inviteeUserId = friend.friendUserId,
+                inviterUserId = ownerUserId,
+            )
+        }
+
+        private suspend fun stripStaleInvitedLabel(friendRowId: String) {
+            val friend = friendRepository.getById(friendRowId) ?: return
+            if (!friend.displayNameSnapshot.contains("(invited)", ignoreCase = true)) return
+            val cleaned =
+                friend.displayNameSnapshot
+                    .replace(Regex("\\s*\\(invited\\)\\s*", RegexOption.IGNORE_CASE), "")
+                    .trim()
+                    .ifBlank { friend.emailSnapshot.substringBefore("@").ifBlank { "Friend" } }
+            val now = System.currentTimeMillis()
+            val updated =
+                friend.copy(
+                    displayNameSnapshot = cleaned,
+                    updatedAtEpochMs = now,
+                    syncStatus = SyncStatus.SYNCED,
+                )
+            runCatching { remote.upsertFriend(updated.toDto(updatedAtEpochMs = now)) }
+            friendRepository.upsert(updated)
+        }
+
+        /**
+         * Remaps placeholder → real user in Room and on Supabase, then re-pushes expenses.
+         */
+        private suspend fun remapPlaceholderAcrossDevices(
+            fromUserId: String,
+            toUserId: String,
+        ) {
+            if (fromUserId.isBlank() || toUserId.isBlank() || fromUserId == toUserId) return
+            expenseRepository.remapUserId(fromUserId, toUserId)
+            groupRepository.remapMemberUserId(fromUserId, toUserId)
+            runCatching { remote.remapPlaceholderUser(fromUserId, toUserId) }
+            runCatching { expenseInteractor.republishExpensesInvolving(toUserId) }
+        }
+
+        /**
+         * Creates the invitee→inviter friendship edge so both Friends lists stay in sync.
+         */
+        private suspend fun ensureReciprocalWithInviter(
+            inviteeUserId: String,
+            inviterUserId: String,
+        ) {
+            if (inviteeUserId.isBlank() || inviterUserId.isBlank() || inviteeUserId == inviterUserId) {
+                return
+            }
+            val inviter = userRepository.getUserById(inviterUserId)
+            val email = inviter?.email.orEmpty()
+            val name =
+                inviter?.displayName?.takeIf { it.isNotBlank() }
+                    ?: email.substringBefore("@").ifBlank { "Friend" }
+            runCatching {
+                remote.ensureReciprocalFriend(
+                    ownerUserId = inviteeUserId,
+                    friendUserId = inviterUserId,
+                    email = email,
+                    displayName = name,
+                )
+            }
+        }
+
+        /**
+         * After expenses/groups hydrate, create missing friend rows for counterparties
+         * so the invitee can open Friend detail even if reciprocal RPC was unavailable.
+         *
+         * @param userId Signed-in user id.
+         */
+        suspend fun ensureFriendsFromSharedActivity(userId: String) {
+            val known =
+                friendRepository
+                    .observeFriends(userId)
+                    .first()
+                    .map { it.friendUserId }
+                    .toMutableSet()
+            val counterparties = linkedSetOf<String>()
+
+            val expenses = expenseRepository.observeInvolvingUser(userId).first()
+            val splits = expenseRepository.getSplitsForExpenses(expenses.map { it.id })
+            expenses.forEach { expense ->
+                (splits[expense.id].orEmpty().map { it.userId } + expense.paidByUserId)
+                    .filter { it.isNotBlank() && it != userId && it !in known }
+                    .forEach { counterparties += it }
+            }
+
+            groupRepository.observeGroupsForUser(userId).first().forEach { group ->
+                groupRepository.observeMembers(group.id).first().forEach { member ->
+                    val otherId = member.userId
+                    if (otherId.isNotBlank() && otherId != userId && otherId !in known) {
+                        counterparties += otherId
+                    }
+                }
+            }
+
+            counterparties.forEach { otherId ->
+                val profile =
+                    runCatching { remote.fetchProfileById(otherId) }.getOrNull() ?: return@forEach
+                runCatching {
+                    linkExistingFriend(
+                        ownerUserId = userId,
+                        friendUserId = profile.id,
+                        email = profile.email,
+                        displayName = profile.displayName,
+                        ensureReciprocal = false,
+                    )
+                }
+                known += otherId
+            }
         }
 
         /**
@@ -453,6 +834,7 @@ class SocialInteractor
             groupType: com.splitease.app.domain.model.GroupType =
                 com.splitease.app.domain.model.GroupType.OTHER,
             memberFriendUserIds: List<String> = emptyList(),
+            photoUri: String? = null,
         ): Result<Group> =
             runCatching {
                 require(name.isNotBlank()) { "Group name is required." }
@@ -464,12 +846,17 @@ class SocialInteractor
                 )
                 val now = System.currentTimeMillis()
                 val groupId = UUID.randomUUID().toString()
+                val photoUrl =
+                    photoUri
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { persistGroupPhoto(groupId, it) }
                 val group =
                     Group(
                         id = groupId,
                         name = name.trim(),
                         defaultCurrencyCode = AppCurrencies.normalizeOrDefault(currencyCode),
                         groupType = groupType,
+                        photoUrl = photoUrl,
                         createdByUserId = creatorUserId,
                         remoteId = null,
                         createdAtEpochMs = now,
@@ -652,6 +1039,7 @@ class SocialInteractor
                         name = dto.name,
                         defaultCurrencyCode = dto.defaultCurrencyCode,
                         groupType = existing?.groupType ?: com.splitease.app.domain.model.GroupType.OTHER,
+                        photoUrl = existing?.photoUrl,
                         createdByUserId = dto.createdByUserId,
                         remoteId = dto.id,
                         createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
@@ -819,6 +1207,7 @@ class SocialInteractor
             friendUserId: String,
             email: String,
             displayName: String,
+            ensureReciprocal: Boolean = true,
         ): AddPersonOutcome {
             val now = System.currentTimeMillis()
             userRepository.upsert(
@@ -834,7 +1223,13 @@ class SocialInteractor
                 ),
             )
 
-            val existing = friendRepository.getByOwnerAndEmail(ownerUserId, email)
+            val existingByEmail = friendRepository.getByOwnerAndEmail(ownerUserId, email)
+            val existingByUser =
+                friendRepository
+                    .observeFriends(ownerUserId)
+                    .first()
+                    .firstOrNull { it.friendUserId == friendUserId }
+            val existing = existingByEmail ?: existingByUser
             val friend =
                 existing?.copy(
                     friendUserId = friendUserId,
@@ -863,6 +1258,12 @@ class SocialInteractor
 
             if (synced.syncStatus == SyncStatus.SYNCED) {
                 friendRepository.upsert(synced)
+            }
+            if (ensureReciprocal) {
+                ensureReciprocalWithInviter(
+                    inviteeUserId = friendUserId,
+                    inviterUserId = ownerUserId,
+                )
             }
             return AddPersonOutcome(friend = synced, inviteShareText = null, isInvitePending = false)
         }
@@ -1071,5 +1472,49 @@ class SocialInteractor
                 remote.upsertGroupMember(membership.toDto())
                 groupRepository.upsertMember(membership.copy(syncStatus = SyncStatus.SYNCED))
             }
+        }
+
+        /**
+         * Copies [photoUri] into app-private storage and updates the group's [Group.photoUrl].
+         */
+        suspend fun updateGroupPhoto(
+            groupId: String,
+            photoUri: String,
+        ): Result<Unit> =
+            runCatching {
+                val group =
+                    groupRepository.getGroupById(groupId)
+                        ?: error("Group not found.")
+                val path = persistGroupPhoto(groupId, photoUri)
+                updateGroup(group.copy(photoUrl = path)).getOrThrow()
+            }
+
+        private fun persistGroupPhoto(
+            groupId: String,
+            photoUri: String,
+        ): String {
+            val dir = File(appContext.filesDir, "group_photos").apply { mkdirs() }
+            val dest = File(dir, "${groupId}_${System.currentTimeMillis()}.jpg")
+            val path =
+                AvatarImageIO.copyScaledJpeg(
+                    context = appContext,
+                    photoUri = photoUri,
+                    destFile = dest,
+                )
+            dir.listFiles()
+                ?.filter { file ->
+                    file.isFile &&
+                        (
+                            file.name.equals("$groupId.jpg", ignoreCase = true) ||
+                                (
+                                    file.name.startsWith("${groupId}_") &&
+                                        file.name.endsWith(".jpg", ignoreCase = true)
+                                )
+                        )
+                }
+                ?.sortedByDescending { it.lastModified() }
+                ?.drop(2)
+                ?.forEach { it.delete() }
+            return path
         }
     }

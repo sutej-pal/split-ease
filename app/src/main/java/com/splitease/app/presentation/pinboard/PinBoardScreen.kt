@@ -31,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +52,8 @@ import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeSystemBars
+import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
 import java.io.File
 import java.util.UUID
@@ -64,12 +66,16 @@ fun PinBoardScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val bg = MaterialTheme.colorScheme.background
 
     LaunchedEffect(groupId) { viewModel.load(groupId) }
 
-    DisposableEffect(Unit) {
-        onDispose { viewModel.saveNow() }
-    }
+    SeSystemBars(
+        statusBarColor = bg,
+        navigationBarColor = bg,
+        statusBarDarkIcons = true,
+        navigationBarDarkIcons = true,
+    )
 
     // Keep selection local — do not key on state.content (that reset the cursor to 0).
     var tfValue by remember(groupId) { mutableStateOf(TextFieldValue("")) }
@@ -132,6 +138,13 @@ fun PinBoardScreen(
             SeTopBar(
                 title = stringResource(R.string.pin_board_title),
                 onBack = onBack,
+                actions = {
+                    SeTextButton(
+                        text = stringResource(R.string.action_save),
+                        onClick = { viewModel.save() },
+                        enabled = state.isDirty && !state.isSaving && !state.isLoading,
+                    )
+                },
             )
         },
     ) { padding ->
@@ -151,6 +164,20 @@ fun PinBoardScreen(
             } else {
                 state.errorMessage?.let {
                     SeErrorText(it, modifier = Modifier.padding(16.dp))
+                }
+
+                if (state.groupName.isNotBlank()) {
+                    Text(
+                        text = state.groupName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SplitEaseColors.Navy,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
                 }
 
                 MarkdownToolbar(
@@ -193,7 +220,6 @@ fun PinBoardScreen(
 
                 PinBoardFooter(
                     lastEditedBy = state.lastEditedBy,
-                    lastEditedAt = state.lastEditedAt,
                     isSaving = state.isSaving,
                 )
             }
@@ -243,7 +269,6 @@ private fun ToolbarButton(
 @Composable
 private fun PinBoardFooter(
     lastEditedBy: String?,
-    lastEditedAt: String?,
     isSaving: Boolean,
 ) {
     Row(

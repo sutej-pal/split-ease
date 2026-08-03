@@ -19,8 +19,11 @@ val IndigoLight = Color(0xFF4F46E5)
 /** Accent amber — divider, CTAs, highlights, "pending" states. */
 val AmberLight = Color(0xFFFFA008)
 
-/** Screen backgrounds, card fills, subtle sections. */
-val BackgroundLight = Color(0xFFE8EAFE)
+/** Screen backgrounds. */
+val BackgroundLight = Color(0xFFFFFFFF)
+
+/** Soft indigo fill for selected / muted brand accents (not screen backgrounds). */
+val PrimaryContainerLight = Color(0xFFE8EAFE)
 
 /** Cards, sheets, input fields. */
 val SurfaceLight = Color(0xFFFFFFFF)
