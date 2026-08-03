@@ -46,7 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
@@ -63,6 +63,7 @@ import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeOverallSummary
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePullRefreshBox
+import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
 import java.math.BigDecimal
 
@@ -85,6 +86,7 @@ fun GroupsHomeScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
+    var showSettledGroups by remember { mutableStateOf(false) }
     var showExpensePicker by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
@@ -102,19 +104,19 @@ fun GroupsHomeScreen(
         }
     val settled = groupRows.filter { it.myNetByCurrency.isEmpty() }
     val filteredGroups = groupRows.filter { it.matches(listFilter) }
+    val outstandingWithSettledHidden =
+        listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isNotEmpty()
     // If outstanding filter matches nothing, fall back to all groups (same as before).
     val visibleGroups =
-        if (listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isEmpty()) {
-            groupRows
-        } else {
-            filteredGroups
+        when {
+            listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isEmpty() -> groupRows
+            outstandingWithSettledHidden && showSettledGroups -> filteredGroups + settled
+            else -> filteredGroups
         }
     val hiddenSettledCount =
-        if (listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isNotEmpty()) {
-            settled.size
-        } else {
-            0
-        }
+        if (outstandingWithSettledHidden && !showSettledGroups) settled.size else 0
+    val canHideSettled =
+        outstandingWithSettledHidden && showSettledGroups && settled.isNotEmpty()
     val nonGroupNet = balances?.nonGroupMyNetByCurrency.orEmpty()
     val showNonGroup =
         balances != null &&
@@ -176,7 +178,10 @@ fun GroupsHomeScreen(
                         owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
                         currencyCode = ui.currencyCode,
                         selectedFilter = listFilter,
-                        onFilterSelected = { listFilter = it },
+                        onFilterSelected = {
+                            listFilter = it
+                            showSettledGroups = false
+                        },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -202,7 +207,7 @@ fun GroupsHomeScreen(
                     )
                 }
 
-                if (showNonGroup && balances != null) {
+                if (showNonGroup) {
                     item {
                         NonGroupListItem(
                             myNet = balances.nonGroupMyNetByCurrency,
@@ -223,7 +228,15 @@ fun GroupsHomeScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         SeOutlinedButton(
                             text = stringResource(R.string.groups_show_settled, hiddenSettledCount),
-                            onClick = { listFilter = GroupsHomeFilter.ALL },
+                            onClick = { showSettledGroups = true },
+                        )
+                    }
+                } else if (canHideSettled) {
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeTextButton(
+                            text = stringResource(R.string.groups_hide_settled),
+                            onClick = { showSettledGroups = false },
                         )
                     }
                 }

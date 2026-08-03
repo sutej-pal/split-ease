@@ -159,6 +159,7 @@
     <string name="groups_empty_home">No groups yet. Create one to start splitting.</string>
     <string name="groups_hiding_settled">Hiding groups that are settled up.</string>
     <string name="groups_show_settled">Show %1$d settled-up groups</string>
+    <string name="groups_hide_settled">Hide settled-up groups</string>
     <string name="cd_filter_groups">Filter groups</string>
     <string name="groups_filter_all">All groups</string>
     <string name="groups_filter_outstanding">Outstanding balances</string>
