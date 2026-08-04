@@ -138,6 +138,9 @@
     <string name="group_chip_balances">Balances</string>
     <string name="group_chip_totals">Totals</string>
     <string name="group_nothing_to_settle">Nothing to settle yet. Add expenses with members first.</string>
+    <string name="group_balances_settle_hint">Record a payment to clear simplified debts in this group.</string>
+    <string name="group_balances_totals_hint">Your net for this group, by currency.</string>
+    <string name="group_balances_open_spending">View spending charts</string>
     <string name="cd_group_settings">Group settings</string>
     <string name="cd_back">Back</string>
     <string name="balances_you_owe_overall">You owe %1$s overall</string>

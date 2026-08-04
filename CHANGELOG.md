@@ -13,11 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Forgot-password copy asks for a reset **code** (not a link); mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup OTP
+- Supabase HTTP client engine: **OkHttp** replaces `ktor-client-android` (Realtime WebSockets + safer cancel on navigation)
+- Group settle-up / totals moved to a dedicated **Balances** screen (`group_balances/{groupId}`); back returns to group detail; Balances / Totals chips open it
 
 ### Removed
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs
 
 ### Fixed
+- Crash when leaving a screen during an in-flight Supabase call (seen on Motorola): Ktor Android engine closed HTTP on Main (`NetworkOnMainThreadException`); switch to OkHttp and pin `httpEngine` in [SupabaseModule](app/src/main/java/com/splitease/app/data/di/SupabaseModule.kt)
 - Password reset showed generic “Something went wrong” after a valid OTP: `updatePassword` no longer fails the whole flow when local hydrate hiccups, and Supabase `same_password` / expired-session errors map to clear copy
 - Forgot-password never reveals whether an email is registered: `requestPasswordReset` always soft-succeeds, always opens the OTP screen with “If an account exists…” copy, and OTP verify failures use a generic “Invalid or expired code” (Supabase rate-limits resend server-side)
 - Adding a friend from Find people → Friends on SplitEase now syncs `group_members` to Supabase (group pushed first; cloud errors surfaced). Pending invite friends get a GROUP invite instead of a local-only placeholder membership

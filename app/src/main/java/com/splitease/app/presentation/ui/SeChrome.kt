@@ -126,6 +126,7 @@ fun SeTopBar(
                 IconButton(onClick = onClose) {
                     Icon(Icons.Filled.Close, contentDescription = "Close")
                 }
+
             onBack != null ->
                 SeChevronBackButton(
                     onClick = onBack,
@@ -255,9 +256,12 @@ private fun SeTopBarPreview() {
     SePreview {
         Column {
             SeTopBar(title = "Friends", onBack = {})
-            SeTopBar(title = "Create a group", onClose = {}, centered = true, actions = {
-                SeTextButton(text = "Done", onClick = {})
-            })
+            SeTopBar(
+                title = "Create a group", onClose = {}, centered = true,
+                actions = {
+                    SeTextButton(text = "Done", onClick = {})
+                },
+            )
         }
     }
 }
@@ -283,7 +287,9 @@ private fun SeScreenPreview() {
             content = { padding ->
                 Text(
                     text = "Account body",
-                    modifier = Modifier.padding(padding.values).padding(8.dp),
+                    modifier = Modifier
+                        .padding(padding.values)
+                        .padding(8.dp),
                 )
             },
         )

@@ -161,7 +161,9 @@ dependencies {
     implementation(libs.supabase.realtime)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
-    implementation(libs.ktor.client.android)
+    // OkHttp engine: WebSocket-capable (Realtime) and cancel-safe on Main
+    // (ktor-client-android can NetworkOnMainThreadException when closing responses).
+    implementation(libs.ktor.client.okhttp)
 
     testImplementation(libs.junit.jupiter.api)
     testRuntimeOnly(libs.junit.jupiter.engine)

@@ -46,6 +46,7 @@ import com.splitease.app.presentation.friends.FriendSettingsScreen
 import com.splitease.app.presentation.friends.FriendsListScreen
 import com.splitease.app.presentation.friends.ReviewFriendsScreen
 import com.splitease.app.presentation.groups.CreateGroupScreen
+import com.splitease.app.presentation.groups.GroupBalancesScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
 import com.splitease.app.presentation.groups.GroupInviteLinkScreen
 import com.splitease.app.presentation.groups.GroupSettingsScreen
@@ -108,6 +109,7 @@ object Routes {
         "add_expense?groupId={groupId}&friendUserId={friendUserId}&expenseId={expenseId}"
     const val EXPENSE_DETAIL = "expense_detail/{expenseId}"
     const val PIN_BOARD = "pin_board/{groupId}"
+    const val GROUP_BALANCES = "group_balances/{groupId}"
     const val SETTLE_UP =
         "settle_up?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}&groupId={groupId}&label={label}"
 
@@ -118,6 +120,8 @@ object Routes {
     fun groupInviteLink(groupId: String) = "group_invite_link/$groupId"
 
     fun pinBoard(groupId: String) = "pin_board/$groupId"
+
+    fun groupBalances(groupId: String) = "group_balances/$groupId"
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
 
@@ -794,10 +798,35 @@ private fun SignedInNavHost(
                         navController.navigate(Routes.addExpenseForGroup(groupId))
                     },
                     onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
-                    onOpenSpending = { navController.navigate(Routes.SPENDING) },
+                    onOpenBalances = {
+                        navController.navigate(Routes.groupBalances(groupId))
+                    },
                     onOpenPinBoard = {
                         navController.navigate(Routes.pinBoard(groupId))
                     },
+                    onSettleDebt = { from, to, amount, currency, label ->
+                        navController.navigate(
+                            Routes.settleUp(
+                                fromUserId = from,
+                                toUserId = to,
+                                amount = amount,
+                                currency = currency,
+                                groupId = groupId,
+                                label = label,
+                            ),
+                        )
+                    },
+                )
+            }
+            composable(
+                route = Routes.GROUP_BALANCES,
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty()
+                GroupBalancesScreen(
+                    groupId = groupId,
+                    onBack = { navController.popBackStack() },
+                    onOpenSpending = { navController.navigate(Routes.SPENDING) },
                     onSettleDebt = { from, to, amount, currency, label ->
                         navController.navigate(
                             Routes.settleUp(

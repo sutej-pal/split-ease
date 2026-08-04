@@ -74,7 +74,6 @@ import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.balances.BalancesViewModel
-import com.splitease.app.presentation.balances.GroupBalanceHeader
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.ledgerEntries
@@ -298,11 +297,6 @@ private fun GroupType.labelRes() =
         GroupType.OTHER -> R.string.group_type_other
     }
 
-private enum class GroupDetailPane {
-    Expenses,
-    Balances,
-}
-
 @Composable
 fun GroupDetailScreen(
     groupId: String,
@@ -310,7 +304,7 @@ fun GroupDetailScreen(
     onOpenSettings: () -> Unit,
     onAddExpense: () -> Unit,
     onOpenExpense: (expenseId: String) -> Unit,
-    onOpenSpending: () -> Unit,
+    onOpenBalances: () -> Unit,
     onOpenPinBoard: () -> Unit,
     onSettleDebt: (
         fromUserId: String,
@@ -335,13 +329,9 @@ fun GroupDetailScreen(
         .collectAsStateWithLifecycle()
     val group by remember(groupId) { viewModel.observeGroup(groupId) }
         .collectAsStateWithLifecycle()
-    var paneName by rememberSaveable { mutableStateOf(GroupDetailPane.Expenses.name) }
-    val pane = runCatching { GroupDetailPane.valueOf(paneName) }.getOrDefault(GroupDetailPane.Expenses)
-    var settleHint by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val me = expensesViewModel.currentUserId()
     val isSolo = membersReady && members.size <= 1
-    val nothingToSettle = stringResource(R.string.group_nothing_to_settle)
     val lifecycleOwner = LocalLifecycleOwner.current
     val bannerColor = lerp((group?.groupType ?: GroupType.OTHER).tint(), SplitEaseColors.Navy, 0.28f)
 
@@ -379,11 +369,9 @@ fun GroupDetailScreen(
                 me != null && (d.fromUserId == me || d.toUserId == me)
             }
         if (debt == null || me == null) {
-            settleHint = nothingToSettle
-            paneName = GroupDetailPane.Balances.name
+            onOpenBalances()
             return
         }
-        settleHint = null
         val label = if (me == debt.fromUserId) debt.toLabel else debt.fromLabel
         onSettleDebt(
             debt.fromUserId,
@@ -427,6 +415,7 @@ fun GroupDetailScreen(
                 GroupOverallBalanceBlock(
                     balance = groupBalance,
                     currencyFallback = group?.defaultCurrencyCode.orEmpty(),
+                    onClick = onOpenBalances,
                 )
             }
 
@@ -444,12 +433,11 @@ fun GroupDetailScreen(
                 )
                 SeActionChip(
                     label = stringResource(R.string.group_chip_balances),
-                    selected = pane == GroupDetailPane.Balances,
-                    onClick = { paneName = GroupDetailPane.Balances.name },
+                    onClick = onOpenBalances,
                 )
                 SeActionChip(
                     label = stringResource(R.string.group_chip_totals),
-                    onClick = onOpenSpending,
+                    onClick = onOpenBalances,
                 )
                 SeActionChip(
                     label = stringResource(R.string.action_open_pin_board),
@@ -457,125 +445,48 @@ fun GroupDetailScreen(
                 )
             }
 
-            when (pane) {
-                GroupDetailPane.Expenses -> {
-                    SePullRefreshBox(
-                        isRefreshing = expensesUi.isRefreshing,
-                        onRefresh = { expensesViewModel.refreshGroupFromCloud(groupId) },
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .background(SplitEaseColors.Surface),
-                    ) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                        ) {
-                            if (isSolo && ledger.isEmpty()) {
-                                item {
-                                    GroupSoloEmptyState(
-                                        onAddMembers = onOpenSettings,
-                                        onShareLink = {
-                                            viewModel.shareGroupLink(groupId)
-                                        },
-                                    )
-                                }
-                            } else if (ledger.isEmpty()) {
-                                item {
-                                    SeEmptyState(message = stringResource(R.string.ledger_empty))
-                                }
-                            } else {
-                                ledgerEntries(ledger, onExpenseClick = onOpenExpense)
-                            }
-                            (expensesUi.errorMessage ?: uiState.errorMessage)?.let { msg ->
-                                item {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    SeErrorText(msg)
-                                }
-                            }
-                            (expensesUi.infoMessage ?: uiState.infoMessage)?.let { msg ->
-                                item {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    SeInfoText(msg)
-                                }
-                            }
-                            item { Spacer(modifier = Modifier.height(88.dp)) }
-                        }
-                    }
-                }
-
-                GroupDetailPane.Balances -> {
-                    SePullRefreshBox(
-                        isRefreshing = expensesUi.isRefreshing,
-                        onRefresh = { expensesViewModel.refreshGroupFromCloud(groupId) },
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(horizontal = 20.dp)
-                                    .padding(bottom = 88.dp),
-                        ) {
-                            SeSectionHeader(text = stringResource(R.string.balances_title))
-                            GroupBalanceHeader(
-                                groupId = groupId,
-                                balance = groupBalance,
+            SePullRefreshBox(
+                isRefreshing = expensesUi.isRefreshing,
+                onRefresh = { expensesViewModel.refreshGroupFromCloud(groupId) },
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(SplitEaseColors.Surface),
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                ) {
+                    if (isSolo && ledger.isEmpty()) {
+                        item {
+                            GroupSoloEmptyState(
+                                onAddMembers = onOpenSettings,
+                                onShareLink = {
+                                    viewModel.shareGroupLink(groupId)
+                                },
                             )
-                            val myDebts =
-                                groupBalance
-                                    ?.simplifiedDebts
-                                    ?.filter { debt ->
-                                    me != null && (debt.fromUserId == me || debt.toUserId == me)
-                                }.orEmpty()
-                            if (myDebts.isEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                SeInfoText(settleHint ?: nothingToSettle)
-                            } else {
-                                myDebts.forEach { debt ->
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    SeOutlinedButton(
-                                        text =
-                                            stringResource(
-                                                R.string.balances_debt_line,
-                                                debt.fromLabel,
-                                                debt.toLabel,
-                                                "${debt.currencyCode} ${debt.amount.toPlainString()}",
-                                            ) + " · " + stringResource(R.string.action_settle_up),
-                                        onClick = {
-                                            val label =
-                                                if (me == debt.fromUserId) {
-                                                    debt.toLabel
-                                                } else {
-                                                    debt.fromLabel
-                                                }
-                                            onSettleDebt(
-                                                debt.fromUserId,
-                                                debt.toUserId,
-                                                debt.amount.toPlainString(),
-                                                debt.currencyCode,
-                                                label,
-                                            )
-                                        },
-                                    )
-                                }
-                            }
-
-                            (expensesUi.errorMessage ?: uiState.errorMessage)?.let {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeErrorText(it)
-                            }
-                            (expensesUi.infoMessage ?: uiState.infoMessage)?.let {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeInfoText(it)
-                            }
+                        }
+                    } else if (ledger.isEmpty()) {
+                        item {
+                            SeEmptyState(message = stringResource(R.string.ledger_empty))
+                        }
+                    } else {
+                        ledgerEntries(ledger, onExpenseClick = onOpenExpense)
+                    }
+                    (expensesUi.errorMessage ?: uiState.errorMessage)?.let { msg ->
+                        item {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeErrorText(msg)
                         }
                     }
+                    (expensesUi.infoMessage ?: uiState.infoMessage)?.let { msg ->
+                        item {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeInfoText(msg)
+                        }
+                    }
+                    item { Spacer(modifier = Modifier.height(88.dp)) }
                 }
             }
         }
@@ -654,6 +565,7 @@ internal fun BannerCircleIconButton(
 internal fun GroupOverallBalanceBlock(
     balance: GroupBalanceUi?,
     currencyFallback: String,
+    onClick: (() -> Unit)? = null,
 ) {
     if (balance == null) return
     var expanded by rememberSaveable { mutableStateOf(true) }
@@ -662,12 +574,19 @@ internal fun GroupOverallBalanceBlock(
             debt.fromLabel == "You" || debt.toLabel == "You"
         }
     val nets = balance.myNetByCurrency
+    val canExpand = myDebts.isNotEmpty() && onClick == null
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .background(SplitEaseColors.Surface)
-                .clickable(enabled = myDebts.isNotEmpty()) { expanded = !expanded }
+                .clickable {
+                    if (onClick != null) {
+                        onClick()
+                    } else if (myDebts.isNotEmpty()) {
+                        expanded = !expanded
+                    }
+                }
                 .padding(horizontal = 20.dp, vertical = 14.dp),
     ) {
         Row(
@@ -680,7 +599,7 @@ internal fun GroupOverallBalanceBlock(
                     currencyFallback = currencyFallback.ifBlank { AppCurrencies.DEFAULT },
                 )
             }
-            if (myDebts.isNotEmpty()) {
+            if (canExpand) {
                 Icon(
                     imageVector =
                         if (expanded) {
@@ -693,7 +612,7 @@ internal fun GroupOverallBalanceBlock(
                 )
             }
         }
-        AnimatedVisibility(visible = expanded && myDebts.isNotEmpty()) {
+        AnimatedVisibility(visible = canExpand && expanded) {
             Column(modifier = Modifier.padding(top = 8.dp)) {
                 myDebts.forEach { debt ->
                     GroupOverallDebtLine(debt)

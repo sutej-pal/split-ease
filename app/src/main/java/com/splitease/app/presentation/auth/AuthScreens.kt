@@ -448,18 +448,43 @@ fun ResetPasswordOtpScreen(
             (otpReady || code.length == AuthViewModel.SIGNUP_OTP_LENGTH)
     val subtitleBefore = stringResource(R.string.reset_password_subtitle_before)
     val subtitleAfter = stringResource(R.string.reset_password_subtitle_after)
+    val wrongEmailLabel = stringResource(R.string.action_wrong_email)
     val navy = SplitEaseColors.Navy
+    val primary = SplitEaseColors.Primary
     val displayEmail = remember(email) { truncateEmailForSubtitle(email) }
+    val wrongEmailLinkStyles =
+        remember(primary) {
+            TextLinkStyles(
+                style =
+                    SpanStyle(
+                        color = primary,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+            )
+        }
+    // Rebuild each composition so the click listener stays current (loading / back).
     val subtitleAnnotated =
-        remember(displayEmail, subtitleBefore, subtitleAfter, navy) {
-            buildAnnotatedString {
-                // Space is added in code — AAPT strips trailing whitespace from XML string resources.
-                append(subtitleBefore.trimEnd())
-                append(' ')
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = navy)) {
-                    append(displayEmail)
-                }
-                append(subtitleAfter)
+        buildAnnotatedString {
+            // Space is added in code — AAPT strips trailing whitespace from XML string resources.
+            append(subtitleBefore.trimEnd())
+            append(' ')
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = navy)) {
+                append(displayEmail)
+            }
+            append(subtitleAfter.trimEnd())
+            append(' ')
+            withLink(
+                LinkAnnotation.Clickable(
+                    tag = "wrong_email",
+                    styles = wrongEmailLinkStyles,
+                    linkInteractionListener = {
+                        if (!formState.isLoading) {
+                            onBackToLogin()
+                        }
+                    },
+                ),
+            ) {
+                append(wrongEmailLabel)
             }
         }
 
@@ -472,14 +497,7 @@ fun ResetPasswordOtpScreen(
         onNavigateBack = onBackToLogin,
         showLoadingIndicator = false,
     ) {
-        SeTextButton(
-            text = stringResource(R.string.action_wrong_email),
-            onClick = onBackToLogin,
-            enabled = !formState.isLoading,
-            modifier = Modifier.align(Alignment.Start),
-            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         SegmentedOtpInput(
             value = code,
             onValueChange = { incoming ->
@@ -1198,7 +1216,8 @@ private fun AuthScaffoldHeader(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = textAlign,
-            maxLines = 3,
+            // Allow room for an inline trailing link (e.g. Wrong email?).
+            maxLines = 5,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth(),
         )

@@ -10,6 +10,7 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
+import io.ktor.client.engine.okhttp.OkHttp
 import javax.inject.Singleton
 
 /**
@@ -19,6 +20,10 @@ import javax.inject.Singleton
  * and other Auth redirects. Signup email confirmation uses an in-app 6-digit OTP and
  * does not require this URI. Allow-list the redirect in Supabase Dashboard → Authentication
  * → URL configuration when using link-based flows.
+ *
+ * HTTP uses Ktor **OkHttp** (not the Android engine) so request cancel on navigation /
+ * ViewModel clear does not close sockets on the main thread
+ * (`NetworkOnMainThreadException` → fatal `CompletionHandlerException`).
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -47,6 +52,8 @@ object SupabaseModule {
             supabaseUrl = url,
             supabaseKey = key,
         ) {
+            // Explicit engine — do not rely on classpath auto-pick (Android vs OkHttp).
+            httpEngine = OkHttp.create()
             install(Auth) {
                 scheme = AUTH_DEEP_LINK_SCHEME
                 host = AUTH_DEEP_LINK_HOST

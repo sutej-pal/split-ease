@@ -28,7 +28,7 @@ Single Gradle module `:app`. Money uses `java.math.BigDecimal` only (never `Floa
 | Work | WorkManager (+ HiltWorker) |
 | Money math | `BigDecimal` |
 
-Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Never ship database/service-role secrets in the app.
+Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Never ship database/service-role secrets in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
 
 ## Data & sync
 
