@@ -27,7 +27,8 @@ class DeviceContactsDataSource
             val emails = loadEmailsByContactId()
             val names = loadNamesByContactId()
             val ids = (phones.keys + emails.keys).toSet()
-            return ids.map { id ->
+            return ids
+                .map { id ->
                 DeviceContact(
                     id = id,
                     displayName = names[id].orEmpty().ifBlank {
@@ -50,7 +51,8 @@ class DeviceContactsDataSource
 
         private fun loadNamesByContactId(): Map<String, String> {
             val out = mutableMapOf<String, String>()
-            context.contentResolver.query(
+            context.contentResolver
+                .query(
                 ContactsContract.Contacts.CONTENT_URI,
                 arrayOf(
                     ContactsContract.Contacts._ID,
@@ -74,7 +76,8 @@ class DeviceContactsDataSource
 
         private fun loadPhonesByContactId(): Map<String, List<String>> {
             val out = mutableMapOf<String, MutableList<String>>()
-            context.contentResolver.query(
+            context.contentResolver
+                .query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 arrayOf(
                     ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -103,7 +106,8 @@ class DeviceContactsDataSource
 
         private fun loadEmailsByContactId(): Map<String, List<String>> {
             val out = mutableMapOf<String, MutableList<String>>()
-            context.contentResolver.query(
+            context.contentResolver
+                .query(
                 ContactsContract.CommonDataKinds.Email.CONTENT_URI,
                 arrayOf(
                     ContactsContract.CommonDataKinds.Email.CONTACT_ID,

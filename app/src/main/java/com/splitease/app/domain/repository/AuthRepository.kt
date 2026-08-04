@@ -117,16 +117,20 @@ interface AuthRepository {
     suspend fun verifySignupOtp(email: String, token: String): Result<Unit>
 
     /**
-     * Sends a password-reset email containing a 6-digit recovery OTP
+     * Requests a password-reset email containing a 6-digit recovery OTP
      * (when the Send Email hook / Reset password template includes `{{ .Token }}`).
      *
-     * @param email Account email.
-     * @return [Result] success or failure with message.
+     * Unknown emails still succeed (Supabase returns 200 and sends nothing). Rate-limit
+     * and hook delivery failures are returned so the UI can ask the user to wait —
+     * those do not reveal registration status.
+     *
+     * @param email Account email (may or may not exist).
+     * @return [Result] success, or failure for rate-limit / delivery errors.
      */
-    suspend fun sendPasswordReset(email: String): Result<Unit>
+    suspend fun requestPasswordReset(email: String): Result<Unit>
 
     /**
-     * Verifies the recovery OTP from [sendPasswordReset] and establishes a session
+     * Verifies the recovery OTP from [requestPasswordReset] and establishes a session
      * so [updatePassword] can set a new password.
      *
      * @param email Account email that received the code.

@@ -59,7 +59,8 @@ class GroupsViewModel
     ) : ViewModel() {
         /** Eager so Create Group (which only collects [uiState]) still has a signed-in user id. */
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.splitease.app.R
@@ -51,7 +52,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.compose.ui.unit.Dp
 
 private val CategoryPastels =
     listOf(
@@ -278,7 +278,11 @@ private fun List<LedgerListItem>.groupByMonth(
     if (isEmpty()) return emptyList()
     val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", locale)
     return groupBy { item ->
-        Instant.ofEpochMilli(item.sortEpochMs).atZone(zoneId).toLocalDate().withDayOfMonth(1)
+        Instant
+            .ofEpochMilli(item.sortEpochMs)
+            .atZone(zoneId)
+            .toLocalDate()
+            .withDayOfMonth(1)
     }.entries
         .sortedByDescending { it.key }
         .map { (monthStart, rows) -> monthFormatter.format(monthStart) to rows }

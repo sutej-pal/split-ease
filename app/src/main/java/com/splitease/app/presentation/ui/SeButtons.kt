@@ -2,6 +2,7 @@ package com.splitease.app.presentation.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
@@ -39,24 +41,38 @@ fun SePrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isLoading: Boolean = false,
 ) {
     Button(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().height(52.dp),
-        enabled = enabled,
+        enabled = enabled && !isLoading,
         shape = ButtonShape,
         colors =
             ButtonDefaults.buttonColors(
                 containerColor = SplitEaseColors.Primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 disabledContainerColor = SplitEaseColors.PrimarySoft,
-                disabledContentColor = SplitEaseColors.NavyMuted,
+                // Keep disabled label readable (NavyMuted on PrimarySoft is too faint).
+                disabledContentColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
             ),
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp, lineHeight = 22.sp),
-        )
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(
+                text,
+                style =
+                    MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
+                    ),
+            )
+        }
     }
 }
 
@@ -110,8 +126,14 @@ fun SeTextButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
 ) {
-    TextButton(onClick = onClick, modifier = modifier, enabled = enabled) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        contentPadding = contentPadding,
+    ) {
         Text(text, color = if (enabled) SplitEaseColors.Primary else SplitEaseColors.NavyMuted)
     }
 }

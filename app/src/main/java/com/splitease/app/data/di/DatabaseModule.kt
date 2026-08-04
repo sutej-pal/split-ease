@@ -36,7 +36,8 @@ object DatabaseModule {
     fun provideDatabase(
         @ApplicationContext context: Context,
     ): SplitEaseDatabase =
-        Room.databaseBuilder(
+        Room
+            .databaseBuilder(
             context,
             SplitEaseDatabase::class.java,
             SplitEaseDatabase.NAME,

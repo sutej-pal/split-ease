@@ -61,8 +61,7 @@ class SupabaseAuthRepository
                     if (status is SessionStatus.RefreshFailure) {
                         runCatching { supabase.auth.clearSession() }
                     }
-                }
-                .map { status ->
+                }.map { status ->
                     when (status) {
                         is SessionStatus.Authenticated -> {
                             val info = status.session.user
@@ -240,10 +239,19 @@ class SupabaseAuthRepository
                 }
             }
 
-        override suspend fun sendPasswordReset(email: String): Result<Unit> =
-            runCatching {
-                supabase.auth.resetPasswordForEmail(email.trim())
+        override suspend fun requestPasswordReset(email: String): Result<Unit> {
+            // Soft-success for unknown addresses (Supabase returns 200 with no mail).
+            // Propagate rate-limit / hook failures so the UI can ask the user to wait —
+            // those errors do not reveal whether the email is registered once the
+            // project-wide email rate limit is raised above the Free default of 2/hour.
+            return runCatching {
+                withContext(Dispatchers.IO) {
+                    supabase.auth.resetPasswordForEmail(email.trim())
+                }
+            }.onFailure { err ->
+                android.util.Log.w("AuthRepo", "requestPasswordReset send failed", err)
             }
+        }
 
         override suspend fun verifyRecoveryOtp(email: String, token: String): Result<Unit> =
             runCatching {
@@ -262,10 +270,22 @@ class SupabaseAuthRepository
             runCatching {
                 val trimmed = newPassword.trim()
                 require(trimmed.length >= 8) { "Password must be at least 8 characters." }
+                check(supabase.auth.currentUserOrNull() != null) {
+                    "Session expired. Request a new reset code and try again."
+                }
                 supabase.auth.updateUser {
                     password = trimmed
                 }
-                finalizeAuthenticatedSession()
+                // Password is already changed on the server — don't fail the whole
+                // reset if local profile hydrate hiccups (e.g. offline / RLS).
+                runCatching { finalizeAuthenticatedSession() }
+                    .onFailure { err ->
+                        android.util.Log.w(
+                            "AuthRepo",
+                            "Password updated but session hydrate failed",
+                            err,
+                        )
+                    }
             }
 
         override suspend fun signOut(): Result<Unit> =
@@ -367,7 +387,8 @@ class SupabaseAuthRepository
                 )
             // Keep the newest couple of files so the UI can still decode the previous
             // path for one frame while profile StateFlow catches up.
-            dir.listFiles()
+            dir
+                .listFiles()
                 ?.filter { file ->
                     file.isFile &&
                         (
@@ -377,8 +398,7 @@ class SupabaseAuthRepository
                                         file.name.endsWith(".jpg", ignoreCase = true)
                                 )
                         )
-                }
-                ?.sortedByDescending { it.lastModified() }
+                }?.sortedByDescending { it.lastModified() }
                 ?.drop(2)
                 ?.forEach { it.delete() }
             return path

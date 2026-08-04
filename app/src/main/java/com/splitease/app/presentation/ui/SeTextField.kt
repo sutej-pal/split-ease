@@ -24,10 +24,12 @@ private val SeTextFieldShape = RoundedCornerShape(12.dp)
 fun SeTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
     modifier: Modifier = Modifier,
+    label: String? = null,
+    placeholder: String? = null,
     enabled: Boolean = true,
     singleLine: Boolean = true,
+    isError: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     supportingText: String? = null,
@@ -39,14 +41,31 @@ fun SeTextField(
         // Clip so password-manager autofill highlight (e.g. Bitwarden yellow)
         // respects the same rounded corners as the outline.
         modifier = modifier.fillMaxWidth().clip(SeTextFieldShape),
-        label = { Text(label) },
+        label = label?.let { text -> { Text(text) } },
+        placeholder =
+            placeholder?.let { text ->
+                {
+                    Text(text = text, color = SplitEaseColors.NavyMuted)
+                }
+            },
         enabled = enabled,
         singleLine = singleLine,
+        isError = isError,
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
         supportingText =
             supportingText?.let { hint ->
-                { Text(hint) }
+                {
+                    Text(
+                        text = hint,
+                        color =
+                            if (isError) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                    )
+                }
             },
         trailingIcon = trailingIcon,
         shape = SeTextFieldShape,
@@ -55,15 +74,19 @@ fun SeTextField(
                 focusedBorderColor = SplitEaseColors.Primary,
                 unfocusedBorderColor = SplitEaseColors.OutlineStrong,
                 disabledBorderColor = SplitEaseColors.OutlineStrong.copy(alpha = 0.5f),
+                errorBorderColor = MaterialTheme.colorScheme.error,
                 focusedLabelColor = SplitEaseColors.Primary,
                 unfocusedLabelColor = SplitEaseColors.NavyMuted,
+                errorLabelColor = MaterialTheme.colorScheme.error,
                 cursorColor = SplitEaseColors.Primary,
+                errorCursorColor = MaterialTheme.colorScheme.error,
                 focusedTextColor = SplitEaseColors.Navy,
                 unfocusedTextColor = SplitEaseColors.Navy,
                 focusedContainerColor = SplitEaseColors.Surface,
                 unfocusedContainerColor = SplitEaseColors.Surface,
                 disabledContainerColor = SplitEaseColors.Surface,
                 errorContainerColor = SplitEaseColors.Surface,
+                errorSupportingTextColor = MaterialTheme.colorScheme.error,
             ),
     )
 }

@@ -285,8 +285,7 @@ fun GroupsHomeScreen(
                                 .clickable {
                                     showExpensePicker = false
                                     onAddExpenseForGroup(group.id)
-                                }
-                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                                }.padding(horizontal = 24.dp, vertical = 14.dp),
                     )
                 }
             }

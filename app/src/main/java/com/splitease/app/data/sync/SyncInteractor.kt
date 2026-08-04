@@ -119,7 +119,8 @@ class SyncInteractor
                 }
             }
 
-            groupRepository.getPendingMembers()
+            groupRepository
+                .getPendingMembers()
                 .filter { it.syncStatus != SyncStatus.LOCAL_ONLY }
                 .forEach { member ->
                 runCatching {

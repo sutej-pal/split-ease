@@ -132,7 +132,8 @@ class ExpensesViewModel
         private val groupLiveSync: GroupLiveSync,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -440,7 +441,8 @@ class ExpensesViewModel
             if (me == null) return null to null
             val zero = BigDecimal.ZERO.setScale(2)
             val myShare =
-                splits.firstOrNull { it.userId == me }
+                splits
+                    .firstOrNull { it.userId == me }
                     ?.owedAmount
                     ?.setScale(2, RoundingMode.HALF_UP)
                     ?: zero
@@ -468,6 +470,7 @@ class ExpensesViewModel
                 me -> "You"
                 else -> friendNames[userId] ?: userNames[userId] ?: userId.take(8)
             }
+
         /**
          * Flushes local PENDING writes, pulls cloud data for the signed-in user, then
          * re-fetches expenses for [groupId] so the open group shows other members' changes.
@@ -619,6 +622,7 @@ class ExpensesViewModel
                                     val userNames = users.associate { it.id to it.displayName }
                                     val friendNames =
                                         friends.associate { it.friendUserId to it.displayNameSnapshot }
+
                                     fun nameOf(id: String): String =
                                         nameOf(id, me, friendNames, userNames)
                                     val (balanceSide, balanceAmount) =
@@ -808,7 +812,9 @@ class ExpensesViewModel
             val me = userId.value ?: return emptyList()
             val myName = userRepository.getUserById(me)?.displayName ?: "You"
             val friend =
-                friendRepository.observeFriends(me).first()
+                friendRepository
+                    .observeFriends(me)
+                    .first()
                     .firstOrNull { it.friendUserId == friendUserId }
                     ?: return listOf(ParticipantOption(me, myName))
             return listOf(
@@ -823,7 +829,9 @@ class ExpensesViewModel
 
         suspend fun friendLabel(friendUserId: String): String {
             val me = userId.value ?: return friendUserId.take(8)
-            return friendRepository.observeFriends(me).first()
+            return friendRepository
+                .observeFriends(me)
+                .first()
                 .firstOrNull { it.friendUserId == friendUserId }
                 ?.displayNameSnapshot
                 ?: userRepository.getUserById(friendUserId)?.displayName

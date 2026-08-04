@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.net.URI
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -59,7 +58,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -213,9 +211,11 @@ fun AddExpenseScreen(
     val blockingOnMembersGate =
         groupId != null &&
             !isEdit &&
-            (exitAfterMembersDialog ||
+            (
+                exitAfterMembersDialog ||
                 !membersEligibilityChecked ||
-                (membersDialogEligible && !membersConfirmed))
+                (membersDialogEligible && !membersConfirmed)
+            )
     if (blockingOnMembersGate) return
 
     val mode = runCatching { SplitType.valueOf(splitType) }.getOrDefault(SplitType.EQUAL)
@@ -237,7 +237,8 @@ fun AddExpenseScreen(
     val allOthersSelected = others.isNotEmpty() && others.all { it.userId in selected }
     val dateTimeLabel =
         remember(expenseDateMs) {
-            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            DateFormat
+                .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                 .format(Date(expenseDateMs))
         }
 
@@ -649,8 +650,7 @@ fun AddExpenseScreen(
                             .clickable {
                                 paidBy = option.userId
                                 showPaidByPicker = false
-                            }
-                            .padding(vertical = 12.dp),
+                            }.padding(vertical = 12.dp),
                     style = MaterialTheme.typography.titleMedium,
                     color =
                         if (option.userId == paidBy) {
@@ -685,8 +685,7 @@ fun AddExpenseScreen(
                             .clickable {
                                 splitType = type.name
                                 showSplitPicker = false
-                            }
-                            .padding(vertical = 12.dp),
+                            }.padding(vertical = 12.dp),
                     style = MaterialTheme.typography.titleMedium,
                     color =
                         if (type.name == splitType) {
@@ -840,7 +839,10 @@ fun ExpenseListSection(
     } else {
         expenses.forEach { expense ->
             val categoryLabel =
-                expense.categoryId?.let { categoryNames[it] }?.let { " · $it" }.orEmpty()
+                expense.categoryId
+                    ?.let { categoryNames[it] }
+                    ?.let { " · $it" }
+                    .orEmpty()
             SeListRow(
                 title = expense.description,
                 subtitle =
@@ -860,7 +862,9 @@ private fun currencySymbol(code: String): String =
 /** Material DatePicker uses UTC midnight; convert local calendar day to that form. */
 private fun localDateToUtcMillis(localEpochMs: Long): Long {
     val local = Calendar.getInstance().apply { timeInMillis = localEpochMs }
-    return Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+    return Calendar
+        .getInstance(TimeZone.getTimeZone("UTC"))
+        .apply {
         clear()
         set(Calendar.YEAR, local.get(Calendar.YEAR))
         set(Calendar.MONTH, local.get(Calendar.MONTH))
@@ -871,7 +875,9 @@ private fun localDateToUtcMillis(localEpochMs: Long): Long {
 private fun mergeUtcDateWithLocalTime(utcDayMillis: Long, currentLocalMs: Long): Long {
     val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = utcDayMillis }
     val localTime = Calendar.getInstance().apply { timeInMillis = currentLocalMs }
-    return Calendar.getInstance().apply {
+    return Calendar
+        .getInstance()
+        .apply {
         set(Calendar.YEAR, utc.get(Calendar.YEAR))
         set(Calendar.MONTH, utc.get(Calendar.MONTH))
         set(Calendar.DAY_OF_MONTH, utc.get(Calendar.DAY_OF_MONTH))
@@ -883,7 +889,9 @@ private fun mergeUtcDateWithLocalTime(utcDayMillis: Long, currentLocalMs: Long):
 }
 
 private fun applyLocalTime(currentLocalMs: Long, hour: Int, minute: Int): Long =
-    Calendar.getInstance().apply {
+    Calendar
+        .getInstance()
+        .apply {
         timeInMillis = currentLocalMs
         set(Calendar.HOUR_OF_DAY, hour)
         set(Calendar.MINUTE, minute)

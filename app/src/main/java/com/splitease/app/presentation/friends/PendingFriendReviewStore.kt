@@ -51,7 +51,9 @@ class PendingFriendReviewStore
             _entries.value =
                 contacts.map { contact ->
                     val defaultContact =
-                        contact.phoneNumber?.trim().orEmpty()
+                        contact.phoneNumber
+                            ?.trim()
+                            .orEmpty()
                             .ifBlank { contact.email?.trim().orEmpty() }
                     ReviewFriendEntry(
                         id = contact.id,

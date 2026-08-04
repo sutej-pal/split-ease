@@ -150,7 +150,9 @@ object DebtSimplifier {
         bags[key] = bags.getOrDefault(key, ZERO).add(delta)
     }
 
-    private class MutableAmount(var value: BigDecimal)
+    private class MutableAmount(
+        var value: BigDecimal
+    )
 
     private fun BigDecimal.toMutableAmount() = MutableAmount(this)
 }

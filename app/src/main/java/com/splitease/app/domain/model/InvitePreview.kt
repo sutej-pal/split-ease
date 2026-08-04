@@ -40,4 +40,3 @@ data class InvitePreviewMember(
 fun InvitePreview.pendingOpenTarget(): String =
     groupId?.trim()?.takeIf { it.isNotEmpty() }
         ?: com.splitease.app.domain.settings.AppSettingsRepository.PENDING_INVITE_OPEN_FRIENDS
-

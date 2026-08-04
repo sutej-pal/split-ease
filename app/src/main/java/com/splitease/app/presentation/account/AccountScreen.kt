@@ -98,7 +98,8 @@ fun AccountScreen(
                 pendingCameraUri = uri
                 takePicture.launch(uri)
             } else {
-                Toast.makeText(
+                Toast
+                    .makeText(
                     context,
                     context.getString(R.string.msg_camera_permission_denied),
                     Toast.LENGTH_SHORT,

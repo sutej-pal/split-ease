@@ -51,7 +51,8 @@ class TransactionImportInteractor
             rows.forEach { row ->
                 runCatching {
                     val categoryId = resolveCategoryId(row, categories)
-                    expenseInteractor.createExpense(
+                    expenseInteractor
+                        .createExpense(
                         CreateExpenseInput(
                             description = row.description,
                             amount = row.amount,

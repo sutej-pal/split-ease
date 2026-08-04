@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.friends
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,7 +12,6 @@ import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -228,7 +228,11 @@ class EditContactViewModel
 
         private fun loadFromReviewEntry(entryId: String) {
             val entry = reviewStore.entries.value.firstOrNull { it.id == entryId }
-            val contact = entry?.contactValue?.trim().orEmpty().ifBlank { initialContact.trim() }
+            val contact = entry
+                ?.contactValue
+                ?.trim()
+                .orEmpty()
+                .ifBlank { initialContact.trim() }
             val looksLikeEmail = contact.contains("@")
             val options =
                 buildOptions(
@@ -238,7 +242,11 @@ class EditContactViewModel
             val selected = preferredDefaultOptionId(options, contact)
             _uiState.value =
                 EditContactUiState(
-                    name = entry?.displayName?.ifBlank { initialName }.orEmpty().ifBlank { initialName },
+                    name = entry
+                        ?.displayName
+                        ?.ifBlank { initialName }
+                        .orEmpty()
+                        .ifBlank { initialName },
                     options = options,
                     selectedOptionId = selected,
                     newPhone = if (!looksLikeEmail) contact else "",
@@ -262,7 +270,8 @@ class EditContactViewModel
             _uiState.value =
                 EditContactUiState(
                     name =
-                        friend?.displayNameSnapshot
+                        friend
+                            ?.displayNameSnapshot
                             ?.removeSuffix(" (invited)")
                             ?.trim()
                             .orEmpty(),
@@ -283,7 +292,10 @@ class EditContactViewModel
                 }
             val preferred =
                 initialContact.trim().ifBlank {
-                    contact?.phoneNumber?.trim().orEmpty()
+                    contact
+                        ?.phoneNumber
+                        ?.trim()
+                        .orEmpty()
                         .ifBlank { contact?.email?.trim().orEmpty() }
                 }
             val options =
@@ -294,7 +306,11 @@ class EditContactViewModel
             val selected = preferredDefaultOptionId(options, preferred)
             _uiState.value =
                 EditContactUiState(
-                    name = contact?.displayName?.ifBlank { initialName }.orEmpty().ifBlank { initialName },
+                    name = contact
+                        ?.displayName
+                        ?.ifBlank { initialName }
+                        .orEmpty()
+                        .ifBlank { initialName },
                     options = options,
                     selectedOptionId = selected,
                     groupId = initialGroupId,
@@ -375,11 +391,15 @@ class EditContactViewModel
             preferredContact: String,
         ): String {
             if (preferredContact.isNotBlank()) {
-                options.firstOrNull {
-                    (it.kind == ContactMethodKind.EXISTING_PHONE ||
-                        it.kind == ContactMethodKind.EXISTING_EMAIL) &&
+                options
+                    .firstOrNull {
+                    (
+                        it.kind == ContactMethodKind.EXISTING_PHONE ||
+                        it.kind == ContactMethodKind.EXISTING_EMAIL
+                    ) &&
                         it.value.equals(preferredContact, ignoreCase = true)
-                }?.id?.let { return it }
+                }?.id
+                    ?.let { return it }
             }
             options.firstOrNull { it.kind == ContactMethodKind.EXISTING_PHONE }?.id?.let { return it }
             options.firstOrNull { it.kind == ContactMethodKind.EXISTING_EMAIL }?.id?.let { return it }

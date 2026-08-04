@@ -51,7 +51,8 @@ class AccountViewModel
     ) : ViewModel() {
         @OptIn(ExperimentalCoroutinesApi::class)
         val profile: StateFlow<AccountProfileUi> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .flatMapLatest { session ->
                     val signedIn = session as? AuthSession.SignedIn
                     if (signedIn == null) {

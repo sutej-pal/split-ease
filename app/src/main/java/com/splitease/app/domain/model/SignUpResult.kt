@@ -16,5 +16,7 @@ sealed interface SignUpResult {
      *
      * @property email Address that received the verification code.
      */
-    data class PendingEmailConfirmation(val email: String) : SignUpResult
+    data class PendingEmailConfirmation(
+        val email: String
+    ) : SignUpResult
 }

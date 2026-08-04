@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.auth
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,8 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Visibility
@@ -45,12 +45,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +59,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
@@ -72,13 +69,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.presentation.components.SegmentedOtpInput
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeBackTitleRow
+import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -197,17 +199,6 @@ fun SignUpScreen(
             photoUri = uri?.toString()
         }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    var snackbarIsError by remember { mutableStateOf(false) }
-
-    LaunchedEffect(formState.errorMessage, formState.infoMessage) {
-        val error = formState.errorMessage
-        val info = formState.infoMessage
-        val message = error ?: info ?: return@LaunchedEffect
-        snackbarIsError = error != null
-        snackbarHostState.showSnackbar(message = message)
-    }
-
     val surface = MaterialTheme.colorScheme.surface
     SeSystemBars(
         statusBarColor = surface,
@@ -220,23 +211,10 @@ fun SignUpScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = surface,
         snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor =
-                        if (snackbarIsError) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            SplitEaseColors.Primary
-                        },
-                    contentColor =
-                        if (snackbarIsError) {
-                            MaterialTheme.colorScheme.onErrorContainer
-                        } else {
-                            MaterialTheme.colorScheme.onPrimary
-                        },
-                )
-            }
+            SeMessageHost(
+                errorMessage = formState.errorMessage,
+                infoMessage = formState.infoMessage,
+            )
         },
     ) { padding ->
         Column(
@@ -249,31 +227,26 @@ fun SignUpScreen(
                     .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.Start,
         ) {
-            IconButton(
-                onClick = onBack,
+            SeBackTitleRow(
+                onBack = onBack,
                 enabled = !formState.isLoading,
-                modifier = Modifier.padding(top = 4.dp).size(40.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.cd_navigate_back),
-                    tint = SplitEaseColors.Navy,
-                )
-            }
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.signup_welcome_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.Navy,
+                modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.signup_welcome_subtitle),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -405,12 +378,16 @@ fun ForgotPasswordScreen(
     modifier: Modifier = Modifier,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
+    val emailError = formState.errorMessage
 
     AuthScaffold(
         title = stringResource(R.string.forgot_title),
         subtitle = stringResource(R.string.forgot_subtitle),
         formState = formState,
         modifier = modifier,
+        contentPlacement = AuthContentPlacement.Upper,
+        onNavigateBack = onNavigateBack,
+        showLoadingIndicator = false,
     ) {
         SeTextField(
             value = email,
@@ -418,12 +395,15 @@ fun ForgotPasswordScreen(
             label = stringResource(R.string.label_email),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             enabled = !formState.isLoading,
+            isError = emailError != null,
+            supportingText = emailError,
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         SePrimaryButton(
             text = stringResource(R.string.action_send_reset),
             onClick = { onSendReset(email.trim()) },
             enabled = !formState.isLoading,
+            isLoading = formState.isLoading,
         )
         SeTextButton(
             text = stringResource(R.string.action_back_to_login),
@@ -449,64 +429,210 @@ fun ResetPasswordOtpScreen(
     var newPassword by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
     val otpReady = formState.recoveryOtpVerified
+    val otpIsError =
+        formState.errorMessage == AuthMessages.RESET_OTP_INVALID_OR_EXPIRED ||
+            formState.errorMessage == AuthMessages.VERIFY_EMAIL_INVALID_CODE
+    val newPasswordError =
+        formState.errorMessage.takeIf {
+            it == AuthMessages.RESET_PASSWORD_REQUIREMENTS ||
+                it == AuthMessages.PASSWORD_SHORT
+        }
+    val confirmPasswordError =
+        formState.errorMessage.takeIf { it == AuthMessages.RESET_PASSWORD_MISMATCH }
+    val passwordRules = remember(newPassword) { PasswordRules.evaluate(newPassword) }
+    val canSubmit =
+        !formState.isLoading &&
+            passwordRules.allMet &&
+            confirmPassword.isNotEmpty() &&
+            newPassword == confirmPassword &&
+            (otpReady || code.length == AuthViewModel.SIGNUP_OTP_LENGTH)
+    val subtitleBefore = stringResource(R.string.reset_password_subtitle_before)
+    val subtitleAfter = stringResource(R.string.reset_password_subtitle_after)
+    val navy = SplitEaseColors.Navy
+    val displayEmail = remember(email) { truncateEmailForSubtitle(email) }
+    val subtitleAnnotated =
+        remember(displayEmail, subtitleBefore, subtitleAfter, navy) {
+            buildAnnotatedString {
+                // Space is added in code — AAPT strips trailing whitespace from XML string resources.
+                append(subtitleBefore.trimEnd())
+                append(' ')
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = navy)) {
+                    append(displayEmail)
+                }
+                append(subtitleAfter)
+            }
+        }
 
     AuthScaffold(
         title = stringResource(R.string.reset_password_title),
-        subtitle = stringResource(R.string.reset_password_subtitle, email),
+        subtitleAnnotated = subtitleAnnotated,
         formState = formState,
         modifier = modifier,
+        contentPlacement = AuthContentPlacement.Top,
+        onNavigateBack = onBackToLogin,
+        showLoadingIndicator = false,
     ) {
-        if (!otpReady) {
-            SeTextField(
-                value = code,
-                onValueChange = { incoming ->
-                    code =
-                        incoming
-                            .filter { it.isDigit() }
-                            .take(AuthViewModel.SIGNUP_OTP_LENGTH)
-                },
-                label = stringResource(R.string.label_verification_code),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                enabled = !formState.isLoading,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+        SeTextButton(
+            text = stringResource(R.string.action_wrong_email),
+            onClick = onBackToLogin,
+            enabled = !formState.isLoading,
+            modifier = Modifier.align(Alignment.Start),
+            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        SegmentedOtpInput(
+            value = code,
+            onValueChange = { incoming ->
+                code = incoming.filter { it.isDigit() }.take(AuthViewModel.SIGNUP_OTP_LENGTH)
+            },
+            onComplete = { completed -> code = completed },
+            enabled = !formState.isLoading && !otpReady,
+            isError = otpIsError,
+            length = AuthViewModel.SIGNUP_OTP_LENGTH,
+            horizontalAlignment = Alignment.Start,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.reset_otp_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = SplitEaseColors.NavyMuted,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = stringResource(R.string.label_new_password),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = SplitEaseColors.Navy,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         PasswordSeTextField(
             value = newPassword,
             onValueChange = { newPassword = it },
             enabled = !formState.isLoading,
-            label = stringResource(R.string.label_new_password),
-            supportingText = stringResource(R.string.signup_password_hint),
+            placeholder = stringResource(R.string.reset_password_placeholder),
+            supportingText = newPasswordError,
+            isError = newPasswordError != null,
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        PasswordRequirementsChecklist(rules = passwordRules)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.label_confirm_password),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = SplitEaseColors.Navy,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         PasswordSeTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             enabled = !formState.isLoading,
-            label = stringResource(R.string.label_confirm_password),
+            placeholder = stringResource(R.string.reset_confirm_password_placeholder),
+            supportingText = confirmPasswordError,
+            isError = confirmPasswordError != null,
         )
         Spacer(modifier = Modifier.height(16.dp))
         SePrimaryButton(
             text = stringResource(R.string.action_set_new_password),
             onClick = { onSubmit(code, newPassword, confirmPassword) },
-            enabled =
-                !formState.isLoading &&
-                    newPassword.isNotEmpty() &&
-                    confirmPassword.isNotEmpty() &&
-                    (otpReady || code.length == AuthViewModel.SIGNUP_OTP_LENGTH),
+            enabled = canSubmit,
+            isLoading = formState.isLoading,
         )
-        if (!otpReady) {
-            Spacer(modifier = Modifier.height(8.dp))
-            SeTextButton(
-                text = stringResource(R.string.action_resend_confirmation),
-                onClick = onResend,
-                enabled = !formState.isLoading,
-            )
-        }
+        Spacer(modifier = Modifier.height(8.dp))
+        SeTextButton(
+            text = stringResource(R.string.action_resend_confirmation),
+            onClick = onResend,
+            enabled = !formState.isLoading && !otpReady,
+            modifier = Modifier.align(Alignment.Start)
+        )
         SeTextButton(
             text = stringResource(R.string.action_back_to_login),
             onClick = onBackToLogin,
             enabled = !formState.isLoading,
+            modifier = Modifier.align(Alignment.Start)
+        )
+    }
+}
+
+private data class PasswordRules(
+    val hasMinLength: Boolean,
+    val hasUpperAndLower: Boolean,
+    val hasDigit: Boolean,
+) {
+    val allMet: Boolean get() = hasMinLength && hasUpperAndLower && hasDigit
+
+    companion object {
+        fun evaluate(password: String): PasswordRules =
+            PasswordRules(
+                hasMinLength = password.length >= AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH,
+                hasUpperAndLower =
+                    password.any { it.isUpperCase() } && password.any { it.isLowerCase() },
+                hasDigit = password.any { it.isDigit() },
+            )
+    }
+}
+
+@Composable
+private fun PasswordRequirementsChecklist(
+    rules: PasswordRules,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        PasswordRequirementRow(
+            text = stringResource(R.string.reset_password_rule_length),
+            met = rules.hasMinLength,
+        )
+        PasswordRequirementRow(
+            text = stringResource(R.string.reset_password_rule_case),
+            met = rules.hasUpperAndLower,
+        )
+        PasswordRequirementRow(
+            text = stringResource(R.string.reset_password_rule_number),
+            met = rules.hasDigit,
+        )
+    }
+}
+
+@Composable
+private fun PasswordRequirementRow(
+    text: String,
+    met: Boolean,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(18.dp)
+                    .border(
+                        width = 1.5.dp,
+                        color = if (met) SplitEaseColors.Primary else SplitEaseColors.OutlineStrong,
+                        shape = CircleShape,
+                    ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (met) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = SplitEaseColors.Primary,
+                    modifier = Modifier.size(12.dp),
+                )
+            }
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (met) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
         )
     }
 }
@@ -521,24 +647,39 @@ fun VerifyEmailScreen(
     modifier: Modifier = Modifier,
 ) {
     var code by rememberSaveable { mutableStateOf("") }
+    val otpIsError = formState.errorMessage != null
 
     AuthScaffold(
         title = stringResource(R.string.verify_email_title),
-        subtitle = stringResource(R.string.verify_email_subtitle, email),
+        subtitle = stringResource(R.string.verify_email_subtitle, truncateEmailForSubtitle(email)),
         formState = formState,
         modifier = modifier,
+        contentPlacement = AuthContentPlacement.Upper,
+        onNavigateBack = onBackToLogin,
+        showLoadingIndicator = false,
     ) {
-        SeTextField(
+        SeTextButton(
+            text = stringResource(R.string.action_wrong_email),
+            onClick = onBackToLogin,
+            enabled = !formState.isLoading,
+            modifier = Modifier.align(Alignment.Start),
+            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        SegmentedOtpInput(
             value = code,
             onValueChange = { incoming ->
-                code =
-                    incoming
-                        .filter { it.isDigit() }
-                        .take(AuthViewModel.SIGNUP_OTP_LENGTH)
+                code = incoming.filter { it.isDigit() }.take(AuthViewModel.SIGNUP_OTP_LENGTH)
             },
-            label = stringResource(R.string.label_verification_code),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            onComplete = { completed ->
+                code = completed
+                if (!formState.isLoading) {
+                    onVerify(completed)
+                }
+            },
             enabled = !formState.isLoading,
+            isError = otpIsError,
+            length = AuthViewModel.SIGNUP_OTP_LENGTH,
         )
         Spacer(modifier = Modifier.height(16.dp))
         SePrimaryButton(
@@ -546,8 +687,10 @@ fun VerifyEmailScreen(
             onClick = { onVerify(code) },
             enabled =
                 !formState.isLoading && code.length == AuthViewModel.SIGNUP_OTP_LENGTH,
+            isLoading = formState.isLoading,
         )
         Spacer(modifier = Modifier.height(8.dp))
+        // No resendCooldown on AuthFormState — keep resend enabled when not loading.
         SeTextButton(
             text = stringResource(R.string.action_resend_confirmation),
             onClick = onResend,
@@ -567,15 +710,20 @@ private fun PasswordSeTextField(
     onValueChange: (String) -> Unit,
     enabled: Boolean,
     label: String? = null,
+    placeholder: String? = null,
     supportingText: String? = null,
+    isError: Boolean = false,
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    val resolvedLabel = label ?: stringResource(R.string.label_password)
+    val resolvedLabel =
+        label ?: if (placeholder == null) stringResource(R.string.label_password) else null
     SeTextField(
         value = value,
         onValueChange = onValueChange,
         label = resolvedLabel,
+        placeholder = placeholder,
         enabled = enabled,
+        isError = isError,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         visualTransformation =
             if (passwordVisible) {
@@ -614,11 +762,13 @@ private fun ProfilePhotoButton(
         remember(photoUri) {
             photoUri?.let { raw ->
                 runCatching {
-                    AvatarImageIO.decodeScaled(
-                        context = context,
-                        photoUrl = raw,
-                        maxSidePx = AvatarImageIO.PREVIEW_MAX_SIDE_PX,
-                    )?.asImageBitmap()
+                    AvatarImageIO
+                        .decodeScaled(
+                            context = context,
+                            photoUrl = raw,
+                            maxSidePx = AvatarImageIO.PREVIEW_MAX_SIDE_PX,
+                        )
+                        ?.asImageBitmap()
                 }.getOrNull()
             }
         }
@@ -661,7 +811,9 @@ private fun PhoneNumberRow(
     OutlinedTextField(
         value = phoneNumber,
         onValueChange = onPhoneChange,
-        modifier = Modifier.fillMaxWidth().clip(shape),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape),
         label = { Text(stringResource(R.string.label_phone_number)) },
         enabled = enabled,
         singleLine = true,
@@ -798,7 +950,12 @@ private fun CurrencyPickerDialog(
             label = stringResource(R.string.settings_currency_search),
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyColumn(modifier = Modifier.fillMaxWidth().height(360.dp)) {
+        LazyColumn(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(360.dp),
+        ) {
             items(options, key = { it.first }) { (code, label) ->
                 Row(
                     modifier =
@@ -865,46 +1022,73 @@ private fun DialCodePickerDialog(
     }
 }
 
+private enum class AuthContentPlacement {
+    /** Vertically centered (login). */
+    Center,
+
+    /** Content block starts near ~40% from the top (forgot / OTP). */
+    Upper,
+
+    /** Top-aligned scrollable form (reset password). */
+    Top,
+}
+
+/**
+ * Keeps reset-password subtitle height stable for long addresses.
+ * Example: `Latarcha.Rabon@VeryLongDomainName.com` → `Latarcha.Rabon@VeryLon…com`
+ */
+private fun truncateEmailForSubtitle(
+    email: String,
+    maxLen: Int = 32,
+): String {
+    val trimmed = email.trim()
+    if (trimmed.length <= maxLen) return trimmed
+    val at = trimmed.lastIndexOf('@')
+    if (at <= 0) return trimmed.take(maxLen - 1) + "…"
+    val local = trimmed.substring(0, at)
+    val domain = trimmed.substring(at + 1)
+    val dot = domain.lastIndexOf('.')
+    val tld = if (dot >= 0) domain.substring(dot) else ""
+    val domainBody = if (dot > 0) domain.substring(0, dot) else domain
+    // local + '@' + body + '…' + tld
+    val fixed = 1 + 1 + tld.length // @ + … + tld
+    val localKeep = local.length.coerceAtMost((maxLen - fixed - 4).coerceAtLeast(4))
+    val bodyBudget = (maxLen - localKeep - fixed).coerceAtLeast(3)
+    val localShown =
+        if (local.length <= localKeep) local else local.take(localKeep - 1) + "…"
+    val bodyShown =
+        if (domainBody.length <= bodyBudget) {
+            domainBody
+        } else {
+            domainBody.take(bodyBudget) + "…"
+        }
+    return "$localShown@$bodyShown$tld"
+}
+
 @Composable
 private fun AuthScaffold(
     title: String,
     formState: AuthFormState,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    subtitleAnnotated: AnnotatedString? = null,
+    contentPlacement: AuthContentPlacement = AuthContentPlacement.Center,
+    onNavigateBack: (() -> Unit)? = null,
+    showLoadingIndicator: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    var snackbarIsError by remember { mutableStateOf(false) }
-
-    LaunchedEffect(formState.errorMessage, formState.infoMessage) {
-        val error = formState.errorMessage
-        val info = formState.infoMessage
-        val message = error ?: info ?: return@LaunchedEffect
-        snackbarIsError = error != null
-        snackbarHostState.showSnackbar(message = message)
-    }
+    val hasBack = onNavigateBack != null
+    val headerAlign = if (hasBack) TextAlign.Start else TextAlign.Center
+    val contentHAlign = if (hasBack) Alignment.Start else Alignment.CenterHorizontally
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor =
-                        if (snackbarIsError) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            SplitEaseColors.Primary
-                        },
-                    contentColor =
-                        if (snackbarIsError) {
-                            MaterialTheme.colorScheme.onErrorContainer
-                        } else {
-                            MaterialTheme.colorScheme.onPrimary
-                        },
-                )
-            }
+            SeMessageHost(
+                errorMessage = formState.errorMessage,
+                infoMessage = formState.infoMessage,
+            )
         },
     ) { padding ->
         Column(
@@ -912,27 +1096,125 @@ private fun AuthScaffold(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+            horizontalAlignment = contentHAlign,
         ) {
-            Text(text = title, style = MaterialTheme.typography.headlineLarge)
-            if (subtitle != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            if (onNavigateBack != null) {
+                // Back alone on the top row; title lives in AuthScaffoldHeader below.
+                SeBackTitleRow(
+                    onBack = onNavigateBack,
+                    enabled = !formState.isLoading,
                 )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            content()
-            if (formState.isLoading) {
-                Spacer(modifier = Modifier.height(16.dp))
-                CircularProgressIndicator()
+            when (contentPlacement) {
+                AuthContentPlacement.Center -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = contentHAlign,
+                    ) {
+                        AuthScaffoldHeader(
+                            title = title,
+                            subtitle = subtitle,
+                            subtitleAnnotated = subtitleAnnotated,
+                            textAlign = headerAlign,
+                        )
+                        content()
+                        if (showLoadingIndicator && formState.isLoading) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+
+                AuthContentPlacement.Upper -> {
+                    // ~40% from top: lead spacer ~0.32 of remaining height, trail takes the rest.
+                    Spacer(modifier = Modifier.weight(0.32f))
+                    AuthScaffoldHeader(
+                        title = title,
+                        subtitle = subtitle,
+                        subtitleAnnotated = subtitleAnnotated,
+                        textAlign = headerAlign,
+                    )
+                    content()
+                    if (showLoadingIndicator && formState.isLoading) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        CircularProgressIndicator()
+                    }
+                    Spacer(modifier = Modifier.weight(0.68f))
+                }
+
+                AuthContentPlacement.Top -> {
+                    // Single scroll surface (avoids nested weight+scroll edge artifacts).
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = contentHAlign,
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AuthScaffoldHeader(
+                            title = title,
+                            subtitle = subtitle,
+                            subtitleAnnotated = subtitleAnnotated,
+                            textAlign = headerAlign,
+                        )
+                        content()
+                        if (showLoadingIndicator && formState.isLoading) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            CircularProgressIndicator()
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun AuthScaffoldHeader(
+    title: String,
+    subtitle: String?,
+    subtitleAnnotated: AnnotatedString? = null,
+    textAlign: TextAlign = TextAlign.Center,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
+        color = SplitEaseColors.Navy,
+        textAlign = textAlign,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (subtitleAnnotated != null) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = subtitleAnnotated,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = textAlign,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    } else if (subtitle != null) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = textAlign,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    Spacer(modifier = Modifier.height(16.dp))
 }
 
 @Preview(showBackground = true, heightDp = 640)
@@ -957,6 +1239,46 @@ private fun SignUpScreenPreview() {
             formState = AuthFormState(),
             onSignUp = { _, _, _, _, _, _, _ -> },
             onBack = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 640)
+@Composable
+private fun ForgotPasswordScreenPreview() {
+    SePreview {
+        ForgotPasswordScreen(
+            formState = AuthFormState(),
+            onSendReset = {},
+            onNavigateBack = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 820)
+@Composable
+private fun VerifyEmailScreenPreview() {
+    SePreview {
+        VerifyEmailScreen(
+            email = "james.a.garfield@example.com",
+            formState = AuthFormState(),
+            onVerify = {},
+            onResend = {},
+            onBackToLogin = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ResetPasswordOtpScreenPreview() {
+    SePreview {
+        ResetPasswordOtpScreen(
+            email = "john.c.calhoun@example.com",
+            formState = AuthFormState(),
+            onSubmit = { _, _, _ -> },
+            onResend = {},
+            onBackToLogin = {},
         )
     }
 }

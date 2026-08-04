@@ -213,7 +213,8 @@ class BalanceInteractor
                 flow {
                     val splits = loadSplits(inputs.expenses)
                     val label =
-                        inputs.friends.firstOrNull { it.friendUserId == friendUserId }
+                        inputs.friends
+                            .firstOrNull { it.friendUserId == friendUserId }
                             ?.displayNameSnapshot
                             ?: userRepository.getUserById(friendUserId)?.displayName
                             ?: friendUserId.take(8)
@@ -312,7 +313,8 @@ class BalanceInteractor
                             inputs.payments,
                         )
                     val myNets =
-                        allNets.mapNotNull { (currency, nets) ->
+                        allNets
+                            .mapNotNull { (currency, nets) ->
                             val mine = nets[viewerUserId] ?: return@mapNotNull null
                             if (mine.compareTo(ZERO) == 0) null else currency to mine
                         }.toMap()
@@ -323,7 +325,8 @@ class BalanceInteractor
                             .mapValues { (_, v) -> v.abs() }
 
                     val friendBalances =
-                        inputs.friends.map { friend ->
+                        inputs.friends
+                            .map { friend ->
                             val contexts = mutableListOf<FriendContextBalanceUi>()
                             inputs.groups.forEach { group ->
                                 val groupExpenses =
@@ -446,7 +449,8 @@ class BalanceInteractor
                     ?: groupId.take(8)
             val labels = resolveLabels(viewerUserId, byCurrency, transfers)
             val myNets =
-                byCurrency.mapNotNull { (currency, nets) ->
+                byCurrency
+                    .mapNotNull { (currency, nets) ->
                     val mine = nets[viewerUserId] ?: return@mapNotNull null
                     if (mine.compareTo(ZERO) == 0) null else currency to mine
                 }.toMap()
@@ -477,7 +481,9 @@ class BalanceInteractor
                     add(viewerUserId)
                 }
             val friendLabels =
-                friendRepository.observeFriends(viewerUserId).first()
+                friendRepository
+                    .observeFriends(viewerUserId)
+                    .first()
                     .associate { it.friendUserId to it.displayNameSnapshot }
             return ids.associateWith { id ->
                 when (id) {

@@ -85,8 +85,10 @@ object SplitEaseColors {
     // TODO(design): Confirm semantic balance colors before shipping.
     /** PLACEHOLDER — "you owe". */
     val YouOwe = ErrorPlaceholder
+
     /** PLACEHOLDER — "you're owed" / positive. */
     val OwedToYou = PositivePlaceholder
+
     @get:Composable
     @get:ReadOnlyComposable
     val Settled: Color
@@ -104,6 +106,7 @@ object SplitEaseColors {
     // Explicit positive pair for callers that need containers
     /** PLACEHOLDER — positive fill. Confirm before shipping. */
     val Positive = PositivePlaceholder
+
     /** PLACEHOLDER — positive container. Confirm before shipping. */
     val PositiveContainer = PositiveContainerPlaceholder
 }

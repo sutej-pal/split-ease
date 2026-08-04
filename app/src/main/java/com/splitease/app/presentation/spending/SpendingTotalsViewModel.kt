@@ -38,7 +38,8 @@ class SpendingTotalsViewModel
         private val spendingInteractor: SpendingInteractor,
     ) : ViewModel() {
         private val userId =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

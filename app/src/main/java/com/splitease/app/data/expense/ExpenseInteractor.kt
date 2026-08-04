@@ -22,6 +22,7 @@ import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.split.SplitCalculator
+import kotlinx.coroutines.flow.first
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.util.Date
@@ -29,7 +30,6 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.first
 
 /**
  * Input for creating an expense with splits.
@@ -196,7 +196,8 @@ class ExpenseInteractor
                                 },
                             percentages =
                                 if (template.splitType == SplitType.PERCENTAGE) {
-                                    templateSplits.mapNotNull { split ->
+                                    templateSplits
+                                        .mapNotNull { split ->
                                         split.percentage?.let { split.userId to it }
                                     }.toMap()
                                 } else {
@@ -204,7 +205,8 @@ class ExpenseInteractor
                                 },
                             shares =
                                 if (template.splitType == SplitType.SHARES) {
-                                    templateSplits.mapNotNull { split ->
+                                    templateSplits
+                                        .mapNotNull { split ->
                                         split.shares?.let { split.userId to it }
                                     }.toMap()
                                 } else {

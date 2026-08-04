@@ -30,7 +30,8 @@ class SplitEaseMigrationsTest {
     @Throws(IOException::class)
     fun migrateAll() {
         helper.createDatabase(dbName, 1).close()
-        Room.databaseBuilder(
+        Room
+            .databaseBuilder(
             InstrumentationRegistry.getInstrumentation().targetContext,
             SplitEaseDatabase::class.java,
             dbName,

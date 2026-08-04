@@ -1,13 +1,13 @@
 package com.splitease.app.data.remote
 
 import com.splitease.app.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Thin HTTP client for the external mail service endpoint.
@@ -59,7 +59,10 @@ class MailRemoteDataSource
                 if (status !in 200..299) {
                     val errorBody =
                         runCatching {
-                            connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                            connection.errorStream
+                                ?.bufferedReader()
+                                ?.use { it.readText() }
+                                .orEmpty()
                         }.getOrDefault("")
                     throw IllegalStateException(
                         "Mail service request failed: HTTP $status${if (errorBody.isNotBlank()) " - $errorBody" else ""}",

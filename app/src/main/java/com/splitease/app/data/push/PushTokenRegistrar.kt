@@ -74,7 +74,8 @@ class PushTokenRegistrar
             token: String,
         ) {
             val stableId =
-                java.util.UUID.nameUUIDFromBytes("$userId:$token".toByteArray(Charsets.UTF_8))
+                java.util.UUID
+                    .nameUUIDFromBytes("$userId:$token".toByteArray(Charsets.UTF_8))
                     .toString()
             remote.upsert(
                 DeviceTokenDto(

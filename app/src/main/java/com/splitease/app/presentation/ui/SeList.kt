@@ -167,8 +167,7 @@ fun SeAvatarBadge(
                     } else {
                         Modifier
                     },
-                )
-                .clip(CircleShape)
+                ).clip(CircleShape)
                 .background(SplitEaseColors.PrimaryDark),
         contentAlignment = Alignment.Center,
     ) {
@@ -207,7 +206,8 @@ private fun loadLocalAvatarBitmap(
 ): ImageBitmap? {
     if (photoUrl.isNullOrBlank()) return null
     return runCatching {
-        AvatarImageIO.decodeScaled(
+        AvatarImageIO
+            .decodeScaled(
             context = context,
             photoUrl = photoUrl,
             maxSidePx = AvatarImageIO.PREVIEW_MAX_SIDE_PX,

@@ -127,7 +127,8 @@ fun SettleUpScreen(
                                 val parsed =
                                     runCatching { BigDecimal(amount.trim()) }.getOrNull()
                                 if (parsed == null || parsed <= BigDecimal.ZERO) {
-                                    Toast.makeText(
+                                    Toast
+                                        .makeText(
                                         context,
                                         invalidAmountMsg,
                                         Toast.LENGTH_SHORT,
@@ -189,7 +190,8 @@ private fun launchPayAction(
         when (kind) {
             PayActionKind.UPI -> {
                 val uri =
-                    PaymentDeepLinks.upiPayUri(
+                    PaymentDeepLinks
+                        .upiPayUri(
                         amount = amount,
                         currencyCode = currencyCode,
                         payeeName = counterpartyLabel,
@@ -200,7 +202,8 @@ private fun launchPayAction(
 
             PayActionKind.PAYPAL -> {
                 val uri =
-                    PaymentDeepLinks.paypalUri(
+                    PaymentDeepLinks
+                        .paypalUri(
                         amount = amount,
                         currencyCode = currencyCode,
                     ).toUri()
@@ -209,7 +212,8 @@ private fun launchPayAction(
 
             PayActionKind.VENMO -> {
                 val uri =
-                    PaymentDeepLinks.venmoUri(
+                    PaymentDeepLinks
+                        .venmoUri(
                         amount = amount,
                         note = note.ifBlank { "SplitEase" },
                     ).toUri()

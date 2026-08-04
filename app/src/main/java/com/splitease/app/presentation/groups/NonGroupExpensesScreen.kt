@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -264,7 +264,9 @@ fun NonGroupExpensesScreen(
                             SeSectionHeader(text = stringResource(R.string.balances_title))
                             GroupBalanceHeader(balance = balance)
                             val myDebts =
-                                balance?.simplifiedDebts?.filter { debt ->
+                                balance
+                                    ?.simplifiedDebts
+                                    ?.filter { debt ->
                                     me != null && (debt.fromUserId == me || debt.toUserId == me)
                                 }.orEmpty()
                             if (myDebts.isEmpty()) {
@@ -364,8 +366,7 @@ fun NonGroupExpensesScreen(
                                 .clickable {
                                     showFriendPicker = false
                                     onAddExpenseForFriend(friend.friendUserId)
-                                }
-                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                                }.padding(horizontal = 24.dp, vertical = 14.dp),
                     )
                 }
             }
@@ -395,7 +396,7 @@ private fun NonGroupDetailBanner(
         ) {
             BannerCircleIconButton(
                 onClick = onBack,
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                imageVector = Icons.Filled.ChevronLeft,
                 contentDescription = stringResource(R.string.cd_back),
             )
             BannerCircleIconButton(

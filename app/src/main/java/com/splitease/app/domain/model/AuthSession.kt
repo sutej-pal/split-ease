@@ -30,5 +30,7 @@ sealed interface AuthSession {
      *
      * @property user Session user.
      */
-    data class SignedIn(val user: AuthUser) : AuthSession
+    data class SignedIn(
+        val user: AuthUser
+    ) : AuthSession
 }

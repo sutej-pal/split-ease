@@ -83,7 +83,8 @@ object InviteLinks {
         fallbackUrl: String = urlFor(token),
     ): String {
         val encodedFallback =
-            java.net.URLEncoder.encode(fallbackUrl, Charsets.UTF_8.name())
+            java.net.URLEncoder
+                .encode(fallbackUrl, Charsets.UTF_8.name())
                 .replace("+", "%20")
         return "intent://$DEEP_LINK_HOST/$token#Intent;" +
             "scheme=$DEEP_LINK_SCHEME;" +
@@ -180,9 +181,21 @@ object InviteLinks {
         if (text.isNullOrBlank()) return null
         val trimmed = text.trim()
         tokenFromUriString(trimmed)?.let { return it }
-        CUSTOM_SCHEME_TOKEN.find(trimmed)?.groupValues?.getOrNull(1)?.let { return it }
-        HTTPS_TOKEN.find(trimmed)?.groupValues?.getOrNull(1)?.let { return it }
-        INTENT_TOKEN.find(trimmed)?.groupValues?.getOrNull(1)?.let { return it }
+        CUSTOM_SCHEME_TOKEN
+            .find(trimmed)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.let { return it }
+        HTTPS_TOKEN
+            .find(trimmed)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.let { return it }
+        INTENT_TOKEN
+            .find(trimmed)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.let { return it }
         if (BARE_TOKEN.matches(trimmed)) return trimmed
         return null
     }

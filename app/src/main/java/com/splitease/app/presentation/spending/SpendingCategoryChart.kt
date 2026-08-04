@@ -50,7 +50,11 @@ fun SpendingCategoryChart(
                 bottomAxis =
                     HorizontalAxis.rememberBottom(
                         valueFormatter = { _, value, _ ->
-                            chartRows.getOrNull(value.toInt())?.categoryName?.take(8).orEmpty()
+                            chartRows
+                                .getOrNull(value.toInt())
+                                ?.categoryName
+                                ?.take(8)
+                                .orEmpty()
                         },
                     ),
             ),

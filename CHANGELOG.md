@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs
 
 ### Fixed
+- Password reset showed generic “Something went wrong” after a valid OTP: `updatePassword` no longer fails the whole flow when local hydrate hiccups, and Supabase `same_password` / expired-session errors map to clear copy
+- Forgot-password never reveals whether an email is registered: `requestPasswordReset` always soft-succeeds, always opens the OTP screen with “If an account exists…” copy, and OTP verify failures use a generic “Invalid or expired code” (Supabase rate-limits resend server-side)
 - Adding a friend from Find people → Friends on SplitEase now syncs `group_members` to Supabase (group pushed first; cloud errors surfaced). Pending invite friends get a GROUP invite instead of a local-only placeholder membership
 - Friend/group expenses invisible on the other account: inviter reconcile remapped splits only in Room then marked invites `ACCEPTED` (so `accept_pending_invites` never remapped remote `expense_splits`), and friendships were one-way so the invitee had no Friends list entry; now remaps remote splits (RPC + re-push heal), creates reciprocal friendships on link/accept, and backfills friends from shared activity ([sql/phase-3g-fix-reciprocal-friends-expense-remap.sql](docs/sql/phase-3g-fix-reciprocal-friends-expense-remap.sql))
 - Sign-in briefly flashed Welcome before verify OTP: OTP gate is armed before password session sign-out

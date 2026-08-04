@@ -37,7 +37,8 @@ class SettleUpViewModel
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

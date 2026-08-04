@@ -47,9 +47,9 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
+import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
-import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
@@ -60,6 +60,7 @@ import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
+
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
@@ -204,7 +205,6 @@ private fun appLocaleLabel(locale: AppLocale): String =
             AppLocale.JAPANESE -> R.string.settings_language_ja
         },
     )
-
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -371,8 +371,7 @@ fun SecuritySettingsScreen(
                             .clickable {
                                 viewModel.setAuthTimeout(option)
                                 showTimeoutPicker = false
-                            }
-                            .padding(vertical = 8.dp),
+                            }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(

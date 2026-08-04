@@ -42,7 +42,10 @@ fun ImportTransactionsScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri == null) return@rememberLauncherForActivityResult
             runCatching {
-                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                context.contentResolver
+                    .openInputStream(uri)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
                     ?: error("Could not read file.")
             }.onSuccess { text ->
                 viewModel.loadCsv(text)

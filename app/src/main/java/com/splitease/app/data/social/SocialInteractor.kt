@@ -74,7 +74,8 @@ class SocialInteractor
         ): Result<Unit> =
             runCatching {
                 val friend =
-                    friendRepository.getByFriendUserId(friendUserId)
+                    friendRepository
+                        .getByFriendUserId(friendUserId)
                         ?.takeIf { it.ownerUserId == ownerUserId }
                         ?: error("Friend not found.")
 
@@ -87,7 +88,9 @@ class SocialInteractor
                 expenseRepository.observeBetweenUsers(ownerUserId, friendUserId).first().forEach { expense ->
                     expenseRepository.deleteExpenseById(expense.id)
                 }
-                paymentRepository.observeBetweenUsers(ownerUserId, friendUserId).first()
+                paymentRepository
+                    .observeBetweenUsers(ownerUserId, friendUserId)
+                    .first()
                     .filter { it.groupId == null }
                     .forEach { payment ->
                         paymentRepository.deleteById(payment.id)
@@ -115,7 +118,8 @@ class SocialInteractor
         ): Result<AddPersonOutcome> =
             runCatching {
                 val friend =
-                    friendRepository.getByFriendUserId(friendUserId)
+                    friendRepository
+                        .getByFriendUserId(friendUserId)
                         ?.takeIf { it.ownerUserId == ownerUserId }
                         ?: error("Friend not found.")
                 val normalized = contact.trim()
@@ -967,7 +971,8 @@ class SocialInteractor
         ): Result<AddPersonOutcome> =
             runCatching {
                 val friend =
-                    friendRepository.getByFriendUserId(friendUserId)
+                    friendRepository
+                        .getByFriendUserId(friendUserId)
                         ?.takeIf { it.ownerUserId == ownerUserId }
                         ?: error("Friend not found.")
                 val pendingInvite = inviteRepository.getByFriendRowId(friend.id)
@@ -1274,7 +1279,8 @@ class SocialInteractor
                 when {
                     resolved != null && resolved.email.isNotBlank() -> resolved.email.trim()
                     email.isNotBlank() -> email.trim()
-                    existing != null && existing.email.isNotBlank() &&
+                    existing != null &&
+                        existing.email.isNotBlank() &&
                         !existing.email.startsWith("local+") -> existing.email
                     else -> "local+$userId@users.local"
                 }
@@ -1680,7 +1686,8 @@ class SocialInteractor
                     photoUri = photoUri,
                     destFile = dest,
                 )
-            dir.listFiles()
+            dir
+                .listFiles()
                 ?.filter { file ->
                     file.isFile &&
                         (
@@ -1690,8 +1697,7 @@ class SocialInteractor
                                         file.name.endsWith(".jpg", ignoreCase = true)
                                 )
                         )
-                }
-                ?.sortedByDescending { it.lastModified() }
+                }?.sortedByDescending { it.lastModified() }
                 ?.drop(2)
                 ?.forEach { it.delete() }
             return path

@@ -170,7 +170,9 @@ private fun AppLockOverlay(onUnlocked: () -> Unit) {
 sealed interface BiometricAvailability {
     data object Ready : BiometricAvailability
 
-    data class Unavailable(val message: String) : BiometricAvailability
+    data class Unavailable(
+        val message: String
+    ) : BiometricAvailability
 }
 
 /**
@@ -236,7 +238,8 @@ fun authenticateWithBiometrics(
         BiometricManager.Authenticators.BIOMETRIC_STRONG or
             BiometricManager.Authenticators.DEVICE_CREDENTIAL
     val promptInfo =
-        BiometricPrompt.PromptInfo.Builder()
+        BiometricPrompt.PromptInfo
+            .Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
             .setAllowedAuthenticators(authenticators)

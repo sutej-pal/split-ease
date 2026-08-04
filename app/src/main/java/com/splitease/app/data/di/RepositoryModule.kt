@@ -1,5 +1,6 @@
 package com.splitease.app.data.di
 
+import com.splitease.app.data.repository.RenderMailRepository
 import com.splitease.app.data.repository.RoomActivityEventRepository
 import com.splitease.app.data.repository.RoomCategoryRepository
 import com.splitease.app.data.repository.RoomExpenseRepository
@@ -8,7 +9,6 @@ import com.splitease.app.data.repository.RoomGroupRepository
 import com.splitease.app.data.repository.RoomInviteRepository
 import com.splitease.app.data.repository.RoomPaymentRepository
 import com.splitease.app.data.repository.RoomUserRepository
-import com.splitease.app.data.repository.RenderMailRepository
 import com.splitease.app.data.repository.SupabaseAuthRepository
 import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
 import com.splitease.app.domain.repository.ActivityEventRepository

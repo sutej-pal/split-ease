@@ -11,7 +11,7 @@ Replace link-based password reset with a **6-digit email OTP** flow that matches
 - Fallback Supabase HTML template doc for Reset password
 - `AuthRepository.verifyRecoveryOtp` + `updatePassword`
 - Forgot-password → OTP + set-new-password screen (gated like signup OTP)
-- Resend recovery code via existing `sendPasswordReset` / `resetPasswordForEmail`
+- Resend recovery code via existing `requestPasswordReset` / `resetPasswordForEmail`
 - Strings, ViewModel, unit tests, living docs
 
 **Out**
@@ -52,8 +52,8 @@ None (Room / PostgREST unchanged).
 
 | Screen | Change |
 |---|---|
-| Forgot password | Copy: send a **code** (not link) |
-| Reset password (OTP) | After send: 6-digit code + new password + confirm; Resend code |
+| Forgot password | Copy: send a **code** if an account exists (never “email not found”) |
+| Reset password (OTP) | After send: always navigate; 6-digit code + new password + confirm; Resend code (Supabase rate-limits) |
 
 ## How to Test
 
@@ -75,13 +75,13 @@ None (Room / PostgREST unchanged).
 
 ## Outcome
 
-Updated 2026-08-04: forgot-password uses the same mail-service Send Email hook with a dedicated **recovery** template; the Android app verifies `OtpType.Email.RECOVERY` then calls `updatePassword`.
+Updated 2026-08-04: forgot-password uses the same mail-service Send Email hook with a dedicated **recovery** template; the Android app verifies `OtpType.Email.RECOVERY` then calls `updatePassword`. Request is privacy-preserving: `requestPasswordReset` always soft-succeeds and navigates to OTP with generic “If an account exists…” copy; verify failures are always “Invalid or expired code.”
 
-- Forgot password → send reset code → `ResetPasswordOtpScreen` (OTP + new password + confirm).
-- `AuthRepository.verifyRecoveryOtp` + `updatePassword`.
+- Forgot password → `requestPasswordReset` → always `ResetPasswordOtpScreen` (OTP + new password + confirm).
+- `AuthRepository.requestPasswordReset` + `verifyRecoveryOtp` + `updatePassword`.
 - mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup (“Reset your SplitEase password”).
 - Fallback dashboard HTML: [supabase-reset-password-otp.html](supabase-reset-password-otp.html).
-- Unit tests cover gate arming, verify+update, mismatch, and password-only retry after OTP success.
+- Unit tests cover gate arming, soft-success navigate, verify+update, generic invalid OTP, mismatch, and password-only retry after OTP success.
 
 Operator requirements:
 - Redeploy Render mail-service so recovery copy is live.

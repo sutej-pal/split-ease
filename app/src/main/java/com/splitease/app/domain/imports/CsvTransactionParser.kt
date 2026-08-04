@@ -50,7 +50,8 @@ object CsvTransactionParser {
         defaultCurrency: String = AppCurrencies.DEFAULT,
     ): List<ImportedTransaction> {
         val lines =
-            csv.lineSequence()
+            csv
+                .lineSequence()
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .toList()
@@ -67,6 +68,7 @@ object CsvTransactionParser {
 
         return lines.drop(1).mapIndexed { index, line ->
             val cols = splitCsvLine(line)
+
             fun col(i: Int): String = cols.getOrNull(i)?.trim().orEmpty()
             val description = col(descIdx)
             require(description.isNotBlank()) { "Row ${index + 2}: description is blank." }

@@ -1,7 +1,9 @@
 package com.splitease.app.presentation.friends
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
@@ -16,8 +18,6 @@ import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import android.content.Context
-import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,7 +68,8 @@ class FindPeopleViewModel
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -193,7 +194,9 @@ class FindPeopleViewModel
         }
 
         fun filteredFriends(all: List<Friend>): List<Friend> {
-            val q = _uiState.value.query.trim().lowercase()
+            val q = _uiState.value.query
+                .trim()
+                .lowercase()
             if (q.isEmpty()) return all
             return all.filter {
                 it.displayNameSnapshot.lowercase().contains(q) ||
@@ -202,7 +205,9 @@ class FindPeopleViewModel
         }
 
         fun filteredContacts(): List<DeviceContact> {
-            val q = _uiState.value.query.trim().lowercase()
+            val q = _uiState.value.query
+                .trim()
+                .lowercase()
             val all = _uiState.value.contacts
             if (q.isEmpty()) return all
             return all.filter { it.searchable().contains(q) }
@@ -213,9 +218,10 @@ class FindPeopleViewModel
             viewModelScope.launch {
                 val ownerId =
                     userId.value
-                        ?: (authRepository.observeSession().first { it !is AuthSession.Loading }
-                            as? AuthSession.SignedIn)
-                            ?.user
+                        ?: (
+                            authRepository.observeSession().first { it !is AuthSession.Loading }
+                            as? AuthSession.SignedIn
+                        )?.user
                             ?.userId
                 if (ownerId == null) {
                     _uiState.update {
@@ -277,9 +283,10 @@ class FindPeopleViewModel
             viewModelScope.launch {
                 val id =
                     userId.value
-                        ?: (authRepository.observeSession().first { it !is AuthSession.Loading }
-                            as? AuthSession.SignedIn)
-                            ?.user
+                        ?: (
+                            authRepository.observeSession().first { it !is AuthSession.Loading }
+                            as? AuthSession.SignedIn
+                        )?.user
                             ?.userId
                 if (id == null) {
                     _uiState.update {

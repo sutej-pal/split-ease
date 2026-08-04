@@ -53,7 +53,8 @@ class FriendSettingsViewModel
             savedStateHandle.get<String>("friendUserId").orEmpty()
 
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -158,7 +159,8 @@ class FriendSettingsViewModel
 
         fun firstName(): String {
             val raw =
-                friend.value?.displayNameSnapshot
+                friend.value
+                    ?.displayNameSnapshot
                     ?.removeSuffix(" (invited)")
                     ?.trim()
                     .orEmpty()

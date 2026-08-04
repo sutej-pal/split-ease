@@ -2,8 +2,8 @@ package com.splitease.app.data.social
 
 import android.content.Context
 import com.android.installreferrer.api.InstallReferrerClient
-import com.android.installreferrer.api.InstallReferrerStateListener
 import com.android.installreferrer.api.InstallReferrerClient.InstallReferrerResponse
+import com.android.installreferrer.api.InstallReferrerStateListener
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +78,7 @@ class InstallReferrerInviteBootstrap
             suspendCancellableCoroutine { cont ->
                 val client = InstallReferrerClient.newBuilder(context).build()
                 val finished = AtomicBoolean(false)
+
                 fun complete(value: String?) {
                     if (!finished.compareAndSet(false, true)) return
                     runCatching { client.endConnection() }

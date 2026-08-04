@@ -96,8 +96,10 @@ object SplitCalculator {
         require(pctSum.compareTo(HUNDRED) == 0) { "Percentages must sum to 100." }
 
         val provisional =
-            participants.associateWith { id ->
-                total.multiply(percentages.getValue(id))
+            participants
+                .associateWith { id ->
+                total
+                    .multiply(percentages.getValue(id))
                     .divide(HUNDRED, 2, RoundingMode.DOWN)
             }.toMutableMap()
         var allocated = provisional.values.fold(ZERO) { acc, v -> acc.add(v) }
@@ -124,8 +126,10 @@ object SplitCalculator {
         require(shares.values.all { it > 0 }) { "Shares must be positive." }
         val totalShares = shares.values.sum()
         val provisional =
-            participants.associateWith { id ->
-                total.multiply(BigDecimal(shares.getValue(id)))
+            participants
+                .associateWith { id ->
+                total
+                    .multiply(BigDecimal(shares.getValue(id)))
                     .divide(BigDecimal(totalShares), 2, RoundingMode.DOWN)
             }.toMutableMap()
         var allocated = provisional.values.fold(ZERO) { acc, v -> acc.add(v) }

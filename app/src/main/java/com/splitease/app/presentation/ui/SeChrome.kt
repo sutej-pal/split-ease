@@ -1,11 +1,19 @@
 package com.splitease.app.presentation.ui
 
 import android.app.Activity
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -16,17 +24,27 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
 
 @Composable
@@ -48,6 +66,40 @@ fun SeSystemBars(
             isAppearanceLightStatusBars = statusBarDarkIcons
             isAppearanceLightNavigationBars = navigationBarDarkIcons
         }
+    }
+}
+
+/**
+ * Back chevron centered horizontally and vertically in a circular hit target.
+ */
+@Composable
+private fun SeChevronBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentDescription: String = stringResource(R.string.cd_navigate_back),
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier =
+            modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .clickable(
+                    enabled = enabled,
+                    interactionSource = interactionSource,
+                    indication = ripple(bounded = true, radius = 20.dp),
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.ChevronLeft,
+            contentDescription = contentDescription,
+            tint = SplitEaseColors.Navy,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }
 
@@ -75,15 +127,16 @@ fun SeTopBar(
                     Icon(Icons.Filled.Close, contentDescription = "Close")
                 }
             onBack != null ->
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
+                SeChevronBackButton(
+                    onClick = onBack,
+                    contentDescription = "Back",
+                )
         }
     }
     val titleContent: @Composable () -> Unit = {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -106,6 +159,49 @@ fun SeTopBar(
             actions = actions,
             colors = colors,
         )
+    }
+}
+
+/**
+ * Inline back control with an optional title beside it (auth-style headers).
+ * Prefer [SeTopBar] / [SeScreen] when you need a Material top app bar.
+ */
+@Composable
+fun SeBackTitleRow(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    enabled: Boolean = true,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SeChevronBackButton(
+            onClick = onBack,
+            enabled = enabled,
+        )
+        if (title != null) {
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Start,
+                color = SplitEaseColors.Navy,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                autoSize =
+                    TextAutoSize.StepBased(
+                        minFontSize = 16.sp,
+                        maxFontSize = 24.sp,
+                    ),
+            )
+        }
     }
 }
 
@@ -162,6 +258,17 @@ private fun SeTopBarPreview() {
             SeTopBar(title = "Create a group", onClose = {}, centered = true, actions = {
                 SeTextButton(text = "Done", onClick = {})
             })
+        }
+    }
+}
+
+@Preview(name = "Back title row", showBackground = true)
+@Composable
+private fun SeBackTitleRowPreview() {
+    SePreview {
+        Column {
+            SeBackTitleRow(title = "Forgot password", onBack = {})
+            SeBackTitleRow(onBack = {})
         }
     }
 }

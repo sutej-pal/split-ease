@@ -3,7 +3,6 @@ package com.splitease.app
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +12,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.splitease.app.data.di.SupabaseModule
@@ -101,7 +101,8 @@ class MainActivity : FragmentActivity() {
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
         val openGroupId =
-            intent.getStringExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
+            intent
+                .getStringExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() }
         if (openGroupId != null) {

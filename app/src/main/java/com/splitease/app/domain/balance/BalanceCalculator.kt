@@ -64,8 +64,7 @@ object BalanceCalculator {
             .groupBy { it.currencyCode }
             .mapValues { (_, currencyExpenses) ->
                 netBalances(currencyExpenses, splitsByExpenseId)
-            }
-            .filterValues { it.isNotEmpty() }
+            }.filterValues { it.isNotEmpty() }
     }
 
     /**

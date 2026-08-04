@@ -3,7 +3,6 @@ package com.splitease.app.presentation.auth
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.splitease.app.R
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.SignUpResult
@@ -69,7 +68,7 @@ data class AuthFormState(
  * Session-aware auth ViewModel for login, signup, reset, and sign-out.
  *
  * @property authRepository Supabase-backed auth operations.
- * @property appContext Application context for string resources.
+ * @property appContext Application context (Hilt-injected; retained for DI).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -78,6 +77,7 @@ class AuthViewModel
     constructor(
         private val authRepository: AuthRepository,
         private val appSettingsRepository: AppSettingsRepository,
+        @Suppress("UnusedPrivateProperty")
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         /** Live session used to gate navigation. */
@@ -91,8 +91,7 @@ class AuthViewModel
                         delay(AUTH_LOADING_TIMEOUT_MS)
                         emit(AuthSession.SignedOut)
                     }
-                }
-                .stateIn(
+                }.stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(5_000),
                     initialValue = AuthSession.Loading,
@@ -206,8 +205,17 @@ class AuthViewModel
          * @param password Account password.
          */
         fun signIn(email: String, password: String) {
+            val trimmedEmail = email.trim()
+            if (trimmedEmail.isEmpty() || password.isBlank()) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = AuthMessages.LOGIN_FIELDS_REQUIRED,
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
             viewModelScope.launch {
-                val trimmedEmail = email.trim()
                 _formState.update {
                     it.copy(
                         isLoading = true,
@@ -227,9 +235,9 @@ class AuthViewModel
                             val registered =
                                 authRepository.isEmailRegistered(trimmedEmail).getOrDefault(true)
                             if (!registered) {
-                                appContext.getString(R.string.error_not_registered)
+                                AuthMessages.NOT_REGISTERED
                             } else {
-                                appContext.getString(R.string.error_invalid_credentials)
+                                AuthMessages.INVALID_CREDENTIALS
                             }
                         } else {
                             friendlyAuthError(err)
@@ -275,7 +283,7 @@ class AuthViewModel
             if (trimmedName.isBlank()) {
                 _formState.update {
                     it.copy(
-                        errorMessage = appContext.getString(R.string.signup_error_name_required),
+                        errorMessage = AuthMessages.NAME_REQUIRED,
                         infoMessage = null,
                     )
                 }
@@ -284,7 +292,7 @@ class AuthViewModel
             if (password.length < MIN_SIGNUP_PASSWORD_LENGTH) {
                 _formState.update {
                     it.copy(
-                        errorMessage = appContext.getString(R.string.signup_error_password_short),
+                        errorMessage = AuthMessages.PASSWORD_SHORT,
                         infoMessage = null,
                     )
                 }
@@ -311,7 +319,7 @@ class AuthViewModel
                         AuthFormState(
                             isLoading = false,
                             errorMessage =
-                                appContext.getString(R.string.error_email_already_registered),
+                                AuthMessages.EMAIL_ALREADY_REGISTERED,
                         )
                     }
                     return@launch
@@ -326,7 +334,7 @@ class AuthViewModel
                             AuthFormState(
                                 isLoading = false,
                                 errorMessage =
-                                    appContext.getString(R.string.error_phone_already_registered),
+                                    AuthMessages.PHONE_ALREADY_REGISTERED,
                             )
                         }
                         return@launch
@@ -361,7 +369,7 @@ class AuthViewModel
                                 pendingConfirmationEmail = outcome.email,
                                 pendingOtpPurpose = PendingOtpPurpose.SIGNUP,
                                 holdSignedInForOtp = false,
-                                infoMessage = appContext.getString(R.string.verify_email_sent),
+                                infoMessage = AuthMessages.VERIFY_EMAIL_SENT,
                             )
                         }
                     is SignUpResult.SignedIn, null -> {
@@ -390,7 +398,7 @@ class AuthViewModel
                         _formState.update {
                             it.copy(
                                 isLoading = false,
-                                infoMessage = appContext.getString(R.string.verify_email_sent),
+                                infoMessage = AuthMessages.VERIFY_EMAIL_SENT,
                             )
                         }
                     }
@@ -403,11 +411,12 @@ class AuthViewModel
          */
         fun resendConfirmation(email: String) {
             val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
+            val trimmedEmail = email.trim()
             val successMessage =
                 when (purpose) {
                     PendingOtpPurpose.RECOVERY ->
-                        appContext.getString(R.string.reset_otp_resent)
-                    else -> appContext.getString(R.string.verify_email_resent)
+                        AuthMessages.resetOtpSent(trimmedEmail)
+                    else -> AuthMessages.VERIFY_EMAIL_RESENT
                 }
             submit(successMessage = successMessage) {
                 when (purpose) {
@@ -415,7 +424,7 @@ class AuthViewModel
                     PendingOtpPurpose.LOGIN -> authRepository.sendLoginOtp(email)
                     PendingOtpPurpose.RECOVERY -> {
                         _formState.update { it.copy(recoveryOtpVerified = false) }
-                        authRepository.sendPasswordReset(email)
+                        authRepository.requestPasswordReset(email)
                     }
                 }
             }
@@ -430,20 +439,13 @@ class AuthViewModel
          */
         fun verifyPendingOtp(email: String, token: String) {
             val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
-            if (purpose == PendingOtpPurpose.RECOVERY) {
-                _formState.update {
-                    it.copy(
-                        errorMessage = appContext.getString(R.string.reset_password_use_form),
-                        infoMessage = null,
-                    )
-                }
-                return
-            }
+            // Recovery uses [completePasswordReset] on ResetPasswordOtpScreen.
+            if (purpose == PendingOtpPurpose.RECOVERY) return
             val code = token.trim()
             if (code.length != SIGNUP_OTP_LENGTH || code.any { !it.isDigit() }) {
                 _formState.update {
                     it.copy(
-                        errorMessage = appContext.getString(R.string.verify_email_invalid_code),
+                        errorMessage = AuthMessages.VERIFY_EMAIL_INVALID_CODE,
                         infoMessage = null,
                     )
                 }
@@ -459,8 +461,7 @@ class AuthViewModel
                             authRepository.verifySignupOtp(email.trim(), code)
                         PendingOtpPurpose.LOGIN ->
                             authRepository.verifyLoginOtp(email.trim(), code)
-                        PendingOtpPurpose.RECOVERY ->
-                            Result.failure(IllegalStateException("Use completePasswordReset"))
+                        PendingOtpPurpose.RECOVERY -> return@launch
                     }
                 if (result.isSuccess) {
                     _formState.update {
@@ -485,16 +486,19 @@ class AuthViewModel
         }
 
         /**
-         * Requests a password-reset OTP email and opens the set-new-password gate.
+         * Requests a password-reset OTP and always opens the set-new-password gate.
+         *
+         * Does not reveal whether [email] is registered — [AuthRepository.requestPasswordReset]
+         * always resolves success; missing accounts simply never receive a code.
          *
          * @param email Account email.
          */
-        fun sendPasswordReset(email: String) {
+        fun requestPasswordReset(email: String) {
             val trimmedEmail = email.trim()
             if (trimmedEmail.isEmpty()) {
                 _formState.update {
                     it.copy(
-                        errorMessage = appContext.getString(R.string.error_invalid_email),
+                        errorMessage = AuthMessages.INVALID_EMAIL,
                         infoMessage = null,
                     )
                 }
@@ -504,24 +508,35 @@ class AuthViewModel
                 _formState.update {
                     it.copy(isLoading = true, errorMessage = null, infoMessage = null)
                 }
-                val result = authRepository.sendPasswordReset(trimmedEmail)
-                if (result.isSuccess) {
-                    _formState.update {
-                        AuthFormState(
-                            isLoading = false,
-                            pendingConfirmationEmail = trimmedEmail,
-                            pendingOtpPurpose = PendingOtpPurpose.RECOVERY,
-                            recoveryOtpVerified = false,
-                            infoMessage = appContext.getString(R.string.reset_otp_sent),
-                        )
-                    }
-                } else {
-                    _formState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
-                        )
-                    }
+                val result = authRepository.requestPasswordReset(trimmedEmail)
+                val sendError = result.exceptionOrNull()
+                val rateLimited =
+                    sendError != null && isEmailRateLimited(collectAuthErrorText(sendError).lowercase())
+                val deliveryFailed =
+                    sendError != null && isEmailDeliveryFailure(collectAuthErrorText(sendError).lowercase())
+                // Always open the OTP gate (privacy: unknown emails also look the same).
+                // Rate-limit / hook failures are surfaced so the user knows why no code arrived.
+                _formState.update {
+                    AuthFormState(
+                        isLoading = false,
+                        pendingConfirmationEmail = trimmedEmail,
+                        pendingOtpPurpose = PendingOtpPurpose.RECOVERY,
+                        recoveryOtpVerified = false,
+                        infoMessage =
+                            if (rateLimited || deliveryFailed) {
+                                null
+                            } else {
+                                AuthMessages.resetOtpSent(trimmedEmail)
+                            },
+                        errorMessage =
+                            when {
+                                rateLimited ->
+                                    AuthMessages.EMAIL_RATE_LIMITED
+                                deliveryFailed ->
+                                    AuthMessages.EMAIL_DELIVERY_FAILED
+                                else -> null
+                            },
+                    )
                 }
             }
         }
@@ -540,10 +555,14 @@ class AuthViewModel
             newPassword: String,
             confirmPassword: String,
         ) {
-            if (newPassword.length < MIN_SIGNUP_PASSWORD_LENGTH) {
+            if (newPassword.length < MIN_SIGNUP_PASSWORD_LENGTH ||
+                !newPassword.any { it.isUpperCase() } ||
+                !newPassword.any { it.isLowerCase() } ||
+                !newPassword.any { it.isDigit() }
+            ) {
                 _formState.update {
                     it.copy(
-                        errorMessage = appContext.getString(R.string.signup_error_password_short),
+                        errorMessage = AuthMessages.RESET_PASSWORD_REQUIREMENTS,
                         infoMessage = null,
                     )
                 }
@@ -552,7 +571,7 @@ class AuthViewModel
             if (newPassword != confirmPassword) {
                 _formState.update {
                     it.copy(
-                        errorMessage = appContext.getString(R.string.reset_password_mismatch),
+                        errorMessage = AuthMessages.RESET_PASSWORD_MISMATCH,
                         infoMessage = null,
                     )
                 }
@@ -565,7 +584,7 @@ class AuthViewModel
             ) {
                 _formState.update {
                     it.copy(
-                        errorMessage = appContext.getString(R.string.verify_email_invalid_code),
+                        errorMessage = AuthMessages.VERIFY_EMAIL_INVALID_CODE,
                         infoMessage = null,
                     )
                 }
@@ -583,11 +602,13 @@ class AuthViewModel
                 if (!alreadyVerified) {
                     val otpResult = authRepository.verifyRecoveryOtp(email.trim(), code)
                     if (otpResult.isFailure) {
+                        // Wrong / missing / expired / never-sent (unregistered) — same generic copy.
                         _formState.update {
                             it.copy(
                                 isLoading = false,
                                 holdSignedInForOtp = false,
-                                errorMessage = friendlyAuthError(otpResult.exceptionOrNull()),
+                                errorMessage =
+                                    AuthMessages.RESET_OTP_INVALID_OR_EXPIRED,
                             )
                         }
                         return@launch
@@ -599,16 +620,19 @@ class AuthViewModel
                     _formState.update {
                         AuthFormState(
                             isLoading = false,
-                            infoMessage = appContext.getString(R.string.reset_password_success),
+                            infoMessage = AuthMessages.RESET_PASSWORD_SUCCESS,
                         )
                     }
                 } else {
+                    val err = passwordResult.exceptionOrNull()
+                    val sessionLost = isRecoverySessionMissing(err)
                     _formState.update {
                         it.copy(
                             isLoading = false,
                             holdSignedInForOtp = false,
-                            recoveryOtpVerified = true,
-                            errorMessage = friendlyAuthError(passwordResult.exceptionOrNull()),
+                            // Keep OTP verified for password-policy errors; re-prompt when session died.
+                            recoveryOtpVerified = it.recoveryOtpVerified && !sessionLost,
+                            errorMessage = friendlyAuthError(err),
                         )
                     }
                 }
@@ -698,34 +722,42 @@ class AuthViewModel
             val lower = raw.lowercase()
             return when {
                 isAlreadyRegistered(lower) ->
-                    appContext.getString(R.string.error_already_registered)
+                    AuthMessages.ALREADY_REGISTERED
+                isSamePassword(lower) ->
+                    AuthMessages.RESET_PASSWORD_SAME_AS_OLD
+                isRecoverySessionMissing(throwable) ->
+                    AuthMessages.RESET_PASSWORD_SESSION_EXPIRED
                 isInvalidCredentials(throwable) ->
-                    appContext.getString(R.string.error_invalid_credentials)
+                    AuthMessages.INVALID_CREDENTIALS
                 isEmailRateLimited(lower) ->
-                    appContext.getString(R.string.error_signup_email_rate_limit)
+                    AuthMessages.EMAIL_RATE_LIMITED
                 isEmailDeliveryFailure(lower) ->
-                    appContext.getString(R.string.error_signup_email_delivery)
+                    AuthMessages.EMAIL_DELIVERY_FAILED
                 isInvalidEmail(lower) ->
-                    appContext.getString(R.string.error_invalid_email)
+                    AuthMessages.INVALID_EMAIL
                 isWeakPassword(lower) ->
-                    appContext.getString(R.string.signup_error_password_short)
-                raw.isBlank() -> appContext.getString(R.string.error_generic)
+                    AuthMessages.PASSWORD_SHORT
+                raw.isBlank() -> AuthMessages.GENERIC
                 // RestException dumps include Url / Headers / Http Method — never show those.
                 "url:" in lower || "headers:" in lower || "http method" in lower ->
                     when {
                         isAlreadyRegistered(lower) ->
-                            appContext.getString(R.string.error_already_registered)
+                            AuthMessages.ALREADY_REGISTERED
+                        isSamePassword(lower) ->
+                            AuthMessages.RESET_PASSWORD_SAME_AS_OLD
+                        isRecoverySessionMissing(throwable) ->
+                            AuthMessages.RESET_PASSWORD_SESSION_EXPIRED
                         isEmailRateLimited(lower) ->
-                            appContext.getString(R.string.error_signup_email_rate_limit)
+                            AuthMessages.EMAIL_RATE_LIMITED
                         isEmailDeliveryFailure(lower) ->
-                            appContext.getString(R.string.error_signup_email_delivery)
+                            AuthMessages.EMAIL_DELIVERY_FAILED
                         isInvalidEmail(lower) ->
-                            appContext.getString(R.string.error_invalid_email)
-                        else -> appContext.getString(R.string.error_generic)
+                            AuthMessages.INVALID_EMAIL
+                        else -> AuthMessages.GENERIC
                     }
                 else ->
                     extractReadableAuthMessage(raw)
-                        ?: appContext.getString(R.string.error_generic)
+                        ?: AuthMessages.GENERIC
             }
         }
 
@@ -736,7 +768,10 @@ class AuthViewModel
             var current: Throwable? = throwable
             var depth = 0
             while (current != null && depth < 6) {
-                current.message?.trim()?.takeIf { it.isNotEmpty() }?.let { parts += it }
+                current.message
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { parts += it }
                 val localized = current.localizedMessage?.trim().orEmpty()
                 if (localized.isNotEmpty()) parts += localized
                 current = current.cause
@@ -753,7 +788,12 @@ class AuthViewModel
                 Regex("\"(?:error_description|msg|message|error)\"\\s*:\\s*\"([^\"]+)\"")
             val queryKey = Regex("error_description=([^&\\s]+)")
             for (pattern in listOf(jsonKey, queryKey)) {
-                val match = pattern.find(raw)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+                val match = pattern
+                    .find(raw)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.trim()
+                    .orEmpty()
                 if (match.isNotBlank() &&
                     "url:" !in match.lowercase() &&
                     "http" !in match.lowercase()
@@ -762,7 +802,8 @@ class AuthViewModel
                 }
             }
             val firstLine =
-                raw.lineSequence()
+                raw
+                    .lineSequence()
                     .map { it.trim() }
                     .firstOrNull { line ->
                         line.isNotEmpty() &&
@@ -783,7 +824,10 @@ class AuthViewModel
         private fun isEmailRateLimited(lower: String): Boolean =
             "over_email_send_rate_limit" in lower ||
                 "email rate limit" in lower ||
-                "rate limit exceeded" in lower
+                "rate limit exceeded" in lower ||
+                "too many requests" in lower ||
+                "429" in lower ||
+                Regex("""\bstatus\s*[:=]?\s*429\b""").containsMatchIn(lower)
 
         private fun isEmailDeliveryFailure(lower: String): Boolean =
             "error sending confirmation email" in lower ||
@@ -808,6 +852,22 @@ class AuthViewModel
             "weak_password" in lower ||
                 "password should be at least" in lower ||
                 "password is too short" in lower
+
+        private fun isSamePassword(lower: String): Boolean =
+            "same_password" in lower ||
+                "different from the old password" in lower ||
+                ("same" in lower && "password" in lower && "old" in lower)
+
+        private fun isRecoverySessionMissing(throwable: Throwable?): Boolean {
+            val lower = collectAuthErrorText(throwable).lowercase()
+            return "session expired" in lower ||
+                "session is missing" in lower ||
+                "auth session missing" in lower ||
+                "session_not_found" in lower ||
+                "session_expired" in lower ||
+                "reauthentication_needed" in lower ||
+                "request a new reset code" in lower
+        }
 
         private fun isInvalidCredentials(throwable: Throwable?): Boolean {
             val lower = collectAuthErrorText(throwable).lowercase()

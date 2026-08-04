@@ -171,12 +171,15 @@ fun ExpenseDetailScreen(
                 DetailLine(stringResource(R.string.label_paid_by), snapshot.payerLabel)
                 DetailLine(
                     stringResource(R.string.label_date),
-                    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                    DateFormat
+                        .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                         .format(Date(snapshot.expense.expenseDateEpochMs)),
                 )
                 DetailLine(
                     stringResource(R.string.label_split_type),
-                    snapshot.expense.splitType.name.lowercase().replaceFirstChar { it.titlecase() },
+                    snapshot.expense.splitType.name
+                        .lowercase()
+                        .replaceFirstChar { it.titlecase() },
                 )
                 if (!snapshot.groupName.isNullOrBlank()) {
                     DetailLine(stringResource(R.string.label_group), snapshot.groupName)

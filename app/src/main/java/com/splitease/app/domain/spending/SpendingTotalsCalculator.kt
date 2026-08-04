@@ -42,7 +42,10 @@ object SpendingTotalsCalculator {
         categoryNames: Map<String, String>,
         uncategorizedLabel: String = "Uncategorized",
     ): List<CategorySpending> {
-        data class Acc(var total: BigDecimal = ZERO, var count: Int = 0)
+        data class Acc(
+            var total: BigDecimal = ZERO,
+            var count: Int = 0
+        )
 
         val buckets = mutableMapOf<Pair<String?, String>, Acc>()
         expenses.forEach { expense ->

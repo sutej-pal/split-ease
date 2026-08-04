@@ -338,8 +338,7 @@ fun FriendsListScreen(
                                 .clickable {
                                     showExpensePicker = false
                                     onAddExpenseForFriend(friend.friendUserId)
-                                }
-                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                                }.padding(horizontal = 24.dp, vertical = 14.dp),
                     )
                 }
             }

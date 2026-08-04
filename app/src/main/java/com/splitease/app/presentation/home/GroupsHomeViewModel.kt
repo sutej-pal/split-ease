@@ -43,7 +43,8 @@ class GroupsHomeViewModel
         private val syncInteractor: SyncInteractor,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

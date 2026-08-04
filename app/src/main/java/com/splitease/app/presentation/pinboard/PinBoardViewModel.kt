@@ -38,7 +38,8 @@ class PinBoardViewModel
         private val groupRepository: GroupRepository,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 

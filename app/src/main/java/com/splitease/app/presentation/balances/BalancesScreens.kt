@@ -120,7 +120,8 @@ fun GroupBalanceHeader(
     val observed =
         if (groupId != null) {
             remember(groupId) { viewModel.observeGroupBalance(groupId) }
-                .collectAsStateWithLifecycle().value
+                .collectAsStateWithLifecycle()
+                .value
         } else {
             null
         }

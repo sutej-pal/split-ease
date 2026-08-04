@@ -195,6 +195,7 @@ class GroupInviteLinkViewModel
             val session = authRepository.observeSession().first { it !is AuthSession.Loading }
             return (session as? AuthSession.SignedIn)?.user?.userId
         }
+
         private fun friendlyInviteError(error: Throwable?): String? {
             if (error == null) return null
             val raw = error.message.orEmpty()
@@ -202,8 +203,10 @@ class GroupInviteLinkViewModel
             return when {
                 "row-level security" in lower || "42501" in lower ->
                     appContext.getString(R.string.msg_group_sync_rls)
-                raw.isNotBlank() && raw.length <= 160 &&
-                    "url:" !in lower && "headers:" !in lower ->
+                raw.isNotBlank() &&
+                    raw.length <= 160 &&
+                    "url:" !in lower &&
+                    "headers:" !in lower ->
                     raw.lineSequence().firstOrNull()?.trim().orEmpty().ifBlank {
                         appContext.getString(R.string.error_generic)
                     }

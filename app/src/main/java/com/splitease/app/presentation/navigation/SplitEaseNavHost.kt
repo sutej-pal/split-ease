@@ -27,8 +27,6 @@ import androidx.navigation.navArgument
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
-import com.splitease.app.presentation.onboarding.OnboardingViewModel
-import kotlinx.coroutines.delay
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
@@ -39,9 +37,6 @@ import com.splitease.app.presentation.auth.PendingOtpPurpose
 import com.splitease.app.presentation.auth.ResetPasswordOtpScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
-import com.splitease.app.presentation.invite.InviteJoinSignUpScreen
-import com.splitease.app.presentation.pinboard.PinBoardScreen
-import com.splitease.app.presentation.invite.InviteLandingScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
@@ -52,11 +47,15 @@ import com.splitease.app.presentation.friends.FriendsListScreen
 import com.splitease.app.presentation.friends.ReviewFriendsScreen
 import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
-import com.splitease.app.presentation.groups.NonGroupExpensesScreen
 import com.splitease.app.presentation.groups.GroupInviteLinkScreen
 import com.splitease.app.presentation.groups.GroupSettingsScreen
+import com.splitease.app.presentation.groups.NonGroupExpensesScreen
 import com.splitease.app.presentation.home.GroupsHomeScreen
 import com.splitease.app.presentation.imports.ImportTransactionsScreen
+import com.splitease.app.presentation.invite.InviteJoinSignUpScreen
+import com.splitease.app.presentation.invite.InviteLandingScreen
+import com.splitease.app.presentation.onboarding.OnboardingViewModel
+import com.splitease.app.presentation.pinboard.PinBoardScreen
 import com.splitease.app.presentation.search.SearchScreen
 import com.splitease.app.presentation.settings.AppearanceSettingsScreen
 import com.splitease.app.presentation.settings.CurrencySettingsScreen
@@ -66,6 +65,7 @@ import com.splitease.app.presentation.settings.SettingsScreen
 import com.splitease.app.presentation.settlements.SettleUpScreen
 import com.splitease.app.presentation.spending.SpendingTotalsScreen
 import com.splitease.app.presentation.welcome.WelcomeScreen
+import kotlinx.coroutines.delay
 
 /** Navigation route constants. */
 object Routes {
@@ -357,7 +357,7 @@ fun SplitEaseNavHost(
                     ForgotPasswordScreen(
                         formState = formState,
                         onSendReset = { email ->
-                            authViewModel.sendPasswordReset(email)
+                            authViewModel.requestPasswordReset(email)
                         },
                         onNavigateBack = {
                             authViewModel.clearMessages()
@@ -580,7 +580,10 @@ private fun SignedInNavHost(
                         },
                     ),
             ) { entry ->
-                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val groupId = entry.arguments
+                    ?.getString("groupId")
+                    .orEmpty()
+                    .ifBlank { null }
                 FindPeopleScreen(
                     groupId = groupId,
                     onBack = { navController.popBackStack() },
@@ -607,7 +610,10 @@ private fun SignedInNavHost(
                         },
                     ),
             ) { entry ->
-                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val groupId = entry.arguments
+                    ?.getString("groupId")
+                    .orEmpty()
+                    .ifBlank { null }
                 ReviewFriendsScreen(
                     onBack = { navController.popBackStack() },
                     onEditEntry = { reviewEntry ->
@@ -661,7 +667,10 @@ private fun SignedInNavHost(
                         },
                     ),
             ) { entry ->
-                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val groupId = entry.arguments
+                    ?.getString("groupId")
+                    .orEmpty()
+                    .ifBlank { null }
                 val confirmOnly =
                     entry.arguments?.getString("confirmOnly").orEmpty() == "true"
                 EditContactScreen(
@@ -698,7 +707,10 @@ private fun SignedInNavHost(
                         },
                     ),
             ) { entry ->
-                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val groupId = entry.arguments
+                    ?.getString("groupId")
+                    .orEmpty()
+                    .ifBlank { null }
                 val name = entry.arguments?.getString("name").orEmpty()
                 val contact = entry.arguments?.getString("contact").orEmpty()
                 // Legacy route — redirect into Edit contact.
@@ -876,11 +888,20 @@ private fun SignedInNavHost(
                         },
                     ),
             ) { entry ->
-                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val groupId = entry.arguments
+                    ?.getString("groupId")
+                    .orEmpty()
+                    .ifBlank { null }
                 val friendUserId =
-                    entry.arguments?.getString("friendUserId").orEmpty().ifBlank { null }
+                    entry.arguments
+                        ?.getString("friendUserId")
+                        .orEmpty()
+                        .ifBlank { null }
                 val expenseId =
-                    entry.arguments?.getString("expenseId").orEmpty().ifBlank { null }
+                    entry.arguments
+                        ?.getString("expenseId")
+                        .orEmpty()
+                        .ifBlank { null }
                 AddExpenseScreen(
                     groupId = groupId,
                     friendUserId = friendUserId,
@@ -937,11 +958,15 @@ private fun SignedInNavHost(
                     fromUserId = entry.arguments?.getString("fromUserId").orEmpty(),
                     toUserId = entry.arguments?.getString("toUserId").orEmpty(),
                     counterpartyLabel =
-                        android.net.Uri.decode(entry.arguments?.getString("label").orEmpty())
+                        android.net.Uri
+                            .decode(entry.arguments?.getString("label").orEmpty())
                             .ifBlank { "friend" },
                     amountPrefill = entry.arguments?.getString("amount").orEmpty(),
                     currencyCode = entry.arguments?.getString("currency").orEmpty(),
-                    groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null },
+                    groupId = entry.arguments
+                        ?.getString("groupId")
+                        .orEmpty()
+                        .ifBlank { null },
                     onBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() },
                 )

@@ -78,7 +78,11 @@ fun FriendSettingsScreen(
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
     val displayName =
-        friend?.displayNameSnapshot?.removeSuffix(" (invited)")?.trim().orEmpty()
+        friend
+            ?.displayNameSnapshot
+            ?.removeSuffix(" (invited)")
+            ?.trim()
+            .orEmpty()
     val firstName = viewModel.firstName()
 
     LaunchedEffect(uiState.pendingShareText) {
@@ -276,7 +280,11 @@ fun FriendSettingsScreen(
 
 @Composable
 private fun FriendSettingsHeader(friend: Friend?) {
-    val name = friend?.displayNameSnapshot?.removeSuffix(" (invited)")?.trim().orEmpty()
+    val name = friend
+        ?.displayNameSnapshot
+        ?.removeSuffix(" (invited)")
+        ?.trim()
+        .orEmpty()
     val contact = friend?.emailSnapshot.orEmpty()
     Row(
         modifier =

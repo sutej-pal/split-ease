@@ -26,7 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
@@ -220,8 +220,7 @@ fun CreateGroupScreen(
                                 width = 1.dp,
                                 color = SplitEaseColors.OutlineStrong,
                                 shape = RoundedCornerShape(14.dp),
-                            )
-                            .background(SplitEaseColors.Surface)
+                            ).background(SplitEaseColors.Surface)
                             .clickable(enabled = !uiState.isSubmitting) { photoPicker.launch() },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -529,7 +528,9 @@ fun GroupDetailScreen(
                                 balance = groupBalance,
                             )
                             val myDebts =
-                                groupBalance?.simplifiedDebts?.filter { debt ->
+                                groupBalance
+                                    ?.simplifiedDebts
+                                    ?.filter { debt ->
                                     me != null && (debt.fromUserId == me || debt.toUserId == me)
                                 }.orEmpty()
                             if (myDebts.isEmpty()) {
@@ -604,7 +605,7 @@ private fun GroupDetailBanner(
         ) {
             BannerCircleIconButton(
                 onClick = onBack,
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                imageVector = Icons.Filled.ChevronLeft,
                 contentDescription = stringResource(R.string.cd_back),
             )
             BannerCircleIconButton(
@@ -766,8 +767,11 @@ private fun GroupOverallDebtLine(debt: LabeledDebt) {
                     .width(3.dp)
                     .height(18.dp)
                     .background(
-                        if (youOwe) SplitEaseColors.YouOwe.copy(alpha = 0.35f)
-                        else SplitEaseColors.OwedToYou.copy(alpha = 0.35f),
+                        if (youOwe) {
+                            SplitEaseColors.YouOwe.copy(alpha = 0.35f)
+                        } else {
+                            SplitEaseColors.OwedToYou.copy(alpha = 0.35f)
+                        },
                         RoundedCornerShape(2.dp),
                     ),
         )

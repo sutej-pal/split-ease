@@ -118,8 +118,7 @@ private fun BottomBarTab(
             modifier
                 .semantics {
                     this.selected = selected
-                }
-                .clip(RoundedCornerShape(percent = 50))
+                }.clip(RoundedCornerShape(percent = 50))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,

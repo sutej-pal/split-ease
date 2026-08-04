@@ -63,7 +63,8 @@ class FriendsViewModel
         // Eagerly: AddFriendScreen only collects uiState, so WhileSubscribed left userId
         // stuck at null and addFriend/tick/Next silently no-oped.
         private val userId: StateFlow<String?> =
-            authRepository.observeSession()
+            authRepository
+                .observeSession()
                 .map { session ->
                     (session as? AuthSession.SignedIn)?.user?.userId
                 }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
