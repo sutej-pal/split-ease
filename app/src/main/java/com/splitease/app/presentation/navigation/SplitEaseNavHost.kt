@@ -35,6 +35,8 @@ import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.auth.ForgotPasswordScreen
 import com.splitease.app.presentation.auth.LoginScreen
+import com.splitease.app.presentation.auth.PendingOtpPurpose
+import com.splitease.app.presentation.auth.ResetPasswordOtpScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.invite.InviteJoinSignUpScreen
@@ -229,21 +231,41 @@ fun SplitEaseNavHost(
     val pendingInviteToken by authViewModel.pendingInviteToken.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val googleSoon = stringResource(R.string.google_sign_in_soon)
-    val resetSent = stringResource(R.string.reset_sent)
 
     val pendingEmail = formState.pendingConfirmationEmail
-    // OTP gate after signup / login — blocks Home until the code is verified.
+    // OTP gate after signup / password-reset — blocks Home until the flow completes.
     if (pendingEmail != null && session !is AuthSession.Loading) {
-        VerifyEmailScreen(
-            email = pendingEmail,
-            formState = formState,
-            onVerify = { code -> authViewModel.verifyPendingOtp(pendingEmail, code) },
-            onResend = { authViewModel.resendConfirmation(pendingEmail) },
-            onBackToLogin = {
-                authViewModel.clearPendingConfirmation()
-                authViewModel.clearMessages()
-            },
-        )
+        when (formState.pendingOtpPurpose) {
+            PendingOtpPurpose.RECOVERY ->
+                ResetPasswordOtpScreen(
+                    email = pendingEmail,
+                    formState = formState,
+                    onSubmit = { code, newPassword, confirmPassword ->
+                        authViewModel.completePasswordReset(
+                            email = pendingEmail,
+                            token = code,
+                            newPassword = newPassword,
+                            confirmPassword = confirmPassword,
+                        )
+                    },
+                    onResend = { authViewModel.resendConfirmation(pendingEmail) },
+                    onBackToLogin = {
+                        authViewModel.clearPendingConfirmation()
+                        authViewModel.clearMessages()
+                    },
+                )
+            else ->
+                VerifyEmailScreen(
+                    email = pendingEmail,
+                    formState = formState,
+                    onVerify = { code -> authViewModel.verifyPendingOtp(pendingEmail, code) },
+                    onResend = { authViewModel.resendConfirmation(pendingEmail) },
+                    onBackToLogin = {
+                        authViewModel.clearPendingConfirmation()
+                        authViewModel.clearMessages()
+                    },
+                )
+        }
         return
     }
     // Password auth emits SignedIn before OTP is armed — hold Home closed.
@@ -335,7 +357,7 @@ fun SplitEaseNavHost(
                     ForgotPasswordScreen(
                         formState = formState,
                         onSendReset = { email ->
-                            authViewModel.sendPasswordReset(email, resetSent)
+                            authViewModel.sendPasswordReset(email)
                         },
                         onNavigateBack = {
                             authViewModel.clearMessages()

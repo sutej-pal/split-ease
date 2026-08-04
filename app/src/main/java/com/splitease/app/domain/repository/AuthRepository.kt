@@ -117,12 +117,31 @@ interface AuthRepository {
     suspend fun verifySignupOtp(email: String, token: String): Result<Unit>
 
     /**
-     * Sends a password-reset email.
+     * Sends a password-reset email containing a 6-digit recovery OTP
+     * (when the Send Email hook / Reset password template includes `{{ .Token }}`).
      *
      * @param email Account email.
      * @return [Result] success or failure with message.
      */
     suspend fun sendPasswordReset(email: String): Result<Unit>
+
+    /**
+     * Verifies the recovery OTP from [sendPasswordReset] and establishes a session
+     * so [updatePassword] can set a new password.
+     *
+     * @param email Account email that received the code.
+     * @param token Six-digit OTP from the reset email (`{{ .Token }}`).
+     * @return [Result] success or failure with message.
+     */
+    suspend fun verifyRecoveryOtp(email: String, token: String): Result<Unit>
+
+    /**
+     * Updates the signed-in user's password (call after [verifyRecoveryOtp] or while signed in).
+     *
+     * @param newPassword New password (min length enforced by Supabase / callers).
+     * @return [Result] success or failure with message.
+     */
+    suspend fun updatePassword(newPassword: String): Result<Unit>
 
     /**
      * Signs out the current user and clears the local session.

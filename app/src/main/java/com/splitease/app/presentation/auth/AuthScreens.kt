@@ -433,6 +433,84 @@ fun ForgotPasswordScreen(
     }
 }
 
+/**
+ * After a reset OTP is emailed: enter the code and choose a new password.
+ */
+@Composable
+fun ResetPasswordOtpScreen(
+    email: String,
+    formState: AuthFormState,
+    onSubmit: (code: String, newPassword: String, confirmPassword: String) -> Unit,
+    onResend: () -> Unit,
+    onBackToLogin: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var code by rememberSaveable { mutableStateOf("") }
+    var newPassword by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    val otpReady = formState.recoveryOtpVerified
+
+    AuthScaffold(
+        title = stringResource(R.string.reset_password_title),
+        subtitle = stringResource(R.string.reset_password_subtitle, email),
+        formState = formState,
+        modifier = modifier,
+    ) {
+        if (!otpReady) {
+            SeTextField(
+                value = code,
+                onValueChange = { incoming ->
+                    code =
+                        incoming
+                            .filter { it.isDigit() }
+                            .take(AuthViewModel.SIGNUP_OTP_LENGTH)
+                },
+                label = stringResource(R.string.label_verification_code),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                enabled = !formState.isLoading,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        PasswordSeTextField(
+            value = newPassword,
+            onValueChange = { newPassword = it },
+            enabled = !formState.isLoading,
+            label = stringResource(R.string.label_new_password),
+            supportingText = stringResource(R.string.signup_password_hint),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        PasswordSeTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            enabled = !formState.isLoading,
+            label = stringResource(R.string.label_confirm_password),
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        SePrimaryButton(
+            text = stringResource(R.string.action_set_new_password),
+            onClick = { onSubmit(code, newPassword, confirmPassword) },
+            enabled =
+                !formState.isLoading &&
+                    newPassword.isNotEmpty() &&
+                    confirmPassword.isNotEmpty() &&
+                    (otpReady || code.length == AuthViewModel.SIGNUP_OTP_LENGTH),
+        )
+        if (!otpReady) {
+            Spacer(modifier = Modifier.height(8.dp))
+            SeTextButton(
+                text = stringResource(R.string.action_resend_confirmation),
+                onClick = onResend,
+                enabled = !formState.isLoading,
+            )
+        }
+        SeTextButton(
+            text = stringResource(R.string.action_back_to_login),
+            onClick = onBackToLogin,
+            enabled = !formState.isLoading,
+        )
+    }
+}
+
 @Composable
 fun VerifyEmailScreen(
     email: String,
@@ -488,13 +566,15 @@ private fun PasswordSeTextField(
     value: String,
     onValueChange: (String) -> Unit,
     enabled: Boolean,
+    label: String? = null,
     supportingText: String? = null,
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    val resolvedLabel = label ?: stringResource(R.string.label_password)
     SeTextField(
         value = value,
         onValueChange = onValueChange,
-        label = stringResource(R.string.label_password),
+        label = resolvedLabel,
         enabled = enabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         visualTransformation =

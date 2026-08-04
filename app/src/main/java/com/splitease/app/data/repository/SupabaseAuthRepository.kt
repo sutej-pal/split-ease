@@ -245,6 +245,29 @@ class SupabaseAuthRepository
                 supabase.auth.resetPasswordForEmail(email.trim())
             }
 
+        override suspend fun verifyRecoveryOtp(email: String, token: String): Result<Unit> =
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type = OtpType.Email.RECOVERY,
+                    email = email.trim(),
+                    token = token.trim(),
+                )
+                // Session is required for updatePassword; hydrate after the new password is set.
+                check(supabase.auth.currentUserOrNull() != null) {
+                    "Recovery code verified but session is missing. Try again."
+                }
+            }
+
+        override suspend fun updatePassword(newPassword: String): Result<Unit> =
+            runCatching {
+                val trimmed = newPassword.trim()
+                require(trimmed.length >= 8) { "Password must be at least 8 characters." }
+                supabase.auth.updateUser {
+                    password = trimmed
+                }
+                finalizeAuthenticatedSession()
+            }
+
         override suspend fun signOut(): Result<Unit> =
             runCatching {
                 supabase.auth.signOut()

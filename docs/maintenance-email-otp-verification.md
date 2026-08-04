@@ -13,9 +13,8 @@ Replace link-based (“click to confirm”) email signup verification with a **6
 - Copy, ViewModel, unit tests, living docs / checklist updates
 
 **Out**
-- Removing `splitease://auth-callback` (still useful for password-reset / other Auth redirects)
-- Password-reset OTP (reset remains link-based for now)
-- Changing Supabase project templates in-repo (dashboard steps documented only)
+- Removing `splitease://auth-callback` (still useful for other Auth redirects)
+- Changing Supabase project templates in-repo (dashboard steps documented only; preferred path is mail-service hook)
 
 ## Architecture Decisions
 
@@ -86,8 +85,8 @@ None (Room / PostgREST unchanged).
   Script: `.\scripts\configure-signup-otp-email.ps1`.
 - If the Send Email hook URL 404s/500s, Supabase signup fails with a generic error — disable the hook (`-DisableHook`) until mail-service is healthy.
 - **Resend testing mode:** without a verified domain, Resend only delivers to the Resend account email. Verify a domain at [resend.com/domains](https://resend.com/domains) and set `MAIL_FROM` to an address on that domain before production signup.
-- Password reset remains link-oriented (`splitease://auth-callback` still registered).
 - Free-tier Auth email rate limits apply to resend.
+- **Password reset OTP** is covered in [phase-12-forgot-password-otp.md](phase-12-forgot-password-otp.md) (recovery template + in-app set password). Redeploy mail-service after template changes.
 
 ## Screenshots
 

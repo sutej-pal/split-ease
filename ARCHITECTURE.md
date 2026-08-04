@@ -47,7 +47,7 @@ Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the 
 
 | Area | Key packages / types |
 |---|---|
-| Auth | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup OTP verify), `presentation/onboarding` (welcome-email side effect; no setup UI) |
+| Auth | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup + password-reset OTP), `presentation/onboarding` (welcome-email side effect; no setup UI) |
 | Invites | `InviteLinks`, `InstallReferrerInviteBootstrap` (Play deferred deep link), `presentation/invite` (deep-link landing + join signup), `get_invite_preview` / `accept_invite_by_token` RPCs |
 | Friends & groups | `SocialInteractor`, `SocialRemoteDataSource`, `presentation/friends\|groups\|home` |
 | Expenses | `SplitCalculator`, `ExpenseInteractor`, `presentation/expenses` |

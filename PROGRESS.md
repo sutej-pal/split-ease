@@ -13,8 +13,9 @@ Track development phases. Always check this file at the start of a session to de
 | 10c | Invite Deep Link Join | Invite landing + join signup + OTP gate | Done | [phase-10c-invite-join.md](docs/phase-10c-invite-join.md) |
 | 10d | Onboarding Start Email | Send onboarding-start email via Render mail service | Done | [phase-10d-onboarding-mail.md](docs/phase-10d-onboarding-mail.md) |
 | 11 | Group Pin Board | Shared per-group notepad (Markdown, online-only) | Done | [phase-11-pinboard.md](docs/phase-11-pinboard.md) |
+| 12 | Forgot Password OTP | Reset password via email OTP + set new password in-app | Done | [phase-12-forgot-password-otp.md](docs/phase-12-forgot-password-otp.md) |
 | 1 | Data Layer Foundations | Offline DB foundation | Done | [phase-1-data-layer.md](docs/phase-1-data-layer.md) |
-| 2 | Authentication (Supabase) | Cloud identity | Done | [phase-2-authentication.md](docs/phase-2-authentication.md) |
+| 2 | Authentication (Supabase) | Cloud identity | Done | [docs/phase-2-authentication.md](docs/phase-2-authentication.md) |
 | 3 | Friends & Groups | Add groups and friends | Done | [phase-3-friends-groups.md](docs/phase-3-friends-groups.md) |
 | 4 | Expense Creation & Splitting Logic | Split expenses / record debts; equal & unequal; % & shares; unlimited expenses | Done | [phase-4-expenses.md](docs/phase-4-expenses.md) |
 | 5 | Balances & Debt Simplification | Calculate total balances; simplify debts | Done | [phase-5-balances.md](docs/phase-5-balances.md) |
@@ -23,9 +24,9 @@ Track development phases. Always check this file at the start of a session to de
 | 8 | Stretch / Pro-like Features | Payment integrations; transaction import; charts | Done | [phase-8-stretch.md](docs/phase-8-stretch.md) |
 | 9 | Polish, Testing, and Release Prep | 7+ languages; release hardening | Done | [phase-9-polish-release.md](docs/phase-9-polish-release.md) |
 
-**Current phase:** Complete through Phase 11 (2026-07-29)
+**Current phase:** Complete through Phase 12 (2026-08-04)
 
-**Last completed:** Phase 11 — Group Pin Board (shared per-group notepad)
+**Last completed:** Phase 12 — Forgot Password OTP (email recovery code + in-app new password)
 
 ### Docs map
 - Index: [docs/README.md](docs/README.md)
@@ -33,7 +34,8 @@ Track development phases. Always check this file at the start of a session to de
 - Maintenance: [email OTP verification](docs/maintenance-email-otp-verification.md)
 
 ### Carried-forward TODOs
-- **OTP ops checklist** — Keep Supabase signup OTP operational (Confirm email ON, `{{ .Token }}` in Confirm signup template, SMTP/provider health) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
+- **OTP ops checklist** — Keep Supabase signup + recovery OTP operational (Confirm email ON, `{{ .Token }}` in templates / mail-service Send Email hook, SMTP/provider health) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
+- **Redeploy mail-service** — Recovery password-reset template lives in `mail-service/server.js`; redeploy Render so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-otp.md)).
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
 - **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0b](docs/phase-0b-theme-system.md)).
 - **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run.

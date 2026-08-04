@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-otp.md), [supabase-reset-password-otp.html](docs/supabase-reset-password-otp.html))
 - Signup blocks duplicate email/phone with clear “already registered” messaging (`auth_email_registered` + `auth_phone_registered`)
+
+### Changed
+- Forgot-password copy asks for a reset **code** (not a link); mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup OTP
 
 ### Removed
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs

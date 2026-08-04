@@ -57,6 +57,18 @@ class AuthViewModelTest {
             "Verification code resent. Check your inbox."
         every { context.getString(R.string.verify_email_invalid_code) } returns
             "Enter a valid 6-digit code."
+        every { context.getString(R.string.reset_otp_sent) } returns
+            "Check your email for a reset code."
+        every { context.getString(R.string.reset_otp_resent) } returns
+            "Reset code resent. Check your inbox."
+        every { context.getString(R.string.reset_password_mismatch) } returns
+            "Passwords do not match."
+        every { context.getString(R.string.reset_password_success) } returns
+            "Password updated."
+        every { context.getString(R.string.reset_password_use_form) } returns
+            "Enter the code and your new password below."
+        every { context.getString(R.string.error_invalid_email) } returns
+            "Enter a valid email address."
         every { context.getString(R.string.signup_complete_message) } returns
             "Signup complete. You can continue to the app."
         every { context.getString(R.string.signup_error_name_required) } returns
@@ -143,12 +155,100 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `sendPasswordReset shows success message`() =
+    fun `sendPasswordReset opens recovery OTP gate`() =
         runTest {
             coEvery { repository.sendPasswordReset(any()) } returns Result.success(Unit)
-            viewModel.sendPasswordReset("a@b.com", "Check your email")
+            viewModel.sendPasswordReset("a@b.com")
             advanceUntilIdle()
-            assertEquals("Check your email", viewModel.formState.value.infoMessage)
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals(PendingOtpPurpose.RECOVERY, viewModel.formState.value.pendingOtpPurpose)
+            assertEquals(
+                "Check your email for a reset code.",
+                viewModel.formState.value.infoMessage,
+            )
+            assertFalse(viewModel.formState.value.recoveryOtpVerified)
+        }
+
+    @Test
+    fun `completePasswordReset verifies OTP then updates password`() =
+        runTest {
+            coEvery { repository.sendPasswordReset(any()) } returns Result.success(Unit)
+            coEvery { repository.verifyRecoveryOtp(any(), any()) } returns Result.success(Unit)
+            coEvery { repository.updatePassword(any()) } returns Result.success(Unit)
+            viewModel.sendPasswordReset("a@b.com")
+            advanceUntilIdle()
+            viewModel.completePasswordReset(
+                email = "a@b.com",
+                token = "123456",
+                newPassword = "secret12",
+                confirmPassword = "secret12",
+            )
+            advanceUntilIdle()
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            assertNull(viewModel.formState.value.pendingOtpPurpose)
+            assertEquals("Password updated.", viewModel.formState.value.infoMessage)
+            coVerify(exactly = 1) { repository.verifyRecoveryOtp("a@b.com", "123456") }
+            coVerify(exactly = 1) { repository.updatePassword("secret12") }
+        }
+
+    @Test
+    fun `completePasswordReset rejects mismatched passwords`() =
+        runTest {
+            coEvery { repository.sendPasswordReset(any()) } returns Result.success(Unit)
+            viewModel.sendPasswordReset("a@b.com")
+            advanceUntilIdle()
+            viewModel.completePasswordReset(
+                email = "a@b.com",
+                token = "123456",
+                newPassword = "secret12",
+                confirmPassword = "secret99",
+            )
+            advanceUntilIdle()
+            assertEquals("Passwords do not match.", viewModel.formState.value.errorMessage)
+            coVerify(exactly = 0) { repository.verifyRecoveryOtp(any(), any()) }
+            coVerify(exactly = 0) { repository.updatePassword(any()) }
+        }
+
+    @Test
+    fun `completePasswordReset retries password only after OTP verified`() =
+        runTest {
+            coEvery { repository.sendPasswordReset(any()) } returns Result.success(Unit)
+            coEvery { repository.verifyRecoveryOtp(any(), any()) } returns Result.success(Unit)
+            coEvery { repository.updatePassword("badpass1") } returns
+                Result.failure(IllegalStateException("weak"))
+            coEvery { repository.updatePassword("secret12") } returns Result.success(Unit)
+            viewModel.sendPasswordReset("a@b.com")
+            advanceUntilIdle()
+            viewModel.completePasswordReset(
+                email = "a@b.com",
+                token = "123456",
+                newPassword = "badpass1",
+                confirmPassword = "badpass1",
+            )
+            advanceUntilIdle()
+            assertTrue(viewModel.formState.value.recoveryOtpVerified)
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            viewModel.completePasswordReset(
+                email = "a@b.com",
+                token = "",
+                newPassword = "secret12",
+                confirmPassword = "secret12",
+            )
+            advanceUntilIdle()
+            coVerify(exactly = 1) { repository.verifyRecoveryOtp("a@b.com", "123456") }
+            coVerify(exactly = 1) { repository.updatePassword("secret12") }
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+        }
+
+    @Test
+    fun `resendConfirmation calls sendPasswordReset when purpose is recovery`() =
+        runTest {
+            coEvery { repository.sendPasswordReset(any()) } returns Result.success(Unit)
+            viewModel.sendPasswordReset("a@b.com")
+            advanceUntilIdle()
+            viewModel.resendConfirmation("a@b.com")
+            advanceUntilIdle()
+            coVerify(atLeast = 2) { repository.sendPasswordReset("a@b.com") }
         }
 
     @Test

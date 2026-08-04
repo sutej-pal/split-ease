@@ -14,7 +14,8 @@ Use this order to stay fast and consistent.
 ## 2) Task-specific docs
 
 - Product mapping: [ROADMAP.md](ROADMAP.md)
-- OTP operations + signup verification runbook: [maintenance-email-otp-verification.md](maintenance-email-otp-verification.md)
+- OTP operations + signup / password-reset verification runbook: [maintenance-email-otp-verification.md](maintenance-email-otp-verification.md)
+- Forgot-password OTP: [phase-12-forgot-password-otp.md](phase-12-forgot-password-otp.md)
 - Invite deep-link join: [phase-10c-invite-join.md](phase-10c-invite-join.md)
 - Release: [release-checklist.md](release-checklist.md), [store-listing.md](store-listing.md)
 - Extras backlog: [extras-group-live-updates-notifications.md](extras-group-live-updates-notifications.md)

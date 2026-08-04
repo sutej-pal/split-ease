@@ -16,7 +16,7 @@
     <string name="action_sign_up">Sign up</string>
     <string name="action_signup">Signup</string>
     <string name="action_sign_out">Sign out</string>
-    <string name="action_send_reset">Send reset link</string>
+    <string name="action_send_reset">Send reset code</string>
     <string name="action_forgot_password">Forgot password?</string>
     <string name="action_add_friend">Add friend</string>
     <string name="action_add_friends">Add friends</string>
@@ -200,7 +200,17 @@
     <string name="signup_error_name_required">Enter your full name.</string>
     <string name="signup_error_password_short">Password must be at least 8 characters.</string>
     <string name="forgot_title">Reset password</string>
-    <string name="forgot_subtitle">We\'ll email you a link to choose a new password.</string>
+    <string name="forgot_subtitle">We\'ll email you a 6-digit code to choose a new password.</string>
+    <string name="reset_password_title">Choose a new password</string>
+    <string name="reset_password_subtitle">Enter the code sent to %1$s, then set your new password.</string>
+    <string name="label_new_password">New password</string>
+    <string name="label_confirm_password">Confirm password</string>
+    <string name="action_set_new_password">Update password</string>
+    <string name="reset_otp_sent">Check your email for a reset code.</string>
+    <string name="reset_otp_resent">Reset code resent. Check your inbox.</string>
+    <string name="reset_password_mismatch">Passwords do not match.</string>
+    <string name="reset_password_success">Password updated.</string>
+    <string name="reset_password_use_form">Enter the code and your new password below.</string>
     <string name="nav_groups">Groups</string>
     <string name="nav_friends">Friends</string>
     <string name="nav_activity">Activity</string>
@@ -336,7 +346,7 @@
     <string name="error_email_already_registered">This email is already registered. Please log in.</string>
     <string name="error_phone_already_registered">This phone number is already registered. Please log in.</string>
     <string name="error_already_registered">You\'re already registered with us. Please log in.</string>
-    <string name="reset_sent">Check your email for a reset link.</string>
+    <string name="reset_sent">Check your email for a reset code.</string>
     <string name="search_title">Search</string>
     <string name="search_hint">Search expenses</string>
     <string name="search_empty_prompt">Type to search expense descriptions and notes.</string>

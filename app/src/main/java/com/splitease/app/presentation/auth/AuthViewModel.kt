@@ -36,6 +36,9 @@ enum class PendingOtpPurpose {
      * (`OtpType.Email.EMAIL`). Not used for password login.
      */
     LOGIN,
+
+    /** Forgot-password recovery (`OtpType.Email.RECOVERY`). */
+    RECOVERY,
 }
 
 /**
@@ -49,6 +52,8 @@ enum class PendingOtpPurpose {
  * @property pendingOtpPurpose Which verify/resend API to use while gated.
  * @property holdSignedInForOtp When true, a transient SignedIn session must not open Home
  *   (set before password auth completes so the OTP gate cannot race).
+ * @property recoveryOtpVerified True after recovery OTP succeeded but before password update
+ *   finishes (allows retrying password-only if update fails).
  */
 data class AuthFormState(
     val isLoading: Boolean = false,
@@ -57,6 +62,7 @@ data class AuthFormState(
     val pendingConfirmationEmail: String? = null,
     val pendingOtpPurpose: PendingOtpPurpose? = null,
     val holdSignedInForOtp: Boolean = false,
+    val recoveryOtpVerified: Boolean = false,
 )
 
 /**
@@ -184,6 +190,7 @@ class AuthViewModel
                     pendingConfirmationEmail = null,
                     pendingOtpPurpose = null,
                     holdSignedInForOtp = false,
+                    recoveryOtpVerified = false,
                 )
             }
             viewModelScope.launch {
@@ -396,22 +403,42 @@ class AuthViewModel
          */
         fun resendConfirmation(email: String) {
             val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
-            val successMessage = appContext.getString(R.string.verify_email_resent)
+            val successMessage =
+                when (purpose) {
+                    PendingOtpPurpose.RECOVERY ->
+                        appContext.getString(R.string.reset_otp_resent)
+                    else -> appContext.getString(R.string.verify_email_resent)
+                }
             submit(successMessage = successMessage) {
                 when (purpose) {
                     PendingOtpPurpose.SIGNUP -> authRepository.resendSignupConfirmation(email)
                     PendingOtpPurpose.LOGIN -> authRepository.sendLoginOtp(email)
+                    PendingOtpPurpose.RECOVERY -> {
+                        _formState.update { it.copy(recoveryOtpVerified = false) }
+                        authRepository.sendPasswordReset(email)
+                    }
                 }
             }
         }
 
         /**
          * Verifies the pending signup or login OTP and opens the app on success.
+         * Recovery OTP is handled by [completePasswordReset].
          *
          * @param email Pending confirmation email.
          * @param token User-entered OTP.
          */
         fun verifyPendingOtp(email: String, token: String) {
+            val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
+            if (purpose == PendingOtpPurpose.RECOVERY) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.reset_password_use_form),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
             val code = token.trim()
             if (code.length != SIGNUP_OTP_LENGTH || code.any { !it.isDigit() }) {
                 _formState.update {
@@ -422,7 +449,6 @@ class AuthViewModel
                 }
                 return
             }
-            val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
             viewModelScope.launch {
                 _formState.update {
                     it.copy(isLoading = true, errorMessage = null, infoMessage = null)
@@ -433,6 +459,8 @@ class AuthViewModel
                             authRepository.verifySignupOtp(email.trim(), code)
                         PendingOtpPurpose.LOGIN ->
                             authRepository.verifyLoginOtp(email.trim(), code)
+                        PendingOtpPurpose.RECOVERY ->
+                            Result.failure(IllegalStateException("Use completePasswordReset"))
                     }
                 if (result.isSuccess) {
                     _formState.update {
@@ -440,6 +468,7 @@ class AuthViewModel
                             isLoading = false,
                             pendingConfirmationEmail = null,
                             pendingOtpPurpose = null,
+                            recoveryOtpVerified = false,
                             errorMessage = null,
                             infoMessage = null,
                         )
@@ -456,14 +485,133 @@ class AuthViewModel
         }
 
         /**
-         * Requests a password-reset email.
+         * Requests a password-reset OTP email and opens the set-new-password gate.
          *
          * @param email Account email.
-         * @param successMessage Message shown after the request succeeds.
          */
-        fun sendPasswordReset(email: String, successMessage: String) {
-            submit(successMessage = successMessage) {
-                authRepository.sendPasswordReset(email)
+        fun sendPasswordReset(email: String) {
+            val trimmedEmail = email.trim()
+            if (trimmedEmail.isEmpty()) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.error_invalid_email),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            viewModelScope.launch {
+                _formState.update {
+                    it.copy(isLoading = true, errorMessage = null, infoMessage = null)
+                }
+                val result = authRepository.sendPasswordReset(trimmedEmail)
+                if (result.isSuccess) {
+                    _formState.update {
+                        AuthFormState(
+                            isLoading = false,
+                            pendingConfirmationEmail = trimmedEmail,
+                            pendingOtpPurpose = PendingOtpPurpose.RECOVERY,
+                            recoveryOtpVerified = false,
+                            infoMessage = appContext.getString(R.string.reset_otp_sent),
+                        )
+                    }
+                } else {
+                    _formState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
+                        )
+                    }
+                }
+            }
+        }
+
+        /**
+         * Verifies the recovery OTP (if needed) and sets a new password.
+         *
+         * @param email Account email that received the code.
+         * @param token Six-digit OTP (ignored when [AuthFormState.recoveryOtpVerified] is true).
+         * @param newPassword New password.
+         * @param confirmPassword Must match [newPassword].
+         */
+        fun completePasswordReset(
+            email: String,
+            token: String,
+            newPassword: String,
+            confirmPassword: String,
+        ) {
+            if (newPassword.length < MIN_SIGNUP_PASSWORD_LENGTH) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.signup_error_password_short),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            if (newPassword != confirmPassword) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.reset_password_mismatch),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            val alreadyVerified = _formState.value.recoveryOtpVerified
+            val code = token.trim()
+            if (!alreadyVerified &&
+                (code.length != SIGNUP_OTP_LENGTH || code.any { !it.isDigit() })
+            ) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = appContext.getString(R.string.verify_email_invalid_code),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            viewModelScope.launch {
+                _formState.update {
+                    it.copy(
+                        isLoading = true,
+                        errorMessage = null,
+                        infoMessage = null,
+                        holdSignedInForOtp = true,
+                    )
+                }
+                if (!alreadyVerified) {
+                    val otpResult = authRepository.verifyRecoveryOtp(email.trim(), code)
+                    if (otpResult.isFailure) {
+                        _formState.update {
+                            it.copy(
+                                isLoading = false,
+                                holdSignedInForOtp = false,
+                                errorMessage = friendlyAuthError(otpResult.exceptionOrNull()),
+                            )
+                        }
+                        return@launch
+                    }
+                    _formState.update { it.copy(recoveryOtpVerified = true) }
+                }
+                val passwordResult = authRepository.updatePassword(newPassword)
+                if (passwordResult.isSuccess) {
+                    _formState.update {
+                        AuthFormState(
+                            isLoading = false,
+                            infoMessage = appContext.getString(R.string.reset_password_success),
+                        )
+                    }
+                } else {
+                    _formState.update {
+                        it.copy(
+                            isLoading = false,
+                            holdSignedInForOtp = false,
+                            recoveryOtpVerified = true,
+                            errorMessage = friendlyAuthError(passwordResult.exceptionOrNull()),
+                        )
+                    }
+                }
             }
         }
 
@@ -474,6 +622,7 @@ class AuthViewModel
                     pendingConfirmationEmail = null,
                     pendingOtpPurpose = null,
                     holdSignedInForOtp = false,
+                    recoveryOtpVerified = false,
                 )
             }
             submit {
@@ -542,7 +691,8 @@ class AuthViewModel
          */
         private fun friendlyAuthError(throwable: Throwable?): String {
             if (throwable != null) {
-                android.util.Log.e(TAG, "Auth error", throwable)
+                // Unit tests do not mock android.util.Log; never fail the UI path on logging.
+                runCatching { android.util.Log.e(TAG, "Auth error", throwable) }
             }
             val raw = collectAuthErrorText(throwable)
             val lower = raw.lowercase()
@@ -638,6 +788,7 @@ class AuthViewModel
         private fun isEmailDeliveryFailure(lower: String): Boolean =
             "error sending confirmation email" in lower ||
                 "error sending magic link email" in lower ||
+                "error sending recovery email" in lower ||
                 "unexpected status code returned from hook" in lower ||
                 ("hook" in lower && "email" in lower) ||
                 "send email hook" in lower ||
