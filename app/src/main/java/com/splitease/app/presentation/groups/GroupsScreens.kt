@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
@@ -47,7 +48,6 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -524,7 +524,7 @@ fun GroupDetailScreen(
                 SeActionChip(
                     label = stringResource(R.string.group_chip_totals),
                     onClick = onOpenTotals,
-                    icon = Icons.Filled.ShowChart,
+                    icon = Icons.AutoMirrored.Filled.ShowChart,
                 )
                 SeActionChip(
                     label = stringResource(R.string.action_open_pin_board),
@@ -669,7 +669,7 @@ private fun GroupDetailScreenPreview() {
                     SeActionChip(
                         label = stringResource(R.string.group_chip_totals),
                         onClick = {},
-                        icon = Icons.Filled.ShowChart,
+                        icon = Icons.AutoMirrored.Filled.ShowChart,
                     )
                     SeActionChip(
                         label = stringResource(R.string.action_open_pin_board),

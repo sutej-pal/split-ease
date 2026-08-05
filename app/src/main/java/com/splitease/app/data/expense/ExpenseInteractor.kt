@@ -452,7 +452,7 @@ class ExpenseInteractor
             android.util.Log.w(
                 "ExpenseSync",
                 "Cloud save failed for expense: ${expense.description}; saving locally",
-                retryError ?: pushError,
+                retryError,
             )
             expenseRepository.upsertExpenseWithSplits(expense, splits)
             return expense

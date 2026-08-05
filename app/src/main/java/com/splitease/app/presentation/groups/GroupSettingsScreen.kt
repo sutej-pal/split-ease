@@ -206,7 +206,7 @@ fun GroupSettingsScreen(
                             when {
                                 pending ->
                                     listOfNotNull(
-                                        friend?.emailSnapshot,
+                                        friend.emailSnapshot,
                                         stringResource(R.string.invite_pending_label),
                                     ).joinToString(" · ")
                                 else -> friend?.emailSnapshot

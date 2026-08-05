@@ -10,6 +10,7 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
@@ -22,6 +23,7 @@ import javax.inject.Singleton
  * Subscribes to Supabase Realtime postgres changes for a group's expenses and payments
  * while the group detail screen is visible, then refreshes Room from PostgREST.
  */
+@OptIn(FlowPreview::class)
 @Singleton
 class GroupLiveSync
     @Inject

@@ -22,7 +22,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Report
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -350,7 +350,7 @@ private fun PendingInviteCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         PendingInviteAction(
-            icon = Icons.Filled.Send,
+            icon = Icons.AutoMirrored.Filled.Send,
             label = stringResource(R.string.action_resend_invite),
             onClick = onResendInvite,
         )
