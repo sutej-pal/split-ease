@@ -68,6 +68,8 @@ Canonical tokens: [docs/design-tokens.md](docs/design-tokens.md) · code: `prese
 
 Reusable `Se*` components in `presentation/ui/` wrap Material 3 with brand tokens. Prefer `Se*` / `MaterialTheme.colorScheme` over raw hex.
 
+Secondary screens with back + title use **one** chrome: `SeScreen` → `SeTopBar` → `SeScreenTitleText` (`SeScreenTitleStyle` / `titleLarge`). Spacing rhythm: `SeLayout` (see [design-tokens.md](docs/design-tokens.md#screen-chrome-back--title)).
+
 ## Release size
 
 - Release: R8 minify + `shrinkResources` + optimized resource shrinking.

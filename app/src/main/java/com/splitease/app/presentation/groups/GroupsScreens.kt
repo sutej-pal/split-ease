@@ -305,6 +305,7 @@ fun GroupDetailScreen(
     onAddExpense: () -> Unit,
     onOpenExpense: (expenseId: String) -> Unit,
     onOpenBalances: () -> Unit,
+    onOpenTotals: () -> Unit,
     onOpenPinBoard: () -> Unit,
     onSettleDebt: (
         fromUserId: String,
@@ -437,7 +438,7 @@ fun GroupDetailScreen(
                 )
                 SeActionChip(
                     label = stringResource(R.string.group_chip_totals),
-                    onClick = onOpenBalances,
+                    onClick = onOpenTotals,
                 )
                 SeActionChip(
                     label = stringResource(R.string.action_open_pin_board),

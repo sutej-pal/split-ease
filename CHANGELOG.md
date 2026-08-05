@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Forgot-password copy asks for a reset **code** (not a link); mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup OTP
 - Supabase HTTP client engine: **OkHttp** replaces `ktor-client-android` (Realtime WebSockets + safer cancel on navigation)
-- Group settle-up / totals moved to a dedicated **Balances** screen (`group_balances/{groupId}`); back returns to group detail; Balances / Totals chips open it
+- Group settle-up / totals moved to dedicated screens (`group_balances/{groupId}`, `group_totals/{groupId}`); back returns to group detail
+- Secondary-screen chrome unified: `SeScreen` / `SeTopBar` share one title style (`SeScreenTitleStyle` = titleLarge); spacing via `SeLayout` ([design-tokens](docs/design-tokens.md))
 
 ### Removed
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs

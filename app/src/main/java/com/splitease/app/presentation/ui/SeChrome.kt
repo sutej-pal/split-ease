@@ -5,13 +5,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Close
@@ -37,12 +39,10 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -73,7 +73,7 @@ fun SeSystemBars(
  * Back chevron centered horizontally and vertically in a circular hit target.
  */
 @Composable
-private fun SeChevronBackButton(
+fun SeChevronBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -103,6 +103,31 @@ private fun SeChevronBackButton(
     }
 }
 
+/**
+ * Single title text used by [SeTopBar], [SeBackTitleRow], and auth headers.
+ */
+@Composable
+fun SeScreenTitleText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+    maxLines: Int = 1,
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        style = SeScreenTitleStyle(),
+        textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+/**
+ * Canonical top app bar for secondary screens (back / close + title + actions).
+ *
+ * Prefer [SeScreen] for full pages. Do not invent alternate title sizes at call sites.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeTopBar(
@@ -126,21 +151,17 @@ fun SeTopBar(
                 IconButton(onClick = onClose) {
                     Icon(Icons.Filled.Close, contentDescription = "Close")
                 }
-
             onBack != null ->
                 SeChevronBackButton(
                     onClick = onBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.cd_navigate_back),
                 )
         }
     }
     val titleContent: @Composable () -> Unit = {
-        Text(
+        SeScreenTitleText(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            textAlign = if (centered) TextAlign.Center else TextAlign.Start,
         )
     }
 
@@ -164,8 +185,11 @@ fun SeTopBar(
 }
 
 /**
- * Inline back control with an optional title beside it (auth-style headers).
- * Prefer [SeTopBar] / [SeScreen] when you need a Material top app bar.
+ * Inline back control with an optional title beside it.
+ *
+ * Prefer [SeScreen] / [SeTopBar] for full secondary screens. Use this only when a
+ * Material top app bar is not a fit (e.g. custom scroll scaffolds). Title style
+ * matches [SeTopBar] via [SeScreenTitleText].
  */
 @Composable
 fun SeBackTitleRow(
@@ -178,7 +202,7 @@ fun SeBackTitleRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp),
+                .padding(top = SeLayout.screenTop),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SeChevronBackButton(
@@ -186,26 +210,24 @@ fun SeBackTitleRow(
             enabled = enabled,
         )
         if (title != null) {
-            Text(
+            SeScreenTitleText(
                 text = title,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Start,
-                color = SplitEaseColors.Navy,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
-                autoSize =
-                    TextAutoSize.StepBased(
-                        minFontSize = 16.sp,
-                        maxFontSize = 24.sp,
-                    ),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(start = SeLayout.itemGap),
             )
         }
     }
 }
 
+/**
+ * Standard secondary screen scaffold: system bars + [SeTopBar] + content.
+ *
+ * This is the **one** navigation chrome for back + title across the app.
+ * Body horizontal rhythm: apply [SeLayout.screenHorizontal] inside [content]
+ * (do not invent per-screen title sizes — [SeTopBar] owns that).
+ */
 @Composable
 fun SeScreen(
     title: String,
@@ -213,6 +235,7 @@ fun SeScreen(
     onBack: (() -> Unit)? = null,
     onClose: (() -> Unit)? = null,
     centeredTitle: Boolean = false,
+    subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
@@ -241,13 +264,31 @@ fun SeScreen(
         floatingActionButton = floatingActionButton,
         snackbarHost = snackbarHost,
     ) { padding ->
-        content(PaddingValuesAware(padding))
+        if (subtitle != null) {
+            Column(
+                modifier =
+                    Modifier
+                        .padding(padding)
+                        .padding(horizontal = SeLayout.screenHorizontal)
+                        .padding(top = SeLayout.screenTop),
+            ) {
+                Text(
+                    text = subtitle,
+                    style = SeScreenSubtitleStyle(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(SeLayout.headerToContent))
+                content(PaddingValuesAware(PaddingValues(0.dp)))
+            }
+        } else {
+            content(PaddingValuesAware(padding))
+        }
     }
 }
 
 /** Thin wrapper so call sites can `padding.values` without importing Scaffold padding types awkwardly. */
 data class PaddingValuesAware(
-    val values: androidx.compose.foundation.layout.PaddingValues,
+    val values: PaddingValues,
 )
 
 @Preview(name = "Top bar", showBackground = true)
@@ -257,7 +298,9 @@ private fun SeTopBarPreview() {
         Column {
             SeTopBar(title = "Friends", onBack = {})
             SeTopBar(
-                title = "Create a group", onClose = {}, centered = true,
+                title = "Create a group",
+                onClose = {},
+                centered = true,
                 actions = {
                     SeTextButton(text = "Done", onClick = {})
                 },
@@ -284,13 +327,9 @@ private fun SeScreenPreview() {
         SeScreen(
             title = "Account",
             onBack = {},
-            content = { padding ->
-                Text(
-                    text = "Account body",
-                    modifier = Modifier
-                        .padding(padding.values)
-                        .padding(8.dp),
-                )
+            subtitle = "Manage your profile and preferences.",
+            content = {
+                Text(text = "Account body")
             },
         )
     }

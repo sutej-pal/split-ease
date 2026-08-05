@@ -79,16 +79,19 @@ import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.components.SegmentedOtpInput
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeBackTitleRow
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeScreenSubtitleStyle
+import com.splitease.app.presentation.ui.SeScreenTitleText
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.ui.SeTopBar
 import java.util.Currency
 import java.util.Locale
 
@@ -210,6 +213,14 @@ fun SignUpScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = surface,
+        topBar = {
+            SeTopBar(
+                title = stringResource(R.string.signup_welcome_title),
+                onBack = {
+                    if (!formState.isLoading) onBack()
+                },
+            )
+        },
         snackbarHost = {
             SeMessageHost(
                 errorMessage = formState.errorMessage,
@@ -223,30 +234,16 @@ fun SignUpScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp),
+                    .padding(horizontal = SeLayout.screenHorizontal)
+                    .padding(bottom = SeLayout.screenBottom),
             horizontalAlignment = Alignment.Start,
         ) {
-            SeBackTitleRow(
-                onBack = onBack,
-                enabled = !formState.isLoading,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.signup_welcome_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = SplitEaseColors.Navy,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.signup_welcome_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = SeScreenSubtitleStyle(),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(SeLayout.headerToContent))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1098,10 +1095,29 @@ private fun AuthScaffold(
     val hasBack = onNavigateBack != null
     val headerAlign = if (hasBack) TextAlign.Start else TextAlign.Center
     val contentHAlign = if (hasBack) Alignment.Start else Alignment.CenterHorizontally
+    val bg = MaterialTheme.colorScheme.background
+
+    SeSystemBars(
+        statusBarColor = bg,
+        navigationBarColor = bg,
+        statusBarDarkIcons = true,
+        navigationBarDarkIcons = true,
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = bg,
+        topBar = {
+            if (onNavigateBack != null) {
+                // Canonical back + title chrome (same as SeScreen / SeTopBar).
+                SeTopBar(
+                    title = title,
+                    onBack = {
+                        if (!formState.isLoading) onNavigateBack()
+                    },
+                )
+            }
+        },
         snackbarHost = {
             SeMessageHost(
                 errorMessage = formState.errorMessage,
@@ -1114,19 +1130,10 @@ private fun AuthScaffold(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp),
+                    .padding(horizontal = SeLayout.screenHorizontal)
+                    .padding(bottom = SeLayout.screenBottom),
             horizontalAlignment = contentHAlign,
         ) {
-            if (onNavigateBack != null) {
-                // Back alone on the top row; title lives in AuthScaffoldHeader below.
-                SeBackTitleRow(
-                    onBack = onNavigateBack,
-                    enabled = !formState.isLoading,
-                )
-            } else {
-                Spacer(modifier = Modifier.height(4.dp))
-            }
             when (contentPlacement) {
                 AuthContentPlacement.Center -> {
                     Column(
@@ -1136,37 +1143,37 @@ private fun AuthScaffold(
                     ) {
                         AuthScaffoldHeader(
                             title = title,
+                            showTitle = !hasBack,
                             subtitle = subtitle,
                             subtitleAnnotated = subtitleAnnotated,
                             textAlign = headerAlign,
                         )
                         content()
                         if (showLoadingIndicator && formState.isLoading) {
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(SeLayout.sectionGap))
                             CircularProgressIndicator()
                         }
                     }
                 }
 
                 AuthContentPlacement.Upper -> {
-                    // ~40% from top: lead spacer ~0.32 of remaining height, trail takes the rest.
                     Spacer(modifier = Modifier.weight(0.32f))
                     AuthScaffoldHeader(
                         title = title,
+                        showTitle = !hasBack,
                         subtitle = subtitle,
                         subtitleAnnotated = subtitleAnnotated,
                         textAlign = headerAlign,
                     )
                     content()
                     if (showLoadingIndicator && formState.isLoading) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(SeLayout.sectionGap))
                         CircularProgressIndicator()
                     }
                     Spacer(modifier = Modifier.weight(0.68f))
                 }
 
                 AuthContentPlacement.Top -> {
-                    // Single scroll surface (avoids nested weight+scroll edge artifacts).
                     Column(
                         modifier =
                             Modifier
@@ -1174,19 +1181,20 @@ private fun AuthScaffold(
                                 .verticalScroll(rememberScrollState()),
                         horizontalAlignment = contentHAlign,
                     ) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(SeLayout.screenTop))
                         AuthScaffoldHeader(
                             title = title,
+                            showTitle = !hasBack,
                             subtitle = subtitle,
                             subtitleAnnotated = subtitleAnnotated,
                             textAlign = headerAlign,
                         )
                         content()
                         if (showLoadingIndicator && formState.isLoading) {
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(SeLayout.sectionGap))
                             CircularProgressIndicator()
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(SeLayout.itemGap))
                     }
                 }
             }
@@ -1197,43 +1205,44 @@ private fun AuthScaffold(
 @Composable
 private fun AuthScaffoldHeader(
     title: String,
+    showTitle: Boolean,
     subtitle: String?,
     subtitleAnnotated: AnnotatedString? = null,
     textAlign: TextAlign = TextAlign.Center,
 ) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.headlineMedium,
-        fontWeight = FontWeight.Bold,
-        color = SplitEaseColors.Navy,
-        textAlign = textAlign,
-        modifier = Modifier.fillMaxWidth(),
-    )
+    if (showTitle) {
+        SeScreenTitleText(
+            text = title,
+            textAlign = textAlign,
+            maxLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
     if (subtitleAnnotated != null) {
-        Spacer(modifier = Modifier.height(8.dp))
+        if (showTitle) Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
         Text(
             text = subtitleAnnotated,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = SeScreenSubtitleStyle(),
             textAlign = textAlign,
-            // Allow room for an inline trailing link (e.g. Wrong email?).
             maxLines = 5,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth(),
         )
+        Spacer(modifier = Modifier.height(SeLayout.headerToContent))
     } else if (subtitle != null) {
-        Spacer(modifier = Modifier.height(8.dp))
+        if (showTitle) Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = SeScreenSubtitleStyle(),
             textAlign = textAlign,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth(),
         )
+        Spacer(modifier = Modifier.height(SeLayout.headerToContent))
+    } else if (showTitle) {
+        Spacer(modifier = Modifier.height(SeLayout.headerToContent))
     }
-    Spacer(modifier = Modifier.height(16.dp))
 }
 
 @Preview(showBackground = true, heightDp = 640)
