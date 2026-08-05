@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,18 +44,30 @@ fun SePrimaryButton(
     enabled: Boolean = true,
     isLoading: Boolean = false,
 ) {
+    val interactive = enabled && !isLoading
     Button(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().height(52.dp),
-        enabled = enabled && !isLoading,
+        enabled = interactive,
         shape = ButtonShape,
         colors =
             ButtonDefaults.buttonColors(
                 containerColor = SplitEaseColors.Primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                disabledContainerColor = SplitEaseColors.PrimarySoft,
-                // Keep disabled label readable (NavyMuted on PrimarySoft is too faint).
-                disabledContentColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
+                // Keep brand fill while loading so the spinner stays readable.
+                disabledContainerColor =
+                    if (isLoading) {
+                        SplitEaseColors.Primary
+                    } else {
+                        SplitEaseColors.PrimarySoft
+                    },
+                disabledContentColor =
+                    if (isLoading) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        // Keep disabled label readable (NavyMuted on PrimarySoft is too faint).
+                        SplitEaseColors.Navy.copy(alpha = 0.55f)
+                    },
             ),
     ) {
         if (isLoading) {
@@ -82,19 +95,31 @@ fun SeSecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isLoading: Boolean = false,
 ) {
+    val interactive = enabled && !isLoading
     FilledTonalButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().height(52.dp),
-        enabled = enabled,
+        enabled = interactive,
         shape = ButtonShape,
         colors =
             ButtonDefaults.filledTonalButtonColors(
                 containerColor = SplitEaseColors.PrimarySoft,
                 contentColor = SplitEaseColors.PrimaryDark,
+                disabledContainerColor = SplitEaseColors.PrimarySoft,
+                disabledContentColor = SplitEaseColors.PrimaryDark,
             ),
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = SplitEaseColors.PrimaryDark,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(text, style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 
@@ -104,19 +129,30 @@ fun SeOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isLoading: Boolean = false,
 ) {
+    val interactive = enabled && !isLoading
     OutlinedButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().height(52.dp),
-        enabled = enabled,
+        enabled = interactive,
         shape = ButtonShape,
         colors =
             ButtonDefaults.outlinedButtonColors(
                 contentColor = SplitEaseColors.Primary,
+                disabledContentColor = SplitEaseColors.Primary,
             ),
-        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+        border = ButtonDefaults.outlinedButtonBorder(enabled = interactive || isLoading),
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = SplitEaseColors.Primary,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(text, style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 
@@ -126,15 +162,38 @@ fun SeTextButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isLoading: Boolean = false,
     contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
 ) {
+    val interactive = enabled && !isLoading
     TextButton(
         onClick = onClick,
         modifier = modifier,
-        enabled = enabled,
+        enabled = interactive,
         contentPadding = contentPadding,
     ) {
-        Text(text, color = if (enabled) SplitEaseColors.Primary else SplitEaseColors.NavyMuted)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = SplitEaseColors.Primary,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text,
+                color =
+                    if (interactive || isLoading) {
+                        SplitEaseColors.Primary
+                    } else {
+                        SplitEaseColors.NavyMuted
+                    },
+            )
+        }
     }
 }
 
@@ -182,10 +241,14 @@ private fun SeButtonsPreview() {
     SePreview {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SePrimaryButton(text = "Continue", onClick = {})
+            SePrimaryButton(text = "Loading", onClick = {}, isLoading = true)
             SeSecondaryButton(text = "Secondary", onClick = {})
+            SeSecondaryButton(text = "Loading", onClick = {}, isLoading = true)
             SeOutlinedButton(text = "Outlined", onClick = {})
+            SeOutlinedButton(text = "Loading", onClick = {}, isLoading = true)
             Row {
                 SeTextButton(text = "Done", onClick = {})
+                SeTextButton(text = "Loading", onClick = {}, isLoading = true)
                 SeTextButton(text = "Disabled", onClick = {}, enabled = false)
             }
             SeExtendedFab(text = "Add expense", onClick = {}, icon = Icons.Filled.Add)

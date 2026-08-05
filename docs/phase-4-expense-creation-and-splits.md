@@ -1,5 +1,7 @@
 # Phase 4 — Expense Creation & Splitting Logic
 
+Added create/edit expense flows with equal, unequal, percentage, and shares splits (including invited placeholders), `BigDecimal` rounding rules, and cloud sync of expenses/splits. Balances and settlements are out of scope here.
+
 ## Phase Goal
 
 Let users create unlimited expenses with equal / unequal / percentage / shares splits, including **invited (not-yet-signed-up) people**, and sync so the invitee sees those expenses after they sign up or log in.
@@ -95,6 +97,6 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 
 Phase 4 delivered expense creation with all four split modes, Room + Supabase sync, and support for **invited users as participants immediately**. On sign-up/sign-in, `accept_pending_invites()` remaps placeholder ids on friends, splits, and payer; the client refreshes expenses so the new user sees history. Version **0.5.0**.
 
-**Required SQL:** `docs/sql/migration_db.sql` (includes `accept_pending_invites()` remap). Existing projects that already applied older accept RPCs also need [sql/phase-3g-fix-reciprocal-friends-expense-remap.sql](sql/phase-3g-fix-reciprocal-friends-expense-remap.sql) so inviter-side reconcile remaps remote splits and friendships are mirrored.
+**Required SQL:** `docs/sql/migration_db.sql` (includes `accept_pending_invites()` remap, reciprocal friends, and expense SELECT RLS for `INSERT … RETURNING`).
 
 **Next:** Phase 5 — Balances & Debt Simplification.

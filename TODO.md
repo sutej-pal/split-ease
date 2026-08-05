@@ -17,7 +17,7 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 - [ ] **Invite email delivery** — MVP uses the system share sheet; automated send via mail-service still TODO.
 - [ ] **App Links / invite https** — Host [docs/assetlinks.json](docs/assetlinks.json) at `/.well-known/assetlinks.json` on invite hosts for verified Open-by-default links. See [docs/app-links-setup.md](docs/app-links-setup.md).
 - [ ] **Install Referrer E2E** — Full deferred-invite proof needs a Play install (Internal testing). Sideload does not populate referrer.
-- [ ] **Redeploy mail-service `/invite/:token`** — Open-app then Play Store with `referrer=invite_token%3D…`; redeploy Render after pulling mail-service changes.
+- [ ] **Redeploy mail-service `/invite/:token`** — Open-app then Play Store with `referrer=invite_token%3Dâ€¦`; redeploy Render after pulling mail-service changes.
 
 ## Sync, live updates & notifications
 
@@ -53,8 +53,8 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 
 ## Store / release
 
-- [ ] **Feature graphic** — 1024×500 (`docs/store-listing.md`).
-- [ ] **Phone screenshots** — ≥2 in `docs/screenshots/`.
+- [ ] **Feature graphic** — 1024Ã—500 (`docs/store-listing.md`).
+- [ ] **Phone screenshots** — â‰¥2 in `docs/screenshots/`.
 - [ ] **Privacy policy URL** — Required for Play submission.
 - [ ] **Support contact** — Email / website TBD before Play submission.
 - [ ] Release checklist items in [docs/release-checklist.md](docs/release-checklist.md).
@@ -62,10 +62,7 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 ## Ops / SQL (existing projects)
 
 - [ ] **Apply SQL on fresh DB** — Use [docs/sql/migration_db.sql](docs/sql/migration_db.sql) for full setup in one run.
-- [ ] **Group share invite burn** — Apply [docs/sql/phase-3f-fix-group-share-invite-burn.sql](docs/sql/phase-3f-fix-group-share-invite-burn.sql) if not yet run.
-- [ ] **Expense SELECT RLS** — Apply [docs/sql/phase-4c-fix-expense-select-rls-returning.sql](docs/sql/phase-4c-fix-expense-select-rls-returning.sql) if not yet run (already on primary project).
-- [ ] **Signup phone duplicate RPC** — Apply [docs/sql/phase-auth-phone-registered.sql](docs/sql/phase-auth-phone-registered.sql) if not yet run.
-- [ ] **Render Free SMTP** — Outbound SMTP blocked on Free; use Resend HTTPS + verified domain, paid host, or local SMTP. See [docs/phase-10d-onboarding-mail.md](docs/phase-10d-onboarding-mail.md).
+- [ ] **Render Free SMTP** — Outbound SMTP blocked on Free; use Resend HTTPS + verified domain, paid host, or local SMTP. See [docs/phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md).
 - [ ] **SplitEase Server** — Lives at `C:\splitease\server`; prefer Nodemailer SMTP locally. See [docs/splitease-server-repo.md](docs/splitease-server-repo.md).
 
 ## In-code markers

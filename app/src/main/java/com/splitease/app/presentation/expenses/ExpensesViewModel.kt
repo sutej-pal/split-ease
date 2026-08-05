@@ -59,15 +59,29 @@ data class ExpensesUiState(
 )
 
 /**
- * Whether the signed-in user lent or borrowed on an expense.
+ * Viewer-facing balance tone for a ledger row.
  */
 enum class LedgerBalanceSide {
+    /** Expense: others owe you. */
     LENT,
+
+    /** Expense: you owe the payer. */
     BORROWED,
+
+    /** Payment: you received money. */
+    RECEIVED,
+
+    /** Payment: you paid money. */
+    PAID,
 }
 
 /**
  * Unified expense/payment row for group and friend timelines.
+ *
+ * Layout (Activity-style):
+ * 1. [title] — e.g. "Alex added Dinner in Roommates"
+ * 2. balance from [balanceSide]/[balanceAmount] — get back / owe / received / paid
+ * 3. [subtitle] — date and time
  */
 data class LedgerListItem(
     val id: String,
@@ -76,9 +90,6 @@ data class LedgerListItem(
     val subtitle: String,
     val sortEpochMs: Long,
     val categoryIconKey: String? = null,
-    /** Display name of who paid (e.g. "You" or a friend). */
-    val payerLabel: String? = null,
-    val paidAmount: BigDecimal? = null,
     val currencyCode: String = AppCurrencies.DEFAULT,
     val balanceSide: LedgerBalanceSide? = null,
     val balanceAmount: BigDecimal? = null,
@@ -208,6 +219,11 @@ class ExpensesViewModel
                                     friends = friends,
                                 )
                             }.combine(categoryRepository.observeCategories()) { source, categories ->
+                                source to categories
+                            }.combine(groupRepository.observeGroupById(groupId)) { pair, group ->
+                                val (source, categories) = pair
+                                val groupNames =
+                                    group?.let { mapOf(it.id to it.name) }.orEmpty()
                                 buildLedger(
                                     expenses = source.expenses,
                                     payments = source.payments,
@@ -219,6 +235,7 @@ class ExpensesViewModel
                                         },
                                     userNames = source.users.associate { it.id to it.displayName },
                                     splitsByExpenseId = source.splitsByExpenseId,
+                                    groupNames = groupNames,
                                 )
                             }
                         }
@@ -364,9 +381,12 @@ class ExpensesViewModel
             val expenseItems =
                 expenses.map { expense ->
                     val category = expense.categoryId?.let { categoryById[it] }
-                    val categoryLabel = category?.name?.let { " · $it" }.orEmpty()
-                    val payerLabel = nameOf(expense.paidByUserId)
-                    val groupName = expense.groupId?.let { groupNames[it] }
+                    val actorLabel = nameOf(expense.paidByUserId)
+                    val contextLabel =
+                        expense.groupId?.let { groupNames[it] }
+                            ?: appContext.getString(R.string.non_group_expenses)
+                    val sortEpochMs =
+                        expense.expenseDateEpochMs.coerceAtLeast(expense.createdAtEpochMs)
                     val (balanceSide, balanceAmount) =
                         viewerBalanceForExpense(
                             me = me,
@@ -376,19 +396,16 @@ class ExpensesViewModel
                     LedgerListItem(
                         id = "expense-${expense.id}",
                         isPayment = false,
-                        title = expense.description,
-                        subtitle =
-                            when {
-                                !groupName.isNullOrBlank() ->
-                                    appContext.getString(R.string.ledger_shared_group)
-                                else ->
-                                    "${expense.currencyCode} ${expense.amount.toPlainString()}" +
-                                        " · ${expense.splitType.name.lowercase()}$categoryLabel"
-                            },
-                        sortEpochMs = expense.expenseDateEpochMs.coerceAtLeast(expense.createdAtEpochMs),
+                        title =
+                            appContext.getString(
+                                R.string.activity_added_in,
+                                actorLabel,
+                                expense.description,
+                                contextLabel,
+                            ),
+                        subtitle = formatDateTime(sortEpochMs),
+                        sortEpochMs = sortEpochMs,
                         categoryIconKey = category?.iconKey ?: "category_general",
-                        payerLabel = if (groupName.isNullOrBlank()) payerLabel else null,
-                        paidAmount = if (groupName.isNullOrBlank()) expense.amount else null,
                         currencyCode = expense.currencyCode,
                         balanceSide = balanceSide,
                         balanceAmount = balanceAmount,
@@ -399,36 +416,49 @@ class ExpensesViewModel
                     val title =
                         when (me) {
                             payment.fromUserId ->
-                                "Payment completed — you paid ${nameOf(payment.toUserId)}"
+                                appContext.getString(
+                                    R.string.payment_completed_you_paid,
+                                    nameOf(payment.toUserId),
+                                )
                             payment.toUserId ->
-                                "Payment completed — ${nameOf(payment.fromUserId)} paid you"
+                                appContext.getString(
+                                    R.string.payment_completed_they_paid,
+                                    nameOf(payment.fromUserId),
+                                )
                             else ->
-                                "Payment completed — ${nameOf(payment.fromUserId)} paid ${nameOf(payment.toUserId)}"
+                                appContext.getString(
+                                    R.string.payment_completed_other,
+                                    nameOf(payment.fromUserId),
+                                    nameOf(payment.toUserId),
+                                )
                         }
-                    val date =
-                        DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(payment.paidAtEpochMs))
-                    val notePart =
-                        payment.note
-                            ?.takeIf { it.isNotBlank() && !it.equals("Payment completed", ignoreCase = true) }
-                            ?.let { " · $it" }
-                            .orEmpty()
+                    val sortEpochMs =
+                        payment.paidAtEpochMs.coerceAtLeast(payment.createdAtEpochMs)
+                    val (balanceSide, balanceAmount) =
+                        when (me) {
+                            payment.toUserId -> LedgerBalanceSide.RECEIVED to payment.amount
+                            payment.fromUserId -> LedgerBalanceSide.PAID to payment.amount
+                            else -> null to payment.amount
+                        }
                     LedgerListItem(
                         id = "payment-${payment.id}",
                         isPayment = true,
                         title = title,
-                        subtitle =
-                            "${payment.currencyCode} ${payment.amount.toPlainString()} · $date$notePart",
-                        sortEpochMs = payment.paidAtEpochMs.coerceAtLeast(payment.createdAtEpochMs),
+                        subtitle = formatDateTime(sortEpochMs),
+                        sortEpochMs = sortEpochMs,
                         categoryIconKey = "category_payment",
-                        payerLabel = null,
-                        paidAmount = null,
                         currencyCode = payment.currencyCode,
-                        balanceSide = null,
-                        balanceAmount = payment.amount,
+                        balanceSide = balanceSide,
+                        balanceAmount = balanceAmount,
                     )
                 }
             return (expenseItems + paymentItems).sortedByDescending { it.sortEpochMs }
         }
+
+        private fun formatDateTime(epochMs: Long): String =
+            DateFormat
+                .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                .format(Date(epochMs))
 
         /**
          * Net for [me] on a single expense: positive ⇒ lent, negative ⇒ borrowed.

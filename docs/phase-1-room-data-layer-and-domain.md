@@ -1,5 +1,7 @@
 # Phase 1 — Data Layer Foundations
 
+Defined the offline-first Room schema and domain models (users, friends, groups, expenses, splits, payments, categories) with `BigDecimal` money handling, DAOs, repositories, and converters. UI for expenses comes later; this phase is persistence only.
+
 ## Phase Goal
 
 Define SplitEase's core domain models and an offline-first Room database (entities, DAOs, type converters, repository interfaces and Room-backed implementations) so later phases can persist and query users, friends, groups, expenses, splits, payments, and categories with money stored as precise `BigDecimal` values.

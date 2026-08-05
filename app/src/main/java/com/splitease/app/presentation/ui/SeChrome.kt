@@ -301,9 +301,6 @@ private fun SeTopBarPreview() {
                 title = "Create a group",
                 onClose = {},
                 centered = true,
-                actions = {
-                    SeTextButton(text = "Done", onClick = {})
-                },
             )
         }
     }

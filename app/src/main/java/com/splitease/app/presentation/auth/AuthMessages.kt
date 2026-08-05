@@ -14,6 +14,32 @@ object AuthMessages {
     const val INVALID_CREDENTIALS = "Invalid email or password. Try again."
     const val NOT_REGISTERED = "You're not registered with us. Please sign up."
 
+    /** Shown after too many attempts for an auth action on one email. */
+    fun authRateLimited(
+        action: AuthRateAction,
+        waitMinutes: Int,
+    ): String {
+        val minutes = waitMinutes.coerceAtLeast(1)
+        val wait =
+            if (minutes == 1) {
+                "Try again in 1 minute."
+            } else {
+                "Try again in $minutes minutes."
+            }
+        val prefix =
+            when (action) {
+                AuthRateAction.LOGIN -> "Too many login attempts."
+                AuthRateAction.SIGNUP -> "Too many sign-up attempts."
+                AuthRateAction.FORGOT_PASSWORD -> "Too many password-reset requests."
+                AuthRateAction.RESET_PASSWORD -> "Too many password-reset attempts."
+            }
+        return "$prefix $wait"
+    }
+
+    /** @deprecated Prefer [authRateLimited] with [AuthRateAction.LOGIN]. */
+    fun loginRateLimited(waitMinutes: Int): String =
+        authRateLimited(AuthRateAction.LOGIN, waitMinutes)
+
     // Sign up
     const val NAME_REQUIRED = "Enter your full name."
     const val PASSWORD_SHORT = "Password must be at least 8 characters."

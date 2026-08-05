@@ -136,6 +136,8 @@ fun ExpenseDetailScreen(
                             when (side) {
                                 LedgerBalanceSide.LENT -> SplitEaseColors.OwedToYou
                                 LedgerBalanceSide.BORROWED -> SplitEaseColors.YouOwe
+                                LedgerBalanceSide.RECEIVED -> SplitEaseColors.OwedToYou
+                                LedgerBalanceSide.PAID -> SplitEaseColors.NavyMuted
                             }
                         val label =
                             when (side) {
@@ -143,6 +145,10 @@ fun ExpenseDetailScreen(
                                     stringResource(R.string.ledger_you_lent)
                                 LedgerBalanceSide.BORROWED ->
                                     stringResource(R.string.ledger_you_borrowed)
+                                LedgerBalanceSide.RECEIVED ->
+                                    stringResource(R.string.balances_you_are_owed_plain)
+                                LedgerBalanceSide.PAID ->
+                                    stringResource(R.string.balances_you_owe_plain)
                             }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(

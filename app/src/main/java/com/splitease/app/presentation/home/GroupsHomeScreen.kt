@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -43,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,6 +56,7 @@ import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
+import com.splitease.app.presentation.groups.rememberGroupPhotoPicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
@@ -90,7 +94,15 @@ fun GroupsHomeScreen(
     var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
     var showSettledGroups by remember { mutableStateOf(false) }
     var showExpensePicker by remember { mutableStateOf(false) }
+    var photoTargetGroupId by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
+    val changePhotoCd = stringResource(R.string.cd_change_group_photo)
+    val groupPhotoPicker =
+        rememberGroupPhotoPicker { uri ->
+            val groupId = photoTargetGroupId ?: return@rememberGroupPhotoPicker
+            photoTargetGroupId = null
+            viewModel.updateGroupPhoto(groupId, uri)
+        }
 
     val balances = ui.balances
     val groupRows =
@@ -207,6 +219,11 @@ fun GroupsHomeScreen(
                         iconTint = groupTypeColor(group?.groupType),
                         currencyFallback = ui.currencyCode,
                         onClick = { onOpenGroup(row.groupId) },
+                        onIconClick = {
+                            photoTargetGroupId = row.groupId
+                            groupPhotoPicker.launch()
+                        },
+                        iconContentDescription = changePhotoCd,
                     )
                 }
 
@@ -410,6 +427,8 @@ private fun GroupBalanceListItem(
     iconTint: Color,
     currencyFallback: String,
     onClick: () -> Unit,
+    onIconClick: () -> Unit,
+    iconContentDescription: String,
 ) {
     Row(
         modifier =
@@ -423,6 +442,14 @@ private fun GroupBalanceListItem(
             photoUrl = photoUrl,
             fallbackIcon = icon,
             fallbackTint = iconTint,
+            modifier =
+                Modifier
+                    .semantics { contentDescription = iconContentDescription }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onIconClick,
+                    ),
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -549,6 +576,8 @@ private fun GroupsHomeScreenPreview() {
                 iconTint = SplitEaseColors.IconHome,
                 currencyFallback = "INR",
                 onClick = {},
+                onIconClick = {},
+                iconContentDescription = "Change group photo",
             )
         }
     }

@@ -1,5 +1,7 @@
 # Phase 8 — Stretch / Pro-like Features
 
+Added region-aware pay deep links (UPI / PayPal / Venmo-style), CSV transaction import into expenses, and Vico charts on spending totals. Store listing and i18n polish follow in Phase 9.
+
 ## Phase Goal
 
 Add region-aware “pay” deep links from settlements, CSV transaction import into expenses, and Vico charts on spending totals.

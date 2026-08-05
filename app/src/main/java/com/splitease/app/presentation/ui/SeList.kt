@@ -374,10 +374,31 @@ fun SeTypeChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
-    val bg = if (selected) SplitEaseColors.Primary else Color.Transparent
-    val content = if (selected) MaterialTheme.colorScheme.onPrimary else SplitEaseColors.Navy
-    val border = if (selected) Color.Transparent else SplitEaseColors.OutlineStrong
+    val bg =
+        when {
+            !enabled && selected -> SplitEaseColors.Primary.copy(alpha = 0.5f)
+            selected -> SplitEaseColors.Primary
+            else -> Color.Transparent
+        }
+    val content =
+        when {
+            !enabled ->
+                if (selected) {
+                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                } else {
+                    SplitEaseColors.Navy.copy(alpha = 0.5f)
+                }
+            selected -> MaterialTheme.colorScheme.onPrimary
+            else -> SplitEaseColors.Navy
+        }
+    val border =
+        when {
+            selected -> Color.Transparent
+            !enabled -> SplitEaseColors.OutlineStrong.copy(alpha = 0.5f)
+            else -> SplitEaseColors.OutlineStrong
+        }
     Column(
         modifier =
             modifier
@@ -385,7 +406,7 @@ fun SeTypeChip(
                 .clip(RoundedCornerShape(14.dp))
                 .background(bg)
                 .border(1.dp, border, RoundedCornerShape(14.dp))
-                .clickable(onClick = onClick)
+                .clickable(enabled = enabled, onClick = onClick)
                 .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

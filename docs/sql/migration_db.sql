@@ -1,25 +1,25 @@
-﻿-- SplitEase fresh DB migration (canonical)
+﻿-- SplitEase fresh DB migration (canonical — single file)
 -- Apply once in Supabase SQL Editor for a greenfield database.
+-- Safe to re-run for most objects (IF NOT EXISTS / CREATE OR REPLACE / DROP POLICY IF EXISTS).
+--
 -- Includes: profiles/friends/groups, invites, RLS helpers, expenses/splits,
--- payments/recurring columns, realtime publication, device_tokens,
--- pin_boards, auth_email_registered, auth_phone_registered.
--- Optional (separate): docs/sql/phase-extras-notify-triggers.sql
+-- payments/recurring columns, realtime publication, device_tokens, pin_boards,
+-- auth_email_registered / auth_phone_registered, reciprocal-friend + remap RPCs,
+-- share-link invite heal, optional FCM notify triggers (no-op until app.settings set).
+-- Ops: FCM Edge Function + webhooks — see docs/fcm-setup.md
 
 -- ============================================
--- BEGIN: docs/sql/phase-3-schema.sql
+-- Profiles, friends, groups, members
 -- ============================================
--- Phase 3 schema for SplitEase (run once in Supabase SQL Editor)
--- Apply in order. Safe to re-run for tables that already exist (IF NOT EXISTS),
--- but policies may error if re-created â€” drop them first if re-applying.
--- If groups/group_members were created before the recursion fix, also run
--- docs/sql/phase-3d-fix-groups-rls-recursion.sql (already applied on this project).
 
--- 1) Profiles
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null,
   display_name text not null,
   photo_url text,
+  phone_country_code text,
+  phone_number text,
+  preferred_currency text,
   updated_at_epoch_ms bigint not null default 0
 );
 
@@ -27,6 +27,16 @@ create unique index if not exists profiles_email_lower_idx
   on public.profiles (lower(email));
 
 alter table public.profiles enable row level security;
+
+-- Existing DBs that created profiles before signup fields:
+alter table public.profiles
+  add column if not exists phone_country_code text;
+
+alter table public.profiles
+  add column if not exists phone_number text;
+
+alter table public.profiles
+  add column if not exists preferred_currency text;
 
 drop policy if exists "profiles_select_authenticated" on public.profiles;
 drop policy if exists "profiles_insert_own" on public.profiles;
@@ -85,7 +95,8 @@ create table if not exists public.groups (
   name text not null,
   default_currency_code text not null,
   created_by_user_id uuid not null references auth.users (id) on delete cascade,
-  updated_at_epoch_ms bigint not null default 0
+  updated_at_epoch_ms bigint not null default 0,
+  cover_url text
 );
 
 alter table public.groups enable row level security;
@@ -173,9 +184,8 @@ create policy "groups_delete"
 
 
 -- ============================================
--- BEGIN: docs/sql/phase-3b-invites.sql
+-- Invites
 -- ============================================
--- Phase 3b: email invites for non-users (run in Supabase SQL Editor after phase-3-schema.sql)
 
 -- 1) Invites table
 create table if not exists public.invites (
@@ -279,13 +289,8 @@ $$;
 
 grant execute on function public.accept_pending_invites() to authenticated;
 
-
--- ============================================
--- BEGIN: docs/sql/phase-3c-invite-join.sql
--- ============================================
--- Phase 3c: invite deep-link preview + accept-by-token
--- Run in Supabase SQL Editor after phase-3b-invites.sql (and ideally after phase-4
--- so accept_pending_invites includes expense remaps).
+-- Invite deep-link preview + accept-by-token
+-- (final accept bodies replaced later with expense remap + reciprocal friends)
 
 -- 1) Public preview for invite landing (token is the capability)
 create or replace function public.get_invite_preview(p_token text)
@@ -480,11 +485,26 @@ $$;
 
 grant execute on function public.accept_invite_by_token(text) to authenticated;
 
+-- Heal burned share links (inviter email auto-accept) and normalize placeholder email.
+-- No-op on fresh DBs that never used inviter email on share links.
+update public.invites
+set status = 'PENDING',
+    email = 'group-share@splitease.invalid'
+where kind = 'GROUP'
+  and friend_row_id is null
+  and status = 'ACCEPTED';
+
+update public.invites
+set email = 'group-share@splitease.invalid'
+where kind = 'GROUP'
+  and friend_row_id is null
+  and status = 'PENDING'
+  and email <> 'group-share@splitease.invalid';
+
 
 -- ============================================
--- BEGIN: docs/sql/phase-3d-fix-groups-rls-recursion.sql
+-- Groups RLS helpers (fix recursion 42P17)
 -- ============================================
--- Fix infinite RLS recursion between public.groups and public.group_members.
 -- Cross-table policy checks must go through SECURITY DEFINER helpers so Postgres
 -- does not re-enter the other table's RLS (error 42P17).
 
@@ -567,8 +587,14 @@ create policy "groups_insert"
 
 create policy "groups_update"
   on public.groups for update to authenticated
-  using (auth.uid() = created_by_user_id)
-  with check (auth.uid() = created_by_user_id);
+  using (
+    created_by_user_id = auth.uid()
+    or public.is_group_member(id)
+  )
+  with check (
+    created_by_user_id = auth.uid()
+    or public.is_group_member(id)
+  );
 
 create policy "groups_delete"
   on public.groups for delete to authenticated
@@ -576,30 +602,8 @@ create policy "groups_delete"
 
 
 -- ============================================
--- BEGIN: docs/sql/phase-3e-fix-group-members-select.sql
+-- Expenses + splits
 -- ============================================
--- Allow any group member to SELECT all co-members (not only self / creator).
--- Depends on public.is_group_member / public.is_group_creator from
--- docs/sql/phase-3d-fix-groups-rls-recursion.sql (SECURITY DEFINER â€” no RLS recursion).
---
--- Before this fix, members could only see their own group_members row, so non-creators
--- synced a solo member list locally.
-
-drop policy if exists "group_members_select" on public.group_members;
-
-create policy "group_members_select"
-  on public.group_members for select to authenticated
-  using (
-    user_id = auth.uid()
-    or public.is_group_creator(group_id)
-    or public.is_group_member(group_id)
-  );
-
-
--- ============================================
--- BEGIN: docs/sql/phase-4-expenses.sql
--- ============================================
--- Phase 4: expenses + splits (run after phase-3 and phase-3b)
 -- Placeholder user ids are allowed on splits until invite accept remaps them.
 
 create table if not exists public.expenses (
@@ -866,51 +870,8 @@ grant execute on function public.can_access_expense(uuid) to authenticated;
 
 
 -- ============================================
--- BEGIN: docs/sql/phase-4b-expense-rls-fix.sql
+-- Payments + recurring columns
 -- ============================================
--- Phase 4b: allow group members to insert expenses even when someone else paid.
--- Run in Supabase SQL Editor after phase-4-expenses.sql and phase-3d-fix-groups-rls-recursion.sql.
---
--- Symptom fixed: expense saved on device, disappears after re-login (never reached cloud).
--- Uses is_group_member / is_group_creator (SECURITY DEFINER) to avoid RLS recursion 42P17.
-
-drop policy if exists "expenses_insert" on public.expenses;
-create policy "expenses_insert"
-  on public.expenses for insert to authenticated
-  with check (
-    paid_by_user_id = auth.uid()
-    or (group_id is not null and public.is_group_member(group_id))
-    or (group_id is not null and public.is_group_creator(group_id))
-  );
-
-drop policy if exists "expense_splits_insert" on public.expense_splits;
-create policy "expense_splits_insert"
-  on public.expense_splits for insert to authenticated
-  with check (
-    exists (
-      select 1 from public.expenses e
-      where e.id = expense_id
-        and (
-          e.paid_by_user_id = auth.uid()
-          or (e.group_id is not null and public.is_group_member(e.group_id))
-          or (e.group_id is not null and public.is_group_creator(e.group_id))
-        )
-    )
-  );
-
-
--- ============================================
--- BEGIN: docs/sql/phase-4c-fix-expense-select-rls-returning.sql
--- ============================================
--- See docs/sql/phase-4c-fix-expense-select-rls-returning.sql
--- (expenses_select / expenses_update already inlined above; split delete widened above.)
-
-
--- ============================================
--- BEGIN: docs/sql/phase-6-payments.sql
--- ============================================
--- Phase 6: payments + recurring columns on expenses
--- Run after phase-4-expenses.sql
 
 create table if not exists public.payments (
   id uuid primary key,
@@ -995,9 +956,8 @@ alter table public.expenses
 
 
 -- ============================================
--- BEGIN: docs/sql/phase-extras-realtime-expenses-payments.sql
+-- Realtime (group ledger)
 -- ============================================
--- Enable Supabase Realtime for group ledger tables (Slice 1 live updates).
 -- Safe to re-run: ignores tables already in the publication.
 
 do $$
@@ -1020,13 +980,10 @@ alter table public.payments replica identity full;
 
 
 -- ============================================
--- BEGIN: docs/sql/phase-extras-device-tokens.sql
+-- Device push tokens
 -- ============================================
--- Device push tokens + notify helpers for group expense/payment FCM (Slice 2).
--- Apply after phase-3e and phase-6-payments.
---
 -- Ops: deploy supabase/functions/notify-group-members and wire Database Webhooks
--- (or pg_net triggers below) â€” see docs/fcm-setup.md.
+-- (or pg_net notify triggers at end of this file) — see docs/fcm-setup.md.
 
 create table if not exists public.device_tokens (
   id uuid primary key default gen_random_uuid(),
@@ -1066,7 +1023,7 @@ create policy "device_tokens_delete_own"
 
 
 -- ============================================
--- BEGIN: embedded/pin_boards
+-- Pin boards
 -- ============================================
 create table if not exists public.pin_boards (
   group_id uuid primary key references public.groups (id) on delete cascade,
@@ -1114,7 +1071,7 @@ create policy "pin_boards_update_member"
     )
   );
 -- ============================================
--- BEGIN: embedded/auth_email_registered
+-- Auth lookup RPCs (signup duplicate checks)
 -- ============================================
 create or replace function public.auth_email_registered(p_email text)
 returns boolean
@@ -1176,37 +1133,11 @@ $$;
 revoke all on function public.auth_phone_registered(text, text) from public;
 grant execute on function public.auth_phone_registered(text, text) to anon, authenticated;
 
--- Signup profile extras (phone + preferred currency)
-alter table public.profiles
-  add column if not exists phone_country_code text;
-
-alter table public.profiles
-  add column if not exists phone_number text;
-
-alter table public.profiles
-  add column if not exists preferred_currency text;
-
 
 -- ============================================
--- BEGIN: docs/sql/phase-3g-fix-reciprocal-friends-expense-remap.sql
+-- Reciprocal friends + placeholder expense remap
 -- ============================================
--- Fix: friend/group expenses invisible to the other account.
---
--- Two root causes:
--- 1) Friendship rows are owner-only. Adding Aâ†’B never creates Bâ†’A, so the
---    invitee has no Friends list entry (and no friend-detail ledger).
--- 2) Inviter-side reconcile (promotePendingInviteIfJoined) remaps expense
---    splits only in Room, then marks the invite ACCEPTED. Remote
---    expense_splits keep the placeholder UUID, and accept_pending_invites
---    skips ACCEPTED invites â€” so the invitee never pulls those expenses.
---
--- Apply in Supabase SQL Editor (existing projects). Fresh DBs get the same
--- logic via docs/sql/migration_db.sql.
 
--- ---------------------------------------------------------------------------
--- Remap placeholder user ids on expenses / payments / group_members.
--- Callable by the friendship owner who still points at p_from or p_to.
--- ---------------------------------------------------------------------------
 create or replace function public.remap_placeholder_user(p_from uuid, p_to uuid)
 returns void
 language plpgsql
@@ -1634,3 +1565,66 @@ $$;
 
 grant execute on function public.accept_invite_by_token(text) to authenticated;
 
+
+-- ============================================
+-- Optional: FCM notify triggers (pg_net)
+-- No-op until app.settings.notify_function_url + service_role_key are set.
+-- Prefer Dashboard Database Webhooks if you do not want the key in DB settings
+-- (see docs/fcm-setup.md). Requires: create extension if not exists pg_net;
+-- ============================================
+
+create or replace function public.notify_group_ledger_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_url text := current_setting('app.settings.notify_function_url', true);
+  v_key text := current_setting('app.settings.service_role_key', true);
+  v_payload jsonb;
+  v_record jsonb;
+  v_old jsonb;
+  v_group_id uuid;
+begin
+  if v_url is null or v_url = '' or v_key is null or v_key = '' then
+    return coalesce(new, old);
+  end if;
+
+  v_group_id := coalesce(new.group_id, old.group_id);
+  if v_group_id is null then
+    return coalesce(new, old);
+  end if;
+
+  v_record := case when tg_op = 'DELETE' then null else to_jsonb(new) end;
+  v_old := case when tg_op = 'INSERT' then null else to_jsonb(old) end;
+  v_payload := jsonb_build_object(
+    'type', tg_op,
+    'table', tg_table_name,
+    'record', v_record,
+    'old_record', v_old
+  );
+
+  perform net.http_post(
+    url := v_url,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || v_key
+    ),
+    body := v_payload
+  );
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists expenses_notify_group on public.expenses;
+create trigger expenses_notify_group
+  after insert or update or delete on public.expenses
+  for each row
+  execute function public.notify_group_ledger_change();
+
+drop trigger if exists payments_notify_group on public.payments;
+create trigger payments_notify_group
+  after insert or update or delete on public.payments
+  for each row
+  execute function public.notify_group_ledger_change();

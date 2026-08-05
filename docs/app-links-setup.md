@@ -43,6 +43,6 @@ keytool -list -v -keystore keystore/splitease-release.jks -alias splitease
 
 ## Host an https bridge (optional)
 
-Serve [invite-bridge.html](invite-bridge.html) at `https://{host}/invite/{token}` (or rewrite all `/invite/*` to it). The page tries `splitease://` / `intent://` so Chrome can open the installed app even before App Links are verified.
+The mail-service already serves this via `GET /invite/:token` (see `server/server.js`). It tries `splitease://` / `intent://` so Chrome can open the installed app even before App Links are verified.
 
 **Important:** Do **not** auto-redirect to Play Store. Until `com.splitease.app` is published, Chrome’s Play fallback shows unrelated apps with a similar name. Keep Play as a manual button only; set `S.browser_fallback_url` back to the invite page (not `market://`).

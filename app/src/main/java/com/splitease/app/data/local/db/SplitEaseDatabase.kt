@@ -24,7 +24,7 @@ import com.splitease.app.data.local.entity.PaymentEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 7 — group photoUrl).
+ * Offline-first Room database for SplitEase (version 8 — group coverUrl).
  */
 @Database(
     entities = [
@@ -39,7 +39,7 @@ import com.splitease.app.data.local.entity.UserEntity
         InviteEntity::class,
         ActivityEventEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)

@@ -4,7 +4,7 @@ Native Android expense-sharing app (Kotlin + Jetpack Compose). Inspired by Split
 
 ## Status
 
-Phases **0–9** and **0b / 10a** are complete. See [PROGRESS.md](PROGRESS.md) and the feature map in [docs/ROADMAP.md](docs/ROADMAP.md).
+Phases **0–12** are complete (split letter phases folded into 0 and 10). See [PROGRESS.md](PROGRESS.md) and the feature map in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Carried-forward work (not a numbered phase) is listed under **Carried-forward TODOs** in `PROGRESS.md`.
 

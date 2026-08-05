@@ -1,5 +1,7 @@
 # Phase 9 — Polish, Testing, and Release Prep
 
+Release hardening: locale string packs, real Room migrations, email confirmation UX, regression smoke tests, and Play Store / checklist prep. Core product features stop here; later phases are post-MVP extras.
+
 ## Phase Goal
 
 Ship release-hardening: 7+ languages, real Room migrations (no destructive wipe on upgrade), production-ready email confirmation UX, regression smoke tests, and Play Store / release checklist prep.

@@ -141,6 +141,111 @@ class AuthViewModelTest {
         }
 
     @Test
+    fun `signIn locks after repeated invalid credentials`() =
+        runTest {
+            coEvery { repository.signIn(any(), any()) } returns
+                Result.failure(IllegalStateException("Invalid login credentials"))
+            coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
+            repeat(AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                viewModel.signIn("a@b.com", "bad")
+                advanceUntilIdle()
+            }
+            assertTrue(
+                viewModel.formState.value.errorMessage?.startsWith("Too many login attempts") == true,
+            )
+            coVerify(exactly = AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                repository.signIn("a@b.com", "bad")
+            }
+            // Further taps must not hit the API while locked.
+            viewModel.signIn("a@b.com", "bad")
+            advanceUntilIdle()
+            coVerify(exactly = AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                repository.signIn("a@b.com", "bad")
+            }
+            assertTrue(
+                viewModel.formState.value.errorMessage?.startsWith("Too many login attempts") == true,
+            )
+        }
+
+    @Test
+    fun `signUp locks after repeated already-registered email`() =
+        runTest {
+            coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
+            repeat(AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                viewModel.signUp(
+                    email = "a@b.com",
+                    password = "Secret12",
+                    displayName = "Alex",
+                )
+                advanceUntilIdle()
+            }
+            assertTrue(
+                viewModel.formState.value.errorMessage?.startsWith("Too many sign-up attempts") == true,
+            )
+            viewModel.signUp(
+                email = "a@b.com",
+                password = "Secret12",
+                displayName = "Alex",
+            )
+            advanceUntilIdle()
+            coVerify(exactly = AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                repository.isEmailRegistered("a@b.com")
+            }
+        }
+
+    @Test
+    fun `requestPasswordReset locks after repeated requests`() =
+        runTest {
+            coEvery { repository.requestPasswordReset(any()) } returns Result.success(Unit)
+            repeat(AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                viewModel.requestPasswordReset("a@b.com")
+                advanceUntilIdle()
+            }
+            assertTrue(
+                viewModel.formState.value.errorMessage
+                    ?.startsWith("Too many password-reset requests") == true,
+            )
+            viewModel.requestPasswordReset("a@b.com")
+            advanceUntilIdle()
+            coVerify(exactly = AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                repository.requestPasswordReset("a@b.com")
+            }
+        }
+
+    @Test
+    fun `completePasswordReset locks after repeated invalid OTP`() =
+        runTest {
+            coEvery { repository.requestPasswordReset(any()) } returns Result.success(Unit)
+            coEvery { repository.verifyRecoveryOtp(any(), any()) } returns
+                Result.failure(IllegalStateException("Token has expired or is invalid"))
+            viewModel.requestPasswordReset("a@b.com")
+            advanceUntilIdle()
+            repeat(AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                viewModel.completePasswordReset(
+                    email = "a@b.com",
+                    token = "000000",
+                    newPassword = "Secret12",
+                    confirmPassword = "Secret12",
+                )
+                advanceUntilIdle()
+            }
+            assertTrue(
+                viewModel.formState.value.errorMessage
+                    ?.startsWith("Too many password-reset attempts") == true,
+            )
+            viewModel.completePasswordReset(
+                email = "a@b.com",
+                token = "000000",
+                newPassword = "Secret12",
+                confirmPassword = "Secret12",
+            )
+            advanceUntilIdle()
+            coVerify(exactly = AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
+                repository.verifyRecoveryOtp("a@b.com", "000000")
+            }
+        }
+
+    @Test
     fun `requestPasswordReset opens recovery OTP gate`() =
         runTest {
             coEvery { repository.requestPasswordReset(any()) } returns Result.success(Unit)

@@ -227,6 +227,7 @@ class GroupsViewModel
             photoUri: String? = null,
             onSuccess: (String) -> Unit,
         ) {
+            if (_uiState.value.isSubmitting) return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
                 val id = requireUserId()
@@ -259,33 +260,16 @@ class GroupsViewModel
                     return@launch
                 }
 
-                var cloudOk =
+                // Navigate as soon as the group exists locally — don't block on cloud sync.
+                _uiState.update { it.copy(isSubmitting = false, errorMessage = null) }
+                onSuccess(created.id)
+
+                val alreadySynced =
                     groupRepository.getGroupById(created.id)?.syncStatus ==
                         com.splitease.app.domain.model.SyncStatus.SYNCED
-                var cloudDetail: String? = null
-                if (!cloudOk) {
-                    val flush = runCatching { syncInteractor.flushPending() }.getOrNull()
-                    cloudOk =
-                        groupRepository.getGroupById(created.id)?.syncStatus ==
-                            com.splitease.app.domain.model.SyncStatus.SYNCED
-                    cloudDetail = flush?.failures?.firstOrNull()
+                if (!alreadySynced) {
+                    runCatching { syncInteractor.flushPending() }
                 }
-
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        errorMessage =
-                            if (cloudOk) {
-                                null
-                            } else {
-                                userFacingError(
-                                    cloudDetail?.let { msg -> IllegalStateException(msg) }
-                                        ?: IllegalStateException("schema cache"),
-                                )
-                            },
-                    )
-                }
-                onSuccess(created.id)
             }
         }
 
@@ -318,6 +302,48 @@ class GroupsViewModel
                         infoMessage =
                             if (result.isSuccess) {
                                 appContext.getString(R.string.msg_group_photo_saved)
+                            } else {
+                                null
+                            },
+                    )
+                }
+            }
+        }
+
+        fun updateGroupCover(
+            groupId: String,
+            coverUri: String,
+        ) {
+            if (coverUri.isBlank()) return
+            viewModelScope.launch {
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val result = socialInteractor.updateGroupCover(groupId, coverUri)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                        infoMessage =
+                            if (result.isSuccess) {
+                                appContext.getString(R.string.msg_group_cover_saved)
+                            } else {
+                                null
+                            },
+                    )
+                }
+            }
+        }
+
+        fun removeGroupCover(groupId: String) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                val result = socialInteractor.removeGroupCover(groupId)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                        infoMessage =
+                            if (result.isSuccess) {
+                                appContext.getString(R.string.msg_group_cover_removed)
                             } else {
                                 null
                             },

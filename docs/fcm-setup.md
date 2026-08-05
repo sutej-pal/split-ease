@@ -3,7 +3,7 @@
 ## Slice 1 — Realtime (live ledger while group is open)
 
 1. Run in Supabase SQL Editor:
-   - [`docs/sql/migration_db.sql`](sql/migration_db.sql) (includes realtime publication for `expenses` / `payments`)
+   - [`docs/sql/migration_db.sql`](sql/migration_db.sql) (includes realtime publication for `expenses` / `payments`, `device_tokens`, and optional pg_net notify triggers)
 2. Install a build that includes `realtime-kt` and open the same group on two devices.
 3. Add/edit/delete an expense or payment on device A → device B updates without leaving the screen.
 
@@ -23,8 +23,8 @@
 
 Run in order:
 
-1. [`docs/sql/migration_db.sql`](sql/migration_db.sql) (includes `device_tokens` + RLS) if not already applied
-2. Optionally [`docs/sql/phase-extras-notify-triggers.sql`](sql/phase-extras-notify-triggers.sql) **or** use Dashboard Database Webhooks (preferred — keeps the service role out of DB settings).
+1. [`docs/sql/migration_db.sql`](sql/migration_db.sql) if not already applied (includes `device_tokens` + RLS + optional pg_net notify triggers that no-op until `app.settings` are set).
+2. Prefer Dashboard Database Webhooks for FCM (keeps the service role out of DB settings).
 
 ### Edge Function
 

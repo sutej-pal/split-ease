@@ -1,5 +1,7 @@
 # Phase 6 — Settlements & Recurring Expenses
 
+Added settle-up payments that reduce derived balances, plus recurring expense templates that WorkManager materializes on a schedule. Hardened offline sync of the full ledger is Phase 7.
+
 ## Phase Goal
 
 Let users record settlements (“mark paid”) that reduce derived balances, and support recurring expense templates that generate new expense instances on a schedule via WorkManager.

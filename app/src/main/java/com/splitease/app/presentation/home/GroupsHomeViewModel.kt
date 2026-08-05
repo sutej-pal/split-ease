@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.data.balance.BalanceInteractor
 import com.splitease.app.data.balance.OverallBalancesUi
+import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Group
@@ -30,6 +31,8 @@ data class GroupsHomeUi(
     val balances: OverallBalancesUi? = null,
     val allGroups: List<Group> = emptyList(),
     val isRefreshing: Boolean = false,
+    val infoMessage: String? = null,
+    val errorMessage: String? = null,
 )
 
 @HiltViewModel
@@ -41,6 +44,7 @@ class GroupsHomeViewModel
         groupRepository: GroupRepository,
         appSettingsRepository: AppSettingsRepository,
         private val syncInteractor: SyncInteractor,
+        private val socialInteractor: SocialInteractor,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository
@@ -49,6 +53,7 @@ class GroupsHomeViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         private val isRefreshing = MutableStateFlow(false)
+        private val feedback = MutableStateFlow<Pair<String?, String?>>(null to null)
 
         @OptIn(ExperimentalCoroutinesApi::class)
         val ui: StateFlow<GroupsHomeUi> =
@@ -71,8 +76,13 @@ class GroupsHomeViewModel
                     }
                 },
                 isRefreshing,
-            ) { home, refreshing ->
-                home.copy(isRefreshing = refreshing)
+                feedback,
+            ) { home, refreshing, messages ->
+                home.copy(
+                    isRefreshing = refreshing,
+                    infoMessage = messages.first,
+                    errorMessage = messages.second,
+                )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GroupsHomeUi())
 
         /** Flushes PENDING local writes and pulls cloud groups/expenses/payments. */
@@ -82,6 +92,23 @@ class GroupsHomeViewModel
                 isRefreshing.update { true }
                 runCatching { syncInteractor.syncForUser(id) }
                 isRefreshing.update { false }
+            }
+        }
+
+        /** Copies [photoUri] into app storage and updates the group's list icon. */
+        fun updateGroupPhoto(
+            groupId: String,
+            photoUri: String,
+        ) {
+            if (photoUri.isBlank()) return
+            viewModelScope.launch {
+                val result = socialInteractor.updateGroupPhoto(groupId, photoUri)
+                feedback.value =
+                    if (result.isSuccess) {
+                        null to null
+                    } else {
+                        null to (result.exceptionOrNull()?.message ?: "Could not update photo.")
+                    }
             }
         }
     }

@@ -1,5 +1,7 @@
 # Phase 2 — Authentication (Supabase)
 
+Wired Supabase email/password auth (sign up, sign in, forgot password, session gating) so navigation is driven by signed-in state and the local Room user row is seeded on login. Cloud identity starts here; friends/groups come next.
+
 ## Phase Goal
 
 Replace the planned Firebase Auth path with **Supabase Auth** using the provided SplitEase project credentials, so users can sign up, log in, reset a password, and land on an empty home dashboard — with session state driving navigation.

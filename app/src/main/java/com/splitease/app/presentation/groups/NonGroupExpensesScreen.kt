@@ -17,9 +17,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -191,15 +194,18 @@ fun NonGroupExpensesScreen(
                 SeActionChip(
                     label = stringResource(R.string.action_settle_up),
                     onClick = { openSettle() },
+                    icon = Icons.Filled.Payments,
                 )
                 SeActionChip(
                     label = stringResource(R.string.group_chip_balances),
                     selected = pane == NonGroupDetailPane.Balances,
                     onClick = { paneName = NonGroupDetailPane.Balances.name },
+                    icon = Icons.Filled.AccountBalance,
                 )
                 SeActionChip(
                     label = stringResource(R.string.group_chip_totals),
                     onClick = onOpenSpending,
+                    icon = Icons.Filled.ShowChart,
                 )
             }
 
@@ -216,12 +222,13 @@ fun NonGroupExpensesScreen(
                     ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp),
                         ) {
                             if (ledger.isEmpty()) {
                                 item {
                                     SeEmptyState(
                                         message = stringResource(R.string.non_group_ledger_empty),
+                                        modifier = Modifier.padding(horizontal = 20.dp),
                                     )
                                 }
                             } else {
@@ -230,13 +237,13 @@ fun NonGroupExpensesScreen(
                             expensesUi.errorMessage?.let { msg ->
                                 item {
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    SeErrorText(msg)
+                                    SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp))
                                 }
                             }
                             expensesUi.infoMessage?.let { msg ->
                                 item {
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    SeInfoText(msg)
+                                    SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp))
                                 }
                             }
                             item { Spacer(modifier = Modifier.height(88.dp)) }

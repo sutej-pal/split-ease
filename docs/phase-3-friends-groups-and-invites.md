@@ -1,5 +1,7 @@
 # Phase 3 — Friends & Groups
 
+Shipped friends and groups (add by email, create/edit groups, members) with Room-first storage and Supabase sync, plus email invites for people who do not have an account yet. This is the social graph the ledger builds on.
+
 ## Phase Goal
 
 Let signed-in users manage friends (add by email) and groups (create/edit, add members), with Room as the offline cache and Supabase PostgREST as the cloud sync target — so data survives app restarts and is visible after coming back online.
@@ -127,7 +129,7 @@ Phase 3 delivered friends and groups UI with Room-first persistence and Supabase
 
 **Invite follow-up (v0.4.1):** Adding a friend/group member by email no longer requires an existing SplitEase account. Non-users get a pending friend row + `invites` record; the app opens a share sheet with the invite link. On sign-up/sign-in, `accept_pending_invites()` links the friendship and (for group invites) adds membership.
 
-**Reciprocal friends + expense remap (phase-3g):** Friendships are now mirrored (A→B also creates B→A). Inviter-side invite reconcile remaps remote `expense_splits` / payer before marking invites `ACCEPTED`, and re-pushes remapped expenses so the other account can pull them. Apply [sql/phase-3g-fix-reciprocal-friends-expense-remap.sql](sql/phase-3g-fix-reciprocal-friends-expense-remap.sql) on existing projects.
+**Reciprocal friends + expense remap:** Friendships are mirrored (A→B also creates B→A). Inviter-side invite reconcile remaps remote `expense_splits` / payer before marking invites `ACCEPTED`, and re-pushes remapped expenses so the other account can pull them. All SQL lives in [sql/migration_db.sql](sql/migration_db.sql).
 
 **Required before cloud sync:** run `docs/sql/migration_db.sql` in the Supabase SQL Editor.
 

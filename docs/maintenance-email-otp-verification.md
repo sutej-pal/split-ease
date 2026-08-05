@@ -2,7 +2,7 @@
 
 ## Phase Goal
 
-Replace link-based (“click to confirm”) email signup verification with a **6-digit OTP** flow: after email/password signup, the user enters a numeric code from email in the app. No deep linking, custom URI schemes, or AndroidManifest intent-filter changes are required for this flow.
+Replace link-based (â€œclick to confirmâ€) email signup verification with a **6-digit OTP** flow: after email/password signup, the user enters a numeric code from email in the app. No deep linking, custom URI schemes, or AndroidManifest intent-filter changes are required for this flow.
 
 ## Scope (In / Out)
 
@@ -55,18 +55,18 @@ None (Room / PostgREST unchanged).
 1. Redeploy Render `mail-service` with `POST /supabase/send-email-hook`.
 2. Run `.\scripts\configure-signup-otp-email.ps1` (enables hook + sets OTP length 6).
 3. Optional: set matching `SEND_EMAIL_HOOK_SECRET` on Render and in Supabase Auth Hooks.
-4. Sign up → receive SplitEase 6-digit OTP email from mail-service → verify in app.
+4. Sign up â†’ receive SplitEase 6-digit OTP email from mail-service â†’ verify in app.
 
 ### Fallback: Supabase template (Custom SMTP / Pro only)
-1. Authentication → Providers → Email → **Confirm email** ON.
-2. Authentication → Providers → Email → **OTP length** = **6**.
-3. Authentication → Email Templates → **Confirm signup**: paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)  
+1. Authentication â†’ Providers â†’ Email â†’ **Confirm email** ON.
+2. Authentication â†’ Providers â†’ Email â†’ **OTP length** = **6**.
+3. Authentication â†’ Email Templates â†’ **Confirm signup**: paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)  
    Or run `.\scripts\configure-signup-otp-email.ps1 -TemplateOnly`.
 
 ### Manual
-1. Sign up with a new email → verify screen shows code field.
-2. Enter the 6-digit code from email → lands on Home signed in.
-3. Wrong code → error; Resend → new code works.
+1. Sign up with a new email â†’ verify screen shows code field.
+2. Enter the 6-digit code from email â†’ lands on Home signed in.
+3. Wrong code â†’ error; Resend â†’ new code works.
 4. Confirm no App Link / custom-scheme step is needed for signup verify.
 
 ### Automated
@@ -78,15 +78,15 @@ None (Room / PostgREST unchanged).
 
 - **Confirm signup email template must use `{{ .Token }}`** when *not* using the Send Email hook — the Android app cannot change Supabase mail content.
 - **Preferred ops path:** use mail-service Send Email Auth Hook (`/supabase/send-email-hook`) so Free-tier projects do not need template editing.
-- **Free-tier blocker (June 2026):** new Free projects using Supabase’s **default** email provider **cannot edit auth templates** (API returns 400). Unlock editing by either:
-  1. **Custom SMTP** (recommended, free): Authentication → Emails → SMTP Settings (e.g. [Resend SMTP](https://resend.com/docs/send-with-supabase-smtp)), then paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) into Confirm signup, **or**
+- **Free-tier blocker (June 2026):** new Free projects using Supabaseâ€™s **default** email provider **cannot edit auth templates** (API returns 400). Unlock editing by either:
+  1. **Custom SMTP** (recommended, free): Authentication â†’ Emails â†’ SMTP Settings (e.g. [Resend SMTP](https://resend.com/docs/send-with-supabase-smtp)), then paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) into Confirm signup, **or**
   2. Upgrade to Pro, **or**
   3. Configure a Send Email Auth Hook (mail-service).
   Script: `.\scripts\configure-signup-otp-email.ps1`.
 - If the Send Email hook URL 404s/500s, Supabase signup fails with a generic error — disable the hook (`-DisableHook`) until mail-service is healthy.
 - **Resend testing mode:** without a verified domain, Resend only delivers to the Resend account email. Verify a domain at [resend.com/domains](https://resend.com/domains) and set `MAIL_FROM` to an address on that domain before production signup.
 - Free-tier Auth email rate limits apply to resend.
-- **Password reset OTP** is covered in [phase-12-forgot-password-otp.md](phase-12-forgot-password-otp.md) (recovery template + in-app set password). Redeploy mail-service after template changes.
+- **Password reset OTP** is covered in [phase-12-forgot-password-email-otp.md](phase-12-forgot-password-email-otp.md) (recovery template + in-app set password). Redeploy mail-service after template changes.
 
 ## Screenshots
 

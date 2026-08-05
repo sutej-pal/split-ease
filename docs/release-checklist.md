@@ -17,8 +17,8 @@ Use before uploading a Play Console build.
 - [ ] Redirect URL allow-list includes `splitease://auth-callback` (legacy / other Auth redirects; **not** required for signup or password-reset OTP)
 - [ ] mail-service redeployed with recovery OTP template (or Reset password dashboard template includes `{{ .Token }}` — [supabase-reset-password-otp.html](supabase-reset-password-otp.html))
 - [ ] Site URL set to a real landing or Play listing URL
-- [ ] Fresh DB SQL applied via [migration_db.sql](sql/migration_db.sql) (profiles, groups, invites, expenses, payments, RLS, realtime, device tokens) — verified
-- [ ] Optional FCM notify triggers when using push ([phase-extras-notify-triggers.sql](sql/phase-extras-notify-triggers.sql), [fcm-setup.md](fcm-setup.md))
+- [ ] Fresh DB SQL applied via [migration_db.sql](sql/migration_db.sql) (profiles, groups, invites, expenses, payments, RLS, realtime, device tokens, auth RPCs) — verified
+- [ ] FCM configured when using push ([fcm-setup.md](fcm-setup.md); notify triggers are in migration_db.sql and no-op until settings are set)
 - [ ] `app/google-services.json` present for release builds that need push; Edge Function `notify-group-members` deployed with `FIREBASE_SERVICE_ACCOUNT_JSON`
 - [ ] Anon key only in the app; service role never shipped
 

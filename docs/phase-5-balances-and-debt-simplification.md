@@ -1,5 +1,7 @@
 # Phase 5 — Balances & Debt Simplification
 
+Computed per-friend and per-group net balances from expenses/splits and added debt simplification so “who owes whom” collapses into fewer transfers. Settlements (mark paid) arrive in Phase 6.
+
 ## Phase Goal
 
 Derive per-friend and per-group net balances from existing expenses/splits, show “who owes whom,” and minimize settlement transactions with a pure BigDecimal debt-simplification algorithm.

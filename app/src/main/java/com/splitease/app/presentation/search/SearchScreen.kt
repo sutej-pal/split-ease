@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.search
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,14 +17,15 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.presentation.expenses.LedgerEntryRow
 import com.splitease.app.presentation.ui.SeEmptyState
-import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextField
 
 @Composable
 fun SearchScreen(
     onBack: () -> Unit,
+    onOpenExpense: (expenseId: String) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -37,8 +39,7 @@ fun SearchScreen(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values)
-                        .padding(horizontal = 20.dp),
+                        .padding(padding.values),
             ) {
                 SeTextField(
                     value = query,
@@ -47,6 +48,7 @@ fun SearchScreen(
                         viewModel.search(it)
                     },
                     label = stringResource(R.string.search_hint),
+                    modifier = Modifier.padding(horizontal = 20.dp),
                 )
                 if (results.isEmpty()) {
                     SeEmptyState(
@@ -56,15 +58,16 @@ fun SearchScreen(
                             } else {
                                 stringResource(R.string.search_no_results)
                             },
+                        modifier = Modifier.padding(horizontal = 20.dp),
                     )
                 } else {
-                    LazyColumn {
-                        items(results, key = { it.id }) { expense ->
-                            SeListRow(
-                                title = expense.description,
-                                subtitle =
-                                    "${expense.currencyCode} ${expense.amount.toPlainString()}" +
-                                        (expense.notes?.let { " · $it" } ?: ""),
+                    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+                        items(results, key = { it.id }) { item ->
+                            LedgerEntryRow(
+                                item = item,
+                                onClick = {
+                                    onOpenExpense(item.id.removePrefix("expense-"))
+                                },
                             )
                         }
                     }

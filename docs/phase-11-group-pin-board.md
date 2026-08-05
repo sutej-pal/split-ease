@@ -1,5 +1,7 @@
 # Phase 11 — Group Pin Board
 
+Added a shared per-group pin board: one online-only Markdown notepad (toolbar, auto-save, last-edited footer) readable and editable by all members. Not offline-cached.
+
 ## Phase Goal
 
 Add a shared per-group "Pin Board" — a single rich-text notepad visible and editable by all group members.

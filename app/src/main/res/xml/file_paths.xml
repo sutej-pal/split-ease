@@ -12,4 +12,10 @@
     <files-path
         name="group_photo_files"
         path="group_photos/" />
+    <cache-path
+        name="group_cover_cache"
+        path="group_covers/" />
+    <files-path
+        name="group_cover_files"
+        path="group_covers/" />
 </paths>

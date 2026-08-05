@@ -1,5 +1,7 @@
 # Phase 7 — Search, Categories, Multi-Currency, Offline Sync
 
+Hardened offline-first sync (durable PENDING queue), expense search, categories, a 100+ currency catalog, and simple spending totals. Payment deep links and CSV import are stretch work in Phase 8.
+
 ## Phase Goal
 
 Make expenses findable and categorizable, expand the currency catalog to 100+, show simple spending totals, and harden offline writes with a durable PENDING flush queue (expenses + payments).

@@ -2,7 +2,7 @@
 
 Product feature list mapped onto development phases. Implement only the **current** incomplete phase (see [PROGRESS.md](../PROGRESS.md)); do not skip ahead.
 
-## Feature → phase matrix
+## Feature â†’ phase matrix
 
 | Feature | Phase | Status |
 |---|---|---|
@@ -16,7 +16,7 @@ Product feature list mapped onto development phases. Implement only the **curren
 | Recurring expenses | **6** — Settlements & Recurring Expenses | Done |
 | Manual settlements / mark paid | **6** | Done |
 | Offline mode (hardened) | **7** — Search, Categories, Multi-Currency, Offline Sync | Done |
-| Cloud sync (full queue + conflicts) | **7** | Done² |
+| Cloud sync (full queue + conflicts) | **7** | DoneÂ² |
 | Spending totals | **7** | Done |
 | Categorize expenses | **7** | Done |
 | 100+ currencies | **7** | Done |
@@ -24,13 +24,13 @@ Product feature list mapped onto development phases. Implement only the **curren
 | Transaction import | **8** | Done |
 | 7+ languages | **9** — Polish, Testing, and Release Prep | Not started |
 
-¹ Room offline-first cache exists from Phase 1; friends/groups already write locally first. Phase 7 adds a durable sync queue, conflict policy, and reliable offline UX for expenses/balances.  
-² Friends/groups already sync best-effort via PostgREST (Phase 3). Phase 7 extends this to expenses, balances, settlements, and recurring rows with retry/conflict handling.
+Â¹ Room offline-first cache exists from Phase 1; friends/groups already write locally first. Phase 7 adds a durable sync queue, conflict policy, and reliable offline UX for expenses/balances.  
+Â² Friends/groups already sync best-effort via PostgREST (Phase 3). Phase 7 extends this to expenses, balances, settlements, and recurring rows with retry/conflict handling.
 
 ## Phase summaries
 
-### Phase 0 — Project Setup & Foundations *(done)*
-Gradle, Compose Material 3, Hilt, theme, Welcome screen. No product features yet.
+### Phase 0 — Project Setup, Foundations & Brand Theme *(done)*
+Gradle, Compose Material 3, Hilt, Welcome screen, indigo/amber brand ColorScheme + design tokens. No product features yet.
 
 ### Phase 1 — Data Layer Foundations *(done)*
 Room schema, repositories, `BigDecimal` money, sync bookmarks. Enables offline later; no UI for expenses yet.
@@ -43,7 +43,7 @@ Sign-up / sign-in / session gating. Prerequisite for cloud identity.
 Friend list, groups, members, invites, Room + Supabase sync for social graph.
 
 ### Phase 4 — Expense Creation & Splitting Logic *(done)*
-**Covers:** Split expenses, record debts · Equal / unequal · Split by % or shares · Unlimited expenses  
+**Covers:** Split expenses, record debts Â· Equal / unequal Â· Split by % or shares Â· Unlimited expenses  
 
 | In | Out |
 |---|---|
@@ -54,25 +54,25 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | No artificial cap on expense count | Payment apps / CSV import (Phase 8) |
 
 ### Phase 5 — Balances & Debt Simplification *(done)*
-**Covers:** Calculate total balances · Simplify debts  
+**Covers:** Calculate total balances Â· Simplify debts  
 
 | In | Out |
 |---|---|
 | Per-friend and per-group net balances from expenses | Settlements UI (Phase 6) |
-| “Who owes whom” lists | Recurring (Phase 6) |
+| â€œWho owes whomâ€ lists | Recurring (Phase 6) |
 | Debt simplification (minimize transactions) | Multi-currency FX (Phase 7) |
 
 ### Phase 6 — Settlements & Recurring Expenses *(done)*
-**Covers:** Recurring expenses · record / settle debts  
+**Covers:** Recurring expenses Â· record / settle debts  
 
 | In | Out |
 |---|---|
-| Mark settlement / “record payment” between users | Hardened offline queue (Phase 7) |
+| Mark settlement / â€œrecord paymentâ€ between users | Hardened offline queue (Phase 7) |
 | Recurring expense templates + schedule (WorkManager) | Payment gateway deep links (Phase 8) |
 | Generated instances feed Phase 4 expense model | |
 
 ### Phase 7 — Search, Categories, Multi-Currency, Offline Sync *(done)*
-**Covers:** Offline mode · Cloud sync · Spending totals · Categorize expenses · 100+ currencies  
+**Covers:** Offline mode Â· Cloud sync Â· Spending totals Â· Categorize expenses Â· 100+ currencies  
 
 | In | Out |
 |---|---|
@@ -82,11 +82,11 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | Durable offline write queue, pull sync, conflict policy | Payment integrations (Phase 8) |
 
 ### Phase 8 — Stretch / Pro-like Features *(done)*
-**Covers:** Payment integrations · Transaction import  
+**Covers:** Payment integrations Â· Transaction import  
 
 | In | Out |
 |---|---|
-| Deep links / share to UPI, PayPal, Venmo-style “pay” (region-aware) | Full banking Open Banking (out of MVP) |
+| Deep links / share to UPI, PayPal, Venmo-style â€œpayâ€ (region-aware) | Full banking Open Banking (out of MVP) |
 | Import transactions (CSV / statement parse) | Store listing assets (Phase 9) |
 | Vico charts for spending totals enhancement | |
 
@@ -102,11 +102,14 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 
 ## Post-phase extras
 
-Features requested after Phase 9 that are **not** in the original phase matrix. Track in:
+Features shipped or requested after Phase 9. Track in:
 
-- [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify all group members on expense/payment changes; open group → show latest cloud entries.
-- **TODO(auth-mobile-onboarding)** — onboard with mobile phone number (SMS OTP / phone auth) in addition to email ([PROGRESS.md](../PROGRESS.md)).
-- **OTP operations** — keep signup OTP delivery healthy (SMTP/provider + Confirm signup template with `{{ .Token }}`).
+- [phase-10-expense-details-onboarding-invite-mail.md](./phase-10-expense-details-onboarding-invite-mail.md) — expense details + Activity, onboarding, invite deep-link join, welcome mail
+- [phase-11-group-pin-board.md](./phase-11-group-pin-board.md) — group pin board
+- [phase-12-forgot-password-email-otp.md](./phase-12-forgot-password-email-otp.md) — recovery OTP
+- [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify group members on expense/payment changes; open group â†’ latest cloud entries
+- **TODO(auth-mobile-onboarding)** — onboard with mobile phone number (SMS OTP / phone auth) in addition to email ([PROGRESS.md](../PROGRESS.md))
+- **OTP operations** — keep signup/recovery OTP delivery healthy (SMTP/provider + templates with `{{ .Token }}`)
 
 ## Dependency order
 

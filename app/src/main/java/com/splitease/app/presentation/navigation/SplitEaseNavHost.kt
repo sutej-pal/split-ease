@@ -567,7 +567,10 @@ private fun SignedInNavHost(
                 CurrencySettingsScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.SEARCH) {
-                SearchScreen(onBack = { navController.popBackStack() })
+                SearchScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
+                )
             }
             composable(Routes.SPENDING) {
                 SpendingTotalsScreen(onBack = { navController.popBackStack() })
@@ -783,8 +786,8 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onCreated = { id ->
                         navController.navigate(Routes.groupDetail(id)) {
-                            popUpTo(Routes.TAB_GROUPS) { inclusive = false }
-                            launchSingleTop = true
+                            // Drop the create screen so Back returns to groups home.
+                            popUpTo(Routes.CREATE_GROUP) { inclusive = true }
                         }
                     },
                 )

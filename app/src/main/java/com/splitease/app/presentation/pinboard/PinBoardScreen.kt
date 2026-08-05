@@ -6,6 +6,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,8 +26,6 @@ import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,11 +38,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -51,7 +50,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
+import com.splitease.app.presentation.ui.SeScreenSubtitleStyle
+import com.splitease.app.presentation.ui.SeScreenTitleText
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -135,8 +138,9 @@ fun PinBoardScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
+            // Back + Save only — title stacks in the body (same pattern as auth screens).
             SeTopBar(
-                title = stringResource(R.string.pin_board_title),
+                title = "",
                 onBack = onBack,
                 actions = {
                     SeTextButton(
@@ -163,22 +167,33 @@ fun PinBoardScreen(
                 )
             } else {
                 state.errorMessage?.let {
-                    SeErrorText(it, modifier = Modifier.padding(16.dp))
+                    SeErrorText(it, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal))
                 }
 
+                Spacer(modifier = Modifier.height(SeLayout.screenTop))
+                SeScreenTitleText(
+                    text = stringResource(R.string.pin_board_title),
+                    textAlign = TextAlign.Start,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = SeLayout.screenHorizontal),
+                )
                 if (state.groupName.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
                     Text(
                         text = state.groupName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = SplitEaseColors.Navy,
+                        style = SeScreenSubtitleStyle(),
+                        color = SplitEaseColors.NavyMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                                .padding(horizontal = SeLayout.screenHorizontal),
                     )
                 }
+                Spacer(modifier = Modifier.height(SeLayout.headerToContent))
 
                 MarkdownToolbar(
                     onBold = { insertAroundSelection("**", "**") },
@@ -191,6 +206,7 @@ fun PinBoardScreen(
                     },
                 )
 
+                Spacer(modifier = Modifier.height(SeLayout.itemGap))
                 HorizontalDivider(color = SplitEaseColors.OutlineStrong)
 
                 BasicTextField(
@@ -200,7 +216,7 @@ fun PinBoardScreen(
                         Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
                     textStyle =
                         MaterialTheme.typography.bodyLarge.copy(
                             color = SplitEaseColors.Navy,
@@ -239,29 +255,29 @@ private fun MarkdownToolbar(
             Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = SeLayout.screenHorizontal),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ToolbarButton(Icons.Filled.FormatBold, stringResource(R.string.pin_board_bold), onBold)
-        ToolbarButton(Icons.Filled.FormatItalic, stringResource(R.string.pin_board_italic), onItalic)
-        ToolbarButton(Icons.Filled.Checklist, stringResource(R.string.pin_board_checklist), onChecklist)
-        ToolbarButton(Icons.Filled.Image, stringResource(R.string.pin_board_image), onImage)
-    }
-}
-
-@Composable
-private fun ToolbarButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = SplitEaseColors.Primary,
-            modifier = Modifier.size(22.dp),
+        SeActionChip(
+            label = stringResource(R.string.pin_board_bold),
+            onClick = onBold,
+            icon = Icons.Filled.FormatBold,
+        )
+        SeActionChip(
+            label = stringResource(R.string.pin_board_italic),
+            onClick = onItalic,
+            icon = Icons.Filled.FormatItalic,
+        )
+        SeActionChip(
+            label = stringResource(R.string.pin_board_checklist),
+            onClick = onChecklist,
+            icon = Icons.Filled.Checklist,
+        )
+        SeActionChip(
+            label = stringResource(R.string.pin_board_image),
+            onClick = onImage,
+            icon = Icons.Filled.Image,
         )
     }
 }
@@ -276,7 +292,7 @@ private fun PinBoardFooter(
             Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isSaving) {

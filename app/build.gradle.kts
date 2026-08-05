@@ -159,6 +159,7 @@ dependencies {
     implementation(libs.supabase.auth)
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.realtime)
+    implementation(libs.supabase.storage)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     // OkHttp engine: WebSocket-capable (Realtime) and cancel-safe on Main

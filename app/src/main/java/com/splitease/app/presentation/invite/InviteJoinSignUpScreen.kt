@@ -12,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -191,6 +190,7 @@ fun InviteJoinSignUpScreen(
                         displayName.isNotBlank() &&
                         email.isNotBlank() &&
                         password.length >= AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH,
+                isLoading = formState.isLoading,
             )
             Spacer(modifier = Modifier.height(8.dp))
             SeTextButton(
@@ -199,10 +199,6 @@ fun InviteJoinSignUpScreen(
                 enabled = !formState.isLoading,
             )
 
-            if (formState.isLoading) {
-                Spacer(modifier = Modifier.height(16.dp))
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            }
             formState.errorMessage?.let { message ->
                 Spacer(modifier = Modifier.height(12.dp))
                 SeErrorText(message)

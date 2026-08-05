@@ -56,6 +56,8 @@ Unique index: `(ownerUserId, friendUserId)`.
 | name | TEXT | no | Group display name |
 | defaultCurrencyCode | TEXT | no | ISO 4217 default for new expenses |
 | groupType | TEXT | no | `FRIENDS` / `HOME` / `OTHER` (local UI category; Room v3) |
+| photoUrl | TEXT | yes | Local path for list/settings icon (device-local) |
+| coverUrl | TEXT | yes | Banner image: https Storage URL when synced, or local path while pending upload |
 | createdByUserId | TEXT | no | Creator user id |
 | remoteId | TEXT | yes | Cloud id when synced |
 | createdAtEpochMs | INTEGER | no | Created-at UTC millis |
@@ -207,9 +209,9 @@ Unique index: `(expenseId, userId)`.
 
 **Auth lookup RPCs** (anon + authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
 - `auth_email_registered(p_email)` — whether `auth.users` already has that email
-- `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number ([sql/phase-auth-phone-registered.sql](sql/phase-auth-phone-registered.sql))
+- `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number
 
-Share-link burn fix: [sql/phase-3f-fix-group-share-invite-burn.sql](sql/phase-3f-fix-group-share-invite-burn.sql)
+Share-link burn heal + multi-use token accept: included in [sql/migration_db.sql](sql/migration_db.sql)
 
 | expenses | id | UUID (PK) | no | Expense id |
 | expenses | description | TEXT | no | Title |

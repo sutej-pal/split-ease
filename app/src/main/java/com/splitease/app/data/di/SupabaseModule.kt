@@ -10,11 +10,12 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.storage.Storage
 import io.ktor.client.engine.okhttp.OkHttp
 import javax.inject.Singleton
 
 /**
- * Provides the shared [SupabaseClient] configured for Auth + PostgREST + Realtime.
+ * Provides the shared [SupabaseClient] configured for Auth + PostgREST + Realtime + Storage.
  *
  * Auth deep-link scheme/host (`splitease://auth-callback`) remains for password-reset
  * and other Auth redirects. Signup email confirmation uses an in-app 6-digit OTP and
@@ -63,6 +64,7 @@ object SupabaseModule {
             }
             install(Postgrest)
             install(Realtime)
+            install(Storage)
         }
     }
 }

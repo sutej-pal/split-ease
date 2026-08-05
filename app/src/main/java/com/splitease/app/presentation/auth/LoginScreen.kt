@@ -1,0 +1,134 @@
+package com.splitease.app.presentation.auth
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.splitease.app.R
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeOutlinedButton
+import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTextField
+
+@Composable
+fun LoginScreen(
+    formState: AuthFormState,
+    onSignIn: (email: String, password: String) -> Unit,
+    onNavigateSignUp: () -> Unit,
+    onNavigateForgot: () -> Unit,
+    onGoogleStub: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    val isBusy = formState.isLoading
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(isBusy) {
+        if (isBusy) focusManager.clearFocus()
+    }
+
+    AuthScaffold(
+        title = stringResource(R.string.login_title),
+        formState = formState,
+        modifier = modifier,
+        showErrorInSnackbar = false,
+        showLoadingIndicator = false,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .alpha(if (isBusy) 0.5f else 1f),
+        ) {
+            SeTextField(
+                value = email,
+                onValueChange = { if (!isBusy) email = it },
+                label = stringResource(R.string.label_email),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                enabled = !isBusy,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            PasswordSeTextField(
+                value = password,
+                onValueChange = { if (!isBusy) password = it },
+                enabled = !isBusy,
+            )
+            SeTextButton(
+                text = stringResource(R.string.action_forgot_password),
+                onClick = onNavigateForgot,
+                enabled = !isBusy,
+                modifier = Modifier.align(Alignment.End),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            formState.errorMessage?.let { message ->
+                SeErrorText(text = message)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+        SePrimaryButton(
+            text = stringResource(R.string.action_log_in),
+            onClick = { onSignIn(email.trim(), password) },
+            enabled = !isBusy,
+            isLoading = isBusy,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        SeOutlinedButton(
+            text = stringResource(R.string.action_continue_google),
+            onClick = onGoogleStub,
+            enabled = !isBusy,
+            modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
+        )
+        SeTextButton(
+            text = stringResource(R.string.action_sign_up),
+            onClick = onNavigateSignUp,
+            enabled = !isBusy,
+            modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 640)
+@Composable
+private fun LoginScreenPreview() {
+    SePreview {
+        LoginScreen(
+            formState = AuthFormState(),
+            onSignIn = { _, _ -> },
+            onNavigateSignUp = {},
+            onNavigateForgot = {},
+            onGoogleStub = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 640, name = "Login loading")
+@Composable
+private fun LoginScreenLoadingPreview() {
+    SePreview {
+        LoginScreen(
+            formState = AuthFormState(isLoading = true),
+            onSignIn = { _, _ -> },
+            onNavigateSignUp = {},
+            onNavigateForgot = {},
+            onGoogleStub = {},
+        )
+    }
+}

@@ -1,5 +1,7 @@
 # Phase 12 — Forgot password via email OTP
 
+Replaced link-based password reset with a 6-digit email OTP flow: request code, enter OTP, set a new password in-app. Recovery mail uses a dedicated template (not the signup copy).
+
 ## Phase Goal
 
 Replace link-based password reset with a **6-digit email OTP** flow that matches signup verification: request code → enter OTP + new password in-app → password updated. Recovery mail uses a dedicated Reset password template (not the signup copy).

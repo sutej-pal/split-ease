@@ -44,7 +44,11 @@ class GroupPhotoPickerState internal constructor() {
 }
 
 @Composable
-fun rememberGroupPhotoPicker(onPicked: (uri: String) -> Unit): GroupPhotoPickerState {
+fun rememberGroupPhotoPicker(
+    title: String = stringResource(R.string.group_photo_source_title),
+    body: String = stringResource(R.string.group_photo_source_body),
+    onPicked: (uri: String) -> Unit,
+): GroupPhotoPickerState {
     val context = LocalContext.current
     val state = remember { GroupPhotoPickerState() }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
@@ -72,18 +76,18 @@ fun rememberGroupPhotoPicker(onPicked: (uri: String) -> Unit): GroupPhotoPickerS
             } else {
                 Toast
                     .makeText(
-                    context,
-                    context.getString(R.string.msg_camera_permission_denied),
-                    Toast.LENGTH_SHORT,
-                ).show()
+                        context,
+                        context.getString(R.string.msg_camera_permission_denied),
+                        Toast.LENGTH_SHORT,
+                    ).show()
             }
         }
 
     if (state.showSheet) {
         SeModal(onDismissRequest = state::dismiss) {
-            SeModalTitle(text = stringResource(R.string.group_photo_source_title))
+            SeModalTitle(text = title)
             Spacer(modifier = Modifier.height(8.dp))
-            SeModalBody(text = stringResource(R.string.group_photo_source_body))
+            SeModalBody(text = body)
             Spacer(modifier = Modifier.height(16.dp))
             SePrimaryButton(
                 text = stringResource(R.string.account_photo_gallery),
@@ -120,6 +124,34 @@ fun rememberGroupPhotoPicker(onPicked: (uri: String) -> Unit): GroupPhotoPickerS
     }
 
     return state
+}
+
+/**
+ * Picks a gallery/camera image, then opens a header-aspect cropper before calling [onCropped].
+ */
+@Composable
+fun rememberGroupCoverPicker(onCropped: (uri: String) -> Unit): GroupPhotoPickerState {
+    var pendingCropUri by remember { mutableStateOf<String?>(null) }
+    val picker =
+        rememberGroupPhotoPicker(
+            title = stringResource(R.string.group_cover_source_title),
+            body = stringResource(R.string.group_cover_source_body),
+        ) { uri ->
+            pendingCropUri = uri
+        }
+
+    pendingCropUri?.let { uri ->
+        CoverImageCropDialog(
+            sourceUri = uri,
+            onDismiss = { pendingCropUri = null },
+            onCropped = { cropped ->
+                pendingCropUri = null
+                onCropped(cropped)
+            },
+        )
+    }
+
+    return picker
 }
 
 private fun createGroupCameraCaptureUri(context: Context): Uri? =

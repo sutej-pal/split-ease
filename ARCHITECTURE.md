@@ -28,7 +28,7 @@ Single Gradle module `:app`. Money uses `java.math.BigDecimal` only (never `Floa
 | Work | WorkManager (+ HiltWorker) |
 | Money math | `BigDecimal` |
 
-Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Never ship database/service-role secrets in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
+Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` â†’ `BuildConfig`. Never ship database/service-role secrets in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
 
 ## Data & sync
 
@@ -39,7 +39,7 @@ Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_B
 - **Activity events:** local `activity_events` (Room); not cloud-synced.
 - **Schema SoT:** [docs/data-dictionary.md](docs/data-dictionary.md) + `app/schemas/`.
 
-Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) for a fresh database (single-run baseline). Optional notify triggers / FCM remain separate: [docs/sql/phase-extras-notify-triggers.sql](docs/sql/phase-extras-notify-triggers.sql), [docs/fcm-setup.md](docs/fcm-setup.md).
+Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) (single canonical file). Optional FCM notify triggers are included and no-op until `app.settings` are set — see [docs/fcm-setup.md](docs/fcm-setup.md).
 
 Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured.
 
@@ -64,11 +64,11 @@ Phase write-ups (historical Plan + Outcome): [docs/README.md](docs/README.md).
 
 Hand-authored Material 3 schemes from the app icon (indigo + amber). No Material You dynamic color by default.
 
-Canonical tokens: [docs/design-tokens.md](docs/design-tokens.md) · code: `presentation/theme/` · phase: [docs/phase-0b-theme-system.md](docs/phase-0b-theme-system.md).
+Canonical tokens: [docs/design-tokens.md](docs/design-tokens.md) Â· code: `presentation/theme/` Â· phase: [docs/phase-0-project-setup-and-brand-theme.md](docs/phase-0-project-setup-and-brand-theme.md).
 
 Reusable `Se*` components in `presentation/ui/` wrap Material 3 with brand tokens. Prefer `Se*` / `MaterialTheme.colorScheme` over raw hex.
 
-Secondary screens with back + title use **one** chrome: `SeScreen` → `SeTopBar` → `SeScreenTitleText` (`SeScreenTitleStyle` / `titleLarge`). Spacing rhythm: `SeLayout` (see [design-tokens.md](docs/design-tokens.md#screen-chrome-back--title)).
+Secondary screens with back + title use **one** chrome: `SeScreen` â†’ `SeTopBar` â†’ `SeScreenTitleText` (`SeScreenTitleStyle` / `titleLarge`). Spacing rhythm: `SeLayout` (see [design-tokens.md](docs/design-tokens.md#screen-chrome-back--title)).
 
 ## Release size
 
