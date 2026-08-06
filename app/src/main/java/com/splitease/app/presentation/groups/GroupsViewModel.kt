@@ -65,17 +65,17 @@ class GroupsViewModel
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
         @OptIn(ExperimentalCoroutinesApi::class)
-        val groups: StateFlow<List<Group>> =
-            userId
-                .flatMapLatest { id ->
-                    if (id == null) flowOf(emptyList()) else groupRepository.observeGroupsForUser(id)
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-        @OptIn(ExperimentalCoroutinesApi::class)
         val friends: StateFlow<List<Friend>> =
             userId
                 .flatMapLatest { id ->
                     if (id == null) flowOf(emptyList()) else friendRepository.observeFriends(id)
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val groups: StateFlow<List<Group>> =
+            userId
+                .flatMapLatest { id ->
+                    if (id == null) flowOf(emptyList()) else groupRepository.observeGroupsForUser(id)
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         /** userId → displayName for members who are not in the local friends list. */
@@ -130,7 +130,7 @@ class GroupsViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage = if (shareText != null) "Invite link is ready to share." else null,
+                        infoMessage = null,
                         pendingShareText = shareText,
                     )
                 }
@@ -358,7 +358,7 @@ class GroupsViewModel
          */
         fun observeGroup(groupId: String): StateFlow<Group?> =
             groupFlows.getOrPut(groupId) {
-                MutableStateFlow(groups.value.firstOrNull { it.id == groupId }).also { state ->
+                MutableStateFlow<Group?>(groups.value.firstOrNull { it.id == groupId }).also { state ->
                     viewModelScope.launch {
                         if (state.value == null) {
                             state.value = groupRepository.getGroupById(groupId)

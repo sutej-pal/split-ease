@@ -71,11 +71,25 @@ fun SePrimaryButton(
             ),
     ) {
         if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(22.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = 2.dp,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text,
+                    style =
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 16.sp,
+                            lineHeight = 22.sp,
+                        ),
+                )
+            }
         } else {
             Text(
                 text,
@@ -163,7 +177,8 @@ fun SeTextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
-    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
+    // Zero horizontal padding so start-aligned labels share the title/body edge.
+    contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
 ) {
     val interactive = enabled && !isLoading
     TextButton(

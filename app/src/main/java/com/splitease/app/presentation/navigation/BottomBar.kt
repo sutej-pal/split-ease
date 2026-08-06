@@ -101,15 +101,12 @@ private fun BottomBarTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectedColor = SplitEaseColors.Primary
+    val unselectedColor = SplitEaseColors.NavyMuted
     val contentColor by animateColorAsState(
-        targetValue = if (selected) SplitEaseColors.Primary else SplitEaseColors.NavyMuted,
+        targetValue = if (selected) selectedColor else unselectedColor,
         animationSpec = tween(durationMillis = 200),
         label = "bottomBarContent",
-    )
-    val bubbleColor by animateColorAsState(
-        targetValue = if (selected) SplitEaseColors.PrimarySoft else Color.Transparent,
-        animationSpec = tween(durationMillis = 200),
-        label = "bottomBarBubble",
     )
     val label = stringResource(tab.labelRes)
 

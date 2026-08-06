@@ -10,8 +10,8 @@ import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
-import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.expenses.LedgerBalanceSide
 import com.splitease.app.presentation.expenses.LedgerListItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,8 +27,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.text.DateFormat
-import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,7 +36,6 @@ class SearchViewModel
         @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val expenseRepository: ExpenseRepository,
-        private val groupRepository: GroupRepository,
         private val userRepository: UserRepository,
         private val friendRepository: FriendRepository,
     ) : ViewModel() {
@@ -60,11 +57,9 @@ class SearchViewModel
                         expenseRepository.search(q).flatMapLatest { expenses ->
                             combine(
                                 expenseRepository.observeSplitsForExpenses(expenses.map { it.id }),
-                                groupRepository.observeGroupsForUser(me),
                                 userRepository.observeUsers(),
                                 friendRepository.observeFriends(me),
-                            ) { splits, groups, users, friends ->
-                                val groupNames = groups.associate { it.id to it.name }
+                            ) { splits, users, friends ->
                                 val userNames = users.associate { it.id to it.displayName }
                                 val friendNames =
                                     friends.associate { it.friendUserId to it.displayNameSnapshot }
@@ -81,7 +76,6 @@ class SearchViewModel
                                 expenses.map { expense ->
                                     expense.toSearchItem(
                                         me = me,
-                                        groupNames = groupNames,
                                         nameOf = ::nameOf,
                                         splits = splits[expense.id].orEmpty(),
                                     )
@@ -97,27 +91,22 @@ class SearchViewModel
 
         private fun Expense.toSearchItem(
             me: String,
-            groupNames: Map<String, String>,
             nameOf: (String) -> String,
             splits: List<ExpenseSplit>,
         ): LedgerListItem {
-            val actorLabel = nameOf(paidByUserId)
-            val contextLabel =
-                groupId?.let { groupNames[it] }
-                    ?: appContext.getString(R.string.non_group_expenses)
+            val payerLabel = nameOf(paidByUserId)
             val sortEpochMs = expenseDateEpochMs.coerceAtLeast(createdAtEpochMs)
             val (balanceSide, balanceAmount) = viewerBalance(me, this, splits)
             return LedgerListItem(
                 id = "expense-$id",
                 isPayment = false,
-                title =
+                title = description,
+                subtitle =
                     appContext.getString(
-                        R.string.activity_added_in,
-                        actorLabel,
-                        description,
-                        contextLabel,
+                        R.string.ledger_paid_by,
+                        payerLabel,
+                        MoneyFormat.format(amount, currencyCode),
                     ),
-                subtitle = formatDateTime(sortEpochMs),
                 sortEpochMs = sortEpochMs,
                 categoryIconKey = "category_general",
                 currencyCode = currencyCode,
@@ -151,9 +140,4 @@ class SearchViewModel
                 else -> null to null
             }
         }
-
-        private fun formatDateTime(epochMs: Long): String =
-            DateFormat
-                .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-                .format(Date(epochMs))
     }

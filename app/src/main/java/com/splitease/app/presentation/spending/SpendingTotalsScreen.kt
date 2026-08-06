@@ -27,6 +27,7 @@ import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.seDetailHorizontal
 
 @Composable
 fun SpendingTotalsScreen(
@@ -45,7 +46,7 @@ fun SpendingTotalsScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = 20.dp)
+                        .seDetailHorizontal()
                         .verticalScroll(rememberScrollState()),
             ) {
                 SeSectionHeader(text = stringResource(R.string.spending_period))

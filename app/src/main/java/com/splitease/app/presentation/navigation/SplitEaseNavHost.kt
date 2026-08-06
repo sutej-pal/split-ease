@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -38,6 +40,7 @@ import com.splitease.app.presentation.auth.ResetPasswordOtpScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
+import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
 import com.splitease.app.presentation.friends.EditContactScreen
@@ -482,6 +485,16 @@ private fun SignedInNavHost(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
+                // Restore dark status-bar glyphs (wifi, signal, battery) when returning from
+                // screens that force light icons on a colored banner (e.g. group detail).
+                val barBg = MaterialTheme.colorScheme.surface
+                val darkGlyphs = barBg.luminance() > 0.5f
+                SeSystemBars(
+                    statusBarColor = MaterialTheme.colorScheme.background,
+                    navigationBarColor = barBg,
+                    statusBarDarkIcons = darkGlyphs,
+                    navigationBarDarkIcons = darkGlyphs,
+                )
                 SplitEaseBottomBar(
                     currentRoute = bottomBarSelectedRoute,
                     onTabSelected = { tab ->

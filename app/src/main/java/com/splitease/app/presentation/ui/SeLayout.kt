@@ -1,10 +1,14 @@
 package com.splitease.app.presentation.ui
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -12,13 +16,22 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 /**
  * Screen layout rhythm for SplitEase.
  *
- * Secondary screens (back + title) should use [SeScreen] / [SeTopBar] and these
- * spacings so typography and gaps stay consistent. Prefer [SeScreenTitleStyle]
- * over raw `headline*` / `title*` picks in screen headers.
+ * Secondary screens (back + title) must use [SeScreen] (or [SeTopBar] inside a
+ * Scaffold) so chevron + title placement stays identical. Prefer
+ * [SeScreenTitleStyle] over raw `headline*` / `title*` picks in screen headers.
+ *
+ * List / balance / totals body content should use [detailHorizontal] (20dp) so it
+ * matches group-detail rows. Detail banners are a separate chrome pattern.
  */
 object SeLayout {
-    /** Horizontal inset for standard screen body content. */
+    /** Horizontal inset for form-style bodies (auth, settings). */
     val screenHorizontal: Dp = 24.dp
+
+    /**
+     * Canonical content margin for group-detail-style screens: Activity, Balances,
+     * Totals, ledger rows, chips. 20dp each side (e.g. 392dp content on 432dp width).
+     */
+    val detailHorizontal: Dp = 20.dp
 
     /** Vertical padding below the top app bar before body content. */
     val screenTop: Dp = 8.dp
@@ -43,10 +56,17 @@ object SeLayout {
 }
 
 /**
+ * Applies [SeLayout.detailHorizontal] — the same 20dp side margin as group-detail rows.
+ */
+fun Modifier.seDetailHorizontal(): Modifier =
+    this.padding(horizontal = SeLayout.detailHorizontal)
+
+/**
  * Canonical text style for secondary-screen titles (app bar / back+title chrome).
  *
  * Uses Material [Typography.titleLarge] (22sp) so titles are consistent — not a mix
- * of `headlineMedium` and `titleMedium`.
+ * of `headlineMedium` and `titleMedium`. [includeFontPadding] is off so the glyph
+ * centers optically beside [SeChevronBackButton].
  */
 @Composable
 @ReadOnlyComposable
@@ -54,6 +74,12 @@ fun SeScreenTitleStyle(): TextStyle =
     MaterialTheme.typography.titleLarge.copy(
         fontWeight = FontWeight.SemiBold,
         color = SplitEaseColors.Navy,
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+        lineHeightStyle =
+            LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.Both,
+            ),
     )
 
 /**

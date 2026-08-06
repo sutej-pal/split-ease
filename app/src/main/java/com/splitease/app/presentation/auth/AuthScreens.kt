@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.auth
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,11 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -32,7 +34,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,13 +44,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeChevronBackButton
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SeScreenSubtitleStyle
 import com.splitease.app.presentation.ui.SeScreenTitleText
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
-import com.splitease.app.presentation.ui.SeTopBar
 
 internal enum class AuthContentPlacement {
     Center,
@@ -110,16 +111,6 @@ internal fun AuthScaffold(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = bg,
-        topBar = {
-            if (onNavigateBack != null) {
-                SeTopBar(
-                    title = "",
-                    onBack = {
-                        if (!formState.isLoading) onNavigateBack()
-                    },
-                )
-            }
-        },
         snackbarHost = {
             SeMessageHost(
                 errorMessage = formState.errorMessage.takeIf { showErrorInSnackbar },
@@ -136,10 +127,30 @@ internal fun AuthScaffold(
                     .padding(bottom = SeLayout.screenBottom),
             horizontalAlignment = contentHAlign,
         ) {
+            // Back lives in the body (not Material TopAppBar) so the chevron shares
+            // screenHorizontal with the title. -8.dp offsets the 40dp hit target so the
+            // 24dp glyph lines up with the title text.
+            if (onNavigateBack != null) {
+                SeChevronBackButton(
+                    onClick = {
+                        if (!formState.isLoading) onNavigateBack()
+                    },
+                    enabled = !formState.isLoading,
+                    modifier =
+                        Modifier
+                            .align(Alignment.Start)
+                            .padding(top = SeLayout.screenTop, bottom = SeLayout.itemGap)
+                            .offset(x = (-8).dp),
+                )
+            }
+
             when (contentPlacement) {
                 AuthContentPlacement.Center -> {
                     Column(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = contentHAlign,
                     ) {
@@ -160,11 +171,14 @@ internal fun AuthScaffold(
                     Column(
                         modifier =
                             Modifier
-                                .fillMaxSize()
+                                .weight(1f)
+                                .fillMaxWidth()
                                 .verticalScroll(rememberScrollState()),
                         horizontalAlignment = contentHAlign,
                     ) {
-                        Spacer(modifier = Modifier.height(SeLayout.screenTop))
+                        if (onNavigateBack == null) {
+                            Spacer(modifier = Modifier.height(SeLayout.screenTop))
+                        }
                         AuthScaffoldHeader(
                             title = title,
                             subtitle = subtitle,

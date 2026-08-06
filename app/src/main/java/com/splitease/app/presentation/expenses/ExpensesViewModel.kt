@@ -28,6 +28,7 @@ import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppSettingsRepository
+import com.splitease.app.presentation.common.MoneyFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,8 +46,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.text.DateFormat
-import java.util.Date
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -78,10 +77,11 @@ enum class LedgerBalanceSide {
 /**
  * Unified expense/payment row for group and friend timelines.
  *
- * Layout (Activity-style):
- * 1. [title] — e.g. "Alex added Dinner in Roommates"
- * 2. balance from [balanceSide]/[balanceAmount] — get back / owe / received / paid
- * 3. [subtitle] — date and time
+ * Layout:
+ * 1. Date from [sortEpochMs] (month + day)
+ * 2. [title] — expense description (or payment summary)
+ * 3. [subtitle] — e.g. "You paid ₹550.00"
+ * 4. balance from [balanceSide]/[balanceAmount] — lent / borrowed / received / paid
  */
 data class LedgerListItem(
     val id: String,
@@ -220,10 +220,7 @@ class ExpensesViewModel
                                 )
                             }.combine(categoryRepository.observeCategories()) { source, categories ->
                                 source to categories
-                            }.combine(groupRepository.observeGroupById(groupId)) { pair, group ->
-                                val (source, categories) = pair
-                                val groupNames =
-                                    group?.let { mapOf(it.id to it.name) }.orEmpty()
+                            }.map { (source, categories) ->
                                 buildLedger(
                                     expenses = source.expenses,
                                     payments = source.payments,
@@ -235,7 +232,6 @@ class ExpensesViewModel
                                         },
                                     userNames = source.users.associate { it.id to it.displayName },
                                     splitsByExpenseId = source.splitsByExpenseId,
-                                    groupNames = groupNames,
                                 )
                             }
                         }
@@ -259,14 +255,12 @@ class ExpensesViewModel
                                 paymentRepository.observeInvolvingUser(me),
                                 userRepository.observeUsers(),
                                 friendRepository.observeFriends(me),
-                                groupRepository.observeGroupsForUser(me),
-                            ) { expenses, payments, users, friends, groups ->
+                            ) { expenses, payments, users, friends ->
                                 FriendLedgerSource(
                                     expenses = expenses,
                                     payments = payments,
                                     users = users,
                                     friends = friends,
-                                    groups = groups,
                                 )
                             }.flatMapLatest { source ->
                                 expenseRepository
@@ -297,7 +291,6 @@ class ExpensesViewModel
                                             userNames =
                                                 source.users.associate { it.id to it.displayName },
                                             splitsByExpenseId = allSplits,
-                                            groupNames = source.groups.associate { it.id to it.name },
                                         )
                                     }
                             }
@@ -310,7 +303,6 @@ class ExpensesViewModel
             val payments: List<Payment>,
             val users: List<com.splitease.app.domain.model.User>,
             val friends: List<Friend>,
-            val groups: List<com.splitease.app.domain.model.Group>,
         )
 
         /**
@@ -373,7 +365,6 @@ class ExpensesViewModel
             friendNames: Map<String, String>,
             userNames: Map<String, String>,
             splitsByExpenseId: Map<String, List<ExpenseSplit>>,
-            groupNames: Map<String, String> = emptyMap(),
         ): List<LedgerListItem> {
             fun nameOf(id: String): String =
                 nameOf(id, me, friendNames, userNames)
@@ -381,10 +372,7 @@ class ExpensesViewModel
             val expenseItems =
                 expenses.map { expense ->
                     val category = expense.categoryId?.let { categoryById[it] }
-                    val actorLabel = nameOf(expense.paidByUserId)
-                    val contextLabel =
-                        expense.groupId?.let { groupNames[it] }
-                            ?: appContext.getString(R.string.non_group_expenses)
+                    val payerLabel = nameOf(expense.paidByUserId)
                     val sortEpochMs =
                         expense.expenseDateEpochMs.coerceAtLeast(expense.createdAtEpochMs)
                     val (balanceSide, balanceAmount) =
@@ -396,14 +384,13 @@ class ExpensesViewModel
                     LedgerListItem(
                         id = "expense-${expense.id}",
                         isPayment = false,
-                        title =
+                        title = expense.description,
+                        subtitle =
                             appContext.getString(
-                                R.string.activity_added_in,
-                                actorLabel,
-                                expense.description,
-                                contextLabel,
+                                R.string.ledger_paid_by,
+                                payerLabel,
+                                MoneyFormat.format(expense.amount, expense.currencyCode),
                             ),
-                        subtitle = formatDateTime(sortEpochMs),
                         sortEpochMs = sortEpochMs,
                         categoryIconKey = category?.iconKey ?: "category_general",
                         currencyCode = expense.currencyCode,
@@ -413,23 +400,20 @@ class ExpensesViewModel
                 }
             val paymentItems =
                 payments.map { payment ->
+                    val fromLabel = nameOf(payment.fromUserId)
+                    val toLabel = nameOf(payment.toUserId)
+                    val money = MoneyFormat.format(payment.amount, payment.currencyCode)
                     val title =
                         when (me) {
                             payment.fromUserId ->
-                                appContext.getString(
-                                    R.string.payment_completed_you_paid,
-                                    nameOf(payment.toUserId),
-                                )
+                                appContext.getString(R.string.payment_to_person, toLabel)
                             payment.toUserId ->
-                                appContext.getString(
-                                    R.string.payment_completed_they_paid,
-                                    nameOf(payment.fromUserId),
-                                )
+                                appContext.getString(R.string.payment_from_person, fromLabel)
                             else ->
                                 appContext.getString(
                                     R.string.payment_completed_other,
-                                    nameOf(payment.fromUserId),
-                                    nameOf(payment.toUserId),
+                                    fromLabel,
+                                    toLabel,
                                 )
                         }
                     val sortEpochMs =
@@ -444,7 +428,12 @@ class ExpensesViewModel
                         id = "payment-${payment.id}",
                         isPayment = true,
                         title = title,
-                        subtitle = formatDateTime(sortEpochMs),
+                        subtitle =
+                            appContext.getString(
+                                R.string.ledger_paid_by,
+                                fromLabel,
+                                money,
+                            ),
                         sortEpochMs = sortEpochMs,
                         categoryIconKey = "category_payment",
                         currencyCode = payment.currencyCode,
@@ -454,11 +443,6 @@ class ExpensesViewModel
                 }
             return (expenseItems + paymentItems).sortedByDescending { it.sortEpochMs }
         }
-
-        private fun formatDateTime(epochMs: Long): String =
-            DateFormat
-                .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-                .format(Date(epochMs))
 
         /**
          * Net for [me] on a single expense: positive ⇒ lent, negative ⇒ borrowed.
@@ -813,6 +797,7 @@ class ExpensesViewModel
             val friends = friendRepository.observeFriends(me).first()
             val friendById = friends.associateBy { it.friendUserId }
 
+            // Group expenses include only membership rows (not unrelated invited friends).
             val options = linkedMapOf<String, ParticipantOption>()
             options[me] = ParticipantOption(me, myName, false)
             members.forEach { member ->
@@ -827,14 +812,6 @@ class ExpensesViewModel
                         label.contains("(invited)", true)
                 options[member.userId] = ParticipantOption(member.userId, label, pending)
             }
-            friends
-                .filter { it.displayNameSnapshot.contains("(invited)", ignoreCase = true) }
-                .forEach { friend ->
-                    if (!options.containsKey(friend.friendUserId)) {
-                        options[friend.friendUserId] =
-                            ParticipantOption(friend.friendUserId, friend.displayNameSnapshot, true)
-                    }
-                }
             return options.values.toList()
         }
 

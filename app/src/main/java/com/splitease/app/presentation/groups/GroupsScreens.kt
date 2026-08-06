@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Group
@@ -55,27 +53,36 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -84,7 +91,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp as lerpDp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -101,24 +110,23 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.expenses.ExpensesViewModel
+import com.splitease.app.presentation.expenses.LedgerBalanceSide
+import com.splitease.app.presentation.expenses.LedgerListItem
 import com.splitease.app.presentation.expenses.ledgerEntries
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
-import com.splitease.app.presentation.ui.SeFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeInfoText
-import com.splitease.app.presentation.ui.SeListRow
-import com.splitease.app.presentation.ui.SeLoadingOverlay
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
-import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SePullRefreshBox
-import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
@@ -128,70 +136,7 @@ import java.io.File
 import java.math.BigDecimal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-@Composable
-fun GroupsListScreen(
-    onBack: () -> Unit,
-    onCreateGroup: () -> Unit,
-    onOpenGroup: (String) -> Unit,
-    viewModel: GroupsViewModel = hiltViewModel(),
-) {
-    val groups by viewModel.groups.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    SeScreen(
-        title = stringResource(R.string.groups_title),
-        onBack = onBack,
-        floatingActionButton = {
-            SeFab(
-                onClick = onCreateGroup,
-                contentDescription = stringResource(R.string.action_create_group),
-                icon = Icons.Filled.Add,
-            )
-        },
-        content = { padding ->
-            SePullRefreshBox(
-                isRefreshing = uiState.isRefreshing,
-                onRefresh = viewModel::refresh,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding.values),
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    uiState.errorMessage?.let {
-                        SeErrorText(it, modifier = Modifier.padding(16.dp))
-                    }
-                    if (groups.isEmpty()) {
-                        SeEmptyState(
-                            message = stringResource(R.string.groups_empty),
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            actionLabel = stringResource(R.string.action_create_group),
-                            onAction = onCreateGroup,
-                        )
-                    } else {
-                        LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
-                            items(groups, key = { it.id }) { group ->
-                                SeListRow(
-                                    title = group.name,
-                                    leading = {
-                                        SeGroupIconTile(
-                                            photoUrl = group.photoUrl,
-                                            fallbackIcon = group.groupType.icon(),
-                                            fallbackTint = group.groupType.tint(),
-                                            size = 48,
-                                        )
-                                    },
-                                    onClick = { onOpenGroup(group.id) },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-    )
-}
+import androidx.core.net.toUri
 
 @Composable
 fun CreateGroupScreen(
@@ -218,142 +163,134 @@ fun CreateGroupScreen(
                 centered = true,
             )
         },
-        bottomBar = {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .imePadding()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-            ) {
-                SePrimaryButton(
-                    text = stringResource(R.string.action_create_group),
-                    onClick = {
-                        focusManager.clearFocus()
-                        viewModel.createGroup(
-                            name = name,
-                            groupType = selectedType,
-                            photoUri = photoUri,
-                            onSuccess = onCreated,
-                        )
-                    },
-                    enabled = canCreate,
-                    isLoading = isSubmitting,
-                )
-            }
-        },
     ) { padding ->
-        Box(
+        Column(
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .imePadding()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = { focusManager.clearFocus() },
-                    ),
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                        .alpha(if (isSubmitting) 0.5f else 1f),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(72.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .border(
-                                    width = 1.dp,
-                                    color = SplitEaseColors.OutlineStrong,
-                                    shape = RoundedCornerShape(14.dp),
-                                ).background(SplitEaseColors.Surface)
-                                .clickable(enabled = !isSubmitting) { photoPicker.launch() },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (photoUri != null) {
-                            SeGroupIconTile(
-                                photoUrl = photoUri,
-                                fallbackIcon = Icons.Filled.AddAPhoto,
-                                fallbackTint = SplitEaseColors.Primary,
-                                size = 72,
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Filled.AddAPhoto,
-                                contentDescription = stringResource(R.string.cd_group_photo),
-                                tint = SplitEaseColors.Primary,
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    SeTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = stringResource(R.string.label_group_name),
-                        // width(0) + weight lets the field shrink; OutlinedTextField's
-                        // intrinsic min width otherwise overflows the row.
-                        modifier = Modifier.weight(1f).width(0.dp),
-                        enabled = !isSubmitting,
                     )
-                }
-
-                Spacer(modifier = Modifier.height(28.dp))
-                SeSectionHeader(text = stringResource(R.string.label_group_type))
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(
+                                width = 1.dp,
+                                color = SplitEaseColors.OutlineStrong,
+                                shape = RoundedCornerShape(14.dp),
+                            )
+                            .background(SplitEaseColors.Surface)
+                            .clickable(enabled = !isSubmitting) { photoPicker.launch() },
+                    contentAlignment = Alignment.Center,
                 ) {
-                    GroupType.entries.forEach { type ->
-                        SeTypeChip(
-                            label = stringResource(type.labelRes()),
-                            icon = type.icon(),
-                            selected = selectedType == type,
-                            onClick = { groupType = type.name },
-                            enabled = !isSubmitting,
-                            modifier = Modifier.weight(1f),
+                    if (photoUri != null) {
+                        SeGroupIconTile(
+                            photoUrl = photoUri,
+                            fallbackIcon = Icons.Filled.AddAPhoto,
+                            fallbackTint = SplitEaseColors.Primary,
+                            size = 56,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.AddAPhoto,
+                            contentDescription = stringResource(R.string.cd_group_photo),
+                            tint = SplitEaseColors.Primary,
                         )
                     }
                 }
+                Spacer(modifier = Modifier.width(16.dp))
+                SeTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = stringResource(R.string.label_group_name),
+                    // width(0) + weight lets the field shrink; OutlinedTextField's
+                    // intrinsic min width otherwise overflows the row.
+                    modifier = Modifier
+                        .weight(1f)
+                        .width(0.dp),
+                    enabled = !isSubmitting,
+                )
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SplitEaseColors.PrimarySoft)
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PersonAdd,
-                        contentDescription = null,
-                        tint = SplitEaseColors.Primary,
-                        modifier = Modifier.size(20.dp),
+            Spacer(modifier = Modifier.height(28.dp))
+            SeSectionHeader(text = stringResource(R.string.label_group_type))
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GroupType.entries.forEach { type ->
+                    SeTypeChip(
+                        label = stringResource(type.labelRes()),
+                        icon = type.icon(),
+                        selected = selectedType == type,
+                        onClick = { groupType = type.name },
+                        enabled = !isSubmitting,
+                        modifier = Modifier.weight(1f),
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.create_group_invite_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SplitEaseColors.Navy,
-                    )
-                }
-
-                uiState.errorMessage?.let {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SeErrorText(it)
                 }
             }
 
-            SeLoadingOverlay(
-                visible = isSubmitting,
-                text = stringResource(R.string.group_creating),
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SplitEaseColors.PrimarySoft)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PersonAdd,
+                    contentDescription = null,
+                    tint = SplitEaseColors.Primary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.create_group_invite_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.Navy,
+                )
+            }
+
+            uiState.errorMessage?.let {
+                Spacer(modifier = Modifier.height(16.dp))
+                SeErrorText(it)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            SePrimaryButton(
+                text =
+                    if (isSubmitting) {
+                        stringResource(R.string.group_creating)
+                    } else {
+                        stringResource(R.string.action_create_group)
+                    },
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.createGroup(
+                        name = name,
+                        groupType = selectedType,
+                        photoUri = photoUri,
+                        onSuccess = onCreated,
+                    )
+                },
+                enabled = canCreate,
+                isLoading = isSubmitting,
             )
         }
     }
@@ -466,6 +403,51 @@ fun GroupDetailScreen(
         )
     }
 
+    val density = LocalDensity.current
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val collapsedBannerHeight = statusBarHeight + GroupDetailBannerToolbarHeight
+    val expandedBannerHeight =
+        maxOf(GroupDetailBannerHeight, collapsedBannerHeight + GroupDetailBannerCollapseRange)
+    val collapseRangePx =
+        with(density) { (expandedBannerHeight - collapsedBannerHeight).toPx() }
+            .coerceAtLeast(1f)
+    var toolbarOffsetPx by remember { mutableFloatStateOf(0f) }
+    val nestedScrollConnection =
+        remember(collapseRangePx) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    // Collapse the banner before the list scrolls up.
+                    if (available.y >= 0f) return Offset.Zero
+                    val previous = toolbarOffsetPx
+                    val next = (previous + available.y).coerceIn(-collapseRangePx, 0f)
+                    toolbarOffsetPx = next
+                    return Offset(0f, next - previous)
+                }
+
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    // Expand the banner after the list can no longer scroll down.
+                    if (available.y <= 0f) return Offset.Zero
+                    val previous = toolbarOffsetPx
+                    val next = (previous + available.y).coerceIn(-collapseRangePx, 0f)
+                    toolbarOffsetPx = next
+                    return Offset(0f, next - previous)
+                }
+            }
+        }
+    val collapseFraction = (-toolbarOffsetPx / collapseRangePx).coerceIn(0f, 1f)
+    val bannerHeight =
+        lerpDp(expandedBannerHeight, collapsedBannerHeight, collapseFraction)
+    var statusBarDarkIcons by remember(bannerColor) {
+        mutableStateOf(bannerColor.luminance() > 0.5f)
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
@@ -478,60 +460,29 @@ fun GroupDetailScreen(
     ) { padding ->
         SeSystemBars(
             statusBarColor = Color.Transparent,
-            navigationBarColor = bannerColor,
-            statusBarDarkIcons = false,
-            navigationBarDarkIcons = false,
+            // Bottom of the screen is light content / FAB — keep dark system-nav glyphs.
+            // (Previously used bannerColor + light icons, which leaked white glyphs onto
+            // the main tab bottom bar after pop.)
+            navigationBarColor = MaterialTheme.colorScheme.background,
+            statusBarDarkIcons = statusBarDarkIcons,
+            navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
         Column(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding()),
+                    .padding(bottom = padding.calculateBottomPadding())
+                    .nestedScroll(nestedScrollConnection),
         ) {
             GroupDetailBanner(
                 group = group,
                 bannerColor = bannerColor,
+                bannerHeight = bannerHeight,
+                collapseFraction = collapseFraction,
                 onBack = onBack,
                 onOpenSettings = onOpenSettings,
+                onStatusBarDarkIconsChange = { statusBarDarkIcons = it },
             )
-
-            if (!(isSolo && ledger.isEmpty())) {
-                GroupOverallBalanceBlock(
-                    balance = groupBalance,
-                    currencyFallback = group?.defaultCurrencyCode.orEmpty(),
-                    onClick = onOpenBalances,
-                )
-            }
-
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SeActionChip(
-                    label = stringResource(R.string.action_settle_up),
-                    onClick = { openSettle() },
-                    icon = Icons.Filled.Payments,
-                )
-                SeActionChip(
-                    label = stringResource(R.string.group_chip_balances),
-                    onClick = onOpenBalances,
-                    icon = Icons.Filled.AccountBalance,
-                )
-                SeActionChip(
-                    label = stringResource(R.string.group_chip_totals),
-                    onClick = onOpenTotals,
-                    icon = Icons.AutoMirrored.Filled.ShowChart,
-                )
-                SeActionChip(
-                    label = stringResource(R.string.action_open_pin_board),
-                    onClick = onOpenPinBoard,
-                    icon = Icons.Filled.PushPin,
-                )
-            }
 
             SePullRefreshBox(
                 isRefreshing = expensesUi.isRefreshing,
@@ -546,6 +497,48 @@ fun GroupDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
+                    if (!(isSolo && ledger.isEmpty())) {
+                        item {
+                            GroupOverallBalanceBlock(
+                                balance = groupBalance,
+                                currencyFallback = group?.defaultCurrencyCode.orEmpty(),
+                                onClick = onOpenBalances,
+                            )
+                        }
+                    }
+
+                    item {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SeActionChip(
+                                label = stringResource(R.string.action_settle_up),
+                                onClick = { openSettle() },
+                                icon = Icons.Filled.Payments,
+                            )
+                            SeActionChip(
+                                label = stringResource(R.string.group_chip_balances),
+                                onClick = onOpenBalances,
+                                icon = Icons.Filled.AccountBalance,
+                            )
+                            SeActionChip(
+                                label = stringResource(R.string.group_chip_totals),
+                                onClick = onOpenTotals,
+                                icon = Icons.AutoMirrored.Filled.ShowChart,
+                            )
+                            SeActionChip(
+                                label = stringResource(R.string.action_open_pin_board),
+                                onClick = onOpenPinBoard,
+                                icon = Icons.Filled.PushPin,
+                            )
+                        }
+                    }
+
                     if (isSolo && ledger.isEmpty()) {
                         item {
                             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -586,133 +579,45 @@ fun GroupDetailScreen(
     }
 }
 
-
-@Preview(name = "Group detail", showBackground = true)
-@Composable
-private fun GroupDetailScreenPreview() {
-    val sampleGroup =
-        Group(
-            id = "g1",
-            name = "Goa trip",
-            defaultCurrencyCode = "INR",        
-            groupType = GroupType.FRIENDS,
-            createdByUserId = "u1",
-            createdAtEpochMs = 0L,
-            updatedAtEpochMs = 0L,
-        )
-    val bannerColor = lerp(sampleGroup.groupType.tint(), SplitEaseColors.Navy, 0.28f)
-    val sampleBalance =
-        GroupBalanceUi(
-            groupId = sampleGroup.id,
-            groupName = sampleGroup.name,
-            myNetByCurrency = mapOf("INR" to BigDecimal("-420.00")),
-            memberNetsByCurrency = emptyMap(),
-            simplifiedDebts =
-                listOf(
-                    LabeledDebt(
-                        fromUserId = "u1",
-                        toUserId = "u2",
-                        fromLabel = "You",
-                        toLabel = "Sam",
-                        amount = BigDecimal("420.00"),
-                        currencyCode = "INR",
-                    ),
-                ),
-        )
-
-    SePreview {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            floatingActionButton = {
-                SeExtendedFab(
-                    text = stringResource(R.string.action_add_expense),
-                    onClick = {},
-                    icon = Icons.Filled.Receipt,
-                )
-            },
-        ) { padding ->
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(bottom = padding.calculateBottomPadding()),
-            ) {
-                GroupDetailBanner(
-                    group = sampleGroup,
-                    bannerColor = bannerColor,
-                    onBack = {},
-                    onOpenSettings = {},
-                )
-                GroupOverallBalanceBlock(
-                    balance = sampleBalance,
-                    currencyFallback = sampleGroup.defaultCurrencyCode,
-                    onClick = {},
-                )
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    SeActionChip(
-                        label = stringResource(R.string.action_settle_up),
-                        onClick = {},
-                        icon = Icons.Filled.Payments,
-                    )
-                    SeActionChip(
-                        label = stringResource(R.string.group_chip_balances),
-                        onClick = {},
-                        icon = Icons.Filled.AccountBalance,
-                    )
-                    SeActionChip(
-                        label = stringResource(R.string.group_chip_totals),
-                        onClick = {},
-                        icon = Icons.AutoMirrored.Filled.ShowChart,
-                    )
-                    SeActionChip(
-                        label = stringResource(R.string.action_open_pin_board),
-                        onClick = {},
-                        icon = Icons.Filled.PushPin,
-                    )
-                }
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .background(SplitEaseColors.Surface)
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
-                ) {
-                    SeEmptyState(message = stringResource(R.string.ledger_empty))
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun GroupDetailBanner(
     group: Group?,
     bannerColor: Color,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
+    bannerHeight: Dp = GroupDetailBannerHeight,
+    collapseFraction: Float = 0f,
+    onStatusBarDarkIconsChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val coverUrl = group?.coverUrl
     val coverStamp = remember(coverUrl) { localMediaContentStamp(coverUrl) }
     var coverBitmap by remember(coverUrl, coverStamp) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(coverUrl, coverStamp) {
-        coverBitmap =
+    var statusBarDarkIcons by remember(bannerColor) {
+        mutableStateOf(bannerColor.luminance() > 0.5f)
+    }
+    val onStatusBarDarkIconsChangeUpdated by rememberUpdatedState(onStatusBarDarkIconsChange)
+    LaunchedEffect(coverUrl, coverStamp, bannerColor) {
+        val (bitmap, darkIcons) =
             withContext(Dispatchers.IO) {
-                AvatarImageIO
-                    .decodeScaled(
+                val decoded =
+                    AvatarImageIO.decodeScaled(
                         context = context,
                         photoUrl = coverUrl,
                         maxSidePx = AvatarImageIO.COVER_PREVIEW_MAX_SIDE_PX,
-                    )?.asImageBitmap()
+                    )
+                if (decoded != null) {
+                    // Status strip is dimmed by [GroupDetailStatusBarDimAlpha]; use effective luminance.
+                    val effective =
+                        decoded.averageTopLuminance() * (1f - GroupDetailStatusBarDimAlpha)
+                    decoded.asImageBitmap() to (effective > 0.5f)
+                } else {
+                    null to (bannerColor.luminance() > 0.5f)
+                }
             }
+        coverBitmap = bitmap
+        statusBarDarkIcons = darkIcons
+        onStatusBarDarkIconsChangeUpdated(darkIcons)
     }
     val statusBarHeight =
         WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -728,12 +633,20 @@ private fun GroupDetailBanner(
                     1.0f to Color.Transparent,
                 ),
         )
+    val title = group?.name ?: stringResource(R.string.groups_title)
+    // Sequential crossfade: large title fully gone before compact title appears.
+    val expandedTitleAlpha = (1f - collapseFraction * 2f).coerceIn(0f, 1f)
+    val collapsedTitleAlpha = ((collapseFraction - 0.5f) / 0.5f).coerceIn(0f, 1f)
+    val expandedTitleBottomPad = lerpDp(28.dp, 8.dp, collapseFraction)
+    // Solid white chips (dark glyphs) on bright regions; translucent light chips on dark covers.
+    val solidChrome = coverBitmap == null || statusBarDarkIcons
 
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(GroupDetailBannerHeight),
+                .height(bannerHeight)
+                .clipToBounds(),
     ) {
         coverBitmap?.let { bitmap ->
             Image(
@@ -795,7 +708,7 @@ private fun GroupDetailBanner(
                     modifier =
                         Modifier
                             .matchParentSize()
-                            .background(Color.Black.copy(alpha = 0.42f)),
+                            .background(Color.Black.copy(alpha = GroupDetailStatusBarDimAlpha)),
                 )
             }
         }
@@ -807,26 +720,44 @@ private fun GroupDetailBanner(
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .align(Alignment.TopCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BannerCircleIconButton(
                 onClick = onBack,
                 imageVector = Icons.Filled.ChevronLeft,
                 contentDescription = stringResource(R.string.cd_back),
-                solid = coverBitmap == null,
+                solid = solidChrome,
+            )
+            Text(
+                text = title,
+                style =
+                    MaterialTheme.typography.titleLarge.copy(
+                        shadow = GroupDetailTitleShadow,
+                    ),
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp)
+                        .graphicsLayer { alpha = collapsedTitleAlpha },
             )
             BannerCircleIconButton(
                 onClick = onOpenSettings,
                 imageVector = Icons.Filled.Settings,
                 contentDescription = stringResource(R.string.cd_group_settings),
-                solid = coverBitmap == null,
+                solid = solidChrome,
             )
         }
 
         Text(
-            text = group?.name ?: stringResource(R.string.groups_title),
-            style = MaterialTheme.typography.headlineMedium,
+            text = title,
+            style =
+                MaterialTheme.typography.headlineMedium.copy(
+                    shadow = GroupDetailTitleShadow,
+                ),
             fontWeight = FontWeight.Bold,
             color = Color.White,
             maxLines = 2,
@@ -834,14 +765,59 @@ private fun GroupDetailBanner(
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(horizontal = 16.dp, vertical = 28.dp)
-                    .fillMaxWidth(),
+                    .padding(horizontal = 16.dp, vertical = expandedTitleBottomPad)
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = expandedTitleAlpha },
         )
     }
 }
 
-/** Fixed height for the group detail header banner (includes status-bar inset). */
+/** Soft drop shadow so the white group title stays readable on busy covers. */
+private val GroupDetailTitleShadow =
+    Shadow(
+        color = Color.Black.copy(alpha = 0.45f),
+        offset = Offset(0f, 2f),
+        blurRadius = 6f,
+    )
+
+/** Darkening overlay on the status-bar blur strip (must match the drawn scrim). */
+private const val GroupDetailStatusBarDimAlpha = 0.42f
+
+/** Expanded height for the group detail header banner (includes status-bar inset). */
 private val GroupDetailBannerHeight = 180.dp
+
+/** Collapsed toolbar content height below the status bar (8 + 40 + 8). */
+private val GroupDetailBannerToolbarHeight = 56.dp
+
+/** Minimum shrink distance so the banner always has room to collapse. */
+private val GroupDetailBannerCollapseRange = 96.dp
+
+/**
+ * Average relative luminance of the top strip of [this] (where status-bar icons sit).
+ * Samples a coarse grid for speed.
+ */
+private fun android.graphics.Bitmap.averageTopLuminance(topFraction: Float = 0.2f): Float {
+    val sampleHeight = (height * topFraction).toInt().coerceIn(1, height)
+    val stepX = (width / 32).coerceAtLeast(1)
+    val stepY = (sampleHeight / 8).coerceAtLeast(1)
+    var sum = 0.0
+    var count = 0
+    var y = 0
+    while (y < sampleHeight) {
+        var x = 0
+        while (x < width) {
+            val pixel = getPixel(x, y)
+            val r = ((pixel ushr 16) and 0xFF) / 255.0
+            val g = ((pixel ushr 8) and 0xFF) / 255.0
+            val b = (pixel and 0xFF) / 255.0
+            sum += 0.2126 * r + 0.7152 * g + 0.0722 * b
+            count++
+            x += stepX
+        }
+        y += stepY
+    }
+    return if (count == 0) 0f else (sum / count).toFloat()
+}
 
 /** Local file mtime used to bust Compose bitmap cache when a cover is overwritten. */
 private fun localMediaContentStamp(path: String?): Long {
@@ -855,7 +831,7 @@ private fun localMediaContentStamp(path: String?): Long {
     }
     val filePath =
         if (path.startsWith("file:", ignoreCase = true)) {
-            Uri.parse(path).path
+            path.toUri().path
         } else {
             path
         } ?: return 0L
@@ -922,7 +898,7 @@ internal fun GroupOverallBalanceBlock(
                         expanded = !expanded
                     }
                 }
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = SeLayout.detailHorizontal, vertical = 14.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -971,6 +947,7 @@ private fun GroupOverallHeadline(
                 fontWeight = FontWeight.SemiBold,
             )
         }
+
         else -> {
             val (currency, net) =
                 nets.entries.firstOrNull { it.value.compareTo(BigDecimal.ZERO) != 0 }
@@ -1071,5 +1048,202 @@ private fun GroupSoloEmptyState(
             text = stringResource(R.string.action_share_group_link),
             onClick = onShareLink,
         )
+    }
+}
+
+@Preview(name = "Group Solo Empty State", showBackground = true)
+@Composable
+fun GroupSoloEmptyStatePreview() {
+    GroupSoloEmptyState(
+        onAddMembers = {},
+        onShareLink = {},
+    )
+}
+
+@Preview(name = "Group Overall Balance Block", showBackground = true)
+@Composable
+fun GroupOverallBalanceBlockPreview() {
+    GroupOverallBalanceBlock(
+        balance =
+            GroupBalanceUi(
+                groupId = "1",
+                groupName = "Group 1",
+                myNetByCurrency = mapOf("INR" to BigDecimal("1200.50")),
+                memberNetsByCurrency =
+                    mapOf(
+                        "1" to mapOf("INR" to BigDecimal("1200.50")),
+                        "2" to mapOf("INR" to BigDecimal("-1200.50")),
+                    ),
+                simplifiedDebts =
+                    listOf(
+                        LabeledDebt(
+                            fromUserId = "2",
+                            fromLabel = "John Doe",
+                            toUserId = "1",
+                            toLabel = "You",
+                            amount = BigDecimal("1200.50"),
+                            currencyCode = "INR",
+                        ),
+                    ),
+            ),
+        currencyFallback = "INR",
+        onClick = {},
+    )
+}
+
+@Preview(name = "Group expense list", showBackground = true, heightDp = 720)
+@Composable
+private fun GroupExpenseListPreview() {
+    val sampleGroup =
+        Group(
+            id = "g1",
+            name = "Goa trip",
+            defaultCurrencyCode = "INR",
+            groupType = GroupType.FRIENDS,
+            createdByUserId = "u1",
+            createdAtEpochMs = 0L,
+            updatedAtEpochMs = 0L,
+        )
+    val bannerColor = lerp(sampleGroup.groupType.tint(), SplitEaseColors.Navy, 0.28f)
+    val sampleBalance =
+        GroupBalanceUi(
+            groupId = sampleGroup.id,
+            groupName = sampleGroup.name,
+            myNetByCurrency = mapOf("INR" to BigDecimal("-420.00")),
+            memberNetsByCurrency = emptyMap(),
+            simplifiedDebts =
+                listOf(
+                    LabeledDebt(
+                        fromUserId = "u1",
+                        toUserId = "u2",
+                        fromLabel = "You",
+                        toLabel = "Sam",
+                        amount = BigDecimal("420.00"),
+                        currencyCode = "INR",
+                    ),
+                ),
+        )
+    val sampleLedger =
+        listOf(
+            LedgerListItem(
+                id = "expense-1",
+                isPayment = false,
+                title = "Laxmikant for rent",
+                subtitle = "You paid ₹5,500.00",
+                sortEpochMs = 1_754_320_000_000L,
+                categoryIconKey = "category_rent",
+                currencyCode = "INR",
+                balanceSide = LedgerBalanceSide.LENT,
+                balanceAmount = BigDecimal("5500.00"),
+            ),
+            LedgerListItem(
+                id = "expense-2",
+                isPayment = false,
+                title = "Maggie",
+                subtitle = "You paid ₹27.00",
+                sortEpochMs = 1_754_200_000_000L,
+                categoryIconKey = "category_general",
+                currencyCode = "INR",
+                balanceSide = LedgerBalanceSide.LENT,
+                balanceAmount = BigDecimal("27.00"),
+            ),
+            LedgerListItem(
+                id = "expense-3",
+                isPayment = false,
+                title = "Pizza",
+                subtitle = "You paid ₹550.00",
+                sortEpochMs = 1_753_800_000_000L,
+                categoryIconKey = "category_food",
+                currencyCode = "INR",
+                balanceSide = LedgerBalanceSide.LENT,
+                balanceAmount = BigDecimal("366.67"),
+            ),
+            LedgerListItem(
+                id = "expense-4",
+                isPayment = false,
+                title = "Burger king",
+                subtitle = "Sam paid ₹414.00",
+                sortEpochMs = 1_753_500_000_000L,
+                categoryIconKey = "category_food",
+                currencyCode = "INR",
+                balanceSide = LedgerBalanceSide.BORROWED,
+                balanceAmount = BigDecimal("207.00"),
+            ),
+        )
+
+    SePreview {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            floatingActionButton = {
+                SeExtendedFab(
+                    text = stringResource(R.string.action_add_expense),
+                    onClick = {},
+                    icon = Icons.Filled.Receipt,
+                )
+            },
+        ) { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(bottom = padding.calculateBottomPadding()),
+            ) {
+                GroupDetailBanner(
+                    group = sampleGroup,
+                    bannerColor = bannerColor,
+                    onBack = {},
+                    onOpenSettings = {},
+                )
+                LazyColumn(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .background(SplitEaseColors.Surface),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                ) {
+                    item {
+                        GroupOverallBalanceBlock(
+                            balance = sampleBalance,
+                            currencyFallback = sampleGroup.defaultCurrencyCode,
+                            onClick = {},
+                        )
+                    }
+                    item {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SeActionChip(
+                                label = stringResource(R.string.action_settle_up),
+                                onClick = {},
+                                icon = Icons.Filled.Payments,
+                            )
+                            SeActionChip(
+                                label = stringResource(R.string.group_chip_balances),
+                                onClick = {},
+                                icon = Icons.Filled.AccountBalance,
+                            )
+                            SeActionChip(
+                                label = stringResource(R.string.group_chip_totals),
+                                onClick = {},
+                                icon = Icons.AutoMirrored.Filled.ShowChart,
+                            )
+                            SeActionChip(
+                                label = stringResource(R.string.action_open_pin_board),
+                                onClick = {},
+                                icon = Icons.Filled.PushPin,
+                            )
+                        }
+                    }
+                    ledgerEntries(sampleLedger)
+                    item { Spacer(modifier = Modifier.height(88.dp)) }
+                }
+            }
+        }
     }
 }

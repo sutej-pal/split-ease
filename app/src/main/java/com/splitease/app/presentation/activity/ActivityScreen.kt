@@ -42,8 +42,10 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeIconTileWithAvatar
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.seDetailHorizontal
 
 @Composable
 fun ActivityScreen(
@@ -74,7 +76,7 @@ fun ActivityScreen(
                 if (items.isEmpty()) {
                     SeEmptyState(
                         message = stringResource(R.string.activity_empty),
-                        modifier = Modifier.padding(horizontal = 20.dp),
+                        modifier = Modifier.seDetailHorizontal(),
                     )
                 } else {
                     LazyColumn(
@@ -119,7 +121,8 @@ private fun ActivityRow(
                 Modifier
                     .fillMaxWidth()
                     .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .seDetailHorizontal()
+                    .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (isExpenseKind && !item.actorDisplayName.isNullOrBlank()) {
@@ -175,7 +178,7 @@ private fun ActivityRow(
             }
         }
         HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier = Modifier.seDetailHorizontal(),
             color = SplitEaseColors.Outline,
         )
     }
@@ -254,7 +257,7 @@ private fun ActivityEmptyPreview() {
     SePreview {
         SeEmptyState(
             message = "No activity yet. Create a group, add an expense, or record a payment to see it here.",
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(SeLayout.detailHorizontal),
         )
     }
 }

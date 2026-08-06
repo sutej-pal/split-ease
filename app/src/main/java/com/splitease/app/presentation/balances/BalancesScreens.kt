@@ -26,10 +26,12 @@ import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.data.balance.OverallBalancesUi
 import com.splitease.app.presentation.ui.SeEmptyState
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.seDetailHorizontal
 import java.math.BigDecimal
 
 @Composable
@@ -48,7 +50,8 @@ fun BalancesScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(24.dp)
+                        .seDetailHorizontal()
+                        .padding(bottom = SeLayout.screenBottom)
                         .verticalScroll(rememberScrollState()),
             ) {
                 when (val snapshot = overall) {

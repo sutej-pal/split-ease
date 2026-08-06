@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -162,9 +163,10 @@ fun NonGroupExpensesScreen(
     ) { padding ->
         SeSystemBars(
             statusBarColor = bannerColor,
-            navigationBarColor = bannerColor,
+            // Keep dark system-nav glyphs on the light content/FAB area at the bottom.
+            navigationBarColor = MaterialTheme.colorScheme.background,
             statusBarDarkIcons = false,
-            navigationBarDarkIcons = false,
+            navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
         Column(
             modifier =

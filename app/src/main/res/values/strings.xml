@@ -475,7 +475,11 @@
     <string name="ledger_empty">No expenses or payments yet.</string>
     <string name="ledger_you_borrowed">you borrowed</string>
     <string name="ledger_you_lent">you lent</string>
+    <string name="ledger_you_received">you received</string>
+    <string name="ledger_you_paid">you paid</string>
     <string name="ledger_paid_by">%1$s paid %2$s</string>
+    <string name="payment_to_person">Payment to %1$s</string>
+    <string name="payment_from_person">Payment from %1$s</string>
     <string name="pin_board_title">Pin Board</string>
     <string name="pin_board_placeholder">Write something for the group…</string>
     <string name="pin_board_saving">Saving…</string>
