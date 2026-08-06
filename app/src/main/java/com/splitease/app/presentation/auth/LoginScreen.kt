@@ -34,6 +34,7 @@ fun LoginScreen(
     onNavigateSignUp: () -> Unit,
     onNavigateForgot: () -> Unit,
     onGoogleStub: () -> Unit,
+    onClearError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
@@ -43,6 +44,12 @@ fun LoginScreen(
 
     LaunchedEffect(isBusy) {
         if (isBusy) focusManager.clearFocus()
+    }
+
+    fun onCredentialChange(update: () -> Unit) {
+        if (isBusy) return
+        if (formState.errorMessage != null) onClearError()
+        update()
     }
 
     AuthScaffold(
@@ -60,7 +67,7 @@ fun LoginScreen(
         ) {
             SeTextField(
                 value = email,
-                onValueChange = { if (!isBusy) email = it },
+                onValueChange = { value -> onCredentialChange { email = value } },
                 label = stringResource(R.string.label_email),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 enabled = !isBusy,
@@ -68,7 +75,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(12.dp))
             PasswordSeTextField(
                 value = password,
-                onValueChange = { if (!isBusy) password = it },
+                onValueChange = { value -> onCredentialChange { password = value } },
                 enabled = !isBusy,
             )
             SeTextButton(

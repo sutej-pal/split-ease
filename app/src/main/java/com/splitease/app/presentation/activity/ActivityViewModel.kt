@@ -285,6 +285,7 @@ class ActivityViewModel
             val contextLabel =
                 groupId?.let { groupNames[it] } ?: appContext.getString(R.string.non_group_expenses)
             val actorName = nameOf(paidByUserId)
+            val displayEpochMs = expenseDateEpochMs.takeIf { it > 0L } ?: createdAtEpochMs
             val (balanceLabel, balanceTone) = balanceLine(me, this, splits)
             return ActivityUiItem(
                 id = "expense-$id",
@@ -296,11 +297,11 @@ class ActivityViewModel
                         description,
                         contextLabel,
                     ),
-                subtitle = formatDateTime(expenseDateEpochMs.coerceAtLeast(createdAtEpochMs)),
+                subtitle = formatDateTime(displayEpochMs),
                 amountLabel = "",
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
-                sortEpochMs = expenseDateEpochMs.coerceAtLeast(createdAtEpochMs),
+                sortEpochMs = displayEpochMs,
                 relatedExpenseId = id,
                 actorDisplayName = actorName,
                 actorPhotoUrl = photoOf(paidByUserId),

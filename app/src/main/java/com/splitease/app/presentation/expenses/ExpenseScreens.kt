@@ -118,12 +118,14 @@ fun AddExpenseScreen(
     // Dismiss dialog window first, then leave the screen (avoids flash of previous route
     // under a still-visible Dialog).
     var exitAfterMembersDialog by remember { mutableStateOf(false) }
-    var expenseDateMs by rememberSaveable { mutableLongStateOf(System.currentTimeMillis()) }
+    var expenseDateMs by rememberSaveable(expenseId) {
+        mutableLongStateOf(System.currentTimeMillis())
+    }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var showPaidByPicker by rememberSaveable { mutableStateOf(false) }
     var showSplitPicker by rememberSaveable { mutableStateOf(false) }
-    var prefilled by rememberSaveable { mutableStateOf(false) }
+    var prefilled by rememberSaveable(expenseId) { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val me by viewModel.signedInUserId.collectAsStateWithLifecycle()
 
@@ -162,6 +164,15 @@ fun AddExpenseScreen(
                 paidBy = userId
                 selected = participants.map { it.userId }.toSet()
             }
+        }
+    }
+
+    LaunchedEffect(editingExpense) {
+        val detail = editingExpense ?: return@LaunchedEffect
+        // Apply business date as soon as the expense loads — do not wait on participants,
+        // so a quick save cannot overwrite the original added/expense date with "now".
+        if (!prefilled) {
+            expenseDateMs = detail.expense.expenseDateEpochMs
         }
     }
 

@@ -539,6 +539,13 @@ class ExpenseInteractor
             // category_id so a co-member's expense still lands in Room.
             val categoryId =
                 dto.categoryId?.takeIf { id -> categoryRepository.getById(id) != null }
+            val existing = expenseRepository.getExpenseById(dto.id)
+            // Cloud expenses have no created_at column; never clobber local creation
+            // time with updated_at (that would move the expense after every edit sync).
+            val createdAt =
+                existing?.createdAtEpochMs
+                    ?: dto.expenseDateEpochMs.takeIf { it > 0L }
+                    ?: dto.updatedAtEpochMs
             val expense =
                 Expense(
                     id = dto.id,
@@ -552,7 +559,7 @@ class ExpenseInteractor
                     splitType = runCatching { SplitType.valueOf(dto.splitType) }.getOrDefault(SplitType.EQUAL),
                     notes = dto.notes,
                     remoteId = dto.id,
-                    createdAtEpochMs = dto.updatedAtEpochMs,
+                    createdAtEpochMs = createdAt,
                     updatedAtEpochMs = dto.updatedAtEpochMs,
                     syncStatus = SyncStatus.SYNCED,
                 )

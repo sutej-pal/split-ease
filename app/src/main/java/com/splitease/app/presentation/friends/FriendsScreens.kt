@@ -67,6 +67,7 @@ import com.splitease.app.data.balance.FriendContextBalanceUi
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.common.shortDisplayName
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
@@ -567,7 +568,7 @@ private fun FriendContextBreakdown(
     currencyFallback: String,
     modifier: Modifier = Modifier,
 ) {
-    val shortName = remember(displayName) { shortFriendName(displayName) }
+    val shortName = remember(displayName) { shortDisplayName(displayName) }
     val lineColor = MaterialTheme.colorScheme.outlineVariant
     val density = LocalDensity.current
     val strokeWidth = with(density) { 1.5.dp.toPx() }
@@ -666,17 +667,6 @@ private fun FriendContextLine(
         modifier = modifier,
         style = MaterialTheme.typography.bodySmall,
     )
-}
-
-/** Splitwise-style short label: "Deepak joshi" → "Deepak j." */
-private fun shortFriendName(name: String): String {
-    val cleaned = name.replace(Regex("\\s*\\(invited\\)\\s*", RegexOption.IGNORE_CASE), "").trim()
-    val parts = cleaned.split(Regex("\\s+")).filter { it.isNotEmpty() }
-    return when {
-        parts.size >= 2 -> "${parts[0]} ${parts[1].first().lowercaseChar()}."
-        parts.isNotEmpty() -> parts[0]
-        else -> name
-    }
 }
 
 @Composable

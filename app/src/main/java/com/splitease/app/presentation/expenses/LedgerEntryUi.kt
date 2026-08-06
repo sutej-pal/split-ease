@@ -69,7 +69,7 @@ private val CategoryPastels =
  *
  * @param onExpenseClick Invoked with the raw expense id when an expense row is tapped.
  * @param horizontalPadding Inset for month labels and row content
- * (default [SeLayout.detailHorizontal] = 20dp, matching group detail).
+ * (default [SeLayout.detailHorizontal] = 16dp, matching group detail).
  */
 fun LazyListScope.ledgerEntries(
     items: List<LedgerListItem>,

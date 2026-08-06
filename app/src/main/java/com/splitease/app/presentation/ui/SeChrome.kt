@@ -320,7 +320,7 @@ fun SeBackTitleRow(
  *
  * This is the **one** navigation chrome for back + title across the app.
  * Body horizontal rhythm: apply [SeLayout.detailHorizontal] / [seDetailHorizontal]
- * for Activity / Balances / Totals (match group-detail 20dp), or
+ * for Activity / Balances / Totals (match group-detail 16dp), or
  * [SeLayout.screenHorizontal] for form screens. Do not invent per-screen title sizes.
  */
 @Composable

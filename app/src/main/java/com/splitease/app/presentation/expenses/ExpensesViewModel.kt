@@ -374,7 +374,11 @@ class ExpensesViewModel
                     val category = expense.categoryId?.let { categoryById[it] }
                     val payerLabel = nameOf(expense.paidByUserId)
                     val sortEpochMs =
-                        expense.expenseDateEpochMs.coerceAtLeast(expense.createdAtEpochMs)
+                        if (expense.expenseDateEpochMs > 0L) {
+                            expense.expenseDateEpochMs
+                        } else {
+                            expense.createdAtEpochMs
+                        }
                     val (balanceSide, balanceAmount) =
                         viewerBalanceForExpense(
                             me = me,

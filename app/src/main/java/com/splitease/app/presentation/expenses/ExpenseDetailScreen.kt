@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.expenses
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,11 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,17 +28,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.common.shortDisplayName
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeModalBody
 import com.splitease.app.presentation.ui.SeModalTitle
@@ -59,6 +71,7 @@ fun ExpenseDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val hasExpense = detail != null
+    val me = viewModel.currentUserId()
 
     SeScreen(
         title = stringResource(R.string.expense_detail_title),
@@ -88,7 +101,7 @@ fun ExpenseDetailScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(20.dp),
+                        .padding(horizontal = SeLayout.detailHorizontal),
                 ) {
                     SeErrorText(uiState.errorMessage ?: stringResource(R.string.expense_not_found))
                     Spacer(Modifier.height(16.dp))
@@ -105,7 +118,7 @@ fun ExpenseDetailScreen(
                     .fillMaxSize()
                     .padding(padding.values)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                    .padding(horizontal = SeLayout.detailHorizontal, vertical = 8.dp),
             ) {
                 Text(
                     text = snapshot.expense.description,
@@ -194,25 +207,10 @@ fun ExpenseDetailScreen(
                     DetailLine(stringResource(R.string.label_notes), snapshot.expense.notes.orEmpty())
                 }
                 Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.label_splits),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = SplitEaseColors.Navy,
+                ExpenseSplitsSection(
+                    detail = snapshot,
+                    currentUserId = me,
                 )
-                Spacer(Modifier.height(4.dp))
-                snapshot.splits.forEach { line ->
-                    SeListRow(
-                        title = line.participantLabel,
-                        subtitle = null,
-                        trailing = {
-                            Text(
-                                text = MoneyFormat.format(line.owedAmount, snapshot.expense.currencyCode),
-                                color = SplitEaseColors.Navy,
-                            )
-                        },
-                    )
-                }
                 val error = uiState.errorMessage
                 if (error != null) {
                     Spacer(Modifier.height(8.dp))
@@ -242,6 +240,161 @@ fun ExpenseDetailScreen(
             )
         }
     }
+}
+
+@Composable
+private fun ExpenseSplitsSection(
+    detail: ExpenseDetailUi,
+    currentUserId: String?,
+) {
+    Text(
+        text = stringResource(R.string.label_splits),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = SplitEaseColors.Navy,
+    )
+    Spacer(Modifier.height(8.dp))
+
+    val paidPrefix = stringResource(R.string.expense_split_paid)
+    val bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val paidMoney =
+        MoneyFormat.format(detail.expense.amount, detail.expense.currencyCode)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) {
+            SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 56)
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = detail.payerLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text =
+                        buildAnnotatedString {
+                            withStyle(SpanStyle(color = bodyColor)) {
+                                append(paidPrefix)
+                                append(" ")
+                            }
+                            withStyle(
+                                SpanStyle(
+                                    color = SplitEaseColors.Primary,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                            ) {
+                                append(paidMoney)
+                            }
+                        },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
+        if (detail.splits.isNotEmpty()) {
+            ExpenseSplitBranchList(
+                splits = detail.splits,
+                currencyCode = detail.expense.currencyCode,
+                currentUserId = currentUserId,
+                modifier = Modifier.padding(start = 70.dp, top = 4.dp, bottom = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpenseSplitBranchList(
+    splits: List<ExpenseSplitLineUi>,
+    currencyCode: String,
+    currentUserId: String?,
+    modifier: Modifier = Modifier,
+) {
+    val lineColor = MaterialTheme.colorScheme.outlineVariant
+    val density = LocalDensity.current
+    val strokeWidth = with(density) { 1.5.dp.toPx() }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        splits.forEachIndexed { index, line ->
+            val isLast = index == splits.lastIndex
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Canvas(modifier = Modifier.size(width = 20.dp, height = 28.dp)) {
+                    val x = size.width * 0.35f
+                    val midY = size.height / 2f
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, 0f),
+                        end = Offset(x, if (isLast) midY else size.height),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, midY),
+                        end = Offset(size.width, midY),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                ExpenseSplitOwesLine(
+                    line = line,
+                    currencyCode = currencyCode,
+                    isCurrentUser = line.userId == currentUserId,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpenseSplitOwesLine(
+    line: ExpenseSplitLineUi,
+    currencyCode: String,
+    isCurrentUser: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val money = MoneyFormat.format(line.owedAmount, currencyCode)
+    val body = MaterialTheme.colorScheme.onSurfaceVariant
+    val accent = SplitEaseColors.YouOwe
+    val youLabel = stringResource(R.string.you_label)
+    val owesWord = stringResource(R.string.expense_split_owes)
+    val shortName = remember(line.participantLabel) { shortDisplayName(line.participantLabel) }
+
+    Text(
+        text =
+            buildAnnotatedString {
+                withStyle(SpanStyle(color = body)) {
+                    if (isCurrentUser) {
+                        append(youLabel)
+                        append(" ")
+                        append(owesWord.lowercase())
+                        append(" ")
+                    } else {
+                        append(shortName)
+                        append(" ")
+                        append(owesWord)
+                        append(" ")
+                    }
+                }
+                withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Medium)) {
+                    append(money)
+                }
+            },
+        modifier = modifier,
+        style = MaterialTheme.typography.bodySmall,
+    )
 }
 
 @Composable

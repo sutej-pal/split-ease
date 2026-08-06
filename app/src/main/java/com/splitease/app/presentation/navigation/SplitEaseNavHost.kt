@@ -342,6 +342,7 @@ fun SplitEaseNavHost(
                         onGoogleStub = {
                             Toast.makeText(context, googleSoon, Toast.LENGTH_SHORT).show()
                         },
+                        onClearError = authViewModel::clearMessages,
                     )
                 }
                 composable(Routes.SIGN_UP) {

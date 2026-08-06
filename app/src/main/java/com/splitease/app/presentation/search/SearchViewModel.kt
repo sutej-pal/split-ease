@@ -95,7 +95,7 @@ class SearchViewModel
             splits: List<ExpenseSplit>,
         ): LedgerListItem {
             val payerLabel = nameOf(paidByUserId)
-            val sortEpochMs = expenseDateEpochMs.coerceAtLeast(createdAtEpochMs)
+            val sortEpochMs = expenseDateEpochMs.takeIf { it > 0L } ?: createdAtEpochMs
             val (balanceSide, balanceAmount) = viewerBalance(me, this, splits)
             return LedgerListItem(
                 id = "expense-$id",
