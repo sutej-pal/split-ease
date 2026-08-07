@@ -26,14 +26,12 @@ import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.balances.BalancesViewModel
-import com.splitease.app.presentation.balances.GroupBalanceHeader
 import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
-import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeScreenSubtitleStyle
 import com.splitease.app.presentation.ui.SeSectionHeader
@@ -249,95 +247,4 @@ private fun GroupBalancesEmptyPreview() {
             onSettleDebt = { _, _, _, _, _ -> },
         )
     }
-}
-
-/**
- * Group totals screen (nets by currency / who-owes-whom). Back returns to group detail.
- */
-@Composable
-fun GroupTotalsScreen(
-    groupId: String,
-    onBack: () -> Unit,
-    onOpenSpending: () -> Unit,
-    groupsViewModel: GroupsViewModel = hiltViewModel(),
-    expensesViewModel: ExpensesViewModel = hiltViewModel(),
-    balancesViewModel: BalancesViewModel = hiltViewModel(),
-) {
-    val expensesUi by expensesViewModel.uiState.collectAsStateWithLifecycle()
-    val groupsUi by groupsViewModel.uiState.collectAsStateWithLifecycle()
-    val group by remember(groupId) { groupsViewModel.observeGroup(groupId) }
-        .collectAsStateWithLifecycle()
-    val groupBalance by remember(groupId) { balancesViewModel.observeGroupBalance(groupId) }
-        .collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val currencyFallback =
-        group?.defaultCurrencyCode?.takeIf { it.isNotBlank() } ?: AppCurrencies.DEFAULT
-
-    LaunchedEffect(groupId, lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            expensesViewModel.refreshGroupFromCloud(groupId)
-        }
-    }
-
-    SeScreen(
-        title = stringResource(R.string.group_chip_totals),
-        onBack = onBack,
-        content = { padding ->
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding.values)
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = SeLayout.screenBottom),
-            ) {
-                // Full-bleed: block owns its own horizontal inset (same as group detail).
-                GroupOverallBalanceBlock(
-                    balance = groupBalance,
-                    currencyFallback = currencyFallback,
-                )
-
-                Column(
-                    modifier = Modifier.seDetailHorizontal(),
-                ) {
-                    Spacer(modifier = Modifier.height(SeLayout.ctaTopGap))
-                    SeSectionHeader(text = stringResource(R.string.balances_summary))
-                    Spacer(modifier = Modifier.height(SeLayout.itemGap))
-                    Text(
-                        text = stringResource(R.string.group_balances_totals_hint),
-                        style = SeScreenSubtitleStyle(),
-                    )
-                    Spacer(modifier = Modifier.height(SeLayout.sectionGap))
-
-                    if (groupBalance == null) {
-                        Text(
-                            text = stringResource(R.string.balances_loading),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        GroupBalanceHeader(
-                            groupId = groupId,
-                            balance = groupBalance,
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(SeLayout.ctaTopGap))
-                    SePrimaryButton(
-                        text = stringResource(R.string.group_balances_open_spending),
-                        onClick = onOpenSpending,
-                    )
-
-                    (expensesUi.errorMessage ?: groupsUi.errorMessage)?.let { msg ->
-                        Spacer(modifier = Modifier.height(SeLayout.sectionGap))
-                        SeErrorText(msg)
-                    }
-                    (expensesUi.infoMessage ?: groupsUi.infoMessage)?.let { msg ->
-                        Spacer(modifier = Modifier.height(SeLayout.sectionGap))
-                        SeInfoText(msg)
-                    }
-                }
-            }
-        },
-    )
 }

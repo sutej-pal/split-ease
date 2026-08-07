@@ -215,7 +215,7 @@ class GroupsViewModel
                 val id = requireUserId() ?: return@launch
                 _uiState.update { it.copy(isRefreshing = true) }
                 // Soft-fail: missing Supabase tables / offline must not block local create UI.
-                runCatching { syncInteractor.syncForUser(id) }
+                runCatching { syncInteractor.syncForUser(id, force = true) }
                 _uiState.update { it.copy(isRefreshing = false) }
             }
         }

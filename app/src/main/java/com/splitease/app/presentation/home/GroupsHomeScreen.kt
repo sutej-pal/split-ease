@@ -62,6 +62,8 @@ import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeInlineLoader
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -70,6 +72,7 @@ import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
+import com.splitease.app.presentation.ui.seDetailHorizontal
 import java.math.BigDecimal
 
 /** How the groups list on Home is filtered. */
@@ -148,117 +151,141 @@ fun GroupsHomeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            SeTopBar(
-                title = "",
-                actions = {
-                    IconButton(onClick = onOpenSearch) {
-                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.cd_search))
-                    }
-                    IconButton(onClick = onCreateGroup) {
-                        Icon(Icons.Filled.GroupAdd, contentDescription = stringResource(R.string.action_create_group))
-                    }
-                },
-            )
+            if (!ui.isLoading) {
+                SeTopBar(
+                    title = "",
+                    actions = {
+                        IconButton(onClick = onOpenSearch) {
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.cd_search))
+                        }
+                        IconButton(onClick = onCreateGroup) {
+                            Icon(Icons.Filled.GroupAdd, contentDescription = stringResource(R.string.action_create_group))
+                        }
+                    },
+                )
+            }
         },
         floatingActionButton = {
-            SeExtendedFab(
-                text = stringResource(R.string.action_add_expense),
-                onClick = {
-                    val groups = ui.allGroups
-                    when {
-                        groups.size == 1 -> onAddExpenseForGroup(groups.first().id)
-                        else -> showExpensePicker = true
-                    }
-                },
-                icon = Icons.Filled.Receipt,
-            )
+            if (!ui.isLoading) {
+                SeExtendedFab(
+                    text = stringResource(R.string.action_add_expense),
+                    onClick = {
+                        val groups = ui.allGroups
+                        when {
+                            groups.size == 1 -> onAddExpenseForGroup(groups.first().id)
+                            else -> showExpensePicker = true
+                        }
+                    },
+                    icon = Icons.Filled.Receipt,
+                )
+            }
         },
     ) { padding ->
-        SePullRefreshBox(
-            isRefreshing = ui.isRefreshing,
-            onRefresh = viewModel::refresh,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 96.dp),
+        if (ui.isLoading) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                contentAlignment = Alignment.Center,
             ) {
-                item {
-                    OverallSummaryRow(
-                        iOwe = balances?.totalIOweByCurrency.orEmpty(),
-                        owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
-                        currencyCode = ui.currencyCode,
-                        selectedFilter = listFilter,
-                        onFilterSelected = {
-                            listFilter = it
-                            showSettledGroups = false
-                        },
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                if (ui.allGroups.isEmpty() && !showNonGroup) {
+                SeInlineLoader(text = stringResource(R.string.groups_fetching))
+            }
+        } else {
+            SePullRefreshBox(
+                isRefreshing = ui.isRefreshing,
+                onRefresh = viewModel::refresh,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    // No horizontal contentPadding — row click/ripple is full-bleed; content
+                    // keeps [SeLayout.detailHorizontal] inset inside each item.
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                ) {
                     item {
-                        SeEmptyState(
-                            message = stringResource(R.string.groups_empty_home),
-                            actionLabel = stringResource(R.string.action_create_group),
-                            onAction = onCreateGroup,
+                        OverallSummaryRow(
+                            iOwe = balances?.totalIOweByCurrency.orEmpty(),
+                            owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
+                            currencyCode = ui.currencyCode,
+                            selectedFilter = listFilter,
+                            onFilterSelected = {
+                                listFilter = it
+                                showSettledGroups = false
+                            },
+                            modifier = Modifier.seDetailHorizontal(),
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                }
 
-                items(visibleGroups, key = { it.groupId }) { row ->
-                    val group = ui.allGroups.firstOrNull { it.id == row.groupId }
-                    GroupBalanceListItem(
-                        row = row,
-                        photoUrl = group?.photoUrl,
-                        icon = groupTypeIcon(group?.groupType),
-                        iconTint = groupTypeColor(group?.groupType),
-                        currencyFallback = ui.currencyCode,
-                        onClick = { onOpenGroup(row.groupId) },
-                        onIconClick = {
-                            photoTargetGroupId = row.groupId
-                            groupPhotoPicker.launch()
-                        },
-                        iconContentDescription = changePhotoCd,
-                    )
-                }
+                    if (ui.allGroups.isEmpty() && !showNonGroup) {
+                        item {
+                            SeEmptyState(
+                                message = stringResource(R.string.groups_empty_home),
+                                actionLabel = stringResource(R.string.action_create_group),
+                                onAction = onCreateGroup,
+                                modifier = Modifier.seDetailHorizontal(),
+                            )
+                        }
+                    }
 
-                if (showNonGroup) {
-                    item {
-                        NonGroupListItem(
-                            myNet = balances.nonGroupMyNetByCurrency,
-                            debts = balances.nonGroupDebts,
+                    items(visibleGroups, key = { it.groupId }) { row ->
+                        val group = ui.allGroups.firstOrNull { it.id == row.groupId }
+                        GroupBalanceListItem(
+                            row = row,
+                            photoUrl = group?.photoUrl,
+                            icon = groupTypeIcon(group?.groupType),
+                            iconTint = groupTypeColor(group?.groupType),
                             currencyFallback = ui.currencyCode,
-                            onClick = onOpenNonGroup,
+                            onClick = { onOpenGroup(row.groupId) },
+                            onIconClick = {
+                                photoTargetGroupId = row.groupId
+                                groupPhotoPicker.launch()
+                            },
+                            iconContentDescription = changePhotoCd,
                         )
                     }
-                }
 
-                if (hiddenSettledCount > 0) {
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = stringResource(R.string.groups_hiding_settled),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SeOutlinedButton(
-                            text = stringResource(R.string.groups_show_settled, hiddenSettledCount),
-                            onClick = { showSettledGroups = true },
-                        )
+                    if (showNonGroup) {
+                        item {
+                            NonGroupListItem(
+                                myNet = balances.nonGroupMyNetByCurrency,
+                                debts = balances.nonGroupDebts,
+                                currencyFallback = ui.currencyCode,
+                                onClick = onOpenNonGroup,
+                            )
+                        }
                     }
-                } else if (canHideSettled) {
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SeTextButton(
-                            text = stringResource(R.string.groups_hide_settled),
-                            onClick = { showSettledGroups = false },
-                        )
+
+                    if (hiddenSettledCount > 0) {
+                        item {
+                            Column(modifier = Modifier.seDetailHorizontal()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = stringResource(R.string.groups_hiding_settled),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeOutlinedButton(
+                                    text = stringResource(R.string.groups_show_settled, hiddenSettledCount),
+                                    onClick = { showSettledGroups = true },
+                                )
+                            }
+                        }
+                    } else if (canHideSettled) {
+                        item {
+                            Column(modifier = Modifier.seDetailHorizontal()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeTextButton(
+                                    text = stringResource(R.string.groups_hide_settled),
+                                    onClick = { showSettledGroups = false },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -318,10 +345,11 @@ private fun OverallSummaryRow(
     currencyCode: String,
     selectedFilter: GroupsHomeFilter,
     onFilterSelected: (GroupsHomeFilter) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val summaryModifier = Modifier.weight(1f)
@@ -435,7 +463,7 @@ private fun GroupBalanceListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = 12.dp),
+                .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeGroupIconTile(
@@ -482,7 +510,7 @@ private fun NonGroupListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = 12.dp),
+                .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeIconTile(icon = Icons.AutoMirrored.Filled.List, tint = SplitEaseColors.IconOther)

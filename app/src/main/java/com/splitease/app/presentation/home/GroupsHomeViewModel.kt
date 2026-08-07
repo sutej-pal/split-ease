@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,8 @@ data class GroupsHomeUi(
     val currencyCode: String = AppCurrencies.DEFAULT,
     val balances: OverallBalancesUi? = null,
     val allGroups: List<Group> = emptyList(),
+    /** True only while the first lite group list pull runs (Room empty). */
+    val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val infoMessage: String? = null,
     val errorMessage: String? = null,
@@ -41,7 +44,7 @@ class GroupsHomeViewModel
     constructor(
         authRepository: AuthRepository,
         private val balanceInteractor: BalanceInteractor,
-        groupRepository: GroupRepository,
+        private val groupRepository: GroupRepository,
         appSettingsRepository: AppSettingsRepository,
         private val syncInteractor: SyncInteractor,
         private val socialInteractor: SocialInteractor,
@@ -52,8 +55,36 @@ class GroupsHomeViewModel
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+        private val isInitialLoading = MutableStateFlow(true)
         private val isRefreshing = MutableStateFlow(false)
         private val feedback = MutableStateFlow<Pair<String?, String?>>(null to null)
+
+        init {
+            viewModelScope.launch {
+                userId.collect { id ->
+                    if (id == null) {
+                        isInitialLoading.value = true
+                        return@collect
+                    }
+                    // 1) Paint from Room immediately when anything is cached.
+                    val cached = runCatching { groupRepository.observeGroupsForUser(id).first() }
+                        .getOrDefault(emptyList())
+                    if (cached.isNotEmpty() || syncInteractor.wasSyncedRecently()) {
+                        isInitialLoading.value = false
+                    } else {
+                        // 2) First login / empty DB: wait only for a lite group-list pull
+                        //    (no members/profiles/expenses).
+                        isInitialLoading.value = true
+                        runCatching { socialInteractor.refreshGroupList(id) }
+                        isInitialLoading.value = false
+                    }
+                    // 3) Full hydrate (members, expenses, balances) never blocks Home.
+                    launch {
+                        runCatching { syncInteractor.syncForUser(id) }
+                    }
+                }
+            }
+        }
 
         @OptIn(ExperimentalCoroutinesApi::class)
         val ui: StateFlow<GroupsHomeUi> =
@@ -75,10 +106,12 @@ class GroupsHomeViewModel
                         }
                     }
                 },
+                isInitialLoading,
                 isRefreshing,
                 feedback,
-            ) { home, refreshing, messages ->
+            ) { home, loading, refreshing, messages ->
                 home.copy(
+                    isLoading = loading,
                     isRefreshing = refreshing,
                     infoMessage = messages.first,
                     errorMessage = messages.second,
@@ -88,9 +121,10 @@ class GroupsHomeViewModel
         /** Flushes PENDING local writes and pulls cloud groups/expenses/payments. */
         fun refresh() {
             val id = userId.value ?: return
+            if (isInitialLoading.value) return
             viewModelScope.launch {
                 isRefreshing.update { true }
-                runCatching { syncInteractor.syncForUser(id) }
+                runCatching { syncInteractor.syncForUser(id, force = true) }
                 isRefreshing.update { false }
             }
         }

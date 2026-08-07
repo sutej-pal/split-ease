@@ -276,9 +276,12 @@ class AuthViewModel
                     return@launch
                 }
                 authRateLimiter.recordSuccess(AuthRateAction.LOGIN, trimmedEmail)
-                // Password auth is enough — hydrate profile and leave the auth gate.
-                runCatching { authRepository.ensureLocalProfile() }
+                // Open Home immediately — hydrate Room in the background so login is not
+                // blocked on friends/groups/expenses/payments pulls.
                 _formState.update { AuthFormState(isLoading = false) }
+                launch {
+                    runCatching { authRepository.ensureLocalProfile() }
+                }
             }
         }
 

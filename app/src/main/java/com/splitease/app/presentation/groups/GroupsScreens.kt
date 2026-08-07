@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
@@ -88,6 +89,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -353,6 +355,11 @@ fun GroupDetailScreen(
     val context = LocalContext.current
     val me = expensesViewModel.currentUserId()
     val isSolo = membersReady && members.size <= 1
+    val nets = groupBalance?.myNetByCurrency
+    val iAmSettled =
+        nets != null &&
+            (nets.isEmpty() || nets.values.all { it.compareTo(BigDecimal.ZERO) == 0 })
+    var showSettledExpenses by rememberSaveable(groupId) { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val bannerColor = lerp((group?.groupType ?: GroupType.OTHER).tint(), SplitEaseColors.Navy, 0.28f)
 
@@ -557,7 +564,28 @@ fun GroupDetailScreen(
                                 modifier = Modifier.padding(horizontal = 20.dp),
                             )
                         }
+                    } else if (iAmSettled && !showSettledExpenses) {
+                        item {
+                            GroupSettledUpState(
+                                onClick = { showSettledExpenses = true },
+                            )
+                        }
                     } else {
+                        if (iAmSettled) {
+                            item {
+                                Text(
+                                    text = stringResource(R.string.group_all_settled_hide),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = SplitEaseColors.NavyMuted,
+                                    textAlign = TextAlign.Center,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { showSettledExpenses = false }
+                                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                                )
+                            }
+                        }
                         ledgerEntries(ledger, onExpenseClick = onOpenExpense)
                     }
                     (expensesUi.errorMessage ?: uiState.errorMessage)?.let { msg ->
@@ -1051,6 +1079,52 @@ private fun GroupSoloEmptyState(
     }
 }
 
+@Composable
+private fun GroupSettledUpState(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = onClick,
+                )
+                .padding(horizontal = 32.dp, vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.group_all_settled_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = SplitEaseColors.Navy,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.group_all_settled_show),
+            style = MaterialTheme.typography.bodyMedium,
+            color = SplitEaseColors.NavyMuted,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(28.dp))
+        SettledCheckmarkGraphic(modifier = Modifier.size(120.dp))
+    }
+}
+
+@Composable
+private fun SettledCheckmarkGraphic(modifier: Modifier = Modifier) {
+    Icon(
+        imageVector = Icons.Filled.Check,
+        contentDescription = null,
+        tint = SplitEaseColors.Primary,
+        modifier = modifier,
+    )
+}
+
 @Preview(name = "Group Solo Empty State", showBackground = true)
 @Composable
 fun GroupSoloEmptyStatePreview() {
@@ -1058,6 +1132,12 @@ fun GroupSoloEmptyStatePreview() {
         onAddMembers = {},
         onShareLink = {},
     )
+}
+
+@Preview(name = "Group Settled Up State", showBackground = true)
+@Composable
+private fun GroupSettledUpStatePreview() {
+    GroupSettledUpState(onClick = {})
 }
 
 @Preview(name = "Group Overall Balance Block", showBackground = true)

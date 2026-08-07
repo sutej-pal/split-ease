@@ -68,6 +68,14 @@ class SyncInteractor
         private val paymentInteractor: Provider<PaymentInteractor>,
         private val appSettingsRepository: AppSettingsRepository,
     ) {
+        /** Wall-clock of the last completed [syncForUser] (skips back-to-back full syncs). */
+        @Volatile
+        private var lastSyncCompletedAtMs: Long = 0L
+
+        /** True when a full [syncForUser] finished within [MIN_SYNC_GAP_MS]. */
+        fun wasSyncedRecently(): Boolean =
+            System.currentTimeMillis() - lastSyncCompletedAtMs < MIN_SYNC_GAP_MS
+
         /**
          * Counts pending social + expense + payment rows once.
          */
@@ -197,12 +205,22 @@ class SyncInteractor
          * Flushes local PENDING rows, then pulls cloud data for the signed-in user into Room.
          *
          * Safe to call on login, cold start, and Activity/Groups refresh.
+         * Back-to-back calls within [MIN_SYNC_GAP_MS] (login hydrate → Home) are skipped
+         * unless [force] is true (pull-to-refresh).
          *
          * @param userId Optional override; defaults to the current auth user.
+         * @param force When true, ignore the recent-sync short-circuit.
          * @return Flush summary from the push half (pull failures are soft).
          */
-        suspend fun syncForUser(userId: String? = null): SyncFlushResult {
+        suspend fun syncForUser(
+            userId: String? = null,
+            force: Boolean = false,
+        ): SyncFlushResult {
             val uid = userId ?: supabase.auth.currentUserOrNull()?.id ?: return SyncFlushResult()
+            val now = System.currentTimeMillis()
+            if (!force && now - lastSyncCompletedAtMs < MIN_SYNC_GAP_MS) {
+                return SyncFlushResult()
+            }
             val flush = flushPending()
             val pendingInviteToken =
                 runCatching { appSettingsRepository.getPendingInviteToken() }.getOrNull()
@@ -238,7 +256,12 @@ class SyncInteractor
             runCatching { paymentInteractor.get().refreshPaymentsForUser(uid) }
             // Invitee may already have shared expenses/groups but no A←B friendship row.
             runCatching { socialInteractor.get().ensureFriendsFromSharedActivity(uid) }
+            lastSyncCompletedAtMs = System.currentTimeMillis()
             return flush
+        }
+
+        private companion object {
+            const val MIN_SYNC_GAP_MS = 8_000L
         }
 
         private suspend fun pushExpense(expense: Expense, splits: List<ExpenseSplit>) {

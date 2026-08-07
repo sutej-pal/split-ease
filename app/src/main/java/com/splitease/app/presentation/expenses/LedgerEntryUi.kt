@@ -231,7 +231,8 @@ private fun balanceLineColor(side: LedgerBalanceSide?): Color =
         LedgerBalanceSide.PAID, null -> SplitEaseColors.NavyMuted
     }
 
-private fun categoryIcon(iconKey: String?): ImageVector =
+/** Material icon for a category [iconKey] (ledger + expense detail). */
+fun categoryIcon(iconKey: String?): ImageVector =
     when (iconKey) {
         "category_food" -> Icons.Filled.Restaurant
         "category_travel" -> Icons.Filled.Flight

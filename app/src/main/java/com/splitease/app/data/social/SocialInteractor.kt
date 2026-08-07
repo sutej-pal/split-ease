@@ -29,6 +29,9 @@ import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.UUID
@@ -456,7 +459,9 @@ class SocialInteractor
 
         /**
          * After sign-in/sign-up, claim any pending invites for this account's email.
-         * Then refresh friends/groups into Room.
+         *
+         * Does **not** hydrate Room — [com.splitease.app.data.sync.SyncInteractor.syncForUser]
+         * always pulls friends/groups/expenses after this returns so we avoid a double fetch.
          *
          * @param userId Newly authenticated user id.
          * @param inviteToken Optional deep-link token to accept first (join-as-new).
@@ -474,11 +479,6 @@ class SocialInteractor
                 acceptedByToken = accepted > 0
             }
             runCatching { remote.acceptPendingInvites() }
-            refreshFriends(userId)
-            refreshGroups(userId)
-            refreshSentInvites(userId)
-            runCatching { expenseInteractor.refreshExpensesForUser(userId) }
-            runCatching { ensureFriendsFromSharedActivity(userId) }
             if (inviteToken.isNullOrBlank()) return true
             if (acceptedByToken) return true
             // RPC returned 0: invite missing/already used, or accept no-oped.
@@ -1205,8 +1205,97 @@ class SocialInteractor
             }
 
         /**
+         * Fast Home paint: pulls group rows + the current user's memberships only.
+         *
+         * Skips per-group member lists and profile hydration (those stay in [refreshGroups]
+         * / full sync). Enough for [GroupRepository.observeGroupsForUser] to show the list.
+         *
+         * @param userId Current user id.
+         */
+        suspend fun refreshGroupList(userId: String) {
+            val memberships =
+                runCatching { remote.fetchMembershipsForUser(userId) }.getOrElse { return }
+            val created =
+                runCatching { remote.fetchGroupsCreatedBy(userId) }.getOrDefault(emptyList())
+            val createdById = created.associateBy { it.id }
+            val groupIds = (memberships.map { it.groupId } + created.map { it.id }).distinct()
+            if (groupIds.isEmpty()) {
+                // Still persist memberships if any were returned without group ids (defensive).
+                return
+            }
+
+            // Current user must exist for membership FK (already true after login persist).
+            ensureLocalUserExists(userId)
+
+            coroutineScope {
+                groupIds
+                    .map { groupId ->
+                        async {
+                            val dto =
+                                createdById[groupId]
+                                    ?: runCatching { remote.fetchGroup(groupId) }.getOrNull()
+                                    ?: return@async
+                            val existing = groupRepository.getGroupById(dto.id)
+                            groupRepository.upsertGroup(
+                                Group(
+                                    id = dto.id,
+                                    name = dto.name,
+                                    defaultCurrencyCode = dto.defaultCurrencyCode,
+                                    groupType =
+                                        existing?.groupType
+                                            ?: com.splitease.app.domain.model.GroupType.OTHER,
+                                    photoUrl = existing?.photoUrl,
+                                    coverUrl = resolveCoverUrlForRefresh(existing?.coverUrl, dto.coverUrl),
+                                    createdByUserId = dto.createdByUserId,
+                                    remoteId = dto.id,
+                                    createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
+                                    updatedAtEpochMs = dto.updatedAtEpochMs,
+                                    syncStatus = SyncStatus.SYNCED,
+                                ),
+                            )
+                        }
+                    }.awaitAll()
+            }
+
+            memberships.forEach { memberDto ->
+                groupRepository.upsertMember(
+                    GroupMember(
+                        id = memberDto.id,
+                        groupId = memberDto.groupId,
+                        userId = memberDto.userId,
+                        role =
+                            runCatching { MemberRole.valueOf(memberDto.role) }
+                                .getOrDefault(MemberRole.MEMBER),
+                        joinedAtEpochMs = memberDto.joinedAtEpochMs,
+                        syncStatus = SyncStatus.SYNCED,
+                    ),
+                )
+            }
+            // Owned groups must appear in observeGroupsForUser even if the memberships
+            // query lagged — ensure a local membership row for the creator.
+            val memberGroupIds = memberships.map { it.groupId }.toHashSet()
+            created.forEach { dto ->
+                if (dto.id in memberGroupIds) return@forEach
+                if (groupRepository.getMember(dto.id, userId) != null) return@forEach
+                groupRepository.upsertMember(
+                    GroupMember(
+                        id = UUID.randomUUID().toString(),
+                        groupId = dto.id,
+                        userId = userId,
+                        role = MemberRole.OWNER,
+                        joinedAtEpochMs = dto.updatedAtEpochMs,
+                        syncStatus = SyncStatus.SYNCED,
+                    ),
+                )
+            }
+        }
+
+        /**
          * Pulls remote groups/memberships for [userId] into Room.
          * No-ops when cloud tables are missing or the device is offline.
+         *
+         * Uses created-by rows when already fetched (skips a per-group GET) and
+         * pulls each group in parallel to avoid sequential N+1 latency.
          *
          * @param userId Current user id.
          */
@@ -1215,45 +1304,60 @@ class SocialInteractor
                 runCatching { remote.fetchMembershipsForUser(userId) }.getOrElse { return }
             val created =
                 runCatching { remote.fetchGroupsCreatedBy(userId) }.getOrDefault(emptyList())
+            val createdById = created.associateBy { it.id }
             val groupIds = (memberships.map { it.groupId } + created.map { it.id }).distinct()
+            if (groupIds.isEmpty()) return
 
-            groupIds.forEach { groupId ->
-                val dto = runCatching { remote.fetchGroup(groupId) }.getOrNull() ?: return@forEach
-                val existing = groupRepository.getGroupById(dto.id)
-                groupRepository.upsertGroup(
-                    Group(
-                        id = dto.id,
-                        name = dto.name,
-                        defaultCurrencyCode = dto.defaultCurrencyCode,
-                        groupType = existing?.groupType ?: com.splitease.app.domain.model.GroupType.OTHER,
-                        photoUrl = existing?.photoUrl,
-                        coverUrl = resolveCoverUrlForRefresh(existing?.coverUrl, dto.coverUrl),
-                        createdByUserId = dto.createdByUserId,
-                        remoteId = dto.id,
-                        createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
-                        updatedAtEpochMs = dto.updatedAtEpochMs,
-                        syncStatus = SyncStatus.SYNCED,
-                    ),
-                )
-                val memberDtos =
-                    runCatching { remote.fetchGroupMembers(groupId) }.getOrDefault(emptyList())
-                val profilesById =
-                    runCatching { remote.fetchProfilesByIds(memberDtos.map { it.userId }) }
-                        .getOrDefault(emptyList())
-                        .associateBy { it.id }
-                memberDtos.forEach { memberDto ->
-                    ensureLocalUserExists(memberDto.userId, profilesById[memberDto.userId])
-                    groupRepository.upsertMember(
-                        GroupMember(
-                            id = memberDto.id,
-                            groupId = memberDto.groupId,
-                            userId = memberDto.userId,
-                            role = runCatching { MemberRole.valueOf(memberDto.role) }.getOrDefault(MemberRole.MEMBER),
-                            joinedAtEpochMs = memberDto.joinedAtEpochMs,
-                            syncStatus = SyncStatus.SYNCED,
-                        ),
-                    )
-                }
+            coroutineScope {
+                groupIds
+                    .map { groupId ->
+                        async {
+                            val dto =
+                                createdById[groupId]
+                                    ?: runCatching { remote.fetchGroup(groupId) }.getOrNull()
+                                    ?: return@async
+                            val existing = groupRepository.getGroupById(dto.id)
+                            groupRepository.upsertGroup(
+                                Group(
+                                    id = dto.id,
+                                    name = dto.name,
+                                    defaultCurrencyCode = dto.defaultCurrencyCode,
+                                    groupType =
+                                        existing?.groupType
+                                            ?: com.splitease.app.domain.model.GroupType.OTHER,
+                                    photoUrl = existing?.photoUrl,
+                                    coverUrl = resolveCoverUrlForRefresh(existing?.coverUrl, dto.coverUrl),
+                                    createdByUserId = dto.createdByUserId,
+                                    remoteId = dto.id,
+                                    createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
+                                    updatedAtEpochMs = dto.updatedAtEpochMs,
+                                    syncStatus = SyncStatus.SYNCED,
+                                ),
+                            )
+                            val memberDtos =
+                                runCatching { remote.fetchGroupMembers(groupId) }
+                                    .getOrDefault(emptyList())
+                            val profilesById =
+                                runCatching { remote.fetchProfilesByIds(memberDtos.map { it.userId }) }
+                                    .getOrDefault(emptyList())
+                                    .associateBy { it.id }
+                            memberDtos.forEach { memberDto ->
+                                ensureLocalUserExists(memberDto.userId, profilesById[memberDto.userId])
+                                groupRepository.upsertMember(
+                                    GroupMember(
+                                        id = memberDto.id,
+                                        groupId = memberDto.groupId,
+                                        userId = memberDto.userId,
+                                        role =
+                                            runCatching { MemberRole.valueOf(memberDto.role) }
+                                                .getOrDefault(MemberRole.MEMBER),
+                                        joinedAtEpochMs = memberDto.joinedAtEpochMs,
+                                        syncStatus = SyncStatus.SYNCED,
+                                    ),
+                                )
+                            }
+                        }
+                    }.awaitAll()
             }
         }
 

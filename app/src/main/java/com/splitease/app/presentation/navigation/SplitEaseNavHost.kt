@@ -872,7 +872,6 @@ private fun SignedInNavHost(
                 GroupTotalsScreen(
                     groupId = groupId,
                     onBack = { navController.popBackStack() },
-                    onOpenSpending = { navController.navigate(Routes.SPENDING) },
                 )
             }
             composable(Routes.NON_GROUP_EXPENSES) {
@@ -991,6 +990,9 @@ private fun SignedInNavHost(
                         navController.navigate(Routes.editExpense(id))
                     },
                     onDeleted = { navController.popBackStack() },
+                    onOpenGroupSpending = { groupId ->
+                        navController.navigate(Routes.groupTotals(groupId))
+                    },
                 )
             }
             composable(

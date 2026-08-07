@@ -14,6 +14,7 @@ import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.Friend
+import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
@@ -28,6 +29,8 @@ import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppSettingsRepository
+import com.splitease.app.domain.spending.GroupMonthSpending
+import com.splitease.app.domain.spending.GroupSpendingCalculator
 import com.splitease.app.presentation.common.MoneyFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,6 +49,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.Calendar
+import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -112,8 +117,14 @@ data class ExpenseDetailUi(
     val splits: List<ExpenseSplitLineUi>,
     val payerLabel: String,
     val groupName: String?,
+    val categoryName: String,
+    val categoryIconKey: String,
+    /** Viewer's owed share on this expense (null when not a participant). */
+    val viewerOwedAmount: BigDecimal? = null,
     val viewerBalanceSide: LedgerBalanceSide? = null,
     val viewerBalanceAmount: BigDecimal? = null,
+    /** Last 3 calendar months of group spending (empty when not in a group). */
+    val spendingTrendMonths: List<GroupMonthSpending> = emptyList(),
 )
 
 private data class LedgerSource(
@@ -534,7 +545,7 @@ class ExpensesViewModel
             val id = userId.value ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-                runCatching { syncInteractor.syncForUser(id) }
+                runCatching { syncInteractor.syncForUser(id, force = true) }
                 runCatching {
                     expenseInteractor.refreshExpensesForUser(id)
                     paymentInteractor.refreshPaymentsForUser(id)
@@ -627,52 +638,117 @@ class ExpensesViewModel
                         if (me == null) {
                             flowOf(null)
                         } else {
-                            combine(
-                                expenseRepository.observeExpenseById(expenseId),
-                                expenseRepository.observeSplits(expenseId),
-                                userRepository.observeUsers(),
-                                friendRepository.observeFriends(me),
-                                groupRepository.observeGroupsForUser(me),
-                            ) { expense, splits, users, friends, groups ->
+                            expenseRepository.observeExpenseById(expenseId).flatMapLatest { expense ->
                                 if (expense == null) {
-                                    null
+                                    flowOf(null)
                                 } else {
-                                    val userNames = users.associate { it.id to it.displayName }
-                                    val friendNames =
-                                        friends.associate { it.friendUserId to it.displayNameSnapshot }
-
-                                    fun nameOf(id: String): String =
-                                        nameOf(id, me, friendNames, userNames)
-                                    val (balanceSide, balanceAmount) =
-                                        viewerBalanceForExpense(
-                                            me = me,
+                                    val groupId = expense.groupId
+                                    val groupExpensesFlow =
+                                        if (groupId != null) {
+                                            expenseRepository.observeExpenses(groupId)
+                                        } else {
+                                            flowOf(emptyList())
+                                        }
+                                    val groupSplitsFlow =
+                                        if (groupId != null) {
+                                            expenseRepository.observeSplitsByGroup(groupId)
+                                        } else {
+                                            flowOf(emptyMap())
+                                        }
+                                    combine(
+                                        expenseRepository.observeSplits(expenseId),
+                                        userRepository.observeUsers(),
+                                        friendRepository.observeFriends(me),
+                                        groupRepository.observeGroupsForUser(me),
+                                        categoryRepository.observeCategories(),
+                                    ) { splits, users, friends, groups, categories ->
+                                        DetailCore(
                                             expense = expense,
                                             splits = splits,
+                                            users = users,
+                                            friends = friends,
+                                            groups = groups,
+                                            categories = categories,
                                         )
-                                    ExpenseDetailUi(
-                                        expense = expense,
-                                        splits =
-                                            splits.map { split ->
-                                                ExpenseSplitLineUi(
-                                                    userId = split.userId,
-                                                    participantLabel = nameOf(split.userId),
-                                                    owedAmount = split.owedAmount,
+                                    }.combine(
+                                        combine(groupExpensesFlow, groupSplitsFlow) { expenses, splitsByExpense ->
+                                            expenses to splitsByExpense
+                                        },
+                                    ) { core, groupLedger ->
+                                        val (groupExpenses, splitsByExpense) = groupLedger
+                                        val userNames = core.users.associate { it.id to it.displayName }
+                                        val friendNames =
+                                            core.friends.associate { it.friendUserId to it.displayNameSnapshot }
+
+                                        fun nameOf(id: String): String =
+                                            nameOf(id, me, friendNames, userNames)
+                                        val (balanceSide, balanceAmount) =
+                                            viewerBalanceForExpense(
+                                                me = me,
+                                                expense = core.expense,
+                                                splits = core.splits,
+                                            )
+                                        val category =
+                                            core.expense.categoryId?.let { cid ->
+                                                core.categories.firstOrNull { it.id == cid }
+                                            }
+                                        val now = Calendar.getInstance(TimeZone.getDefault())
+                                        val trendMonths =
+                                            if (groupId == null) {
+                                                emptyList()
+                                            } else {
+                                                GroupSpendingCalculator.monthlyBuckets(
+                                                    viewerUserId = me,
+                                                    expenses = groupExpenses,
+                                                    splitsByExpenseId = splitsByExpense,
+                                                    currencyCode = core.expense.currencyCode,
+                                                    endYear = now.get(Calendar.YEAR),
+                                                    endMonth = now.get(Calendar.MONTH),
+                                                    monthCount = 3,
                                                 )
-                                            },
-                                        payerLabel = nameOf(expense.paidByUserId),
-                                        groupName =
-                                            expense.groupId?.let { gid ->
-                                                groups.firstOrNull { it.id == gid }?.name
-                                            },
-                                        viewerBalanceSide = balanceSide,
-                                        viewerBalanceAmount = balanceAmount,
-                                    )
+                                            }
+                                        ExpenseDetailUi(
+                                            expense = core.expense,
+                                            splits =
+                                                core.splits.map { split ->
+                                                    ExpenseSplitLineUi(
+                                                        userId = split.userId,
+                                                        participantLabel = nameOf(split.userId),
+                                                        owedAmount = split.owedAmount,
+                                                    )
+                                                },
+                                            payerLabel = nameOf(core.expense.paidByUserId),
+                                            groupName =
+                                                groupId?.let { gid ->
+                                                    core.groups.firstOrNull { it.id == gid }?.name
+                                                },
+                                            categoryName = category?.name ?: "General",
+                                            categoryIconKey =
+                                                category?.iconKey ?: "category_general",
+                                            viewerOwedAmount =
+                                                core.splits
+                                                    .firstOrNull { it.userId == me }
+                                                    ?.owedAmount,
+                                            viewerBalanceSide = balanceSide,
+                                            viewerBalanceAmount = balanceAmount,
+                                            spendingTrendMonths = trendMonths,
+                                        )
+                                    }
                                 }
                             }
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
             }
         }
+
+        private data class DetailCore(
+            val expense: Expense,
+            val splits: List<ExpenseSplit>,
+            val users: List<User>,
+            val friends: List<Friend>,
+            val groups: List<Group>,
+            val categories: List<Category>,
+        )
 
         fun updateExpense(
             expenseId: String,
