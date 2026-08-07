@@ -890,7 +890,7 @@ internal fun GroupOverallBalanceBlock(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(SplitEaseColors.Surface)
+                .background(SplitEaseColors.SurfaceMuted)
                 .clickable {
                     if (onClick != null) {
                         onClick()
