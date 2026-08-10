@@ -4,7 +4,7 @@ Added settle-up payments that reduce derived balances, plus recurring expense te
 
 ## Phase Goal
 
-Let users record settlements (“mark paid”) that reduce derived balances, and support recurring expense templates that generate new expense instances on a schedule via WorkManager.
+Let users record settlements ("mark paid") that reduce derived balances, and support recurring expense templates that generate new expense instances on a schedule via WorkManager.
 
 ## Scope
 
@@ -20,28 +20,28 @@ Let users record settlements (“mark paid”) that reduce derived balances, and
 ### Out
 - Payment gateway / UPI deep links (Phase 8)
 - Hardened offline sync queue / conflict policy (Phase 7)
-- Editing / pausing / ending recurrence rules beyond “template stays active”
+- Editing / pausing / ending recurrence rules beyond "template stays active"
 - FX / multi-currency conversion (Phase 7)
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Reuse existing Room `payments` table | Schema ready since Phase 1 |
-| `BalanceCalculator.applyPayments` pure function | Same testability as expense nets |
-| Payment: fromUser +amount, toUser −amount | Matches “A pays B” reducing A’s debt / B’s credit |
+| Decision                                                 | Rationale                                             |
+| -------------------------------------------------------- | ----------------------------------------------------- |
+| Reuse existing Room `payments` table                     | Schema ready since Phase 1                            |
+| `BalanceCalculator.applyPayments` pure function          | Same testability as expense nets                      |
+| Payment: fromUser +amount, toUser −amount                | Matches "A pays B" reducing A's debt / B's credit     |
 | Room v4: `nextOccurrenceEpochMs` + `recurringTemplateId` | Track schedule + link instances without hacking notes |
-| Destructive migration (existing MVP policy) | No production users yet |
-| WorkManager + Hilt Worker | Roadmap-mandated scheduler; Jetpack standard |
-| Local-first payments; best-effort Supabase upsert | Matches expenses pattern; full queue in Phase 7 |
+| Destructive migration (existing MVP policy)              | No production users yet                               |
+| WorkManager + Hilt Worker                                | Roadmap-mandated scheduler; Jetpack standard          |
+| Local-first payments; best-effort Supabase upsert        | Matches expenses pattern; full queue in Phase 7       |
 
 ## Data Model Changes
 
 ### Room v4 (`expenses`)
-| Column | Type | Notes |
-|---|---|---|
-| `nextOccurrenceEpochMs` | INTEGER nullable | Next generate-at for templates |
-| `recurringTemplateId` | TEXT nullable | Parent template id for generated instances |
+| Column                  | Type             | Notes                                      |
+| ----------------------- | ---------------- | ------------------------------------------ |
+| `nextOccurrenceEpochMs` | INTEGER nullable | Next generate-at for templates             |
+| `recurringTemplateId`   | TEXT nullable    | Parent template id for generated instances |
 
 ### Remote
 - New `payments` table + RLS
@@ -49,19 +49,19 @@ Let users record settlements (“mark paid”) that reduce derived balances, and
 
 ## Files Added/Modified (planned)
 
-| Path | Notes |
-|---|---|
-| `domain/balance/BalanceCalculator.kt` | `applyPayments` |
-| `domain/balance/*Test.kt` | Payment math cases |
-| `data/payment/PaymentInteractor.kt` | Record settlement |
-| `data/balance/BalanceInteractor.kt` | Combine payments into Flows |
-| `data/local/dao/PaymentDao.kt` | Pairwise / involving queries |
-| `data/expense/ExpenseInteractor.kt` | Recurrence on create + generate instance |
-| `data/recurring/RecurringExpenseWorker.kt` | WorkManager |
-| `presentation/settlements/*` | Settle-up UI |
-| `presentation/expenses/*` | Frequency picker |
-| `docs/sql/migration_db.sql` | Cloud schema (payments + recurring columns) |
-| Docs / version `0.7.0` | PROGRESS, CHANGELOG, ARCHITECTURE, data-dictionary |
+| Path                                       | Notes                                              |
+| ------------------------------------------ | -------------------------------------------------- |
+| `domain/balance/BalanceCalculator.kt`      | `applyPayments`                                    |
+| `domain/balance/*Test.kt`                  | Payment math cases                                 |
+| `data/payment/PaymentInteractor.kt`        | Record settlement                                  |
+| `data/balance/BalanceInteractor.kt`        | Combine payments into Flows                        |
+| `data/local/dao/PaymentDao.kt`             | Pairwise / involving queries                       |
+| `data/expense/ExpenseInteractor.kt`        | Recurrence on create + generate instance           |
+| `data/recurring/RecurringExpenseWorker.kt` | WorkManager                                        |
+| `presentation/settlements/*`               | Settle-up UI                                       |
+| `presentation/expenses/*`                  | Frequency picker                                   |
+| `docs/sql/migration_db.sql`                | Cloud schema (payments + recurring columns)        |
+| Docs / version `0.7.0`                     | PROGRESS, CHANGELOG, ARCHITECTURE, data-dictionary |
 
 ## Screens/UI Added
 

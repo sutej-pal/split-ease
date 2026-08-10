@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-email-otp.md), [supabase-reset-password-otp.html](docs/supabase-reset-password-otp.html))
-- Signup blocks duplicate email/phone with clear â€œalready registeredâ€ messaging (`auth_email_registered` + `auth_phone_registered`)
+- Signup blocks duplicate email/phone with clear `already registered` messaging (`auth_email_registered` + `auth_phone_registered`)
 
 ### Changed
 - Forgot-password copy asks for a reset **code** (not a link); mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup OTP
@@ -22,12 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Crash when leaving a screen during an in-flight Supabase call (seen on Motorola): Ktor Android engine closed HTTP on Main (`NetworkOnMainThreadException`); switch to OkHttp and pin `httpEngine` in [SupabaseModule](app/src/main/java/com/splitease/app/data/di/SupabaseModule.kt)
-- Password reset showed generic â€œSomething went wrongâ€ after a valid OTP: `updatePassword` no longer fails the whole flow when local hydrate hiccups, and Supabase `same_password` / expired-session errors map to clear copy
-- Forgot-password never reveals whether an email is registered: `requestPasswordReset` always soft-succeeds, always opens the OTP screen with â€œIf an account existsâ€¦â€ copy, and OTP verify failures use a generic â€œInvalid or expired codeâ€ (Supabase rate-limits resend server-side)
-- Adding a friend from Find people â†’ Friends on SplitEase now syncs `group_members` to Supabase (group pushed first; cloud errors surfaced). Pending invite friends get a GROUP invite instead of a local-only placeholder membership
+- Password reset showed generic `Something went wrong` after a valid OTP: `updatePassword` no longer fails the whole flow when local hydrate hiccups, and Supabase `same_password` / expired-session errors map to clear copy
+- Forgot-password never reveals whether an email is registered: `requestPasswordReset` always soft-succeeds, always opens the OTP screen with `If an account exists...` copy, and OTP verify failures use a generic `Invalid or expired code` (Supabase rate-limits resend server-side)
+- Adding a friend from Find people > Friends on SplitEase now syncs `group_members` to Supabase (group pushed first; cloud errors surfaced). Pending invite friends get a GROUP invite instead of a local-only placeholder membership
 - Friend/group expenses invisible on the other account: inviter reconcile remapped splits only in Room then marked invites `ACCEPTED` (so `accept_pending_invites` never remapped remote `expense_splits`), and friendships were one-way so the invitee had no Friends list entry; now remaps remote splits (RPC + re-push heal), creates reciprocal friendships on link/accept, and backfills friends from shared activity ([sql/migration_db.sql](docs/sql/migration_db.sql))
 - Sign-in briefly flashed Welcome before verify OTP: OTP gate is armed before password session sign-out
-- Group expenses never reached Supabase: `expenses_select` used `can_access_expense(id)`, which re-queries `expenses` and cannot see the in-flight row during PostgREST `INSERT â€¦ RETURNING`, so upserts rolled back while Room kept a local PENDING copy ([sql/migration_db.sql](docs/sql/migration_db.sql)); expense push now also re-upserts the group before FK write
+- Group expenses never reached Supabase: `expenses_select` used `can_access_expense(id)`, which re-queries `expenses` and cannot see the in-flight row during PostgREST `INSERT ... RETURNING`, so upserts rolled back while Room kept a local PENDING copy ([sql/migration_db.sql](docs/sql/migration_db.sql)); expense push now also re-upserts the group before FK write
 - Dark theme text was near-invisible: `SplitEaseColors` light-only aliases (`Navy`, surfaces, etc.) now resolve from `MaterialTheme.colorScheme`; status/nav bar icon contrast follows background luminance
 - Group invite share links opened the app but never joined the group: share-link invites stored the inviter's email, so `accept_pending_invites` auto-accepted (burned) the link on the inviter's next sync; share links now use a placeholder email, email-accept skips token-only rows, and token-accept keeps share links multi-use ([sql/migration_db.sql](docs/sql/migration_db.sql))
 - Expense create/update now warns when cloud sync fails (local-only save); co-members cannot see expenses that never reached Supabase
@@ -47,11 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Group Pin Board — shared per-group notepad (Markdown) accessible from the group detail action chips; auto-saves with 2-second debounce; online-only via Supabase `pin_boards` table
 - Live group ledger via Supabase Realtime while group detail is open (`GroupLiveSync` + [sql/migration_db.sql](docs/sql/migration_db.sql))
 - FCM push for other group members on expense/payment changes (`device_tokens`, Edge Function `notify-group-members`, [fcm-setup.md](docs/fcm-setup.md))
-- Deferred invite deep link: mail-service Play Store fallback with `referrer=invite_token%3Dâ€¦` + Android Play Install Referrer bootstrap into `pending_invite_token` (same OTP / accept path as live deep links)
-- Group settings â†’ **Invite via link** opens an Invite link screen (copy / share / change link) instead of jumping straight to the share sheet
+- Deferred invite deep link: mail-service Play Store fallback with `referrer=invite_token%3D...` + Android Play Install Referrer bootstrap into `pending_invite_token` (same OTP / accept path as live deep links)
+- Group settings > **Invite via link** opens an Invite link screen (copy / share / change link) instead of jumping straight to the share sheet
 - Onboarding-start transactional email trigger via external Render mail service (`/send-mail`) when onboarding first opens for a signed-in user ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
 - `MailRepository` + Render-backed remote data source and `BuildConfig` keys (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`)
-- Invite deep-link join flow: landing screen + join signup â†’ OTP gate â†’ accept invite / join group ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
+- Invite deep-link join flow: landing screen + join signup > OTP gate > accept invite / join group ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
 - Deep links for `https://splitease.app/invite/{token}` and `splitease://invite/{token}`
 - Supabase RPCs `get_invite_preview` + `accept_invite_by_token` ([sql/migration_db.sql](docs/sql/migration_db.sql))
 - Post-signup onboarding setup flow: confirm display name + choose default currency before entering the app ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
@@ -60,9 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Signup email verification via **6-digit OTP** (in-app code entry; no deep link required) ([docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md))
 - Expense detail screen with edit and delete; create/update/delete appear on Activity ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
 - Brand color system and Material 3 theme (light/dark) from icon indigo/amber tokens ([phase-0](docs/phase-0-project-setup-and-brand-theme.md), [design-tokens](docs/design-tokens.md))
-- Find people screen (search friends + device contacts); Group settings â†’ Add people uses it
+- Find people screen (search friends + device contacts); Group settings > Add people uses it
 - Extras backlog: [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)
-- Settings â†’ Security: biometric / device-credential app lock with timeout
+- Settings > Security: biometric / device-credential app lock with timeout
 - Settings hub (appearance, language, currency) and Group settings screen
 - Bottom navigation + Groups home UI; shared `Se*` design system
 
@@ -83,7 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auth signup now uses real 6-digit OTP verify/resend repository calls; mobile/phone onboarding remains TODO
 - Locale string packs temporarily emptied (fall back to English); full i18n deferred to last (TODO(i18n-last))
 - Auth no longer blanks the UI on `SessionStatus.Initializing` after background (disabled Supabase lifecycle callbacks); loading gate times out to signed-out after 8s; refresh failures clear stale sessions
-- Verify-email screen: enter OTP + Verify / Resend code (replaces â€œopen confirmation linkâ€ copy)
+- Verify-email screen: enter OTP + Verify / Resend code (replaces `open confirmation link` copy)
 - **Release size:** R8 minify + resource shrinking enabled; removed unused Coil/Espresso/JUnit4 deps; pruned dead string resources and orphan `commonMain` tree
 - ViewModels use string resources for user-facing messages (expenses, groups, sync, import, activity, spending)
 - Docs: refreshed README / `ARCHITECTURE.md`; added [docs/README.md](docs/README.md) index (phase docs retained)
@@ -94,8 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-07-23 — phase-9
 
 ### Added
-- Seven locale packs (`es`, `fr`, `de`, `pt`, `hi`, `ja`, `it`) plus Settings â†’ Language
-- Room migrations 1â†’2â†’3â†’4 (invites, groupType, recurring columns)
+- Seven locale packs (`es`, `fr`, `de`, `pt`, `hi`, `ja`, `it`) plus Settings > Language
+- Room migrations 1–2–3–4 (invites, groupType, recurring columns)
 - Email confirmation UX (pending verify screen, resend) and `splitease://auth-callback` deep links
 - Compose Welcome smoke test + Room migration instrumented test
 - Release checklist and Play Store listing draft
@@ -109,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Region-aware settle-up pay actions (UPI / PayPal / Venmo / share)
-- CSV transaction import (Account â†’ Import) with preview and expense creation
+- CSV transaction import (Account > Import) with preview and expense creation
 - Vico column chart on Spending totals
 - Unit tests for payment deep links and CSV parser
 
@@ -118,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Expense search screen (description / notes)
 - Category picker + custom categories on Add Expense; category on expense rows
-- Spending totals by category / period (Account â†’ Spending)
+- Spending totals by category / period (Account > Spending)
 - 100+ ISO currency catalog with Settings search/filter
 - Durable PENDING flush for expenses + payments (`SyncInteractor`, WorkManager, Account Sync now)
 
@@ -176,9 +176,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Supabase Auth (email/password sign-up, sign-in, sign-out, password reset)
-- Session-gated navigation: Welcome â†’ Login/Signup/Forgot â†’ Home
+- Session-gated navigation: Welcome > Login/Signup/Forgot > Home
 - `AuthRepository` / `SupabaseAuthRepository` with Room user upsert + category seeding
-- Auth credentials via `local.properties` â†’ `BuildConfig` (URL + anon key only)
+- Auth credentials via `local.properties` > `BuildConfig` (URL + anon key only)
 - `AuthViewModel` unit tests
 
 ### Changed

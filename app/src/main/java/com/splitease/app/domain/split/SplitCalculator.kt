@@ -22,7 +22,8 @@ object SplitCalculator {
      * @param participantIds Ordered participant user ids (non-empty, unique).
      * @param unequalAmounts Required when [SplitType.UNEQUAL]; map userId → amount.
      * @param percentages Required when [SplitType.PERCENTAGE]; map userId → percent (0–100).
-     * @param shares Required when [SplitType.SHARES]; map userId → positive share weight.
+     * @param shares Required when [SplitType.SHARES]; map userId → non-negative share weight.
+     * @param adjustments Required when [SplitType.ADJUSTMENT]; map userId → extra owed (≥ 0).
      * @return Map of userId → owed amount (scale 2), summing to [total].
      * @throws IllegalArgumentException when inputs are invalid.
      */
@@ -33,6 +34,7 @@ object SplitCalculator {
         unequalAmounts: Map<String, BigDecimal> = emptyMap(),
         percentages: Map<String, BigDecimal> = emptyMap(),
         shares: Map<String, Int> = emptyMap(),
+        adjustments: Map<String, BigDecimal> = emptyMap(),
     ): Map<String, BigDecimal> {
         require(participantIds.isNotEmpty()) { "At least one participant is required." }
         require(participantIds.size == participantIds.distinct().size) { "Duplicate participants." }
@@ -44,6 +46,7 @@ object SplitCalculator {
             SplitType.UNEQUAL -> unequalSplit(normalizedTotal, participantIds, unequalAmounts)
             SplitType.PERCENTAGE -> percentageSplit(normalizedTotal, participantIds, percentages)
             SplitType.SHARES -> sharesSplit(normalizedTotal, participantIds, shares)
+            SplitType.ADJUSTMENT -> adjustmentSplit(normalizedTotal, participantIds, adjustments)
         }
     }
 
@@ -123,25 +126,55 @@ object SplitCalculator {
         require(shares.keys.containsAll(participants) && shares.size == participants.size) {
             "Provide shares for every participant."
         }
-        require(shares.values.all { it > 0 }) { "Shares must be positive." }
+        require(shares.values.all { it >= 0 }) { "Shares cannot be negative." }
         val totalShares = shares.values.sum()
+        require(totalShares > 0) { "Total shares must be greater than zero." }
+        val active = participants.filter { shares.getValue(it) > 0 }
         val provisional =
             participants
                 .associateWith { id ->
-                total
-                    .multiply(BigDecimal(shares.getValue(id)))
-                    .divide(BigDecimal(totalShares), 2, RoundingMode.DOWN)
-            }.toMutableMap()
+                    val weight = shares.getValue(id)
+                    if (weight == 0) {
+                        ZERO
+                    } else {
+                        total
+                            .multiply(BigDecimal(weight))
+                            .divide(BigDecimal(totalShares), 2, RoundingMode.DOWN)
+                    }
+                }.toMutableMap()
         var allocated = provisional.values.fold(ZERO) { acc, v -> acc.add(v) }
         var remainder = total.subtract(allocated)
         val cent = BigDecimal("0.01")
         var index = 0
-        while (remainder > ZERO) {
-            val id = participants[index % participants.size]
+        while (remainder > ZERO && active.isNotEmpty()) {
+            val id = active[index % active.size]
             provisional[id] = provisional.getValue(id).add(cent)
             remainder = remainder.subtract(cent)
             index++
         }
         return provisional
+    }
+
+    private fun adjustmentSplit(
+        total: BigDecimal,
+        participants: List<String>,
+        adjustments: Map<String, BigDecimal>,
+    ): Map<String, BigDecimal> {
+        require(adjustments.keys.containsAll(participants) && adjustments.size == participants.size) {
+            "Provide an adjustment for every participant."
+        }
+        val normalized =
+            participants.associateWith { id ->
+                val value = adjustments.getValue(id).setScale(2, RoundingMode.HALF_UP)
+                require(value >= ZERO) { "Adjustments cannot be negative." }
+                value
+            }
+        val adjSum = normalized.values.fold(ZERO) { acc, v -> acc.add(v) }
+        require(adjSum <= total) { "Adjustments cannot exceed the total ($total)." }
+        val remainder = total.subtract(adjSum)
+        val base = equalSplit(remainder, participants)
+        return participants.associateWith { id ->
+            base.getValue(id).add(normalized.getValue(id)).setScale(2, RoundingMode.HALF_UP)
+        }
     }
 }

@@ -41,7 +41,9 @@ private val LightColorScheme =
         // Light muted text not in brand table — neutral gray pending confirmation.
         surfaceVariant = Color(0xFFF3F4F6),
         onSurfaceVariant = Color(0xFF5C5878),
-        outline = IndigoLight,
+        // Neutral resting borders (inputs, chips). Brand indigo is reserved for
+        // primary / focused / link accents — not default outlines.
+        outline = Color(0xFFD1D5DB),
         outlineVariant = Color(0xFFE5E7EB),
         // TODO(design): error* are PLACEHOLDERs for "you owe" — confirm before shipping.
         error = ErrorPlaceholder,
@@ -73,7 +75,7 @@ private val DarkColorScheme =
         onSurface = TextPrimaryDark,
         surfaceVariant = SurfaceDark,
         onSurfaceVariant = TextSecondaryDark,
-        outline = IndigoDark,
+        outline = Color(0xFF4B465C),
         outlineVariant = Color(0xFF3A3552),
         // TODO(design): error* are PLACEHOLDERs for "you owe" — confirm before shipping.
         error = ErrorPlaceholder,

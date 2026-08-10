@@ -22,7 +22,7 @@ interface InviteDao {
     )
     fun observeByInviter(inviterUserId: String): Flow<List<InviteEntity>>
 
-    /** @param email Recipient email. @param status Status filter. @return Matching invites. */
+    /** @param email Recipient email. @param status Invite status filter. @return Matching invites. */
     @Query(
         """
         SELECT * FROM invites
@@ -43,7 +43,7 @@ interface InviteDao {
      * Generic group share-link invites (no per-person friendship row).
      *
      * @param groupId Target group.
-     * @param status Status filter (typically [InviteStatus.PENDING]).
+     * @param status Invite status filter (typically [InviteStatus.PENDING]).
      * @return Matching invites, newest first.
      */
     @Query(

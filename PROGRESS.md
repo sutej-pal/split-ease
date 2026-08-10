@@ -4,21 +4,21 @@ Track development phases. Always check this file at the start of a session to de
 
 **Feature map:** [docs/ROADMAP.md](docs/ROADMAP.md) — product features distributed across phases.
 
-| Phase | Name | Features covered | Status | Doc |
-|---|---|---|---|---|
-| 0 | Project Setup, Foundations & Brand Theme | Scaffold + Material 3 brand ColorScheme | Done | [phase-0-project-setup-and-brand-theme.md](docs/phase-0-project-setup-and-brand-theme.md) |
-| 1 | Data Layer Foundations | Offline DB foundation | Done | [phase-1-room-data-layer-and-domain.md](docs/phase-1-room-data-layer-and-domain.md) |
-| 2 | Authentication (Supabase) | Cloud identity | Done | [phase-2-supabase-auth-and-session.md](docs/phase-2-supabase-auth-and-session.md) |
-| 3 | Friends & Groups | Add groups and friends | Done | [phase-3-friends-groups-and-invites.md](docs/phase-3-friends-groups-and-invites.md) |
-| 4 | Expense Creation & Splitting Logic | Split expenses / record debts; equal & unequal; % & shares; unlimited expenses | Done | [phase-4-expense-creation-and-splits.md](docs/phase-4-expense-creation-and-splits.md) |
-| 5 | Balances & Debt Simplification | Calculate total balances; simplify debts | Done | [phase-5-balances-and-debt-simplification.md](docs/phase-5-balances-and-debt-simplification.md) |
-| 6 | Settlements & Recurring Expenses | Recurring expenses; mark settlements | Done | [phase-6-settlements-and-recurring-expenses.md](docs/phase-6-settlements-and-recurring-expenses.md) |
-| 7 | Search, Categories, Multi-Currency, Offline Sync | Offline mode; cloud sync; spending totals; categorize; 100+ currencies | Done | [phase-7-search-categories-currency-offline-sync.md](docs/phase-7-search-categories-currency-offline-sync.md) |
-| 8 | Stretch / Pro-like Features | Payment integrations; transaction import; charts | Done | [phase-8-payments-csv-import-and-charts.md](docs/phase-8-payments-csv-import-and-charts.md) |
-| 9 | Polish, Testing, and Release Prep | 7+ languages; release hardening | Done | [phase-9-i18n-migrations-and-release-prep.md](docs/phase-9-i18n-migrations-and-release-prep.md) |
-| 10 | Post-MVP Product Hardening | Expense details + Activity; onboarding; invite join; welcome mail | Done | [phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md) |
-| 11 | Group Pin Board | Shared per-group notepad (Markdown, online-only) | Done | [phase-11-group-pin-board.md](docs/phase-11-group-pin-board.md) |
-| 12 | Forgot Password OTP | Reset password via email OTP + set new password in-app | Done | [phase-12-forgot-password-email-otp.md](docs/phase-12-forgot-password-email-otp.md) |
+| Phase | Name                                             | Features covered                                                               | Status | Doc                                                                                                           |
+| ----- | ------------------------------------------------ | ------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------- |
+| 0     | Project Setup, Foundations & Brand Theme         | Scaffold + Material 3 brand ColorScheme                                        | Done   | [phase-0-project-setup-and-brand-theme.md](docs/phase-0-project-setup-and-brand-theme.md)                     |
+| 1     | Data Layer Foundations                           | Offline DB foundation                                                          | Done   | [phase-1-room-data-layer-and-domain.md](docs/phase-1-room-data-layer-and-domain.md)                           |
+| 2     | Authentication (Supabase)                        | Cloud identity                                                                 | Done   | [phase-2-supabase-auth-and-session.md](docs/phase-2-supabase-auth-and-session.md)                             |
+| 3     | Friends & Groups                                 | Add groups and friends                                                         | Done   | [phase-3-friends-groups-and-invites.md](docs/phase-3-friends-groups-and-invites.md)                           |
+| 4     | Expense Creation & Splitting Logic               | Split expenses / record debts; equal & unequal; % & shares; unlimited expenses | Done   | [phase-4-expense-creation-and-splits.md](docs/phase-4-expense-creation-and-splits.md)                         |
+| 5     | Balances & Debt Simplification                   | Calculate total balances; simplify debts                                       | Done   | [phase-5-balances-and-debt-simplification.md](docs/phase-5-balances-and-debt-simplification.md)               |
+| 6     | Settlements & Recurring Expenses                 | Recurring expenses; mark settlements                                           | Done   | [phase-6-settlements-and-recurring-expenses.md](docs/phase-6-settlements-and-recurring-expenses.md)           |
+| 7     | Search, Categories, Multi-Currency, Offline Sync | Offline mode; cloud sync; spending totals; categorize; 100+ currencies         | Done   | [phase-7-search-categories-currency-offline-sync.md](docs/phase-7-search-categories-currency-offline-sync.md) |
+| 8     | Stretch / Pro-like Features                      | Payment integrations; transaction import; charts                               | Done   | [phase-8-payments-csv-import-and-charts.md](docs/phase-8-payments-csv-import-and-charts.md)                   |
+| 9     | Polish, Testing, and Release Prep                | 7+ languages; release hardening                                                | Done   | [phase-9-i18n-migrations-and-release-prep.md](docs/phase-9-i18n-migrations-and-release-prep.md)               |
+| 10    | Post-MVP Product Hardening                       | Expense details + Activity; onboarding; invite join; welcome mail              | Done   | [phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md) |
+| 11    | Group Pin Board                                  | Shared per-group notepad (Markdown, online-only)                               | Done   | [phase-11-group-pin-board.md](docs/phase-11-group-pin-board.md)                                               |
+| 12    | Forgot Password OTP                              | Reset password via email OTP + set new password in-app                         | Done   | [phase-12-forgot-password-email-otp.md](docs/phase-12-forgot-password-email-otp.md)                           |
 
 **Current phase:** Complete through Phase 12 (2026-08-04)
 

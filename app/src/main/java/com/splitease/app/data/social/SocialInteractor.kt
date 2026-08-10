@@ -57,17 +57,6 @@ class SocialInteractor
         private val expenseInteractor: com.splitease.app.data.expense.ExpenseInteractor,
     ) {
         /**
-         * Adds a friend by email. Existing SplitEase users are linked immediately;
-         * otherwise a pending friend + email invite is created.
-         *
-         * @param ownerUserId Current user id.
-         * @param email Friend email.
-         * @return [Result] with [AddPersonOutcome] (share text when invite pending).
-         */
-        suspend fun addFriendByEmail(ownerUserId: String, email: String): Result<AddPersonOutcome> =
-            addFriendByContact(ownerUserId, contact = email, displayName = null, groupId = null)
-
-        /**
          * Removes a friend, deletes non-group expenses/payments between the two users,
          * and cancels any pending invite.
          *
@@ -463,13 +452,13 @@ class SocialInteractor
          * Does **not** hydrate Room — [com.splitease.app.data.sync.SyncInteractor.syncForUser]
          * always pulls friends/groups/expenses after this returns so we avoid a double fetch.
          *
-         * @param userId Newly authenticated user id.
+         * @param _userId Newly authenticated user id (reserved for future scoped claims).
          * @param inviteToken Optional deep-link token to accept first (join-as-new).
          * @return True when there was no token, or the token invite is no longer pending
          *   (accepted / invalid). False when the token invite is still pending after claim.
          */
         suspend fun acceptPendingInvitesForCurrentUser(
-            userId: String,
+            _userId: String,
             inviteToken: String? = null,
         ): Boolean {
             var acceptedByToken = false
@@ -1108,25 +1097,27 @@ class SocialInteractor
 
             val existingInvite = inviteRepository.getByFriendRowId(friend.id)
             val invite =
-                when {
-                    existingInvite?.status == InviteStatus.PENDING &&
-                        existingInvite.kind == InviteKind.GROUP &&
-                        existingInvite.groupId == groupId -> {
-                        if (existingInvite.syncStatus != SyncStatus.SYNCED) {
-                            pushInviteToCloud(existingInvite)
+                when (existingInvite?.status) {
+                    InviteStatus.PENDING -> {
+                        if (
+                            existingInvite.kind == InviteKind.GROUP &&
+                            existingInvite.groupId == groupId
+                        ) {
+                            if (existingInvite.syncStatus != SyncStatus.SYNCED) {
+                                pushInviteToCloud(existingInvite)
+                            }
+                            existingInvite
+                        } else {
+                            val upgraded =
+                                existingInvite.copy(
+                                    kind = InviteKind.GROUP,
+                                    groupId = groupId,
+                                    syncStatus = SyncStatus.PENDING,
+                                )
+                            inviteRepository.upsert(upgraded)
+                            pushInviteToCloud(upgraded)
+                            upgraded
                         }
-                        existingInvite
-                    }
-                    existingInvite?.status == InviteStatus.PENDING -> {
-                        val upgraded =
-                            existingInvite.copy(
-                                kind = InviteKind.GROUP,
-                                groupId = groupId,
-                                syncStatus = SyncStatus.PENDING,
-                            )
-                        inviteRepository.upsert(upgraded)
-                        pushInviteToCloud(upgraded)
-                        upgraded
                     }
                     else -> {
                         val created =

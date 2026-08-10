@@ -26,14 +26,14 @@ Make expenses findable and categorizable, expand the currency catalog to 100+, s
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Local category presets + custom upsert | Already seeded; no remote categories needed for MVP |
-| Search via Room `LIKE` on description/notes | Simple, offline-first |
-| Spending totals = sum of viewer's split `owedAmount` by category | Matches “my spending,” not group totals |
-| `SyncInteractor.flushPending()` + periodic WorkManager | Durable retry without reinventing WorkManager |
-| Payments join expense flush path | Closes Phase 6 LOCAL_ONLY gap |
-| LWW: remote wins only on pull when remote `updated_at` ≥ local | Minimal conflict policy |
+| Decision                                                         | Rationale                                           |
+| ---------------------------------------------------------------- | --------------------------------------------------- |
+| Local category presets + custom upsert                           | Already seeded; no remote categories needed for MVP |
+| Search via Room `LIKE` on description/notes                      | Simple, offline-first                               |
+| Spending totals = sum of viewer's split `owedAmount` by category | Matches "my spending," not group totals             |
+| `SyncInteractor.flushPending()` + periodic WorkManager           | Durable retry without reinventing WorkManager       |
+| Payments join expense flush path                                 | Closes Phase 6 LOCAL_ONLY gap                       |
+| LWW: remote wins only on pull when remote `updated_at` ≥ local   | Minimal conflict policy                             |
 
 ## Data Model Changes
 
@@ -64,7 +64,7 @@ Phase 7 delivered expense search, category pickers + custom categories, spending
 
 - Search expenses
 - Spending totals
-- Category chips on Add Expense; optional “Add category”
+- Category chips on Add Expense; optional "Add category"
 - Settings currency search over 100+ codes
 - Account: pending sync count / Sync now
 
@@ -79,9 +79,9 @@ Phase 7 delivered expense search, category pickers + custom categories, spending
 ## Known Issues / TODOs
 
 - FX not implemented; multi-currency totals stay separated.
-- Capture `docs/screenshots/phase-7.png`.
+- Capture a local screenshot for this phase when needed.
 - Social PENDING flush already best-effort inline; not moved into SyncInteractor this phase.
 
 ## Screenshots placeholder
 
-![phase-7-screenshot](./screenshots/phase-7.png)
+_(No screenshot checked in for this phase.)_

@@ -131,7 +131,6 @@ private fun ActivityRow(
                     tint = tint,
                     actorName = item.actorDisplayName,
                     actorPhotoUrl = item.actorPhotoUrl,
-                    size = 44,
                 )
             } else {
                 SeIconTile(icon = icon, tint = tint, size = 44)

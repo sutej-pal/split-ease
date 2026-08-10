@@ -85,6 +85,43 @@ class BalanceCalculatorTest {
     }
 
     @Test
+    fun viewer_net_single_payer_matches_legacy() {
+        val expense = expense(id = "e1", amount = "100.00", paidBy = "a", currency = "INR")
+        val splits =
+            listOf(
+                split("e1", "a", "50.00"),
+                split("e1", "b", "50.00"),
+            )
+        assertEquals(
+            BigDecimal("50.00"),
+            BalanceCalculator.viewerNetForExpense("a", expense, splits),
+        )
+        assertEquals(
+            BigDecimal("-50.00"),
+            BalanceCalculator.viewerNetForExpense("b", expense, splits),
+        )
+    }
+
+    @Test
+    fun viewer_net_multi_payer_credits_each_paid_amount() {
+        val expense = expense(id = "e1", amount = "100.00", paidBy = "a", currency = "INR")
+        val splits =
+            listOf(
+                split("e1", "a", owed = "50.00", paid = "70.00"),
+                split("e1", "b", owed = "50.00", paid = "30.00"),
+            )
+        // Primary paidBy is still "a", but b also paid — nets must use paidAmount.
+        assertEquals(
+            BigDecimal("20.00"),
+            BalanceCalculator.viewerNetForExpense("a", expense, splits),
+        )
+        assertEquals(
+            BigDecimal("-20.00"),
+            BalanceCalculator.viewerNetForExpense("b", expense, splits),
+        )
+    }
+
+    @Test
     fun payment_settles_equal_split_debt() {
         val expense = expense(id = "e1", amount = "100.00", paidBy = "a", currency = "INR")
         val splits =
@@ -99,7 +136,7 @@ class BalanceCalculatorTest {
         val settled =
             BalanceCalculator.applyPayments(
                 expenseNets,
-                listOf(payment(from = "b", to = "a", amount = "50.00", currency = "INR")),
+                listOf(payment(amount = "50.00")),
             )
         assertTrue(settled.isEmpty())
     }
@@ -115,27 +152,23 @@ class BalanceCalculatorTest {
                 otherUserId = "b",
                 expenses = listOf(expense),
                 splitsByExpenseId = splits,
-                payments = listOf(payment(from = "b", to = "a", amount = "30.00", currency = "INR")),
+                payments = listOf(payment(amount = "30.00")),
             )
         assertTrue(pair.isEmpty())
     }
 
-    private fun payment(
-        from: String,
-        to: String,
-        amount: String,
-        currency: String,
-    ) = Payment(
-        id = "p-$from-$to",
-        fromUserId = from,
-        toUserId = to,
-        amount = BigDecimal(amount),
-        currencyCode = currency,
-        paidAtEpochMs = 0L,
-        createdAtEpochMs = 0L,
-        updatedAtEpochMs = 0L,
-        syncStatus = SyncStatus.LOCAL_ONLY,
-    )
+    private fun payment(amount: String) =
+        Payment(
+            id = "p-b-a",
+            fromUserId = "b",
+            toUserId = "a",
+            amount = BigDecimal(amount),
+            currencyCode = "INR",
+            paidAtEpochMs = 0L,
+            createdAtEpochMs = 0L,
+            updatedAtEpochMs = 0L,
+            syncStatus = SyncStatus.LOCAL_ONLY,
+        )
 
     private fun expense(
         id: String,
@@ -161,11 +194,13 @@ class BalanceCalculatorTest {
         expenseId: String,
         userId: String,
         owed: String,
+        paid: String? = null,
     ) = ExpenseSplit(
         id = "$expenseId-$userId",
         expenseId = expenseId,
         userId = userId,
         owedAmount = BigDecimal(owed),
+        paidAmount = paid?.let { BigDecimal(it) },
         syncStatus = SyncStatus.LOCAL_ONLY,
     )
 }

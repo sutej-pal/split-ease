@@ -2,7 +2,7 @@
 
 ## Phase Goal
 
-Replace link-based (â€œclick to confirmâ€) email signup verification with a **6-digit OTP** flow: after email/password signup, the user enters a numeric code from email in the app. No deep linking, custom URI schemes, or AndroidManifest intent-filter changes are required for this flow.
+Replace link-based (`click to confirm`) email signup verification with a **6-digit OTP** flow: after email/password signup, the user enters a numeric code from email in the app. No deep linking, custom URI schemes, or AndroidManifest intent-filter changes are required for this flow.
 
 ## Scope (In / Out)
 
@@ -18,12 +18,12 @@ Replace link-based (â€œclick to confirmâ€) email signup verification wi
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| OTP type `SIGNUP` (verify + resend) | Matches email/password signup confirmation; resend must use `SIGNUP` |
-| Session after successful verify | Same hydrate path as sign-in (`persistCurrentUser` + defaults + sync) |
-| Keep existing auth deep-link host | Not required for OTP signup; leave for recovery / future OAuth |
-| Dashboard email template change | Supabase sends `{{ .Token }}` only when Confirm signup template includes it |
+| Decision                            | Rationale                                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| OTP type `SIGNUP` (verify + resend) | Matches email/password signup confirmation; resend must use `SIGNUP`        |
+| Session after successful verify     | Same hydrate path as sign-in (`persistCurrentUser` + defaults + sync)       |
+| Keep existing auth deep-link host   | Not required for OTP signup; leave for recovery / future OAuth              |
+| Dashboard email template change     | Supabase sends `{{ .Token }}` only when Confirm signup template includes it |
 
 ## Data Model Changes
 
@@ -31,22 +31,22 @@ None (Room / PostgREST unchanged).
 
 ## Files Added/Modified
 
-| File path | Purpose |
-|---|---|
-| `domain/repository/AuthRepository.kt` | `verifySignupOtp` |
-| `data/repository/SupabaseAuthRepository.kt` | Supabase OTP verify + profile hydrate |
-| `domain/model/SignUpResult.kt` | KDoc: code vs link |
-| `presentation/auth/AuthViewModel.kt` | `verifySignupOtp` |
-| `presentation/auth/AuthScreens.kt` | OTP field + Verify CTA |
-| `presentation/navigation/SplitEaseNavHost.kt` | Wire verify callback |
-| `res/values*/strings.xml` | OTP copy |
-| `AuthViewModelTest.kt` | Verify / validation coverage |
-| Living docs | CHANGELOG, PROGRESS, release-checklist, ARCHITECTURE |
+| File path                                     | Purpose                                              |
+| --------------------------------------------- | ---------------------------------------------------- |
+| `domain/repository/AuthRepository.kt`         | `verifySignupOtp`                                    |
+| `data/repository/SupabaseAuthRepository.kt`   | Supabase OTP verify + profile hydrate                |
+| `domain/model/SignUpResult.kt`                | KDoc: code vs link                                   |
+| `presentation/auth/AuthViewModel.kt`          | `verifySignupOtp`                                    |
+| `presentation/auth/AuthScreens.kt`            | OTP field + Verify CTA                               |
+| `presentation/navigation/SplitEaseNavHost.kt` | Wire verify callback                                 |
+| `res/values*/strings.xml`                     | OTP copy                                             |
+| `AuthViewModelTest.kt`                        | Verify / validation coverage                         |
+| Living docs                                   | CHANGELOG, PROGRESS, release-checklist, ARCHITECTURE |
 
 ## Screens/UI Added
 
-| Screen | Change |
-|---|---|
+| Screen       | Change                                                        |
+| ------------ | ------------------------------------------------------------- |
 | Verify email | 6-digit code field, Verify button, Resend code, Back to login |
 
 ## How to Test
@@ -55,18 +55,18 @@ None (Room / PostgREST unchanged).
 1. Redeploy Render `mail-service` with `POST /supabase/send-email-hook`.
 2. Run `.\scripts\configure-signup-otp-email.ps1` (enables hook + sets OTP length 6).
 3. Optional: set matching `SEND_EMAIL_HOOK_SECRET` on Render and in Supabase Auth Hooks.
-4. Sign up â†’ receive SplitEase 6-digit OTP email from mail-service â†’ verify in app.
+4. Sign up > receive SplitEase 6-digit OTP email from mail-service > verify in app.
 
 ### Fallback: Supabase template (Custom SMTP / Pro only)
-1. Authentication â†’ Providers â†’ Email â†’ **Confirm email** ON.
-2. Authentication â†’ Providers â†’ Email â†’ **OTP length** = **6**.
-3. Authentication â†’ Email Templates â†’ **Confirm signup**: paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)  
+1. Authentication > Providers > Email > **Confirm email** ON.
+2. Authentication > Providers > Email > **OTP length** = **6**.
+3. Authentication > Email Templates > **Confirm signup**: paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)  
    Or run `.\scripts\configure-signup-otp-email.ps1 -TemplateOnly`.
 
 ### Manual
-1. Sign up with a new email â†’ verify screen shows code field.
-2. Enter the 6-digit code from email â†’ lands on Home signed in.
-3. Wrong code â†’ error; Resend â†’ new code works.
+1. Sign up with a new email > verify screen shows code field.
+2. Enter the 6-digit code from email > lands on Home signed in.
+3. Wrong code > error; Resend > new code works.
 4. Confirm no App Link / custom-scheme step is needed for signup verify.
 
 ### Automated
@@ -78,8 +78,8 @@ None (Room / PostgREST unchanged).
 
 - **Confirm signup email template must use `{{ .Token }}`** when *not* using the Send Email hook — the Android app cannot change Supabase mail content.
 - **Preferred ops path:** use mail-service Send Email Auth Hook (`/supabase/send-email-hook`) so Free-tier projects do not need template editing.
-- **Free-tier blocker (June 2026):** new Free projects using Supabaseâ€™s **default** email provider **cannot edit auth templates** (API returns 400). Unlock editing by either:
-  1. **Custom SMTP** (recommended, free): Authentication â†’ Emails â†’ SMTP Settings (e.g. [Resend SMTP](https://resend.com/docs/send-with-supabase-smtp)), then paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) into Confirm signup, **or**
+- **Free-tier blocker (June 2026):** new Free projects using Supabase's **default** email provider **cannot edit auth templates** (API returns 400). Unlock editing by either:
+  1. **Custom SMTP** (recommended, free): Authentication > Emails > SMTP Settings (e.g. [Resend SMTP](https://resend.com/docs/send-with-supabase-smtp)), then paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) into Confirm signup, **or**
   2. Upgrade to Pro, **or**
   3. Configure a Send Email Auth Hook (mail-service).
   Script: `.\scripts\configure-signup-otp-email.ps1`.

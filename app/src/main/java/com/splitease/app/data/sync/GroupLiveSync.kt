@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlin.time.Duration.Companion.milliseconds
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,7 +41,7 @@ class GroupLiveSync
          * previous subscriptions are torn down first.
          *
          * @param groupId Group being viewed.
-         * @param scope Coroutine scope tied to the screen lifecycle (cancelled on leave).
+         * @param scope Coroutine scope tied to the screen lifecycle (canceled on leave).
          */
         suspend fun start(
             groupId: String,
@@ -66,7 +67,7 @@ class GroupLiveSync
 
             jobs =
                 merge(expenseFlow, paymentFlow)
-                    .debounce(DEBOUNCE_MS)
+                    .debounce(DEBOUNCE_MS.milliseconds)
                     .onEach {
                         runCatching {
                             expenseInteractor.refreshGroupExpenses(trimmed)

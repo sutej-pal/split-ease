@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -25,12 +26,13 @@ fun GroupExpenseMembersConfirmDialog(
     onEditGroupMembers: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val count = memberCount.coerceAtLeast(0)
     val title =
-        if (memberCount == 1) {
-            stringResource(R.string.expense_split_with_one)
-        } else {
-            stringResource(R.string.expense_split_with_people, memberCount.coerceAtLeast(0))
-        }
+        pluralStringResource(
+            R.plurals.expense_split_with_people,
+            count,
+            count,
+        )
 
     SeModal(onDismissRequest = onDismiss) {
         SeModalTitle(title)

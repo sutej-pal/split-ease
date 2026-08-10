@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.auth
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,8 +35,8 @@ fun LoginScreen(
     onNavigateSignUp: () -> Unit,
     onNavigateForgot: () -> Unit,
     onGoogleStub: () -> Unit,
-    onClearError: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onClearError: () -> Unit = {},
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -89,6 +90,7 @@ fun LoginScreen(
                 SeErrorText(text = message)
                 Spacer(modifier = Modifier.height(8.dp))
             }
+            Spacer(modifier = Modifier.height(8.dp))
         }
         SePrimaryButton(
             text = stringResource(R.string.action_log_in),
@@ -103,12 +105,21 @@ fun LoginScreen(
             enabled = !isBusy,
             modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
         )
-        SeTextButton(
-            text = stringResource(R.string.action_sign_up),
-            onClick = onNavigateSignUp,
-            enabled = !isBusy,
-            modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
-        )
+        // Full-width center slot so the link stays aligned with Log in / Google
+        // whether a press ripple is visible.
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .alpha(if (isBusy) 0.5f else 1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            SeTextButton(
+                text = stringResource(R.string.action_sign_up),
+                onClick = onNavigateSignUp,
+                enabled = !isBusy,
+            )
+        }
     }
 }
 

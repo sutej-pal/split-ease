@@ -633,11 +633,16 @@ create table if not exists public.expense_splits (
   owed_amount text not null,
   percentage text,
   shares integer,
+  paid_amount text,
+  adjustment_amount text,
   unique (expense_id, user_id)
 );
 
 create index if not exists expense_splits_expense_idx on public.expense_splits (expense_id);
 create index if not exists expense_splits_user_idx on public.expense_splits (user_id);
+
+alter table public.expense_splits add column if not exists paid_amount text;
+alter table public.expense_splits add column if not exists adjustment_amount text;
 
 alter table public.expense_splits enable row level security;
 

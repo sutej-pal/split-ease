@@ -1,10 +1,10 @@
 # Phase 5 — Balances & Debt Simplification
 
-Computed per-friend and per-group net balances from expenses/splits and added debt simplification so “who owes whom” collapses into fewer transfers. Settlements (mark paid) arrive in Phase 6.
+Computed per-friend and per-group net balances from expenses/splits and added debt simplification so "who owes whom" collapses into fewer transfers. Settlements (mark paid) arrive in Phase 6.
 
 ## Phase Goal
 
-Derive per-friend and per-group net balances from existing expenses/splits, show “who owes whom,” and minimize settlement transactions with a pure BigDecimal debt-simplification algorithm.
+Derive per-friend and per-group net balances from existing expenses/splits, show "who owes whom," and minimize settlement transactions with a pure BigDecimal debt-simplification algorithm.
 
 ## Scope
 
@@ -24,14 +24,14 @@ Derive per-friend and per-group net balances from existing expenses/splits, show
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Pure `domain.balance` calculators (like `SplitCalculator`) | Testable money math; no Android deps |
-| Convention: net > 0 ⇒ is owed; net < 0 ⇒ owes | Documented once; UI maps to “you are owed / you owe” |
-| Per-currency buckets; no cross-currency netting | FX is Phase 7 |
-| Greedy creditor/debtor matching for simplify | Deterministic, minimal transaction count for MVP |
+| Decision                                                         | Rationale                                               |
+| ---------------------------------------------------------------- | ------------------------------------------------------- |
+| Pure `domain.balance` calculators (like `SplitCalculator`)       | Testable money math; no Android deps                    |
+| Convention: net > 0 ⇒ is owed; net < 0 ⇒ owes                    | Documented once; UI maps to "you are owed / you owe"    |
+| Per-currency buckets; no cross-currency netting                  | FX is Phase 7                                           |
+| Greedy creditor/debtor matching for simplify                     | Deterministic, minimal transaction count for MVP        |
 | `BalanceInteractor` loads Room expenses/splits then calls domain | Matches ExpenseInteractor pattern; ViewModels stay thin |
-| No new Room/Supabase schema | Balances are derived; payments unused until Phase 6 |
+| No new Room/Supabase schema                                      | Balances are derived; payments unused until Phase 6     |
 
 ## Data Model Changes
 
@@ -40,16 +40,16 @@ Derive per-friend and per-group net balances from existing expenses/splits, show
 
 ## Files Added/Modified
 
-| Path | Notes |
-|---|---|
-| `domain/balance/BalanceCalculator.kt` | Net balances by user / currency |
-| `domain/balance/DebtSimplifier.kt` | Minimize transfers |
-| `domain/balance/*Test.kt` | JUnit5 BigDecimal cases |
-| `data/balance/BalanceInteractor.kt` | Observe + label summaries |
-| `data/repository/RoomExpenseRepository.kt` | Involving-user + batch splits |
-| `presentation/balances/*` | Hub screen + ViewModel |
-| Group / friend detail + Home + nav | Surface balances |
-| Docs / version `0.6.0` | PROGRESS, CHANGELOG, ARCHITECTURE |
+| Path                                       | Notes                             |
+| ------------------------------------------ | --------------------------------- |
+| `domain/balance/BalanceCalculator.kt`      | Net balances by user / currency   |
+| `domain/balance/DebtSimplifier.kt`         | Minimize transfers                |
+| `domain/balance/*Test.kt`                  | JUnit5 BigDecimal cases           |
+| `data/balance/BalanceInteractor.kt`        | Observe + label summaries         |
+| `data/repository/RoomExpenseRepository.kt` | Involving-user + batch splits     |
+| `presentation/balances/*`                  | Hub screen + ViewModel            |
+| Group / friend detail + Home + nav         | Surface balances                  |
+| Docs / version `0.6.0`                     | PROGRESS, CHANGELOG, ARCHITECTURE |
 
 ## Screens/UI Added
 
@@ -60,7 +60,7 @@ Derive per-friend and per-group net balances from existing expenses/splits, show
 ## How to Test
 
 1. Create group expenses with multiple payers/participants; open group → verify nets and simplified debts.
-2. Create 1:1 friend expenses; open friend → verify “owes you / you owe”.
+2. Create 1:1 friend expenses; open friend → verify "owes you / you owe".
 3. Open Home → Balances → friend and group summaries match detail screens.
 4. Unit: `.\gradlew.bat :app:testDebugUnitTest --tests com.splitease.app.domain.balance.*`
 

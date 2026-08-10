@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Expense
-import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
@@ -76,7 +75,7 @@ class GroupTotalsViewModel
                 userId.flatMapLatest { me ->
                     if (me == null || groupId.isBlank()) {
                         flowOf(
-                            emptyList<Expense>() to emptyMap<String, List<ExpenseSplit>>(),
+                            emptyList<Expense>() to emptyMap(),
                         )
                     } else {
                         combine(

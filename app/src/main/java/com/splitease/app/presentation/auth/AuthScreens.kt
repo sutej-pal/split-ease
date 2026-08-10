@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -19,8 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,13 +43,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeChevronBackButton
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMessageHost
-import com.splitease.app.presentation.ui.SeScreenSubtitleStyle
-import com.splitease.app.presentation.ui.SeScreenTitleText
+import com.splitease.app.presentation.ui.seScreenSubtitleStyle
+import com.splitease.app.presentation.ui.seScreenTitleStyle
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.ui.SeTopBar
 
 internal enum class AuthContentPlacement {
     Center,
@@ -99,6 +98,12 @@ internal fun AuthScaffold(
     val hasBack = onNavigateBack != null
     val headerAlign = if (hasBack) TextAlign.Start else TextAlign.Center
     val contentHAlign = if (hasBack) Alignment.Start else Alignment.CenterHorizontally
+    // Top+back: title lives in the body as a page heading (not chrome beside the
+    // chevron) so it doesn't read like another bordered field row.
+    val titleInBody =
+        !hasBack || contentPlacement == AuthContentPlacement.Top
+    val topBarTitle =
+        if (hasBack && contentPlacement == AuthContentPlacement.Center) title else ""
     val bg = MaterialTheme.colorScheme.background
 
     SeSystemBars(
@@ -123,24 +128,19 @@ internal fun AuthScaffold(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = SeLayout.screenHorizontal)
                     .padding(bottom = SeLayout.screenBottom),
             horizontalAlignment = contentHAlign,
         ) {
-            // Back lives in the body (not Material TopAppBar) so the chevron shares
-            // screenHorizontal with the title. -8.dp offsets the 40dp hit target so the
-            // 24dp glyph lines up with the title text.
+            // Single chrome: SeTopBar (Scaffold already applied status-bar padding).
             if (onNavigateBack != null) {
-                SeChevronBackButton(
-                    onClick = {
+                SeTopBar(
+                    title = topBarTitle,
+                    onBack = {
                         if (!formState.isLoading) onNavigateBack()
                     },
                     enabled = !formState.isLoading,
-                    modifier =
-                        Modifier
-                            .align(Alignment.Start)
-                            .padding(top = SeLayout.screenTop, bottom = SeLayout.itemGap)
-                            .offset(x = (-8).dp),
+                    consumeWindowInsets = false,
+                    horizontalPadding = SeLayout.screenHorizontal,
                 )
             }
 
@@ -150,12 +150,13 @@ internal fun AuthScaffold(
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .fillMaxWidth(),
+                                .fillMaxWidth()
+                                .padding(horizontal = SeLayout.screenHorizontal),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = contentHAlign,
                     ) {
                         AuthScaffoldHeader(
-                            title = title,
+                            title = title.takeIf { titleInBody },
                             subtitle = subtitle,
                             subtitleAnnotated = subtitleAnnotated,
                             textAlign = headerAlign,
@@ -173,6 +174,7 @@ internal fun AuthScaffold(
                             Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
+                                .padding(horizontal = SeLayout.screenHorizontal)
                                 .verticalScroll(rememberScrollState()),
                         horizontalAlignment = contentHAlign,
                     ) {
@@ -180,7 +182,7 @@ internal fun AuthScaffold(
                             Spacer(modifier = Modifier.height(SeLayout.screenTop))
                         }
                         AuthScaffoldHeader(
-                            title = title,
+                            title = title.takeIf { titleInBody },
                             subtitle = subtitle,
                             subtitleAnnotated = subtitleAnnotated,
                             textAlign = headerAlign,
@@ -200,22 +202,26 @@ internal fun AuthScaffold(
 
 @Composable
 private fun AuthScaffoldHeader(
-    title: String,
+    title: String?,
     subtitle: String?,
     subtitleAnnotated: AnnotatedString? = null,
     textAlign: TextAlign = TextAlign.Center,
 ) {
-    SeScreenTitleText(
-        text = title,
-        textAlign = textAlign,
-        maxLines = 2,
-        modifier = Modifier.fillMaxWidth(),
-    )
+    if (title != null) {
+        Text(
+            text = title,
+            style = seScreenTitleStyle(),
+            textAlign = textAlign,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
     if (subtitleAnnotated != null) {
         Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
         Text(
             text = subtitleAnnotated,
-            style = SeScreenSubtitleStyle(),
+            style = seScreenSubtitleStyle(),
             textAlign = textAlign,
             maxLines = 5,
             overflow = TextOverflow.Ellipsis,
@@ -226,7 +232,7 @@ private fun AuthScaffoldHeader(
         Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
         Text(
             text = subtitle,
-            style = SeScreenSubtitleStyle(),
+            style = seScreenSubtitleStyle(),
             textAlign = textAlign,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
@@ -243,8 +249,6 @@ private data class PasswordRules(
     val hasUpperAndLower: Boolean,
     val hasDigit: Boolean,
 ) {
-    val allMet: Boolean get() = hasMinLength && hasUpperAndLower && hasDigit
-
     companion object {
         fun evaluate(password: String): PasswordRules =
             PasswordRules(
@@ -342,7 +346,8 @@ internal fun PasswordSeTextField(
             if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         supportingText = supportingText,
         trailingIcon = {
-            val icon = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
+            val icon =
+                if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility
             val description =
                 if (passwordVisible) {
                     stringResource(R.string.cd_hide_password)
@@ -353,7 +358,11 @@ internal fun PasswordSeTextField(
                 onClick = { passwordVisible = !passwordVisible },
                 enabled = enabled,
             ) {
-                Icon(imageVector = icon, contentDescription = description)
+                Icon(
+                    imageVector = icon,
+                    contentDescription = description,
+                    tint = SplitEaseColors.NavyMuted,
+                )
             }
         },
     )

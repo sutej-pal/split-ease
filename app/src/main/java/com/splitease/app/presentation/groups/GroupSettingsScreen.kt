@@ -65,6 +65,8 @@ import com.splitease.app.R
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
+import com.splitease.app.presentation.media.ImagePickPresets
+import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
@@ -105,11 +107,23 @@ fun GroupSettingsScreen(
     val me = viewModel.currentUserId()
     val isOwner = group?.createdByUserId == me
     val photoPicker =
-        rememberGroupPhotoPicker { uri ->
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.group_photo_source_title),
+            sourceBody = stringResource(R.string.group_photo_source_body),
+            cropTitle = stringResource(R.string.image_crop_title),
+            cropBody = stringResource(R.string.image_crop_body),
+            cropSpec = ImagePickPresets.GroupPhoto,
+        ) { uri ->
             viewModel.updateGroupPhoto(groupId, uri)
         }
     val coverPicker =
-        rememberGroupCoverPicker { uri ->
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.group_cover_source_title),
+            sourceBody = stringResource(R.string.group_cover_source_body),
+            cropTitle = stringResource(R.string.group_cover_crop_title),
+            cropBody = stringResource(R.string.group_cover_crop_body),
+            cropSpec = ImagePickPresets.GroupCover,
+        ) { uri ->
             viewModel.updateGroupCover(groupId, uri)
         }
 
@@ -345,7 +359,6 @@ fun GroupSettingsScreen(
             title = stringResource(R.string.action_leave_group),
             body = stringResource(R.string.group_leave_confirm),
             confirmLabel = stringResource(R.string.action_leave_group),
-            destructive = true,
             onDismiss = { showLeaveConfirm = false },
             onConfirm = {
                 showLeaveConfirm = false
@@ -359,7 +372,6 @@ fun GroupSettingsScreen(
             title = stringResource(R.string.action_delete_group),
             body = stringResource(R.string.group_delete_confirm),
             confirmLabel = stringResource(R.string.action_delete_group),
-            destructive = true,
             onDismiss = { showDeleteConfirm = false },
             onConfirm = {
                 showDeleteConfirm = false
@@ -616,7 +628,6 @@ private fun ConfirmDialog(
     title: String,
     body: String,
     confirmLabel: String,
-    destructive: Boolean,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -628,7 +639,7 @@ private fun ConfirmDialog(
             TextButton(onClick = onConfirm) {
                 Text(
                     text = confirmLabel,
-                    color = if (destructive) SplitEaseColors.YouOwe else SplitEaseColors.Primary,
+                    color = SplitEaseColors.YouOwe,
                 )
             }
         },

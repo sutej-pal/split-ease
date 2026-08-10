@@ -102,8 +102,9 @@ class ImportTransactionsViewModel
                             if (result.failures.isEmpty()) {
                                 appContext.getString(R.string.msg_imported_count, result.imported)
                             } else {
-                                appContext.getString(
-                                    R.string.msg_synced_partial,
+                                appContext.resources.getQuantityString(
+                                    R.plurals.msg_synced_partial,
+                                    result.failures.size,
                                     appContext.getString(R.string.msg_imported_count, result.imported),
                                     result.failures.size,
                                 )

@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -87,8 +88,9 @@ fun SpendingTotalsScreen(
                         SeListRow(
                             title = row.categoryName,
                             subtitle =
-                                stringResource(
-                                    R.string.spending_expense_count,
+                                pluralStringResource(
+                                    R.plurals.spending_expense_count,
+                                    row.expenseCount,
                                     row.expenseCount,
                                 ),
                             trailing = {

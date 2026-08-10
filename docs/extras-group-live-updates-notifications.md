@@ -15,7 +15,7 @@
    - Delete expense
    - Record / update / delete settlement (payment)
    - (Later) group metadata changes (name, members, leave/delete) if useful
-2. **On opening a group**, that device must **pull latest cloud data** so the ledger, balances, and members reflect other usersâ€™ changes (not only local Room cache).
+2. **On opening a group**, that device must **pull latest cloud data** so the ledger, balances, and members reflect other users' changes (not only local Room cache).
 3. Notifications should deep-link (or land) on the relevant **group detail** when tapped.
 
 ---
@@ -26,35 +26,35 @@ Use this list as the implementation backlog. Mark items when done.
 
 ### A. Visible updates when opening a group
 
-| # | Change | Status | Notes |
-|---|---|---|---|
-| A1 | On group detail `RESUMED`, refresh cloud expenses for that group into Room | **Done (MVP)** | `ExpensesViewModel.refreshGroupFromCloud` / prior `refreshGroupExpenses` |
-| A2 | On group open / resume, also flush PENDING local writes then pull friends/groups/expenses/payments | **Done (MVP)** | `SyncInteractor.syncForUser` + group expense pull |
-| A3 | Fix `syncForUser` so remote **pull always runs** (not only when invite-accept fails) | **Done** | Was a bug blocking multi-device visibility |
-| A4 | Pull payments scoped to group (or involving current user) on open | **Done (MVP)** | Via `syncForUser` â†’ `refreshPaymentsForUser` |
-| A5 | Propagate **deletes** from cloud (tombstones or missing-id cleanup) so remote deletes disappear locally | TODO | Today pull is upsert-mostly; deleted remote rows may linger offline |
-| A6 | Optional: pull-to-refresh gesture on group ledger | TODO | UX nicety |
+| #   | Change                                                                                                  | Status         | Notes                                                                    |
+| --- | ------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------ |
+| A1  | On group detail `RESUMED`, refresh cloud expenses for that group into Room                              | **Done (MVP)** | `ExpensesViewModel.refreshGroupFromCloud` / prior `refreshGroupExpenses` |
+| A2  | On group open / resume, also flush PENDING local writes then pull friends/groups/expenses/payments      | **Done (MVP)** | `SyncInteractor.syncForUser` + group expense pull                        |
+| A3  | Fix `syncForUser` so remote **pull always runs** (not only when invite-accept fails)                    | **Done**       | Was a bug blocking multi-device visibility                               |
+| A4  | Pull payments scoped to group (or involving current user) on open                                       | **Done (MVP)** | Via `syncForUser` > `refreshPaymentsForUser`                             |
+| A5  | Propagate **deletes** from cloud (tombstones or missing-id cleanup) so remote deletes disappear locally | TODO           | Today pull is upsert-mostly; deleted remote rows may linger offline      |
+| A6  | Optional: pull-to-refresh gesture on group ledger                                                       | TODO           | UX nicety                                                                |
 
 ### B. Notifications to other members
 
-| # | Change | Status | Notes |
-|---|---|---|---|
-| B1 | Choose push stack (recommend **FCM** + Supabase Edge Function; ask before adding libs) | **Done** | FCM + Edge Function ([fcm-setup.md](fcm-setup.md)) |
-| B2 | Store device push tokens per user (`device_tokens` table + RLS) | **Done** | [sql/migration_db.sql](sql/migration_db.sql) |
-| B3 | On expense/payment insert/update/delete, notify other **group members** (exclude actor) | **Done** | Edge Function + webhook/trigger ([sql/migration_db.sql](sql/migration_db.sql)) |
-| B4 | Notification copy: actor, group name, action (â€œAda added â€œDinnerâ€ Â· â‚¹1,200â€) | **Done** | Built in `notify-group-members` |
-| B5 | Tap notification â†’ open `group_detail/{groupId}` (App Links / intent extras) | **Done** | Intent extra + `pending_notification_group_id` |
-| B6 | In-app Activity feed already lists own activity — extend or badge when remote events arrive | TODO | Optional if push is delayed |
-| B7 | Supabase Realtime channel while group detail is open (live list without leaving screen) | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/migration_db.sql](sql/migration_db.sql) |
-| B8 | Notification preferences (mute group / mute all) | TODO | Settings later |
+| #   | Change                                                                                      | Status   | Notes                                                                          |
+| --- | ------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------ |
+| B1  | Choose push stack (recommend **FCM** + Supabase Edge Function; ask before adding libs)      | **Done** | FCM + Edge Function ([fcm-setup.md](fcm-setup.md))                             |
+| B2  | Store device push tokens per user (`device_tokens` table + RLS)                             | **Done** | [sql/migration_db.sql](sql/migration_db.sql)                                   |
+| B3  | On expense/payment insert/update/delete, notify other **group members** (exclude actor)     | **Done** | Edge Function + webhook/trigger ([sql/migration_db.sql](sql/migration_db.sql)) |
+| B4  | Notification copy: actor, group name, action ("Ada added "Dinner" · ₹1,200")                | **Done** | Built in `notify-group-members`                                                |
+| B5  | Tap notification > open `group_detail/{groupId}` (App Links / intent extras)                | **Done** | Intent extra + `pending_notification_group_id`                                 |
+| B6  | In-app Activity feed already lists own activity — extend or badge when remote events arrive | TODO     | Optional if push is delayed                                                    |
+| B7  | Supabase Realtime channel while group detail is open (live list without leaving screen)     | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/migration_db.sql](sql/migration_db.sql)  |
+| B8  | Notification preferences (mute group / mute all)                                            | TODO     | Settings later                                                                 |
 
 ### C. Docs / ops
 
-| # | Change | Status | Notes |
-|---|---|---|---|
-| C1 | This extras doc | **Done** | |
-| C2 | SQL for `device_tokens` + notify trigger | **Done** | [migration_db.sql](sql/migration_db.sql) |
-| C3 | Flag free-tier FCM / Edge Function / Realtime cost in Known Issues | **Done** | See Known Issues below + [fcm-setup.md](fcm-setup.md) |
+| #   | Change                                                             | Status   | Notes                                                 |
+| --- | ------------------------------------------------------------------ | -------- | ----------------------------------------------------- |
+| C1  | This extras doc                                                    | **Done** |                                                       |
+| C2  | SQL for `device_tokens` + notify trigger                           | **Done** | [migration_db.sql](sql/migration_db.sql)              |
+| C3  | Flag free-tier FCM / Edge Function / Realtime cost in Known Issues | **Done** | See Known Issues below + [fcm-setup.md](fcm-setup.md) |
 
 ---
 
@@ -62,7 +62,7 @@ Use this list as the implementation backlog. Mark items when done.
 
 **Before fix**
 - Group detail refreshed expenses on resume only.
-- `SyncInteractor.syncForUser` pulled friends/groups/expenses **only inside** `acceptPendingInvites` **failure** path — successful invite-accept skipped hydrate. Multi-device â€œopen group â†’ see their expenseâ€ was unreliable.
+- `SyncInteractor.syncForUser` pulled friends/groups/expenses **only inside** `acceptPendingInvites` **failure** path — successful invite-accept skipped hydrate. Opening a group on another device to see their expense was unreliable.
 
 **After MVP (A1–A4) + Realtime/FCM (2026-07-29)**
 - Opening / resuming a group runs full `syncForUser` (flush + pull) and a targeted group expense refresh so ledger/balances update from Supabase.
@@ -74,19 +74,18 @@ Use this list as the implementation backlog. Mark items when done.
 ## Architecture (Realtime + FCM)
 
 ```
-Member A writes expense â†’ Room PENDING â†’ PostgREST upsert
-        â†“
+Member A writes expense > Room PENDING > PostgREST upsert
+        ↓
 Supabase DB trigger / webhook on expenses | payments
-        â†“
-Edge Function: resolve group_members âˆ’ actor, load FCM tokens
-        â†“
+        ↓
+Edge Function: resolve group_members − actor, load FCM tokens
+        ↓
 FCM data+notification message { groupId, expenseId, type }
-        â†“
-Member B device: show notification; on tap â†’ GroupDetail
-        â†“
-GroupDetail RESUMED / Realtime event â†’ sync pull â†’ UI Flow updates
+        ↓
+Member B device: show notification; on tap > GroupDetail
+        ↓
+GroupDetail RESUMED / Realtime event > sync pull > UI Flow updates
 ```
-
 **Foreground:** Supabase Realtime on `expenses` / `payments` filtered by `group_id` while GroupDetail is visible (`GroupLiveSync`).  
 **Background:** FCM via Edge Function (see [fcm-setup.md](fcm-setup.md)).
 
@@ -121,7 +120,7 @@ Still deferred:
 
 1. Two devices signed in as two group members; Supabase Phase 3–6 SQL applied.
 2. Device A adds an expense in the shared group; wait for automatic background sync.
-3. Device B opens (or returns to) that group â†’ expense and balances appear without reinstall.
+3. Device B opens (or returns to) that group > expense and balances appear without reinstall.
 4. Repeat for settle-up payment.
 5. (Later) B receives a push when A saves; tap opens the group.
 
@@ -138,8 +137,8 @@ Still deferred:
 
 ## Outcome log
 
-| Date | What changed |
-|---|---|
-| 2026-07-23 | Created this extras doc; fixed `syncForUser` pull; group open runs full sync + group expense refresh |
-| 2026-07-23 | Find people + Add friend contact UI (device contacts, search) — related social UX extra |
+| Date       | What changed                                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-23 | Created this extras doc; fixed `syncForUser` pull; group open runs full sync + group expense refresh                  |
+| 2026-07-23 | Find people + Add friend contact UI (device contacts, search) — related social UX extra                               |
 | 2026-07-29 | Slice 1 Realtime (`GroupLiveSync` + publication SQL) and Slice 2 FCM (device_tokens, Edge Function, MessagingService) |

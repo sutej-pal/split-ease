@@ -1,8 +1,5 @@
 package com.splitease.app.presentation.auth
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,22 +9,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.AddAPhoto
+import androidx.compose.material.icons.outlined.Clear
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,7 +36,6 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,9 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -60,18 +54,21 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.presentation.media.ImagePickPresets
+import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeModalTitle
+import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
-import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import java.util.Currency
 import java.util.Locale
@@ -81,6 +78,11 @@ private data class DialCodeOption(
     val code: String,
     val label: String,
 )
+
+/** Avatar diameter; matches Material single-line outlined field height beside it. */
+private val ProfilePhotoSize = 56.dp
+
+private val FieldShape = RoundedCornerShape(10.dp)
 
 private val DialCodeOptions =
     listOf(
@@ -123,9 +125,14 @@ fun SignUpScreen(
     var showDialPicker by rememberSaveable { mutableStateOf(false) }
 
     val photoPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            photoUri = uri?.toString()
-        }
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.account_photo_source_title),
+            sourceBody = stringResource(R.string.account_photo_source_body),
+            cropTitle = stringResource(R.string.image_crop_title),
+            cropBody = stringResource(R.string.image_crop_body),
+            cropSpec = ImagePickPresets.Avatar,
+            onCropped = { photoUri = it },
+        )
 
     AuthScaffold(
         title = stringResource(R.string.signup_welcome_title),
@@ -136,92 +143,85 @@ fun SignUpScreen(
         onNavigateBack = onBack,
         showLoadingIndicator = false,
     ) {
-        var nameFieldHeightPx by remember { mutableIntStateOf(0) }
-        val density = LocalDensity.current
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(SeLayout.sectionGap),
         ) {
-            SeTextField(
-                value = displayName,
-                onValueChange = { displayName = it },
-                label = stringResource(R.string.label_full_name),
-                enabled = !formState.isLoading,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .onSizeChanged { nameFieldHeightPx = it.height },
-                trailingIcon =
-                    if (displayName.isNotEmpty()) {
-                        {
-                            IconButton(
-                                onClick = { displayName = "" },
-                                enabled = !formState.isLoading,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Clear,
-                                    contentDescription = stringResource(R.string.cd_clear_field),
-                                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                // Bottom-align so the circle tracks the outlined box (not the float-label inset).
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                SeTextField(
+                    value = displayName,
+                    onValueChange = { displayName = it },
+                    label = stringResource(R.string.label_full_name),
+                    enabled = !formState.isLoading,
+                    modifier = Modifier.weight(1f),
+                    trailingIcon =
+                        if (displayName.isNotEmpty()) {
+                            {
+                                IconButton(
+                                    onClick = { displayName = "" },
+                                    enabled = !formState.isLoading,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Clear,
+                                        contentDescription = stringResource(R.string.cd_clear_field),
+                                        tint = SplitEaseColors.NavyMuted,
+                                    )
+                                }
                             }
-                        }
-                    } else {
-                        null
-                    },
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            val photoSize =
-                if (nameFieldHeightPx > 0) {
-                    with(density) { nameFieldHeightPx.toDp() }
-                } else {
-                    56.dp
-                }
-            ProfilePhotoButton(
-                photoUri = photoUri,
+                        } else {
+                            null
+                        },
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                ProfilePhotoButton(
+                    photoUri = photoUri,
+                    enabled = !formState.isLoading,
+                    onClick = photoPicker::launch,
+                )
+            }
+
+            SeTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = stringResource(R.string.label_email_address),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 enabled = !formState.isLoading,
-                onClick = {
-                    photoPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
-                },
-                modifier = Modifier.size(photoSize),
             )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                PasswordSeTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    enabled = !formState.isLoading,
+                )
+                Text(
+                    text = stringResource(R.string.signup_password_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 6.dp),
+                )
+            }
+            PhoneNumberRow(
+                dialFlag = dialFlag,
+                dialCode = dialCode,
+                phoneNumber = phoneNumber,
+                enabled = !formState.isLoading,
+                onDialClick = { showDialPicker = true },
+                onPhoneChange = { phoneNumber = it.filter { ch -> ch.isDigit() || ch == ' ' } },
+            )
+
+            CurrencyPreferenceLine(
+                currencyCode = currencyCode,
+                enabled = !formState.isLoading,
+                onChangeClick = { showCurrencyPicker = true },
+            )
+
+            SignupTermsText()
         }
-
-        Spacer(modifier = Modifier.height(14.dp))
-        SeTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = stringResource(R.string.label_email_address),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            enabled = !formState.isLoading,
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        PasswordSeTextField(
-            value = password,
-            onValueChange = { password = it },
-            enabled = !formState.isLoading,
-            supportingText = stringResource(R.string.signup_password_hint),
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        PhoneNumberRow(
-            dialFlag = dialFlag,
-            dialCode = dialCode,
-            phoneNumber = phoneNumber,
-            enabled = !formState.isLoading,
-            onDialClick = { showDialPicker = true },
-            onPhoneChange = { phoneNumber = it.filter { ch -> ch.isDigit() || ch == ' ' } },
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-        CurrencyPreferenceLine(
-            currencyCode = currencyCode,
-            enabled = !formState.isLoading,
-            onChangeClick = { showCurrencyPicker = true },
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-        SignupTermsText()
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(SeLayout.ctaTopGap))
         SePrimaryButton(
             text = stringResource(R.string.action_signup),
             onClick = {
@@ -269,7 +269,6 @@ private fun ProfilePhotoButton(
     photoUri: String?,
     enabled: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier.size(56.dp),
 ) {
     val context = LocalContext.current
     val bitmap =
@@ -286,9 +285,11 @@ private fun ProfilePhotoButton(
                 }.getOrNull()
             }
         }
+    // Match Material single-line field height; row uses Bottom alignment with the name field.
     Box(
         modifier =
-            modifier
+            Modifier
+                .size(ProfilePhotoSize)
                 .clip(CircleShape)
                 .border(1.dp, SplitEaseColors.OutlineStrong, CircleShape)
                 .clickable(enabled = enabled, onClick = onClick),
@@ -303,7 +304,7 @@ private fun ProfilePhotoButton(
             )
         } else {
             Icon(
-                imageVector = Icons.Filled.AddAPhoto,
+                imageVector = Icons.Outlined.AddAPhoto,
                 contentDescription = stringResource(R.string.cd_add_profile_photo),
                 tint = SplitEaseColors.NavyMuted,
             )
@@ -320,14 +321,13 @@ private fun PhoneNumberRow(
     onDialClick: () -> Unit,
     onPhoneChange: (String) -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
     OutlinedTextField(
         value = phoneNumber,
         onValueChange = onPhoneChange,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(shape),
+                .clip(FieldShape),
         label = { Text(stringResource(R.string.label_phone_number)) },
         enabled = enabled,
         singleLine = true,
@@ -346,9 +346,10 @@ private fun PhoneNumberRow(
                     color = if (enabled) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
                 )
                 Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    imageVector = Icons.Outlined.KeyboardArrowDown,
                     contentDescription = stringResource(R.string.signup_pick_country_title),
                     tint = SplitEaseColors.NavyMuted,
+                    modifier = Modifier.size(20.dp),
                 )
                 Box(
                     modifier =
@@ -360,7 +361,7 @@ private fun PhoneNumberRow(
                 )
             }
         },
-        shape = shape,
+        shape = FieldShape,
         colors =
             OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = SplitEaseColors.Primary,
@@ -394,7 +395,7 @@ private fun CurrencyPreferenceLine(
     val currencyLabel = "$currencyCode ($symbol)"
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -441,8 +442,9 @@ private fun SignupTermsText() {
         }
     Text(
         text = annotated,
-        style = MaterialTheme.typography.bodySmall.copy(textAlign = TextAlign.Center),
+        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Start,
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -455,7 +457,7 @@ private fun CurrencyPickerDialog(
 ) {
     var filter by rememberSaveable { mutableStateOf("") }
     val options = remember(filter) { AppCurrencies.filter(filter) }
-    SeModal(onDismissRequest = onDismiss, modifier = Modifier.fillMaxHeight(0.85f)) {
+    SeModal(onDismissRequest = onDismiss) {
         SeModalTitle(stringResource(R.string.signup_pick_currency_title))
         Spacer(modifier = Modifier.height(12.dp))
         SeTextField(
@@ -464,13 +466,14 @@ private fun CurrencyPickerDialog(
             label = stringResource(R.string.settings_currency_search),
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyColumn(
+        Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(360.dp),
+                    .heightIn(max = 320.dp)
+                    .verticalScroll(rememberScrollState()),
         ) {
-            items(options, key = { it.first }) { (code, label) ->
+            options.forEach { (code, label) ->
                 Row(
                     modifier =
                         Modifier
@@ -496,7 +499,11 @@ private fun CurrencyPickerDialog(
                 HorizontalDivider(color = SplitEaseColors.Outline)
             }
         }
-        SeTextButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+        Spacer(modifier = Modifier.height(16.dp))
+        SeOutlinedButton(
+            text = stringResource(R.string.action_cancel),
+            onClick = onDismiss,
+        )
     }
 }
 
@@ -510,29 +517,41 @@ private fun DialCodePickerDialog(
     SeModal(onDismissRequest = onDismiss) {
         SeModalTitle(stringResource(R.string.signup_pick_country_title))
         Spacer(modifier = Modifier.height(8.dp))
-        DialCodeOptions.forEach { option ->
-            val selected = option.code == selectedCode && option.flag == selectedFlag
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(option) }
-                        .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(
-                    selected = selected,
-                    onClick = { onSelect(option) },
-                    colors = RadioButtonDefaults.colors(selectedColor = SplitEaseColors.Primary),
-                )
-                Text(
-                    text = "${option.flag}  ${option.code}  ${option.label}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = SplitEaseColors.Navy,
-                )
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState()),
+        ) {
+            DialCodeOptions.forEach { option ->
+                val selected = option.code == selectedCode && option.flag == selectedFlag
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(option) }
+                            .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = selected,
+                        onClick = { onSelect(option) },
+                        colors = RadioButtonDefaults.colors(selectedColor = SplitEaseColors.Primary),
+                    )
+                    Text(
+                        text = "${option.flag}  ${option.code}  ${option.label}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = SplitEaseColors.Navy,
+                    )
+                }
             }
         }
-        SeTextButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+        Spacer(modifier = Modifier.height(16.dp))
+        SeOutlinedButton(
+            text = stringResource(R.string.action_cancel),
+            onClick = onDismiss,
+        )
     }
 }
 

@@ -1,12 +1,6 @@
 package com.splitease.app.presentation.account
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,9 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,23 +35,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.presentation.media.ImagePickPresets
+import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeListRow
-import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalBody
-import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
-import java.io.File
 
 @Composable
 fun AccountScreen(
@@ -74,38 +61,15 @@ fun AccountScreen(
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var showPhotoSource by remember { mutableStateOf(false) }
-    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
-
-    val galleryPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.toString()?.let(viewModel::updatePhoto)
-        }
-
-    val takePicture =
-        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-            val uri = pendingCameraUri
-            pendingCameraUri = null
-            if (success && uri != null) {
-                viewModel.updatePhoto(uri.toString())
-            }
-        }
-
-    val cameraPermission =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                val uri = createCameraCaptureUri(context) ?: return@rememberLauncherForActivityResult
-                pendingCameraUri = uri
-                takePicture.launch(uri)
-            } else {
-                Toast
-                    .makeText(
-                    context,
-                    context.getString(R.string.msg_camera_permission_denied),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
-        }
+    val photoPicker =
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.account_photo_source_title),
+            sourceBody = stringResource(R.string.account_photo_source_body),
+            cropTitle = stringResource(R.string.image_crop_title),
+            cropBody = stringResource(R.string.image_crop_body),
+            cropSpec = ImagePickPresets.Avatar,
+            onCropped = viewModel::updatePhoto,
+        )
 
     LaunchedEffect(settings.infoMessage, settings.errorMessage) {
         val message = settings.infoMessage ?: settings.errorMessage
@@ -132,7 +96,7 @@ fun AccountScreen(
                 photoUrl = profile.photoUrl,
                 isBusy = settings.isSaving,
                 onEditProfile = onOpenAccountProfile,
-                onChangePhoto = { showPhotoSource = true },
+                onChangePhoto = photoPicker::launch,
             )
             Spacer(modifier = Modifier.height(20.dp))
             SeSectionHeader(text = stringResource(R.string.settings_title))
@@ -153,46 +117,6 @@ fun AccountScreen(
             )
             Spacer(modifier = Modifier.height(24.dp))
             SePrimaryButton(text = stringResource(R.string.action_sign_out), onClick = onSignOut)
-        }
-    }
-
-    if (showPhotoSource) {
-        SeModal(onDismissRequest = { showPhotoSource = false }) {
-            SeModalTitle(text = stringResource(R.string.account_photo_source_title))
-            Spacer(modifier = Modifier.height(8.dp))
-            SeModalBody(text = stringResource(R.string.account_photo_source_body))
-            Spacer(modifier = Modifier.height(16.dp))
-            SePrimaryButton(
-                text = stringResource(R.string.account_photo_gallery),
-                onClick = {
-                    showPhotoSource = false
-                    galleryPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
-                },
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            SePrimaryButton(
-                text = stringResource(R.string.account_photo_camera),
-                onClick = {
-                    showPhotoSource = false
-                    val hasPermission =
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                            PackageManager.PERMISSION_GRANTED
-                    if (hasPermission) {
-                        val uri = createCameraCaptureUri(context) ?: return@SePrimaryButton
-                        pendingCameraUri = uri
-                        takePicture.launch(uri)
-                    } else {
-                        cameraPermission.launch(Manifest.permission.CAMERA)
-                    }
-                },
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            SeTextButton(
-                text = stringResource(R.string.action_cancel),
-                onClick = { showPhotoSource = false },
-            )
         }
     }
 }
@@ -272,17 +196,6 @@ private fun AccountProfileHeader(
         )
     }
 }
-
-private fun createCameraCaptureUri(context: android.content.Context): Uri? =
-    runCatching {
-        val dir = File(context.cacheDir, "avatars").apply { mkdirs() }
-        val file = File(dir, "capture_${System.currentTimeMillis()}.jpg")
-        FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file,
-        )
-    }.getOrNull()
 
 @Preview(showBackground = true, heightDp = 520)
 @Composable

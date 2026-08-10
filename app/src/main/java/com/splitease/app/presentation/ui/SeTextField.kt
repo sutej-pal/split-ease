@@ -18,7 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
 
-private val SeTextFieldShape = RoundedCornerShape(12.dp)
+private val SeTextFieldShape = RoundedCornerShape(10.dp)
 
 @Composable
 fun SeTextField(

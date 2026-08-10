@@ -1,5 +1,7 @@
 package com.splitease.app.presentation.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,10 +74,8 @@ fun SeMessageHost(
     var snackbarIsError by remember { mutableStateOf(false) }
 
     LaunchedEffect(errorMessage, infoMessage) {
-        val error = errorMessage
-        val info = infoMessage
-        val message = error ?: info ?: return@LaunchedEffect
-        snackbarIsError = error != null
+        val message = errorMessage ?: infoMessage ?: return@LaunchedEffect
+        snackbarIsError = errorMessage != null
         snackbarHostState.showSnackbar(message = message)
     }
 
@@ -100,8 +100,8 @@ fun SeMessageHost(
 
 @Composable
 fun SeInlineLoader(
-    text: String? = null,
     modifier: Modifier = Modifier,
+    text: String? = null,
 ) {
     Row(
         modifier = modifier,
@@ -130,7 +130,11 @@ fun SeLoadingOverlay(
 ) {
     if (!visible) return
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(SplitEaseColors.Navy.copy(alpha = 0.28f))
+                .clickable(enabled = true, onClick = {}),
         contentAlignment = Alignment.Center,
     ) {
         Surface(

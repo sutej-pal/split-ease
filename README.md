@@ -32,11 +32,11 @@ Release builds enable **R8 minify + resource shrinking**.
 
 Start here: [docs/README.md](docs/README.md)
 
-| Doc | Purpose |
-|---|---|
-| [PROGRESS.md](PROGRESS.md) | Phase checklist + open TODOs |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Feature → phase map |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Living architecture |
-| [CHANGELOG.md](CHANGELOG.md) | Keep a Changelog |
-| [docs/data-dictionary.md](docs/data-dictionary.md) | Schema / entities |
-| [docs/release-checklist.md](docs/release-checklist.md) | Ship checklist |
+| Doc                                                    | Purpose                      |
+| ------------------------------------------------------ | ---------------------------- |
+| [PROGRESS.md](PROGRESS.md)                             | Phase checklist + open TODOs |
+| [docs/ROADMAP.md](docs/ROADMAP.md)                     | Feature → phase map          |
+| [ARCHITECTURE.md](ARCHITECTURE.md)                     | Living architecture          |
+| [CHANGELOG.md](CHANGELOG.md)                           | Keep a Changelog             |
+| [docs/data-dictionary.md](docs/data-dictionary.md)     | Schema / entities            |
+| [docs/release-checklist.md](docs/release-checklist.md) | Ship checklist               |

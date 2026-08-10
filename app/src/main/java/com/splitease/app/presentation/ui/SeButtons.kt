@@ -1,5 +1,7 @@
 package com.splitease.app.presentation.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,8 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -23,11 +27,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -170,6 +179,13 @@ fun SeOutlinedButton(
     }
 }
 
+/**
+ * Text link control (not a filled/chip button).
+ *
+ * Idle state is plain text; press shows a light ripple. Call sites own
+ * alignment (center / end). Use [emphasized] for stronger app-bar actions
+ * like Save.
+ */
 @Composable
 fun SeTextButton(
     text: String,
@@ -177,38 +193,51 @@ fun SeTextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
-    // Zero horizontal padding so start-aligned labels share the title/body edge.
-    contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
+    emphasized: Boolean = false,
+    // Equal insets for the press ripple. Pass horizontal 0 when the label must
+    // sit flush with a form edge.
+    contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
 ) {
     val interactive = enabled && !isLoading
-    TextButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = interactive,
-        contentPadding = contentPadding,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = SplitEaseColors.Primary,
+    val interactionSource = remember { MutableInteractionSource() }
+    Row(
+        modifier =
+            modifier
+                .wrapContentSize()
+                .minimumInteractiveComponentSize()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(
+                    enabled = interactive,
+                    interactionSource = interactionSource,
+                    indication = ripple(bounded = true),
+                    role = Role.Button,
+                    onClick = onClick,
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Text(
-                text,
-                color =
-                    if (interactive || isLoading) {
-                        SplitEaseColors.Primary
-                    } else {
-                        SplitEaseColors.NavyMuted
-                    },
+                .padding(contentPadding),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = SplitEaseColors.Primary,
             )
+            Spacer(modifier = Modifier.width(8.dp))
         }
+        Text(
+            text = text,
+            style =
+                MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Medium,
+                ),
+            color =
+                if (interactive || isLoading) {
+                    SplitEaseColors.Primary
+                } else {
+                    SplitEaseColors.NavyMuted
+                },
+        )
     }
 }
 

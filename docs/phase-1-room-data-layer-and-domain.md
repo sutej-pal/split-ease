@@ -26,17 +26,17 @@ Define SplitEase's core domain models and an offline-first Room database (entiti
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Store monetary amounts as `TEXT` via `BigDecimal` converters | Avoid Float/Double rounding; Room has no native BigDecimal |
-| Epoch millis (`Long`) for timestamps in Room | Simple, comparable, timezone-agnostic storage |
-| `GroupMember` entity (not listed by name in MVP model list) | Required for group membership many-to-many without denormalizing into Group |
-| UUID strings as primary keys | Stable IDs for future Firestore sync without autoincrement conflicts |
-| `remoteId` + `updatedAtEpochMs` + `syncStatus` columns now | Offline-first ready; sync logic deferred to Phase 7 |
-| Repository interfaces in `domain`, impls in `data` | Clean Architecture dependency rule |
-| DAO tests as `androidTest` with in-memory Room | Uses Room Testing (stack-mandated Room); no extra third-party DB test lib |
-| `junit-platform-launcher` explicit dependency | Fixes JUnit 5.12 discovery under Gradle 8.11 |
-| Destructive migration fallback for v1 | Acceptable pre-release; proper migrations start when schema ships to users |
+| Decision                                                     | Rationale                                                                   |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Store monetary amounts as `TEXT` via `BigDecimal` converters | Avoid Float/Double rounding; Room has no native BigDecimal                  |
+| Epoch millis (`Long`) for timestamps in Room                 | Simple, comparable, timezone-agnostic storage                               |
+| `GroupMember` entity (not listed by name in MVP model list)  | Required for group membership many-to-many without denormalizing into Group |
+| UUID strings as primary keys                                 | Stable IDs for future Firestore sync without autoincrement conflicts        |
+| `remoteId` + `updatedAtEpochMs` + `syncStatus` columns now   | Offline-first ready; sync logic deferred to Phase 7                         |
+| Repository interfaces in `domain`, impls in `data`           | Clean Architecture dependency rule                                          |
+| DAO tests as `androidTest` with in-memory Room               | Uses Room Testing (stack-mandated Room); no extra third-party DB test lib   |
+| `junit-platform-launcher` explicit dependency                | Fixes JUnit 5.12 discovery under Gradle 8.11                                |
+| Destructive migration fallback for v1                        | Acceptable pre-release; proper migrations start when schema ships to users  |
 
 ## Data Model Changes
 
@@ -58,26 +58,26 @@ data class Expense(
 
 ## Files Added/Modified
 
-| File path | Purpose |
-|---|---|
-| `domain/model/*.kt` | Domain models + enums |
-| `domain/repository/*.kt` | Repository interfaces with KDoc |
-| `data/local/entity/*.kt` | Room entities |
-| `data/local/dao/*.kt` | Room DAOs |
-| `data/local/converter/SplitEaseTypeConverters.kt` | BigDecimal + enum converters |
-| `data/local/mapper/EntityMappers.kt` | Entity ↔ domain mapping |
-| `data/local/db/SplitEaseDatabase.kt` | Room database definition |
-| `data/repository/Room*Repository.kt` | Room-backed repository impls |
-| `data/di/DatabaseModule.kt` | Hilt DB/DAO providers |
-| `data/di/RepositoryModule.kt` | Hilt repository bindings |
-| `app/schemas/.../1.json` | Exported Room schema |
-| `src/test/.../SplitEaseTypeConvertersTest.kt` | Converter unit tests |
-| `src/test/.../EntityMappersTest.kt` | Mapper unit tests |
-| `src/androidTest/.../DaoInstrumentedTest.kt` | In-memory DAO tests |
-| `gradle/libs.versions.toml` | room-testing, coroutines-test, junit-platform-launcher |
-| `app/build.gradle.kts` | Test deps, Room schemaLocation, versionName 0.2.0 |
-| `docs/data-dictionary.md` | Schema tables |
-| `.editorconfig` | Relaxed ktlint rules that fight Kotlin/Compose idioms |
+| File path                                         | Purpose                                                |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| `domain/model/*.kt`                               | Domain models + enums                                  |
+| `domain/repository/*.kt`                          | Repository interfaces with KDoc                        |
+| `data/local/entity/*.kt`                          | Room entities                                          |
+| `data/local/dao/*.kt`                             | Room DAOs                                              |
+| `data/local/converter/SplitEaseTypeConverters.kt` | BigDecimal + enum converters                           |
+| `data/local/mapper/EntityMappers.kt`              | Entity ↔ domain mapping                                |
+| `data/local/db/SplitEaseDatabase.kt`              | Room database definition                               |
+| `data/repository/Room*Repository.kt`              | Room-backed repository impls                           |
+| `data/di/DatabaseModule.kt`                       | Hilt DB/DAO providers                                  |
+| `data/di/RepositoryModule.kt`                     | Hilt repository bindings                               |
+| `app/schemas/.../1.json`                          | Exported Room schema                                   |
+| `src/test/.../SplitEaseTypeConvertersTest.kt`     | Converter unit tests                                   |
+| `src/test/.../EntityMappersTest.kt`               | Mapper unit tests                                      |
+| `src/androidTest/.../DaoInstrumentedTest.kt`      | In-memory DAO tests                                    |
+| `gradle/libs.versions.toml`                       | room-testing, coroutines-test, junit-platform-launcher |
+| `app/build.gradle.kts`                            | Test deps, Room schemaLocation, versionName 0.2.0      |
+| `docs/data-dictionary.md`                         | Schema tables                                          |
+| `.editorconfig`                                   | Relaxed ktlint rules that fight Kotlin/Compose idioms  |
 
 ## Screens/UI Added
 

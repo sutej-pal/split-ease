@@ -152,17 +152,4 @@ class AccountViewModel
                 }
             }
         }
-
-        fun setCurrency(code: String) {
-            viewModelScope.launch {
-                appSettingsRepository.setCurrencyCode(code)
-                runCatching { authRepository.updatePreferredCurrency(code) }
-            }
-        }
-
-        fun setAppLocale(locale: AppLocale) {
-            viewModelScope.launch {
-                appSettingsRepository.setAppLocale(locale)
-            }
-        }
     }

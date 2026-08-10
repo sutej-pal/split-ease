@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.ui
 
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
 import java.io.File
@@ -122,10 +122,9 @@ fun SeIconTileWithAvatar(
     actorName: String,
     actorPhotoUrl: String?,
     modifier: Modifier = Modifier,
-    size: Int = 44,
 ) {
-    Box(modifier = modifier.size(size.dp)) {
-        SeIconTile(icon = icon, tint = tint, size = size)
+    Box(modifier = modifier.size(44.dp)) {
+        SeIconTile(icon = icon, tint = tint, size = 44)
         SeAvatarBadge(
             name = actorName,
             photoUrl = actorPhotoUrl,
@@ -227,7 +226,7 @@ private fun localAvatarContentStamp(photoUrl: String?): Long {
     }
     val path =
         if (photoUrl.startsWith("file:", ignoreCase = true)) {
-            Uri.parse(photoUrl).path
+            photoUrl.toUri().path
         } else {
             photoUrl
         } ?: return 0L

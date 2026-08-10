@@ -3,7 +3,11 @@ package com.splitease.app.data.media
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
+import androidx.core.graphics.scale
+import androidx.core.net.toUri
+import androidx.exifinterface.media.ExifInterface
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -16,6 +20,9 @@ import kotlin.math.max
  *
  * Full camera / gallery images can be tens of megapixels; decoding them at full
  * resolution crashes Compose (`Canvas: trying to draw too large(...) bitmap`).
+ *
+ * Decodes bake EXIF orientation into pixel data so crop / preview match the
+ * upright image users see in the system gallery.
  */
 object AvatarImageIO {
     /** Max edge length for persisted avatars (enough for UI badges / profile header). */
@@ -33,6 +40,12 @@ object AvatarImageIO {
     /** Width ÷ height for the group detail header cover crop frame. */
     const val COVER_ASPECT_RATIO = 2.4f
 
+    /** Width ÷ height for profile and group avatar crops. */
+    const val SQUARE_ASPECT_RATIO = 1f
+
+    /** Width ÷ height for pinboard / content image crops. */
+    const val CONTENT_ASPECT_RATIO = 4f / 3f
+
     /**
      * Decodes [photoUrl] (content/file URI, absolute path, or https URL) scaled so the longer
      * edge is at most [maxSidePx]. Remote URLs are cached under app files.
@@ -47,7 +60,7 @@ object AvatarImageIO {
             when {
                 photoUrl.startsWith("content:", ignoreCase = true) ||
                     photoUrl.startsWith("file:", ignoreCase = true) -> {
-                    decodeUriScaled(context, Uri.parse(photoUrl), maxSidePx)
+                    decodeUriScaled(context, photoUrl.toUri(), maxSidePx)
                 }
                 photoUrl.startsWith("http://", ignoreCase = true) ||
                     photoUrl.startsWith("https://", ignoreCase = true) -> {
@@ -139,7 +152,7 @@ object AvatarImageIO {
         quality: Int = 85,
     ): String {
         destFile.parentFile?.mkdirs()
-        val uri = Uri.parse(photoUri.trim())
+        val uri = photoUri.trim().toUri()
         val bitmap =
             decodeUriScaled(context, uri, maxSidePx)
                 ?: decodeFileScaled(File(uri.path ?: photoUri), maxSidePx)
@@ -182,7 +195,7 @@ object AvatarImageIO {
                 val scale = maxSidePx.toFloat() / max(cropped.width, cropped.height).toFloat()
                 val w = (cropped.width * scale).toInt().coerceAtLeast(1)
                 val h = (cropped.height * scale).toInt().coerceAtLeast(1)
-                Bitmap.createScaledBitmap(cropped, w, h, true).also {
+                cropped.scale(w, h).also {
                     if (it !== cropped && !cropped.isRecycled) cropped.recycle()
                 }
             }
@@ -210,9 +223,12 @@ object AvatarImageIO {
             BitmapFactory.Options().apply {
                 inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, maxSidePx)
             }
-        return context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, opts)
-        }
+        val decoded =
+            context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, opts)
+            } ?: return null
+        val orientation = readExifOrientation(context, uri)
+        return applyExifOrientation(decoded, orientation)
     }
 
     private fun decodeFileScaled(
@@ -227,7 +243,71 @@ object AvatarImageIO {
             BitmapFactory.Options().apply {
                 inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, maxSidePx)
             }
-        return BitmapFactory.decodeFile(file.absolutePath, opts)
+        val decoded = BitmapFactory.decodeFile(file.absolutePath, opts) ?: return null
+        val orientation = readExifOrientation(file)
+        return applyExifOrientation(decoded, orientation)
+    }
+
+    private fun readExifOrientation(
+        context: Context,
+        uri: Uri,
+    ): Int =
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                ExifInterface(stream).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL,
+                )
+            } ?: ExifInterface.ORIENTATION_NORMAL
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+
+    private fun readExifOrientation(file: File): Int =
+        runCatching {
+            ExifInterface(file.absolutePath).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL,
+            )
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+
+    /**
+     * Bakes EXIF orientation into pixel data so [BitmapFactory] results match gallery display.
+     * Recycles [bitmap] when a new bitmap is created.
+     */
+    private fun applyExifOrientation(
+        bitmap: Bitmap,
+        orientation: Int,
+    ): Bitmap {
+        if (orientation == ExifInterface.ORIENTATION_NORMAL ||
+            orientation == ExifInterface.ORIENTATION_UNDEFINED
+        ) {
+            return bitmap
+        }
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.setScale(-1f, 1f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.setRotate(180f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
+                matrix.setRotate(180f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.setRotate(90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.setRotate(90f)
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.setRotate(-90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.setRotate(-90f)
+            else -> return bitmap
+        }
+        return runCatching {
+            val corrected =
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (corrected !== bitmap && !bitmap.isRecycled) bitmap.recycle()
+            corrected
+        }.getOrDefault(bitmap)
     }
 
     private fun sampleSizeFor(

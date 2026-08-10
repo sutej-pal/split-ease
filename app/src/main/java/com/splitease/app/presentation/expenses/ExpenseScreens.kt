@@ -57,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -64,21 +65,15 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.splitease.app.R
-import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
-import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeLoadingOverlay
-import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalTitle
+import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
-import com.splitease.app.presentation.ui.SeSectionHeader
-import com.splitease.app.presentation.ui.SeTextField
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.util.Calendar
@@ -107,10 +102,13 @@ fun AddExpenseScreen(
     var splitType by rememberSaveable { mutableStateOf(SplitType.EQUAL.name) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var paidBy by rememberSaveable { mutableStateOf("") }
+    var isMultiPayer by rememberSaveable { mutableStateOf(false) }
+    var paidAmountTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var participants by remember { mutableStateOf<List<ParticipantOption>>(emptyList()) }
     var unequalTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var percentTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var shareTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var adjustmentTexts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var membersConfirmed by rememberSaveable { mutableStateOf(isEdit) }
     // Only show the members confirm dialog for empty groups (no expenses/payments yet).
     var membersDialogEligible by rememberSaveable { mutableStateOf(false) }
@@ -123,8 +121,8 @@ fun AddExpenseScreen(
     }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
-    var showPaidByPicker by rememberSaveable { mutableStateOf(false) }
-    var showSplitPicker by rememberSaveable { mutableStateOf(false) }
+    var paidByStep by rememberSaveable { mutableStateOf(PaidByStep.None.name) }
+    var showAdjustSplit by rememberSaveable { mutableStateOf(false) }
     var prefilled by rememberSaveable(expenseId) { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val me by viewModel.signedInUserId.collectAsStateWithLifecycle()
@@ -188,6 +186,30 @@ fun AddExpenseScreen(
         selected = detail.splits.map { it.userId }.toSet()
         expenseDateMs = expense.expenseDateEpochMs
         unequalTexts = detail.splits.associate { it.userId to it.owedAmount.toPlainString() }
+        percentTexts =
+            detail.splits.associate { split ->
+                split.userId to (split.percentage?.toPlainString().orEmpty())
+            }
+        shareTexts =
+            detail.splits.associate { split ->
+                split.userId to (split.shares?.toString().orEmpty())
+            }
+        adjustmentTexts =
+            detail.splits.associate { split ->
+                split.userId to
+                    (split.adjustmentAmount ?: BigDecimal.ZERO.setScale(2)).toPlainString()
+            }
+        if (detail.splits.any { it.paidAmount != null }) {
+            isMultiPayer = true
+            paidAmountTexts =
+                detail.splits.associate { split ->
+                    split.userId to
+                        (split.paidAmount ?: BigDecimal.ZERO.setScale(2)).toPlainString()
+                }
+        } else {
+            isMultiPayer = false
+            paidAmountTexts = emptyMap()
+        }
         prefilled = true
     }
 
@@ -230,15 +252,22 @@ fun AddExpenseScreen(
     if (blockingOnMembersGate) return
 
     val mode = runCatching { SplitType.valueOf(splitType) }.getOrDefault(SplitType.EQUAL)
+    val currentPaidByStep =
+        runCatching { PaidByStep.valueOf(paidByStep) }.getOrDefault(PaidByStep.None)
     val paidByLabel =
-        participants.firstOrNull { it.userId == paidBy }?.label
-            ?: stringResource(R.string.you_label)
+        if (isMultiPayer) {
+            stringResource(R.string.expense_multiple_people)
+        } else {
+            participants.firstOrNull { it.userId == paidBy }?.label
+                ?: stringResource(R.string.you_label)
+        }
     val splitLabel =
         when (mode) {
             SplitType.EQUAL -> stringResource(R.string.split_equally)
             SplitType.UNEQUAL -> stringResource(R.string.split_unequal)
             SplitType.PERCENTAGE -> stringResource(R.string.split_percentage)
             SplitType.SHARES -> stringResource(R.string.split_shares)
+            SplitType.ADJUSTMENT -> stringResource(R.string.split_adjustment)
         }
     var groupName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(groupId) {
@@ -255,31 +284,47 @@ fun AddExpenseScreen(
 
     fun saveExpense() {
         if (uiState.isSubmitting) return
+        val multiPaidAmounts =
+            if (isMultiPayer) {
+                selected.associateWith { id ->
+                    BigDecimal(paidAmountTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                }
+            } else {
+                emptyMap()
+            }
+        val unequal =
+            if (mode == SplitType.UNEQUAL) {
+                selected.associateWith { id ->
+                    BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                }
+            } else {
+                emptyMap()
+            }
+        val percents =
+            if (mode == SplitType.PERCENTAGE) {
+                selected.associateWith { id ->
+                    BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                }
+            } else {
+                emptyMap()
+            }
+        val sharesMap =
+            if (mode == SplitType.SHARES) {
+                selected.associateWith { id ->
+                    shareTexts[id]?.trim()?.toIntOrNull() ?: 0
+                }
+            } else {
+                emptyMap()
+            }
+        val adjustmentsMap =
+            if (mode == SplitType.ADJUSTMENT) {
+                selected.associateWith { id ->
+                    BigDecimal(adjustmentTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                }
+            } else {
+                emptyMap()
+            }
         if (isEdit) {
-            val unequal =
-                if (mode == SplitType.UNEQUAL) {
-                    selected.associateWith { id ->
-                        BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
-                    }
-                } else {
-                    emptyMap()
-                }
-            val percents =
-                if (mode == SplitType.PERCENTAGE) {
-                    selected.associateWith { id ->
-                        BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
-                    }
-                } else {
-                    emptyMap()
-                }
-            val sharesMap =
-                if (mode == SplitType.SHARES) {
-                    selected.associateWith { id ->
-                        shareTexts[id]?.trim()?.toIntOrNull() ?: 1
-                    }
-                } else {
-                    emptyMap()
-                }
             viewModel.updateExpense(
                 expenseId = expenseId,
                 description = title,
@@ -291,36 +336,14 @@ fun AddExpenseScreen(
                 unequalAmounts = unequal,
                 percentages = percents,
                 shares = sharesMap,
+                adjustments = adjustmentsMap,
+                paidAmounts = multiPaidAmounts,
                 categoryId = editingExpense?.expense?.categoryId,
                 notes = notes.trim().ifBlank { null },
                 expenseDateEpochMs = expenseDateMs,
                 onSuccess = onDone,
             )
         } else {
-            val unequal =
-                if (mode == SplitType.UNEQUAL) {
-                    selected.associateWith { id ->
-                        BigDecimal(unequalTexts[id]?.trim().orEmpty().ifBlank { "0" })
-                    }
-                } else {
-                    emptyMap()
-                }
-            val percents =
-                if (mode == SplitType.PERCENTAGE) {
-                    selected.associateWith { id ->
-                        BigDecimal(percentTexts[id]?.trim().orEmpty().ifBlank { "0" })
-                    }
-                } else {
-                    emptyMap()
-                }
-            val sharesMap =
-                if (mode == SplitType.SHARES) {
-                    selected.associateWith { id ->
-                        shareTexts[id]?.trim()?.toIntOrNull() ?: 1
-                    }
-                } else {
-                    emptyMap()
-                }
             viewModel.createExpense(
                 description = title,
                 amountText = amount,
@@ -332,6 +355,8 @@ fun AddExpenseScreen(
                 unequalAmounts = unequal,
                 percentages = percents,
                 shares = sharesMap,
+                adjustments = adjustmentsMap,
+                paidAmounts = multiPaidAmounts,
                 recurrenceFrequency = RecurrenceFrequency.NONE,
                 categoryId = null,
                 notes = notes.trim().ifBlank { null },
@@ -339,6 +364,104 @@ fun AddExpenseScreen(
                 onSuccess = onDone,
             )
         }
+    }
+
+    val paidParticipants = participants.filter { it.userId in selected }
+    val expenseTotal =
+        runCatching { BigDecimal(amount.trim().ifBlank { "0" }) }
+            .getOrDefault(BigDecimal.ZERO)
+            .setScale(2, java.math.RoundingMode.HALF_UP)
+    val multiPayerValid =
+        !isMultiPayer ||
+            run {
+                val sum =
+                    selected
+                        .fold(BigDecimal.ZERO) { acc, id ->
+                            acc.add(
+                                runCatching {
+                                    BigDecimal(paidAmountTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                                }.getOrDefault(BigDecimal.ZERO),
+                            )
+                        }.setScale(2, java.math.RoundingMode.HALF_UP)
+                sum.compareTo(expenseTotal) == 0 &&
+                    selected.any {
+                        runCatching {
+                            BigDecimal(paidAmountTexts[it]?.trim().orEmpty().ifBlank { "0" })
+                        }.getOrDefault(BigDecimal.ZERO) > BigDecimal.ZERO
+                    }
+            }
+
+    when (currentPaidByStep) {
+        PaidByStep.WhoPaid -> {
+            WhoPaidScreen(
+                participants = paidParticipants,
+                selectedUserId = paidBy,
+                isMultiplePeople = isMultiPayer,
+                onBack = { paidByStep = PaidByStep.None.name },
+                onSelectPerson = { userId ->
+                    paidBy = userId
+                    isMultiPayer = false
+                    paidAmountTexts = emptyMap()
+                    paidByStep = PaidByStep.None.name
+                },
+                onMultiplePeople = { paidByStep = PaidByStep.EnterAmounts.name },
+            )
+            return
+        }
+        PaidByStep.EnterAmounts -> {
+            EnterPaidAmountsScreen(
+                participants = paidParticipants,
+                currencyCode = currencyCode,
+                totalAmount = expenseTotal,
+                initialAmounts = paidAmountTexts,
+                onBack = { paidByStep = PaidByStep.WhoPaid.name },
+                onConfirm = { amounts ->
+                    paidAmountTexts = amounts.mapValues { it.value.toPlainString() }
+                    isMultiPayer = true
+                    paidBy =
+                        amounts
+                            .filter { it.value > BigDecimal.ZERO }
+                            .maxByOrNull { it.value }
+                            ?.key
+                            ?: paidBy
+                    paidByStep = PaidByStep.None.name
+                },
+            )
+            return
+        }
+        PaidByStep.None -> Unit
+    }
+
+    if (showAdjustSplit) {
+        AdjustSplitScreen(
+            participants = participants,
+            currencyCode = currencyCode,
+            totalAmount = expenseTotal,
+            initialSplitType = mode,
+            initialSelectedIds = selected,
+            initialUnequalTexts = unequalTexts,
+            initialPercentTexts = percentTexts,
+            initialShareTexts = shareTexts,
+            initialAdjustmentTexts = adjustmentTexts,
+            onBack = { showAdjustSplit = false },
+            onConfirm = { result ->
+                splitType = result.splitType.name
+                selected = result.selectedIds
+                unequalTexts = result.unequalTexts
+                percentTexts = result.percentTexts
+                shareTexts = result.shareTexts
+                adjustmentTexts = result.adjustmentTexts
+                if (paidBy !in selected) {
+                    paidBy = me.orEmpty()
+                    isMultiPayer = false
+                    paidAmountTexts = emptyMap()
+                } else if (isMultiPayer) {
+                    paidAmountTexts = paidAmountTexts.filterKeys { it in selected }
+                }
+                showAdjustSplit = false
+            },
+        )
+        return
     }
 
     SeScreen(
@@ -351,11 +474,11 @@ fun AddExpenseScreen(
             IconButton(
                 onClick = { saveExpense() },
                 enabled =
-                    !uiState.isSubmitting &&
-                        title.isNotBlank() &&
+                    title.isNotBlank() &&
                         amount.isNotBlank() &&
                         selected.isNotEmpty() &&
-                        paidBy in selected,
+                        paidBy in selected &&
+                        multiPayerValid,
             ) {
                 if (uiState.isSubmitting) {
                     SeInlineLoader()
@@ -416,6 +539,11 @@ fun AddExpenseScreen(
                                             }
                                         if (paidBy !in selected) {
                                             paidBy = me.orEmpty()
+                                            isMultiPayer = false
+                                            paidAmountTexts = emptyMap()
+                                        } else if (isMultiPayer) {
+                                            paidAmountTexts =
+                                                paidAmountTexts.filterKeys { it in selected }
                                         }
                                     },
                                 )
@@ -433,6 +561,11 @@ fun AddExpenseScreen(
                                             }
                                         if (paidBy !in selected) {
                                             paidBy = me.orEmpty()
+                                            isMultiPayer = false
+                                            paidAmountTexts = emptyMap()
+                                        } else if (isMultiPayer) {
+                                            paidAmountTexts =
+                                                paidAmountTexts.filterKeys { it in selected }
                                         }
                                     },
                                 )
@@ -515,7 +648,7 @@ fun AddExpenseScreen(
                     )
                     ChoicePill(
                         text = paidByLabel,
-                        onClick = { showPaidByPicker = true },
+                        onClick = { paidByStep = PaidByStep.WhoPaid.name },
                         enabled = !uiState.isSubmitting,
                     )
                     Text(
@@ -525,52 +658,9 @@ fun AddExpenseScreen(
                     )
                     ChoicePill(
                         text = splitLabel,
-                        onClick = { showSplitPicker = true },
+                        onClick = { showAdjustSplit = true },
                         enabled = !uiState.isSubmitting,
                     )
-                }
-
-                if (mode == SplitType.UNEQUAL) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SeSectionHeader(text = stringResource(R.string.label_unequal_amounts))
-                    selected.forEach { id ->
-                        val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
-                        SeTextField(
-                            value = unequalTexts[id].orEmpty(),
-                            onValueChange = { unequalTexts = unequalTexts + (id to it) },
-                            label = label,
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        )
-                    }
-                }
-                if (mode == SplitType.PERCENTAGE) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SeSectionHeader(text = stringResource(R.string.label_percentages))
-                    selected.forEach { id ->
-                        val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
-                        SeTextField(
-                            value = percentTexts[id].orEmpty(),
-                            onValueChange = { percentTexts = percentTexts + (id to it) },
-                            label = "$label %",
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        )
-                    }
-                }
-                if (mode == SplitType.SHARES) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SeSectionHeader(text = stringResource(R.string.label_shares))
-                    selected.forEach { id ->
-                        val label = participants.firstOrNull { it.userId == id }?.label ?: id.take(8)
-                        SeTextField(
-                            value = shareTexts[id].orEmpty(),
-                            onValueChange = { shareTexts = shareTexts + (id to it) },
-                            label = label,
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        )
-                    }
                 }
 
                 uiState.errorMessage?.let {
@@ -646,69 +736,6 @@ fun AddExpenseScreen(
             title = { Text(stringResource(R.string.action_pick_time)) },
             text = { TimePicker(state = timeState) },
         )
-    }
-
-    if (showPaidByPicker) {
-        SeModal(onDismissRequest = { showPaidByPicker = false }) {
-            SeModalTitle(stringResource(R.string.label_paid_by))
-            Spacer(modifier = Modifier.height(12.dp))
-            participants.filter { it.userId in selected }.forEach { option ->
-                Text(
-                    text = option.label,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                paidBy = option.userId
-                                showPaidByPicker = false
-                            }.padding(vertical = 12.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    color =
-                        if (option.userId == paidBy) {
-                            SplitEaseColors.Primary
-                        } else {
-                            SplitEaseColors.Navy
-                        },
-                    fontWeight =
-                        if (option.userId == paidBy) FontWeight.SemiBold else FontWeight.Normal,
-                )
-            }
-        }
-    }
-
-    if (showSplitPicker) {
-        SeModal(onDismissRequest = { showSplitPicker = false }) {
-            SeModalTitle(stringResource(R.string.label_split_type))
-            Spacer(modifier = Modifier.height(12.dp))
-            SplitType.entries.forEach { type ->
-                val label =
-                    when (type) {
-                        SplitType.EQUAL -> stringResource(R.string.split_equally)
-                        SplitType.UNEQUAL -> stringResource(R.string.split_unequal)
-                        SplitType.PERCENTAGE -> stringResource(R.string.split_percentage)
-                        SplitType.SHARES -> stringResource(R.string.split_shares)
-                    }
-                Text(
-                    text = label.replaceFirstChar { it.uppercase() },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                splitType = type.name
-                                showSplitPicker = false
-                            }.padding(vertical = 12.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    color =
-                        if (type.name == splitType) {
-                            SplitEaseColors.Primary
-                        } else {
-                            SplitEaseColors.Navy
-                        },
-                    fontWeight =
-                        if (type.name == splitType) FontWeight.SemiBold else FontWeight.Normal,
-                )
-            }
-        }
     }
 }
 
@@ -839,30 +866,6 @@ private fun ExpenseUnderlineField(
     }
 }
 
-@Composable
-fun ExpenseListSection(
-    expenses: List<Expense>,
-    emptyText: String,
-    categoryNames: Map<String, String> = emptyMap(),
-) {
-    if (expenses.isEmpty()) {
-        SeEmptyState(message = emptyText)
-    } else {
-        expenses.forEach { expense ->
-            val categoryLabel =
-                expense.categoryId
-                    ?.let { categoryNames[it] }
-                    ?.let { " · $it" }
-                    .orEmpty()
-            SeListRow(
-                title = expense.description,
-                subtitle =
-                    "${expense.currencyCode} ${expense.amount.toPlainString()} · ${expense.splitType.name.lowercase()}$categoryLabel",
-            )
-        }
-    }
-}
-
 private fun currencySymbol(code: String): String =
     when (AppCurrencies.normalizeOrDefault(code)) {
         AppCurrencies.INR -> "₹"
@@ -909,3 +912,193 @@ private fun applyLocalTime(currentLocalMs: Long, hour: Int, minute: Int): Long =
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
     }.timeInMillis
+
+private enum class PaidByStep {
+    None,
+    WhoPaid,
+    EnterAmounts,
+}
+
+/**
+ * Preview of the add-expense form. Uses local sample state because [AddExpenseScreen]
+ * requires a Hilt [ExpensesViewModel].
+ */
+@Preview(name = "Add expense", showBackground = true, heightDp = 780)
+@Composable
+private fun AddExpenseScreenPreview() {
+    AddExpensePreviewScaffold(isSubmitting = false)
+}
+
+@Preview(name = "Add expense · saving", showBackground = true, heightDp = 780)
+@Composable
+private fun AddExpenseScreenSavingPreview() {
+    AddExpensePreviewScaffold(isSubmitting = true)
+}
+
+@Composable
+private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
+    SePreview {
+        val me = "me"
+        val participants =
+            listOf(
+                ParticipantOption(me, "You"),
+                ParticipantOption("u2", "Sutej Pal"),
+                ParticipantOption("u3", "Alex"),
+            )
+        var title by remember { mutableStateOf("Dinner") }
+        var amount by remember { mutableStateOf("1240.00") }
+        var notes by remember { mutableStateOf("") }
+        var selected by remember { mutableStateOf(participants.map { it.userId }.toSet()) }
+        val currencyCode = AppCurrencies.INR
+        val dateTimeLabel =
+            remember {
+                DateFormat
+                    .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                    .format(Date())
+            }
+
+        SeScreen(
+            title = stringResource(R.string.action_add_expense),
+            onBack = {},
+            actions = {
+                IconButton(
+                    onClick = {},
+                    enabled =
+                        title.isNotBlank() &&
+                            amount.isNotBlank() &&
+                            selected.isNotEmpty(),
+                ) {
+                    if (isSubmitting) {
+                        SeInlineLoader()
+                    } else {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = stringResource(R.string.cd_save_expense),
+                            tint = SplitEaseColors.Primary,
+                        )
+                    }
+                }
+            },
+            content = { padding ->
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding.values),
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.expense_with_you_and),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = SplitEaseColors.Navy,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            ParticipantChip(
+                                label = stringResource(R.string.expense_all_of_group, "Noida Room"),
+                                selected = true,
+                                onClick = {},
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(28.dp))
+                        ExpenseUnderlineField(
+                            value = title,
+                            onValueChange = { title = it },
+                            placeholder = stringResource(R.string.label_expense_title),
+                            icon = Icons.Filled.Receipt,
+                            enabled = !isSubmitting,
+                            textStyle =
+                                MaterialTheme.typography.titleLarge.copy(
+                                    color = SplitEaseColors.Navy,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        ExpenseUnderlineField(
+                            value = amount,
+                            onValueChange = { amount = it },
+                            placeholder = "0.00",
+                            leadingLabel = currencySymbol(currencyCode),
+                            enabled = !isSubmitting,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            textStyle =
+                                MaterialTheme.typography.headlineMedium.copy(
+                                    color = SplitEaseColors.Navy,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        ExpenseUnderlineField(
+                            value = dateTimeLabel,
+                            onValueChange = {},
+                            placeholder = stringResource(R.string.label_date_time),
+                            icon = Icons.Filled.DateRange,
+                            enabled = !isSubmitting,
+                            readOnly = true,
+                            onClick = {},
+                            textStyle =
+                                MaterialTheme.typography.titleMedium.copy(
+                                    color = SplitEaseColors.Navy,
+                                ),
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        ExpenseUnderlineField(
+                            value = notes,
+                            onValueChange = { notes = it },
+                            placeholder = stringResource(R.string.label_notes_optional),
+                            icon = Icons.AutoMirrored.Filled.Notes,
+                            enabled = !isSubmitting,
+                            textStyle =
+                                MaterialTheme.typography.bodyLarge.copy(
+                                    color = SplitEaseColors.Navy,
+                                ),
+                        )
+
+                        Spacer(modifier = Modifier.height(28.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.expense_paid_by_and_split),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = SplitEaseColors.Navy,
+                            )
+                            ChoicePill(
+                                text = stringResource(R.string.you_label),
+                                onClick = {},
+                                enabled = !isSubmitting,
+                            )
+                            Text(
+                                text = stringResource(R.string.expense_and_split),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = SplitEaseColors.Navy,
+                            )
+                            ChoicePill(
+                                text = stringResource(R.string.split_equally),
+                                onClick = {},
+                                enabled = !isSubmitting,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+                    SeLoadingOverlay(
+                        visible = isSubmitting,
+                        text = stringResource(R.string.expense_saving),
+                    )
+                }
+            },
+        )
+    }
+}

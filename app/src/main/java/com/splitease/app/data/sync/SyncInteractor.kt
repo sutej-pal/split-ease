@@ -77,16 +77,6 @@ class SyncInteractor
             System.currentTimeMillis() - lastSyncCompletedAtMs < MIN_SYNC_GAP_MS
 
         /**
-         * Counts pending social + expense + payment rows once.
-         */
-        suspend fun pendingCount(): Int =
-            groupRepository.getPendingGroups().size +
-                groupRepository.getPendingMembers().size +
-                inviteRepository.getPendingSync().size +
-                expenseRepository.getPendingSync().size +
-                paymentRepository.getPendingSync().size
-
-        /**
          * Pushes pending groups, members, invites, expenses, and payments to Supabase.
          *
          * Failed rows stay PENDING for the next retry.
@@ -191,6 +181,8 @@ class SyncInteractor
                 }
             }
 
+            runCatching { expenseInteractor.get().flushPendingCommentsAndPhotos() }
+
             return SyncFlushResult(
                 groupsSynced = groupsSynced,
                 membersSynced = membersSynced,
@@ -235,7 +227,7 @@ class SyncInteractor
             val inviteClaimed =
                 runCatching {
                     socialInteractor.get().acceptPendingInvitesForCurrentUser(
-                        userId = uid,
+                        _userId = uid,
                         inviteToken = pendingInviteToken,
                     )
                 }.getOrElse {
@@ -290,6 +282,8 @@ class SyncInteractor
                         owedAmount = split.owedAmount.toPlainString(),
                         percentage = split.percentage?.toPlainString(),
                         shares = split.shares,
+                        paidAmount = split.paidAmount?.toPlainString(),
+                        adjustmentAmount = split.adjustmentAmount?.toPlainString(),
                     )
                 },
             )

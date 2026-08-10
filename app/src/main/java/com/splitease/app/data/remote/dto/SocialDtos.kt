@@ -117,4 +117,31 @@ data class ExpenseSplitDto(
     @SerialName("owed_amount") val owedAmount: String,
     val percentage: String? = null,
     val shares: Int? = null,
+    @SerialName("paid_amount") val paidAmount: String? = null,
+    @SerialName("adjustment_amount") val adjustmentAmount: String? = null,
+)
+
+/**
+ * Supabase `expense_comments` row.
+ */
+@Serializable
+data class ExpenseCommentDto(
+    val id: String,
+    @SerialName("expense_id") val expenseId: String,
+    @SerialName("author_user_id") val authorUserId: String,
+    val body: String,
+    val kind: String,
+    @SerialName("created_at_epoch_ms") val createdAtEpochMs: Long,
+)
+
+/**
+ * Supabase `expense_photos` row.
+ */
+@Serializable
+data class ExpensePhotoDto(
+    val id: String,
+    @SerialName("expense_id") val expenseId: String,
+    @SerialName("created_by_user_id") val createdByUserId: String,
+    @SerialName("remote_url") val remoteUrl: String? = null,
+    @SerialName("created_at_epoch_ms") val createdAtEpochMs: Long,
 )

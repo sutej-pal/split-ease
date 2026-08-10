@@ -3,6 +3,8 @@ package com.splitease.app.data.di
 import com.splitease.app.data.repository.RenderMailRepository
 import com.splitease.app.data.repository.RoomActivityEventRepository
 import com.splitease.app.data.repository.RoomCategoryRepository
+import com.splitease.app.data.repository.RoomExpenseCommentRepository
+import com.splitease.app.data.repository.RoomExpensePhotoRepository
 import com.splitease.app.data.repository.RoomExpenseRepository
 import com.splitease.app.data.repository.RoomFriendRepository
 import com.splitease.app.data.repository.RoomGroupRepository
@@ -14,6 +16,8 @@ import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
 import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
+import com.splitease.app.domain.repository.ExpenseCommentRepository
+import com.splitease.app.domain.repository.ExpensePhotoRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
@@ -68,6 +72,16 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindExpenseRepository(impl: RoomExpenseRepository): ExpenseRepository
+
+    /** Binds [ExpenseCommentRepository] to [RoomExpenseCommentRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindExpenseCommentRepository(impl: RoomExpenseCommentRepository): ExpenseCommentRepository
+
+    /** Binds [ExpensePhotoRepository] to [RoomExpensePhotoRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindExpensePhotoRepository(impl: RoomExpensePhotoRepository): ExpensePhotoRepository
 
     /** Binds [ActivityEventRepository] to [RoomActivityEventRepository]. */
     @Binds

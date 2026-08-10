@@ -4,7 +4,7 @@ Added region-aware pay deep links (UPI / PayPal / Venmo-style), CSV transaction 
 
 ## Phase Goal
 
-Add region-aware “pay” deep links from settlements, CSV transaction import into expenses, and Vico charts on spending totals.
+Add region-aware "pay" deep links from settlements, CSV transaction import into expenses, and Vico charts on spending totals.
 
 ## Scope
 
@@ -22,13 +22,13 @@ Add region-aware “pay” deep links from settlements, CSV transaction import i
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Intent / URI builders in `domain.payment` | Pure, testable; UI only launches |
-| Region from settlement currency (not locale alone) | Matches owed amount currency |
+| Decision                                                         | Rationale                         |
+| ---------------------------------------------------------------- | --------------------------------- |
+| Intent / URI builders in `domain.payment`                        | Pure, testable; UI only launches  |
+| Region from settlement currency (not locale alone)               | Matches owed amount currency      |
 | CSV → `CreateExpenseInput` as equal split with current user only | Safe default; user can edit later |
-| Vico compose-m3 (tech stack) | Charts without custom Canvas |
-| No new Room tables | Import writes normal expenses |
+| Vico compose-m3 (tech stack)                                     | Charts without custom Canvas      |
+| No new Room tables                                               | Import writes normal expenses     |
 
 ## Plan
 
@@ -66,8 +66,8 @@ Phase 8 delivered region-aware settle-up payment deep links (UPI / PayPal / Venm
 
 - UPI requires a payee VPA; without a stored handle we prefill amount/currency only.
 - CSV import creates viewer-only equal-split expenses (not auto-assigned to a group).
-- Capture `docs/screenshots/phase-8.png`.
+- Capture a local screenshot for this phase when needed.
 
 ## Screenshots placeholder
 
-![phase-8-screenshot](./screenshots/phase-8.png)
+_(No screenshot checked in for this phase.)_

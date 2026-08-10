@@ -6,7 +6,9 @@ import androidx.room.TypeConverters
 import com.splitease.app.data.local.converter.SplitEaseTypeConverters
 import com.splitease.app.data.local.dao.ActivityEventDao
 import com.splitease.app.data.local.dao.CategoryDao
+import com.splitease.app.data.local.dao.ExpenseCommentDao
 import com.splitease.app.data.local.dao.ExpenseDao
+import com.splitease.app.data.local.dao.ExpensePhotoDao
 import com.splitease.app.data.local.dao.FriendDao
 import com.splitease.app.data.local.dao.GroupDao
 import com.splitease.app.data.local.dao.InviteDao
@@ -14,7 +16,9 @@ import com.splitease.app.data.local.dao.PaymentDao
 import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.entity.ActivityEventEntity
 import com.splitease.app.data.local.entity.CategoryEntity
+import com.splitease.app.data.local.entity.ExpenseCommentEntity
 import com.splitease.app.data.local.entity.ExpenseEntity
+import com.splitease.app.data.local.entity.ExpensePhotoEntity
 import com.splitease.app.data.local.entity.ExpenseSplitEntity
 import com.splitease.app.data.local.entity.FriendEntity
 import com.splitease.app.data.local.entity.GroupEntity
@@ -24,7 +28,7 @@ import com.splitease.app.data.local.entity.PaymentEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 8 — group coverUrl).
+ * Offline-first Room database for SplitEase (version 11 — expense comments + photos).
  */
 @Database(
     entities = [
@@ -35,11 +39,13 @@ import com.splitease.app.data.local.entity.UserEntity
         CategoryEntity::class,
         ExpenseEntity::class,
         ExpenseSplitEntity::class,
+        ExpenseCommentEntity::class,
+        ExpensePhotoEntity::class,
         PaymentEntity::class,
         InviteEntity::class,
         ActivityEventEntity::class,
     ],
-    version = 8,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)
@@ -58,6 +64,12 @@ abstract class SplitEaseDatabase : RoomDatabase() {
 
     /** @return DAO for expenses and splits. */
     abstract fun expenseDao(): ExpenseDao
+
+    /** @return DAO for expense comments. */
+    abstract fun expenseCommentDao(): ExpenseCommentDao
+
+    /** @return DAO for expense photos. */
+    abstract fun expensePhotoDao(): ExpensePhotoDao
 
     /** @return DAO for payments. */
     abstract fun paymentDao(): PaymentDao

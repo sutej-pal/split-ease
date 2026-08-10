@@ -23,23 +23,23 @@ Establish the SplitEase Android project skeleton (Gradle, Compose Material 3, Hi
 - Auth / cloud (Phase 2+)
 - Expense, group, or friend UI
 - Custom fonts / typography overhaul
-- Final semantic “you owe” / “you're owed” / pending colors (placeholders only)
+- Final semantic "you owe" / "you're owed" / pending colors (placeholders only)
 - Material You dynamic color as the default
 - detekt (deferred)
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Single `:app` module for MVP | Fastest path; multi-module can wait |
-| Package layout `presentation` / `domain` / `data` | Clean Architecture from day one |
-| Hand-authored `ColorScheme` | Brand indigo/amber stay fixed; no Material tonal substitution for those roles |
-| Dynamic color opt-in only | `SplitEaseTheme(dynamicColor = false)` by default |
-| Accent → `tertiary` | Amber maps to tertiary; primary stays indigo |
-| Design tokens in `design-tokens.md` | Color roles stay out of the schema dictionary |
-| Firebase / Supabase deferred to Phase 2 | Auth not needed for Welcome launch |
-| ktlint + version catalog | CI-friendly style; centralized dependency versions |
-| compileSdk / targetSdk **36**, minSdk **26** | Platform targets at scaffold time |
+| Decision                                          | Rationale                                                                     |
+| ------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Single `:app` module for MVP                      | Fastest path; multi-module can wait                                           |
+| Package layout `presentation` / `domain` / `data` | Clean Architecture from day one                                               |
+| Hand-authored `ColorScheme`                       | Brand indigo/amber stay fixed; no Material tonal substitution for those roles |
+| Dynamic color opt-in only                         | `SplitEaseTheme(dynamicColor = false)` by default                             |
+| Accent → `tertiary`                               | Amber maps to tertiary; primary stays indigo                                  |
+| Design tokens in `design-tokens.md`               | Color roles stay out of the schema dictionary                                 |
+| Firebase / Supabase deferred to Phase 2           | Auth not needed for Welcome launch                                            |
+| ktlint + version catalog                          | CI-friendly style; centralized dependency versions                            |
+| compileSdk / targetSdk **36**, minSdk **26**      | Platform targets at scaffold time                                             |
 
 ## Data Model Changes
 
@@ -59,8 +59,8 @@ None. Room on classpath only; theme-only work later in this phase.
 
 ## Screens/UI
 
-| Screen | Description |
-|---|---|
+| Screen          | Description                                                            |
+| --------------- | ---------------------------------------------------------------------- |
 | `WelcomeScreen` | Brand hero; later gained Get started / Log in (Phase 2 session gating) |
 
 ## Contrast notes (WCAG 2.1 AA)

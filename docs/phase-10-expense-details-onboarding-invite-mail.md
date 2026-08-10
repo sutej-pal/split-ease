@@ -18,21 +18,21 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 **Out**
 - Cross-device Activity sync; soft-delete tombstones on Supabase
 - Cloud-synced onboarding-complete flag
-- “Select your name” placeholder claim on invite landing
+- "Select your name" placeholder claim on invite landing
 - Full App Links verification ops (documented separately in [app-links-setup.md](app-links-setup.md))
 - Rich multi-template mail system / delivery analytics
 
 ## Architecture Decisions
 
-| Area | Decision | Rationale |
-|---|---|---|
-| Activity | Local `activity_events` Room table | Deletes stay visible after expense row is gone |
-| Expense edit | Stable expense id; remap splits by participant | Avoids duplicate cloud rows |
-| Onboarding | SharedPreferences `onboarding_complete` | No schema change; existing users default complete |
-| Invite OTP | Always gate after signup | Never enter Home until email verified |
-| Invite token | App settings `pending_invite_token` | Survives process death during OTP |
-| Invite RPCs | `get_invite_preview` (anon) + `accept_invite_by_token` (auth) | Landing before auth; join email may differ from invite row |
-| Welcome mail | `MailRepository` + per-user sent flag | Best-effort; failures must not block UX |
+| Area         | Decision                                                      | Rationale                                                  |
+| ------------ | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| Activity     | Local `activity_events` Room table                            | Deletes stay visible after expense row is gone             |
+| Expense edit | Stable expense id; remap splits by participant                | Avoids duplicate cloud rows                                |
+| Onboarding   | SharedPreferences `onboarding_complete`                       | No schema change; existing users default complete          |
+| Invite OTP   | Always gate after signup                                      | Never enter Home until email verified                      |
+| Invite token | App settings `pending_invite_token`                           | Survives process death during OTP                          |
+| Invite RPCs  | `get_invite_preview` (anon) + `accept_invite_by_token` (auth) | Landing before auth; join email may differ from invite row |
+| Welcome mail | `MailRepository` + per-user sent flag                         | Best-effort; failures must not block UX                    |
 
 ## Data Model Changes
 
@@ -40,11 +40,11 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 - `activity_events` (`id`, `kind`, `title`, `subtitle`, `amountLabel`, `actorUserId`, `relatedExpenseId`, `involvedUserIds`, `sortEpochMs`)
 
 **SharedPreferences**
-| Key | Description |
-|---|---|
-| `onboarding_complete` | Setup finished (existing installs default true) |
-| `pending_invite_token` | Invite awaiting accept after signup/OTP |
-| `onboarding_email_sent_{userId}` | Suppress duplicate welcome mails |
+| Key                              | Description                                          |
+| -------------------------------- | ---------------------------------------------------- |
+| `onboarding_complete`            | Setup finished (existing installations default true) |
+| `pending_invite_token`           | Invite awaiting accept after signup/OTP              |
+| `onboarding_email_sent_{userId}` | Suppress duplicate welcome mails                     |
 
 **Supabase** (see [sql/migration_db.sql](sql/migration_db.sql)):
 - `get_invite_preview(p_token text) → jsonb`
@@ -74,12 +74,12 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 
 ## Screens/UI
 
-| Screen | Role |
-|---|---|
-| Expense detail | View / edit / delete |
-| Onboarding (currency / welcome) | Post-OTP gate when incomplete |
-| Invite landing | Inviter, group, members, join CTA |
-| Invite join signup | Creates account → OTP gate |
+| Screen                          | Role                              |
+| ------------------------------- | --------------------------------- |
+| Expense detail                  | View / edit / delete              |
+| Onboarding (currency / welcome) | Post-OTP gate when incomplete     |
+| Invite landing                  | Inviter, group, members, join CTA |
+| Invite join signup              | Creates account → OTP gate        |
 
 ## How to Test
 

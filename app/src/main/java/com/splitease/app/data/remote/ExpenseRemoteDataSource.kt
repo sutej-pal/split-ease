@@ -1,6 +1,8 @@
 package com.splitease.app.data.remote
 
+import com.splitease.app.data.remote.dto.ExpenseCommentDto
 import com.splitease.app.data.remote.dto.ExpenseDto
+import com.splitease.app.data.remote.dto.ExpensePhotoDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -139,6 +141,36 @@ class ExpenseRemoteDataSource
                 }
             }
         }
+
+        /** Upserts an expense comment row. */
+        suspend fun upsertComment(comment: ExpenseCommentDto) {
+            supabase.from("expense_comments").upsert(comment)
+        }
+
+        /** Fetches comments for an expense, oldest-first. */
+        suspend fun fetchComments(expenseId: String): List<ExpenseCommentDto> =
+            supabase
+                .from("expense_comments")
+                .select(Columns.ALL) {
+                    filter {
+                        eq("expense_id", expenseId)
+                    }
+                }.decodeList()
+
+        /** Upserts an expense photo metadata row. */
+        suspend fun upsertPhoto(photo: ExpensePhotoDto) {
+            supabase.from("expense_photos").upsert(photo)
+        }
+
+        /** Fetches photo metadata for an expense, oldest-first. */
+        suspend fun fetchPhotos(expenseId: String): List<ExpensePhotoDto> =
+            supabase
+                .from("expense_photos")
+                .select(Columns.ALL) {
+                    filter {
+                        eq("expense_id", expenseId)
+                    }
+                }.decodeList()
     }
 
 @kotlinx.serialization.Serializable

@@ -2,11 +2,11 @@
 
 Android app and SplitEase Server are **separate Git repositories** under one parent folder.
 
-| | Android | SplitEase Server |
-|---|---|---|
-| Local path | `C:\splitease\app` | `C:\splitease\server` |
-| GitHub | your SplitEase app repo | https://github.com/sutej-pal/mail-service (rename to `splitease-server` recommended) |
-| Role | Compose app + Supabase client | OTP / mail + invite bridge |
+|            | Android                       | SplitEase Server                                                                     |
+| ---------- | ----------------------------- | ------------------------------------------------------------------------------------ |
+| Local path | `C:\splitease\app`            | `C:\splitease\server`                                                                |
+| GitHub     | your SplitEase app repo       | https://github.com/sutej-pal/mail-service (rename to `splitease-server` recommended) |
+| Role       | Compose app + Supabase client | OTP / mail + invite bridge                                                           |
 
 ## Local run
 

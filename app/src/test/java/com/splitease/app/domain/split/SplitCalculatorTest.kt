@@ -76,4 +76,25 @@ class SplitCalculatorTest {
         assertEquals(BigDecimal("30.00"), result["b"])
         assertEquals(BigDecimal("45.00"), result["c"])
     }
+
+    @Test
+    fun adjustment_adds_extra_then_splits_remainder() {
+        val result =
+            SplitCalculator.calculate(
+                total = BigDecimal("100.00"),
+                splitType = SplitType.ADJUSTMENT,
+                participantIds = listOf("a", "b", "c", "d"),
+                adjustments =
+                    mapOf(
+                        "a" to BigDecimal("10.00"),
+                        "b" to BigDecimal("0"),
+                        "c" to BigDecimal("0"),
+                        "d" to BigDecimal("0"),
+                    ),
+            )
+        assertEquals(BigDecimal("32.50"), result["a"])
+        assertEquals(BigDecimal("22.50"), result["b"])
+        assertEquals(BigDecimal("22.50"), result["c"])
+        assertEquals(BigDecimal("22.50"), result["d"])
+    }
 }

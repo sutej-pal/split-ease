@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 
 // --- Light theme ---
 
-/** Primary indigo — panel outlines, primary buttons, active states, icon strokes. */
+/** Primary indigo — CTAs, focused fields, links, and other brand accents. */
 val IndigoLight = Color(0xFF4F46E5)
 
 /** Accent amber — divider, CTAs, highlights, "pending" states. */
@@ -33,7 +33,7 @@ val TextPrimaryLight = Color(0xFF1E1B4B)
 
 // --- Dark theme ---
 
-/** Primary indigo — panel outlines, primary buttons, active states, icon strokes. */
+/** Primary indigo — CTAs, focused fields, links, and other brand accents. */
 val IndigoDark = Color(0xFF818CF8)
 
 /** Accent amber — divider, CTAs, highlights, "pending" states. */

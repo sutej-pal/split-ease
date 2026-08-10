@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.auth
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.data.social.InviteLinks
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Which email OTP flow is currently gated on the verify screen.
@@ -68,7 +70,7 @@ data class AuthFormState(
  * Session-aware auth ViewModel for login, signup, reset, and sign-out.
  *
  * @property authRepository Supabase-backed auth operations.
- * @property appContext Application context (Hilt-injected; retained for DI).
+ * @property appContext Application context for resolving auth string resources.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -77,10 +79,11 @@ class AuthViewModel
     constructor(
         private val authRepository: AuthRepository,
         private val appSettingsRepository: AppSettingsRepository,
-        @Suppress("UnusedPrivateProperty")
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         private val authRateLimiter = AuthRateLimiter()
+
+        private fun msg(@StringRes id: Int): String = appContext.getString(id)
 
         /** Live session used to gate navigation. */
         val session: StateFlow<AuthSession> =
@@ -90,7 +93,7 @@ class AuthViewModel
                     emit(current)
                     if (current is AuthSession.Loading) {
                         // Auth init can hang (stale refresh token / network). Unblock UI.
-                        delay(AUTH_LOADING_TIMEOUT_MS)
+                        delay(AUTH_LOADING_TIMEOUT_MS.milliseconds)
                         emit(AuthSession.SignedOut)
                     }
                 }.stateIn(
@@ -112,19 +115,6 @@ class AuthViewModel
                     scope = viewModelScope,
                     // Eager so a cold-start deep link is visible before first frame.
                     started = SharingStarted.Eagerly,
-                    initialValue = null,
-                )
-
-        /**
-         * Where to navigate after invite accept (group id or friends sentinel).
-         * Survives token clear until [consumePendingInviteOpenTarget].
-         */
-        val pendingInviteOpenTarget: StateFlow<String?> =
-            appSettingsRepository
-                .observePendingInviteOpenTarget()
-                .stateIn(
-                    scope = viewModelScope,
-                    started = SharingStarted.WhileSubscribed(5_000),
                     initialValue = null,
                 )
 
@@ -150,9 +140,9 @@ class AuthViewModel
                 session.collect { current ->
                     // Hydrate profile only after OTP onboarding is done.
                     val form = _formState.value
-                    if (current is AuthSession.SignedIn &&
-                        form.pendingConfirmationEmail == null &&
-                        !form.holdSignedInForOtp
+                    if ((current is AuthSession.SignedIn) &&
+                        (form.pendingConfirmationEmail == null) &&
+                        (!form.holdSignedInForOtp)
                     ) {
                         authRepository.ensureLocalProfile()
                     }
@@ -211,7 +201,7 @@ class AuthViewModel
             if (trimmedEmail.isEmpty() || password.isBlank()) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.LOGIN_FIELDS_REQUIRED,
+                        errorMessage = msg(AuthMessages.LOGIN_FIELDS_REQUIRED),
                         infoMessage = null,
                     )
                 }
@@ -255,11 +245,11 @@ class AuthViewModel
                             rateLimitMessage(AuthRateAction.LOGIN, postFailLockMs)
                         } else if (isInvalidCredentials(err)) {
                             val registered =
-                                authRepository.isEmailRegistered(trimmedEmail).getOrDefault(true)
+                                authRepository.isEmailRegistered(trimmedEmail).getOrDefault(defaultValue = true)
                             if (!registered) {
-                                AuthMessages.NOT_REGISTERED
+                                msg(AuthMessages.NOT_REGISTERED)
                             } else {
-                                AuthMessages.INVALID_CREDENTIALS
+                                msg(AuthMessages.INVALID_CREDENTIALS)
                             }
                         } else {
                             friendlyAuthError(err)
@@ -309,7 +299,7 @@ class AuthViewModel
             if (trimmedName.isBlank()) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.NAME_REQUIRED,
+                        errorMessage = msg(AuthMessages.NAME_REQUIRED),
                         infoMessage = null,
                     )
                 }
@@ -318,7 +308,7 @@ class AuthViewModel
             if (password.length < MIN_SIGNUP_PASSWORD_LENGTH) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.PASSWORD_SHORT,
+                        errorMessage = msg(AuthMessages.PASSWORD_SHORT),
                         infoMessage = null,
                     )
                 }
@@ -351,7 +341,8 @@ class AuthViewModel
                         holdSignedInForOtp = true,
                     )
                 }
-                val emailTaken = authRepository.isEmailRegistered(trimmedEmail).getOrDefault(false)
+                val emailTaken =
+                    authRepository.isEmailRegistered(trimmedEmail).getOrDefault(defaultValue = false)
                 if (emailTaken) {
                     authRateLimiter.recordFailure(AuthRateAction.SIGNUP, trimmedEmail)
                     val lockMs =
@@ -360,8 +351,8 @@ class AuthViewModel
                         AuthFormState(
                             isLoading = false,
                             errorMessage =
-                                lockMs?.let { rateLimitMessage(AuthRateAction.SIGNUP, it) }
-                                    ?: AuthMessages.EMAIL_ALREADY_REGISTERED,
+                                lockMs?.let { remaining -> rateLimitMessage(AuthRateAction.SIGNUP, remaining) }
+                                    ?: msg(AuthMessages.EMAIL_ALREADY_REGISTERED),
                         )
                     }
                     return@launch
@@ -370,13 +361,13 @@ class AuthViewModel
                     val phoneTaken =
                         authRepository
                             .isPhoneRegistered(dialCode, trimmedPhone)
-                            .getOrDefault(false)
+                            .getOrDefault(defaultValue = false)
                     if (phoneTaken) {
                         _formState.update {
                             AuthFormState(
                                 isLoading = false,
                                 errorMessage =
-                                    AuthMessages.PHONE_ALREADY_REGISTERED,
+                                    msg(AuthMessages.PHONE_ALREADY_REGISTERED),
                             )
                         }
                         return@launch
@@ -402,8 +393,9 @@ class AuthViewModel
                         AuthFormState(
                             isLoading = false,
                             errorMessage =
-                                lockMs?.let { rateLimitMessage(AuthRateAction.SIGNUP, it) }
-                                    ?: friendlyAuthError(result.exceptionOrNull()),
+                                lockMs?.let { remaining ->
+                                    rateLimitMessage(AuthRateAction.SIGNUP, remaining)
+                                } ?: friendlyAuthError(result.exceptionOrNull()),
                         )
                     }
                     return@launch
@@ -417,7 +409,7 @@ class AuthViewModel
                                 pendingConfirmationEmail = outcome.email,
                                 pendingOtpPurpose = PendingOtpPurpose.SIGNUP,
                                 holdSignedInForOtp = false,
-                                infoMessage = AuthMessages.VERIFY_EMAIL_SENT,
+                                infoMessage = msg(AuthMessages.VERIFY_EMAIL_SENT),
                             )
                         }
                     is SignUpResult.SignedIn, null -> {
@@ -447,7 +439,7 @@ class AuthViewModel
                         _formState.update {
                             it.copy(
                                 isLoading = false,
-                                infoMessage = AuthMessages.VERIFY_EMAIL_SENT,
+                                infoMessage = msg(AuthMessages.VERIFY_EMAIL_SENT),
                             )
                         }
                     }
@@ -480,8 +472,8 @@ class AuthViewModel
             val successMessage =
                 when (purpose) {
                     PendingOtpPurpose.RECOVERY ->
-                        AuthMessages.resetOtpSent(trimmedEmail)
-                    else -> AuthMessages.VERIFY_EMAIL_RESENT
+                        AuthMessages.resetOtpSent(appContext, trimmedEmail)
+                    else -> msg(AuthMessages.VERIFY_EMAIL_RESENT)
                 }
             submit(successMessage = successMessage) {
                 // Count every resend toward the throttle (email spam protection).
@@ -513,7 +505,7 @@ class AuthViewModel
             if (code.length != SIGNUP_OTP_LENGTH || code.any { !it.isDigit() }) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.VERIFY_EMAIL_INVALID_CODE,
+                        errorMessage = msg(AuthMessages.VERIFY_EMAIL_INVALID_CODE),
                         infoMessage = null,
                     )
                 }
@@ -559,12 +551,12 @@ class AuthViewModel
                     authRateLimiter.recordFailure(AuthRateAction.SIGNUP, trimmedEmail)
                     val postFailLockMs =
                         authRateLimiter.remainingLockMs(AuthRateAction.SIGNUP, trimmedEmail)
-                    _formState.update {
-                        it.copy(
+                    _formState.update { state ->
+                        state.copy(
                             isLoading = false,
                             errorMessage =
-                                postFailLockMs?.let {
-                                    rateLimitMessage(AuthRateAction.SIGNUP, it)
+                                postFailLockMs?.let { remaining ->
+                                    rateLimitMessage(AuthRateAction.SIGNUP, remaining)
                                 } ?: friendlyAuthError(result.exceptionOrNull()),
                         )
                     }
@@ -585,7 +577,7 @@ class AuthViewModel
             if (trimmedEmail.isEmpty()) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.INVALID_EMAIL,
+                        errorMessage = msg(AuthMessages.INVALID_EMAIL),
                         infoMessage = null,
                     )
                 }
@@ -629,16 +621,16 @@ class AuthViewModel
                             if (rateLimited || deliveryFailed || clientLockMs != null) {
                                 null
                             } else {
-                                AuthMessages.resetOtpSent(trimmedEmail)
+                                AuthMessages.resetOtpSent(appContext, trimmedEmail)
                             },
                         errorMessage =
                             when {
                                 clientLockMs != null ->
                                     rateLimitMessage(AuthRateAction.FORGOT_PASSWORD, clientLockMs)
                                 rateLimited ->
-                                    AuthMessages.EMAIL_RATE_LIMITED
+                                    msg(AuthMessages.EMAIL_RATE_LIMITED)
                                 deliveryFailed ->
-                                    AuthMessages.EMAIL_DELIVERY_FAILED
+                                    msg(AuthMessages.EMAIL_DELIVERY_FAILED)
                                 else -> null
                             },
                     )
@@ -667,7 +659,7 @@ class AuthViewModel
             ) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.RESET_PASSWORD_REQUIREMENTS,
+                        errorMessage = msg(AuthMessages.RESET_PASSWORD_REQUIREMENTS),
                         infoMessage = null,
                     )
                 }
@@ -676,7 +668,7 @@ class AuthViewModel
             if (newPassword != confirmPassword) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.RESET_PASSWORD_MISMATCH,
+                        errorMessage = msg(AuthMessages.RESET_PASSWORD_MISMATCH),
                         infoMessage = null,
                     )
                 }
@@ -689,7 +681,7 @@ class AuthViewModel
             ) {
                 _formState.update {
                     it.copy(
-                        errorMessage = AuthMessages.VERIFY_EMAIL_INVALID_CODE,
+                        errorMessage = msg(AuthMessages.VERIFY_EMAIL_INVALID_CODE),
                         infoMessage = null,
                     )
                 }
@@ -728,14 +720,14 @@ class AuthViewModel
                                 trimmedEmail,
                             )
                         // Wrong / missing / expired / never-sent (unregistered) — same generic copy.
-                        _formState.update {
-                            it.copy(
+                        _formState.update { state ->
+                            state.copy(
                                 isLoading = false,
                                 holdSignedInForOtp = false,
                                 errorMessage =
-                                    lockMs?.let {
-                                        rateLimitMessage(AuthRateAction.RESET_PASSWORD, it)
-                                    } ?: AuthMessages.RESET_OTP_INVALID_OR_EXPIRED,
+                                    lockMs?.let { remaining ->
+                                        rateLimitMessage(AuthRateAction.RESET_PASSWORD, remaining)
+                                    } ?: msg(AuthMessages.RESET_OTP_INVALID_OR_EXPIRED),
                             )
                         }
                         return@launch
@@ -749,7 +741,7 @@ class AuthViewModel
                     _formState.update {
                         AuthFormState(
                             isLoading = false,
-                            infoMessage = AuthMessages.RESET_PASSWORD_SUCCESS,
+                            infoMessage = msg(AuthMessages.RESET_PASSWORD_SUCCESS),
                         )
                     }
                 } else {
@@ -765,15 +757,15 @@ class AuthViewModel
                             AuthRateAction.RESET_PASSWORD,
                             trimmedEmail,
                         )
-                    _formState.update {
-                        it.copy(
+                    _formState.update { state ->
+                        state.copy(
                             isLoading = false,
                             holdSignedInForOtp = false,
                             // Keep OTP verified for password-policy errors; re-prompt when session died.
-                            recoveryOtpVerified = it.recoveryOtpVerified && !sessionLost,
+                            recoveryOtpVerified = state.recoveryOtpVerified && !sessionLost,
                             errorMessage =
-                                lockMs?.let {
-                                    rateLimitMessage(AuthRateAction.RESET_PASSWORD, it)
+                                lockMs?.let { remaining ->
+                                    rateLimitMessage(AuthRateAction.RESET_PASSWORD, remaining)
                                 } ?: friendlyAuthError(err),
                         )
                     }
@@ -793,16 +785,6 @@ class AuthViewModel
             }
             submit {
                 authRepository.signOut()
-            }
-        }
-
-        /**
-         * Re-runs profile hydrate / sync so a pending invite token is claimed
-         * for an already signed-in user.
-         */
-        fun ensureInviteAccepted() {
-            viewModelScope.launch {
-                runCatching { authRepository.ensureLocalProfile() }
             }
         }
 
@@ -864,42 +846,42 @@ class AuthViewModel
             val lower = raw.lowercase()
             return when {
                 isAlreadyRegistered(lower) ->
-                    AuthMessages.ALREADY_REGISTERED
+                    msg(AuthMessages.ALREADY_REGISTERED)
                 isSamePassword(lower) ->
-                    AuthMessages.RESET_PASSWORD_SAME_AS_OLD
+                    msg(AuthMessages.RESET_PASSWORD_SAME_AS_OLD)
                 isRecoverySessionMissing(throwable) ->
-                    AuthMessages.RESET_PASSWORD_SESSION_EXPIRED
+                    msg(AuthMessages.RESET_PASSWORD_SESSION_EXPIRED)
                 isInvalidCredentials(throwable) ->
-                    AuthMessages.INVALID_CREDENTIALS
+                    msg(AuthMessages.INVALID_CREDENTIALS)
                 isEmailRateLimited(lower) ->
-                    AuthMessages.EMAIL_RATE_LIMITED
+                    msg(AuthMessages.EMAIL_RATE_LIMITED)
                 isEmailDeliveryFailure(lower) ->
-                    AuthMessages.EMAIL_DELIVERY_FAILED
+                    msg(AuthMessages.EMAIL_DELIVERY_FAILED)
                 isInvalidEmail(lower) ->
-                    AuthMessages.INVALID_EMAIL
+                    msg(AuthMessages.INVALID_EMAIL)
                 isWeakPassword(lower) ->
-                    AuthMessages.PASSWORD_SHORT
-                raw.isBlank() -> AuthMessages.GENERIC
+                    msg(AuthMessages.PASSWORD_SHORT)
+                raw.isBlank() -> msg(AuthMessages.GENERIC)
                 // RestException dumps include Url / Headers / Http Method — never show those.
                 "url:" in lower || "headers:" in lower || "http method" in lower ->
                     when {
                         isAlreadyRegistered(lower) ->
-                            AuthMessages.ALREADY_REGISTERED
+                            msg(AuthMessages.ALREADY_REGISTERED)
                         isSamePassword(lower) ->
-                            AuthMessages.RESET_PASSWORD_SAME_AS_OLD
+                            msg(AuthMessages.RESET_PASSWORD_SAME_AS_OLD)
                         isRecoverySessionMissing(throwable) ->
-                            AuthMessages.RESET_PASSWORD_SESSION_EXPIRED
+                            msg(AuthMessages.RESET_PASSWORD_SESSION_EXPIRED)
                         isEmailRateLimited(lower) ->
-                            AuthMessages.EMAIL_RATE_LIMITED
+                            msg(AuthMessages.EMAIL_RATE_LIMITED)
                         isEmailDeliveryFailure(lower) ->
-                            AuthMessages.EMAIL_DELIVERY_FAILED
+                            msg(AuthMessages.EMAIL_DELIVERY_FAILED)
                         isInvalidEmail(lower) ->
-                            AuthMessages.INVALID_EMAIL
-                        else -> AuthMessages.GENERIC
+                            msg(AuthMessages.INVALID_EMAIL)
+                        else -> msg(AuthMessages.GENERIC)
                     }
                 else ->
                     extractReadableAuthMessage(raw)
-                        ?: AuthMessages.GENERIC
+                        ?: msg(AuthMessages.GENERIC)
             }
         }
 
@@ -1036,7 +1018,7 @@ class AuthViewModel
         ): String {
             val waitMinutes =
                 ((lockRemainingMs + 59_999L) / 60_000L).toInt().coerceAtLeast(1)
-            return AuthMessages.authRateLimited(action, waitMinutes)
+            return AuthMessages.authRateLimited(appContext, action, waitMinutes)
         }
 
         companion object {

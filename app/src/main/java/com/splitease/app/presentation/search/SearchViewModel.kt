@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.domain.balance.BalanceCalculator
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.math.BigDecimal
-import java.math.RoundingMode
 import javax.inject.Inject
 
 @HiltViewModel
@@ -121,22 +121,10 @@ class SearchViewModel
             splits: List<ExpenseSplit>,
         ): Pair<LedgerBalanceSide?, BigDecimal?> {
             val zero = BigDecimal.ZERO.setScale(2)
-            val myShare =
-                splits
-                    .firstOrNull { it.userId == me }
-                    ?.owedAmount
-                    ?.setScale(2, RoundingMode.HALF_UP)
-                    ?: zero
-            val total = expense.amount.setScale(2, RoundingMode.HALF_UP)
-            val net =
-                if (expense.paidByUserId == me) {
-                    total.subtract(myShare)
-                } else {
-                    myShare.negate()
-                }
+            val net = BalanceCalculator.viewerNetForExpense(me, expense, splits)
             return when {
-                net.compareTo(zero) > 0 -> LedgerBalanceSide.LENT to net
-                net.compareTo(zero) < 0 -> LedgerBalanceSide.BORROWED to net.abs()
+                net > zero -> LedgerBalanceSide.LENT to net
+                net < zero -> LedgerBalanceSide.BORROWED to net.abs()
                 else -> null to null
             }
         }

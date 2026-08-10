@@ -44,7 +44,7 @@ interface InviteRepository {
      * Generic group share-link invites (no per-person friendship row).
      *
      * @param groupId Target group.
-     * @param status Status filter (typically [InviteStatus.PENDING]).
+     * @param status Invite status filter (typically [InviteStatus.PENDING]).
      * @return Matching invites, newest first.
      */
     suspend fun getGroupShareInvites(

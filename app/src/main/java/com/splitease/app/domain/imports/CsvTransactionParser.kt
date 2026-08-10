@@ -117,8 +117,8 @@ object CsvTransactionParser {
         var i = 0
         while (i < line.length) {
             val c = line[i]
-            when {
-                c == '"' -> {
+            when (c) {
+                '"' -> {
                     if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
                         sb.append('"')
                         i++
@@ -126,9 +126,13 @@ object CsvTransactionParser {
                         inQuotes = !inQuotes
                     }
                 }
-                c == ',' && !inQuotes -> {
-                    out += sb.toString()
-                    sb.clear()
+                ',' -> {
+                    if (!inQuotes) {
+                        out += sb.toString()
+                        sb.clear()
+                    } else {
+                        sb.append(c)
+                    }
                 }
                 else -> sb.append(c)
             }

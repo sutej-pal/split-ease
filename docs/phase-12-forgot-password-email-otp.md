@@ -23,13 +23,13 @@ Replace link-based password reset with a **6-digit email OTP** flow that matches
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Supabase `resetPasswordForEmail` to send | Same Auth recovery email path; hook delivers OTP when `email_action_type=recovery` |
-| Verify with `OtpType.Email.RECOVERY` | Correct type for recovery tokens |
-| Then `updateUser { password }` while session active | Required after recovery OTP establishes a session |
-| Gate Home with `pendingConfirmationEmail` + `RECOVERY` purpose | Same pattern as signup OTP; blocks Home until password is set |
-| Dedicated recovery mail copy | User reported reset mail reused signup/generic template |
+| Decision                                                       | Rationale                                                                          |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Supabase `resetPasswordForEmail` to send                       | Same Auth recovery email path; hook delivers OTP when `email_action_type=recovery` |
+| Verify with `OtpType.Email.RECOVERY`                           | Correct type for recovery tokens                                                   |
+| Then `updateUser { password }` while session active            | Required after recovery OTP establishes a session                                  |
+| Gate Home with `pendingConfirmationEmail` + `RECOVERY` purpose | Same pattern as signup OTP; blocks Home until password is set                      |
+| Dedicated recovery mail copy                                   | User reported reset mail reused signup/generic template                            |
 
 ## Data Model Changes
 
@@ -37,24 +37,24 @@ None (Room / PostgREST unchanged).
 
 ## Files Added/Modified
 
-| File path | Purpose |
-|---|---|
-| `mail-service/server.js` | Recovery OTP email template |
-| `docs/supabase-reset-password-otp.html` | Dashboard fallback template |
-| `domain/repository/AuthRepository.kt` | `verifyRecoveryOtp`, `updatePassword` |
-| `data/repository/SupabaseAuthRepository.kt` | Supabase RECOVERY verify + password update |
-| `presentation/auth/AuthViewModel.kt` | `RECOVERY` purpose + `completePasswordReset` |
-| `presentation/auth/AuthScreens.kt` | Reset OTP + new password UI |
-| `presentation/navigation/SplitEaseNavHost.kt` | Branch verify UI for recovery |
-| `res/values/strings.xml` | OTP reset copy |
-| `AuthViewModelTest.kt` | Coverage |
-| Living docs | PROGRESS, CHANGELOG, ARCHITECTURE, maintenance OTP |
+| File path                                     | Purpose                                            |
+| --------------------------------------------- | -------------------------------------------------- |
+| `mail-service/server.js`                      | Recovery OTP email template                        |
+| `docs/supabase-reset-password-otp.html`       | Dashboard fallback template                        |
+| `domain/repository/AuthRepository.kt`         | `verifyRecoveryOtp`, `updatePassword`              |
+| `data/repository/SupabaseAuthRepository.kt`   | Supabase RECOVERY verify + password update         |
+| `presentation/auth/AuthViewModel.kt`          | `RECOVERY` purpose + `completePasswordReset`       |
+| `presentation/auth/AuthScreens.kt`            | Reset OTP + new password UI                        |
+| `presentation/navigation/SplitEaseNavHost.kt` | Branch verify UI for recovery                      |
+| `res/values/strings.xml`                      | OTP reset copy                                     |
+| `AuthViewModelTest.kt`                        | Coverage                                           |
+| Living docs                                   | PROGRESS, CHANGELOG, ARCHITECTURE, maintenance OTP |
 
 ## Screens/UI Added
 
-| Screen | Change |
-|---|---|
-| Forgot password | Copy: send a **code** if an account exists (never “email not found”) |
+| Screen               | Change                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| Forgot password      | Copy: send a **code** if an account exists (never "email not found")                                   |
 | Reset password (OTP) | After send: always navigate; 6-digit code + new password + confirm; Resend code (Supabase rate-limits) |
 
 ## How to Test
@@ -77,11 +77,11 @@ None (Room / PostgREST unchanged).
 
 ## Outcome
 
-Updated 2026-08-04: forgot-password uses the same mail-service Send Email hook with a dedicated **recovery** template; the Android app verifies `OtpType.Email.RECOVERY` then calls `updatePassword`. Request is privacy-preserving: `requestPasswordReset` always soft-succeeds and navigates to OTP with generic “If an account exists…” copy; verify failures are always “Invalid or expired code.”
+Updated 2026-08-04: forgot-password uses the same mail-service Send Email hook with a dedicated **recovery** template; the Android app verifies `OtpType.Email.RECOVERY` then calls `updatePassword`. Request is privacy-preserving: `requestPasswordReset` always soft-succeeds and navigates to OTP with generic "If an account exists…" copy; verify failures are always "Invalid or expired code."
 
 - Forgot password → `requestPasswordReset` → always `ResetPasswordOtpScreen` (OTP + new password + confirm).
 - `AuthRepository.requestPasswordReset` + `verifyRecoveryOtp` + `updatePassword`.
-- mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup (“Reset your SplitEase password”).
+- mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup ("Reset your SplitEase password").
 - Fallback dashboard HTML: [supabase-reset-password-otp.html](supabase-reset-password-otp.html).
 - Unit tests cover gate arming, soft-success navigate, verify+update, generic invalid OTP, mismatch, and password-only retry after OTP success.
 

@@ -32,12 +32,12 @@ Add a shared per-group "Pin Board" — a single rich-text notepad visible and ed
 
 ### New Supabase table: `pin_boards`
 
-| Column | Type | Notes |
-|---|---|---|
-| group_id | uuid PK, FK → groups.id ON DELETE CASCADE | One board per group |
-| content | text, default '' | Markdown content |
-| updated_by | uuid FK → auth.users, ON DELETE SET NULL | Last editor |
-| updated_at | timestamptz, default now() | Last edit timestamp |
+| Column     | Type                                      | Notes               |
+| ---------- | ----------------------------------------- | ------------------- |
+| group_id   | uuid PK, FK → groups.id ON DELETE CASCADE | One board per group |
+| content    | text, default ''                          | Markdown content    |
+| updated_by | uuid FK → auth.users, ON DELETE SET NULL  | Last editor         |
+| updated_at | timestamptz, default now()                | Last edit timestamp |
 
 SQL: included in [sql/migration_db.sql](sql/migration_db.sql)
 

@@ -56,6 +56,8 @@ data class Expense(
  * @property owedAmount Exact amount owed toward this expense (currency of parent).
  * @property percentage Optional percent used when [SplitType.PERCENTAGE].
  * @property shares Optional share weight used when [SplitType.SHARES].
+ * @property paidAmount Optional multi-payer paid amount.
+ * @property adjustmentAmount Optional extra owed when [SplitType.ADJUSTMENT].
  * @property syncStatus Offline-first sync bookmark.
  */
 data class ExpenseSplit(
@@ -65,5 +67,15 @@ data class ExpenseSplit(
     val owedAmount: BigDecimal,
     val percentage: BigDecimal? = null,
     val shares: Int? = null,
+    /**
+     * Amount this participant paid toward the expense.
+     *
+     * Null means legacy single-payer mode: only [Expense.paidByUserId] is credited the full
+     * expense amount. When any split has a non-null value, balances credit each
+     * [paidAmount] instead.
+     */
+    val paidAmount: BigDecimal? = null,
+    /** Extra owed beyond equal remainder when [SplitType.ADJUSTMENT]. */
+    val adjustmentAmount: BigDecimal? = null,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
 )

@@ -44,15 +44,20 @@ fun ResetPasswordOtpScreen(
     var newPassword by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
     val otpReady = formState.recoveryOtpVerified
+    val resetOtpInvalid = stringResource(AuthMessages.RESET_OTP_INVALID_OR_EXPIRED)
+    val verifyCodeInvalid = stringResource(AuthMessages.VERIFY_EMAIL_INVALID_CODE)
+    val passwordRequirements = stringResource(AuthMessages.RESET_PASSWORD_REQUIREMENTS)
+    val passwordShort = stringResource(AuthMessages.PASSWORD_SHORT)
+    val passwordMismatch = stringResource(AuthMessages.RESET_PASSWORD_MISMATCH)
     val otpIsError =
-        formState.errorMessage == AuthMessages.RESET_OTP_INVALID_OR_EXPIRED ||
-            formState.errorMessage == AuthMessages.VERIFY_EMAIL_INVALID_CODE
+        (formState.errorMessage == resetOtpInvalid) ||
+            (formState.errorMessage == verifyCodeInvalid)
     val newPasswordError =
         formState.errorMessage.takeIf {
-            it == AuthMessages.RESET_PASSWORD_REQUIREMENTS || it == AuthMessages.PASSWORD_SHORT
+            it == passwordRequirements || it == passwordShort
         }
     val confirmPasswordError =
-        formState.errorMessage.takeIf { it == AuthMessages.RESET_PASSWORD_MISMATCH }
+        formState.errorMessage.takeIf { it == passwordMismatch }
     val passwordRules =
         remember(newPassword) {
             val hasMinLength = newPassword.length >= AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH
@@ -95,12 +100,11 @@ fun ResetPasswordOtpScreen(
                 LinkAnnotation.Clickable(
                     tag = "wrong_email",
                     styles = wrongEmailLinkStyles,
-                    linkInteractionListener = {
-                        if (!formState.isLoading) {
-                            onBackToLogin()
-                        }
-                    },
-                ),
+                ) {
+                    if (!formState.isLoading) {
+                        onBackToLogin()
+                    }
+                },
             ) {
                 append(wrongEmailLabel)
             }

@@ -20,7 +20,7 @@ import kotlin.coroutines.resume
 /**
  * One-shot Play Install Referrer bootstrap for deferred invite deep links.
  *
- * When a user opens an https invite without the app, the mail-service sends them to
+ * When a user opens a https invite without the app, the mail-service sends them to
  * Play Store with `referrer=invite_token%3D…`. After install, this reads that referrer
  * once and stores it via [AppSettingsRepository.setPendingInviteToken] — the same path
  * as a live deep link.

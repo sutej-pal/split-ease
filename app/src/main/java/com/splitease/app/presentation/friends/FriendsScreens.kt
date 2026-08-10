@@ -51,6 +51,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -282,8 +283,9 @@ fun FriendsListScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         SeOutlinedButton(
                             text =
-                                stringResource(
-                                    R.string.friends_show_settled,
+                                pluralStringResource(
+                                    R.plurals.friends_show_settled,
+                                    hiddenSettledCount,
                                     hiddenSettledCount,
                                 ),
                             onClick = { showSettledFriends = true },

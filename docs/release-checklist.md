@@ -6,7 +6,7 @@ Use before uploading a Play Console build.
 - [ ] `versionName` / `versionCode` bumped in `app/build.gradle.kts`
 - [ ] `./gradlew assembleRelease` (or bundle) succeeds
 - [ ] Host Digital Asset Links: `https://splitease.app/.well-known/assetlinks.json` (and mail-service host if used) — see [app-links-setup.md](app-links-setup.md)
-- [ ] Settings → SplitEase → Open by default shows verified invite hosts (not “0 verified links”)
+- [ ] Settings → SplitEase → Open by default shows verified invite hosts (not "0 verified links")
 - [ ] Release signing configured locally (keystore not committed)
 - [ ] ProGuard/R8 rules reviewed if minify enabled
 
@@ -30,12 +30,12 @@ Use before uploading a Play Console build.
 - [ ] Offline create expense → go online and verify auto-sync uploads within worker window
 - [ ] Settle-up pay intents + CSV import + Spending chart smoke
 - [ ] Biometric lock timeout smoke
-- [ ] Room upgrade from prior install does **not** wipe data (migrations 1→4)
+- [ ] Room upgrade from a prior installation does **not** wipe data (migrations 1→4)
 
 ## Store
 - [ ] Short/full descriptions from `docs/store-listing.md`
 - [ ] Feature graphic + screenshots (phone) prepared
-- [ ] Privacy policy URL ready
+- [ ] Privacy policy URL live at https://splitease-server-eight.vercel.app/privacy (and Terms at https://splitease-server-eight.vercel.app/terms)
 - [ ] Content rating questionnaire completed
 
 ## Tests

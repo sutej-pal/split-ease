@@ -1,4 +1,4 @@
-package com.splitease.app.presentation.groups
+package com.splitease.app.presentation.media
 
 import android.Manifest
 import android.content.Context
@@ -29,8 +29,8 @@ import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTextButton
 import java.io.File
 
-/** Gallery / camera picker for group photos. Call [launch] to open the source sheet. */
-class GroupPhotoPickerState internal constructor() {
+/** Gallery / camera picker that always opens a cropper before [onCropped]. Call [launch]. */
+class ImagePickerState internal constructor() {
     internal var showSheet by mutableStateOf(false)
         private set
 
@@ -43,19 +43,31 @@ class GroupPhotoPickerState internal constructor() {
     }
 }
 
+/**
+ * Picks an image from gallery or camera, then opens [ImageCropDialog] before calling [onCropped].
+ */
 @Composable
-fun rememberGroupPhotoPicker(
-    title: String = stringResource(R.string.group_photo_source_title),
-    body: String = stringResource(R.string.group_photo_source_body),
-    onPicked: (uri: String) -> Unit,
-): GroupPhotoPickerState {
+fun rememberImagePicker(
+    sourceTitle: String,
+    sourceBody: String,
+    cropTitle: String,
+    cropBody: String,
+    cropSpec: ImageCropSpec,
+    onCropped: (uri: String) -> Unit,
+): ImagePickerState {
     val context = LocalContext.current
-    val state = remember { GroupPhotoPickerState() }
+    val cameraPermissionDenied = stringResource(R.string.msg_camera_permission_denied)
+    val state = remember { ImagePickerState() }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingCropUri by remember { mutableStateOf<String?>(null) }
+
+    fun openCrop(uri: String) {
+        pendingCropUri = uri
+    }
 
     val galleryPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.toString()?.let(onPicked)
+            uri?.toString()?.let(::openCrop)
         }
 
     val takePicture =
@@ -63,21 +75,23 @@ fun rememberGroupPhotoPicker(
             val uri = pendingCameraUri
             pendingCameraUri = null
             if (success && uri != null) {
-                onPicked(uri.toString())
+                openCrop(uri.toString())
             }
         }
 
     val cameraPermission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                val uri = createGroupCameraCaptureUri(context) ?: return@rememberLauncherForActivityResult
+                val uri =
+                    createCameraCaptureUri(context, cropSpec.cacheSubdir)
+                        ?: return@rememberLauncherForActivityResult
                 pendingCameraUri = uri
                 takePicture.launch(uri)
             } else {
                 Toast
                     .makeText(
                         context,
-                        context.getString(R.string.msg_camera_permission_denied),
+                        cameraPermissionDenied,
                         Toast.LENGTH_SHORT,
                     ).show()
             }
@@ -85,9 +99,9 @@ fun rememberGroupPhotoPicker(
 
     if (state.showSheet) {
         SeModal(onDismissRequest = state::dismiss) {
-            SeModalTitle(text = title)
+            SeModalTitle(text = sourceTitle)
             Spacer(modifier = Modifier.height(8.dp))
-            SeModalBody(text = body)
+            SeModalBody(text = sourceBody)
             Spacer(modifier = Modifier.height(16.dp))
             SePrimaryButton(
                 text = stringResource(R.string.account_photo_gallery),
@@ -107,7 +121,9 @@ fun rememberGroupPhotoPicker(
                         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
                             PackageManager.PERMISSION_GRANTED
                     if (hasPermission) {
-                        val uri = createGroupCameraCaptureUri(context) ?: return@SePrimaryButton
+                        val uri =
+                            createCameraCaptureUri(context, cropSpec.cacheSubdir)
+                                ?: return@SePrimaryButton
                         pendingCameraUri = uri
                         takePicture.launch(uri)
                     } else {
@@ -123,26 +139,12 @@ fun rememberGroupPhotoPicker(
         }
     }
 
-    return state
-}
-
-/**
- * Picks a gallery/camera image, then opens a header-aspect cropper before calling [onCropped].
- */
-@Composable
-fun rememberGroupCoverPicker(onCropped: (uri: String) -> Unit): GroupPhotoPickerState {
-    var pendingCropUri by remember { mutableStateOf<String?>(null) }
-    val picker =
-        rememberGroupPhotoPicker(
-            title = stringResource(R.string.group_cover_source_title),
-            body = stringResource(R.string.group_cover_source_body),
-        ) { uri ->
-            pendingCropUri = uri
-        }
-
     pendingCropUri?.let { uri ->
-        CoverImageCropDialog(
+        ImageCropDialog(
             sourceUri = uri,
+            cropSpec = cropSpec,
+            cropTitle = cropTitle,
+            cropBody = cropBody,
             onDismiss = { pendingCropUri = null },
             onCropped = { cropped ->
                 pendingCropUri = null
@@ -151,12 +153,15 @@ fun rememberGroupCoverPicker(onCropped: (uri: String) -> Unit): GroupPhotoPicker
         )
     }
 
-    return picker
+    return state
 }
 
-private fun createGroupCameraCaptureUri(context: Context): Uri? =
+private fun createCameraCaptureUri(
+    context: Context,
+    cacheSubdir: String,
+): Uri? =
     runCatching {
-        val dir = File(context.cacheDir, "group_photos").apply { mkdirs() }
+        val dir = File(context.cacheDir, cacheSubdir).apply { mkdirs() }
         val file = File(dir, "capture_${System.currentTimeMillis()}.jpg")
         FileProvider.getUriForFile(
             context,

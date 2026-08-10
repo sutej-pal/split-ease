@@ -18,4 +18,7 @@
     <files-path
         name="group_cover_files"
         path="group_covers/" />
+    <cache-path
+        name="image_capture_cache"
+        path="image_capture/" />
 </paths>

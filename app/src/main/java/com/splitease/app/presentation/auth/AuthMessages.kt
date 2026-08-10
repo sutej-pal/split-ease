@@ -1,77 +1,74 @@
 package com.splitease.app.presentation.auth
 
+import android.content.Context
+import androidx.annotation.StringRes
+import com.splitease.app.R
+
 /**
- * User-facing auth feedback copy (errors + info snackbars).
+ * Auth feedback copy as [R.string] / [R.plurals] ids — single source in `strings.xml`.
  *
- * Edit message text here — [AuthViewModel] and auth screens read from this object
- * so copy stays in one place.
+ * Resolve with `context.getString(...)` / `stringResource(...)`. Formatted helpers take [Context].
  */
 object AuthMessages {
-    const val GENERIC = "Something went wrong. Try again."
+    @StringRes val GENERIC = R.string.error_generic
 
     // Login
-    const val LOGIN_FIELDS_REQUIRED = "Enter your email and password."
-    const val INVALID_CREDENTIALS = "Invalid email or password. Try again."
-    const val NOT_REGISTERED = "You're not registered with us. Please sign up."
+    @StringRes val LOGIN_FIELDS_REQUIRED = R.string.error_login_fields_required
+    @StringRes val INVALID_CREDENTIALS = R.string.error_invalid_credentials
+    @StringRes val NOT_REGISTERED = R.string.error_not_registered
+
+    // Sign up
+    @StringRes val NAME_REQUIRED = R.string.signup_error_name_required
+    @StringRes val PASSWORD_SHORT = R.string.signup_error_password_short
+    @StringRes val EMAIL_ALREADY_REGISTERED = R.string.error_email_already_registered
+    @StringRes val PHONE_ALREADY_REGISTERED = R.string.error_phone_already_registered
+    @StringRes val ALREADY_REGISTERED = R.string.error_already_registered
+
+    // Email delivery / rate limits
+    @StringRes val EMAIL_DELIVERY_FAILED = R.string.error_signup_email_delivery
+    @StringRes val EMAIL_RATE_LIMITED = R.string.error_signup_email_rate_limit
+    @StringRes val INVALID_EMAIL = R.string.error_invalid_email
+
+    // Verify / OTP
+    @StringRes val VERIFY_EMAIL_SENT = R.string.verify_email_sent
+    @StringRes val VERIFY_EMAIL_RESENT = R.string.verify_email_resent
+    @StringRes val VERIFY_EMAIL_INVALID_CODE = R.string.verify_email_invalid_code
+
+    // Password reset
+    @StringRes val RESET_OTP_INVALID_OR_EXPIRED = R.string.reset_otp_invalid_or_expired
+    @StringRes val RESET_PASSWORD_MISMATCH = R.string.reset_password_mismatch
+    @StringRes val RESET_PASSWORD_SUCCESS = R.string.reset_password_success
+    @StringRes val RESET_PASSWORD_SAME_AS_OLD = R.string.reset_password_same_as_old
+    @StringRes val RESET_PASSWORD_SESSION_EXPIRED = R.string.reset_password_session_expired
+    @StringRes val RESET_PASSWORD_REQUIREMENTS = R.string.reset_password_requirements
 
     /** Shown after too many attempts for an auth action on one email. */
     fun authRateLimited(
+        context: Context,
         action: AuthRateAction,
         waitMinutes: Int,
     ): String {
         val minutes = waitMinutes.coerceAtLeast(1)
-        val wait =
-            if (minutes == 1) {
-                "Try again in 1 minute."
-            } else {
-                "Try again in $minutes minutes."
-            }
-        val prefix =
+        @StringRes
+        val prefixRes =
             when (action) {
-                AuthRateAction.LOGIN -> "Too many login attempts."
-                AuthRateAction.SIGNUP -> "Too many sign-up attempts."
-                AuthRateAction.FORGOT_PASSWORD -> "Too many password-reset requests."
-                AuthRateAction.RESET_PASSWORD -> "Too many password-reset attempts."
+                AuthRateAction.LOGIN -> R.string.error_auth_rate_login
+                AuthRateAction.SIGNUP -> R.string.error_auth_rate_signup
+                AuthRateAction.FORGOT_PASSWORD -> R.string.error_auth_rate_forgot_password
+                AuthRateAction.RESET_PASSWORD -> R.string.error_auth_rate_reset_password
             }
-        return "$prefix $wait"
+        val wait =
+            context.resources.getQuantityString(
+                R.plurals.error_auth_rate_wait,
+                minutes,
+                minutes,
+            )
+        return context.getString(prefixRes, wait)
     }
 
-    /** @deprecated Prefer [authRateLimited] with [AuthRateAction.LOGIN]. */
-    fun loginRateLimited(waitMinutes: Int): String =
-        authRateLimited(AuthRateAction.LOGIN, waitMinutes)
-
-    // Sign up
-    const val NAME_REQUIRED = "Enter your full name."
-    const val PASSWORD_SHORT = "Password must be at least 8 characters."
-    const val EMAIL_ALREADY_REGISTERED = "This email is already registered. Please log in."
-    const val PHONE_ALREADY_REGISTERED = "This phone number is already registered. Please log in."
-    const val ALREADY_REGISTERED = "You're already registered with us. Please log in."
-
-    // Email delivery / rate limits
-    const val EMAIL_DELIVERY_FAILED =
-        "We couldn't send the verification email. Please try again in a moment."
-    const val EMAIL_RATE_LIMITED =
-        "Too many verification emails were sent. Wait a few minutes and try again."
-    const val INVALID_EMAIL = "Enter a valid email address."
-
-    // Verify / OTP
-    const val VERIFY_EMAIL_SENT =
-        "Account created. Check your email for a verification code."
-    const val VERIFY_EMAIL_RESENT = "Verification code resent. Check your inbox."
-    const val VERIFY_EMAIL_INVALID_CODE = "Enter a valid 6-digit code."
-
-    // Password reset
-    const val RESET_OTP_INVALID_OR_EXPIRED = "Invalid or expired code."
-    const val RESET_PASSWORD_MISMATCH = "Passwords do not match."
-    const val RESET_PASSWORD_SUCCESS = "Password updated."
-    const val RESET_PASSWORD_SAME_AS_OLD =
-        "Choose a different password than your current one."
-    const val RESET_PASSWORD_SESSION_EXPIRED =
-        "Your reset session expired. Request a new code and try again."
-    const val RESET_PASSWORD_REQUIREMENTS =
-        "Password must include 8+ characters, upper & lowercase letters, and a number."
-
     /** Privacy-preserving copy after requesting / resending a reset code. */
-    fun resetOtpSent(email: String): String =
-        "If an account exists for $email, we've sent a code."
+    fun resetOtpSent(
+        context: Context,
+        email: String,
+    ): String = context.getString(R.string.reset_otp_sent, email)
 }

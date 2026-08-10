@@ -9,7 +9,7 @@ import java.math.RoundingMode
 /**
  * Minimizes the number of settlement transfers for a set of net balances.
  *
- * Uses greedy matching of largest debtors to largest creditors. Deterministic
+ * Uses greedy matching of the largest debtors to the largest creditors. Deterministic
  * when user ids are sorted as a tie-break.
  */
 object DebtSimplifier {
@@ -93,12 +93,35 @@ object DebtSimplifier {
     ): List<DebtTransfer> {
         val bags = mutableMapOf<PairKey, BigDecimal>()
         expenses.forEach { expense ->
-            val payer = expense.paidByUserId
-            splitsByExpenseId[expense.id].orEmpty().forEach { split ->
-                if (split.userId == payer) return@forEach
-                val amount = split.owedAmount.setScale(2, RoundingMode.HALF_UP)
-                if (amount.compareTo(ZERO) == 0) return@forEach
-                addEdge(bags, split.userId, payer, expense.currencyCode, amount)
+            val splits = splitsByExpenseId[expense.id].orEmpty()
+            val payerAmounts =
+                if (splits.any { it.paidAmount != null }) {
+                    splits
+                        .mapNotNull { split ->
+                            val paid =
+                                (split.paidAmount ?: ZERO).setScale(2, RoundingMode.HALF_UP)
+                            if (paid.compareTo(ZERO) == 0) null else split.userId to paid
+                        }.toMap()
+                } else {
+                    mapOf(expense.paidByUserId to expense.amount.setScale(2, RoundingMode.HALF_UP))
+                }
+            val totalPaid =
+                payerAmounts.values
+                    .fold(ZERO) { acc, v -> acc.add(v) }
+                    .setScale(2, RoundingMode.HALF_UP)
+            if (totalPaid.compareTo(ZERO) == 0) return@forEach
+            splits.forEach { split ->
+                val owed = split.owedAmount.setScale(2, RoundingMode.HALF_UP)
+                if (owed.compareTo(ZERO) == 0) return@forEach
+                payerAmounts.forEach { (payerId, paid) ->
+                    if (split.userId == payerId) return@forEach
+                    val share =
+                        owed
+                            .multiply(paid)
+                            .divide(totalPaid, 2, RoundingMode.HALF_UP)
+                    if (share.compareTo(ZERO) == 0) return@forEach
+                    addEdge(bags, split.userId, payerId, expense.currencyCode, share)
+                }
             }
         }
         payments.forEach { payment ->

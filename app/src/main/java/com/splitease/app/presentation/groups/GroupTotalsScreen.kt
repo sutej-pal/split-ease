@@ -64,12 +64,12 @@ import com.splitease.app.domain.spending.GroupMonthSpending
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeChevronBackButton
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
+import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.seDetailHorizontal
 import java.text.DateFormatSymbols
 import java.util.Locale
@@ -106,6 +106,21 @@ fun GroupTotalsScreen(
 
     Scaffold(
         containerColor = bg,
+        topBar = {
+            SeTopBar(
+                title = "",
+                onBack = onBack,
+                actions = {
+                    IconButton(onClick = { showTerms = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.HelpOutline,
+                            contentDescription = stringResource(R.string.cd_totals_help),
+                            tint = SplitEaseColors.Navy,
+                        )
+                    }
+                },
+            )
+        },
         bottomBar = {
             if (!ui.isLoading) {
                 TotalsPeriodBar(
@@ -141,99 +156,64 @@ fun GroupTotalsScreen(
                         .fillMaxSize()
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
-                        .padding(bottom = 8.dp),
+                        .padding(bottom = 8.dp)
+                        .seDetailHorizontal(),
             ) {
-                TotalsTopBar(
-                    onBack = onBack,
+                Text(
+                    text = ui.groupName.ifBlank { stringResource(R.string.group_chip_totals) },
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = SplitEaseColors.Navy,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text =
+                        if (ui.allTime) {
+                            stringResource(R.string.totals_subtitle_all_time)
+                        } else {
+                            stringResource(
+                                R.string.totals_subtitle_month,
+                                formatMonthYear(ui.selectedYear, ui.selectedMonth),
+                            )
+                        },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = SplitEaseColors.NavyMuted,
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+                TotalsMonthChart(
+                    bars = ui.chartBars,
+                    selectedYear = ui.selectedYear,
+                    selectedMonth = ui.selectedMonth,
+                    allTime = ui.allTime,
+                    onSelectMonth = viewModel::selectChartMonth,
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+                TotalsStatRow(
+                    label = stringResource(R.string.totals_total_spent),
+                    amount = MoneyFormat.format(ui.totalSpent, ui.currencyCode),
+                    amountColor = SplitEaseColors.Secondary,
+                    pillColor = SplitEaseColors.Secondary,
                     onHelp = { showTerms = true },
                 )
-                Column(modifier = Modifier.seDetailHorizontal()) {
-                    Text(
-                        text = ui.groupName.ifBlank { stringResource(R.string.group_chip_totals) },
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = SplitEaseColors.Navy,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text =
-                            if (ui.allTime) {
-                                stringResource(R.string.totals_subtitle_all_time)
-                            } else {
-                                stringResource(
-                                    R.string.totals_subtitle_month,
-                                    formatMonthYear(ui.selectedYear, ui.selectedMonth),
-                                )
-                            },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SplitEaseColors.NavyMuted,
-                    )
-                    Spacer(modifier = Modifier.height(28.dp))
-                    TotalsMonthChart(
-                        bars = ui.chartBars,
-                        selectedYear = ui.selectedYear,
-                        selectedMonth = ui.selectedMonth,
-                        allTime = ui.allTime,
-                        onSelectMonth = viewModel::selectChartMonth,
-                        modifier = Modifier.fillMaxWidth().height(200.dp),
-                    )
-                    Spacer(modifier = Modifier.height(28.dp))
-                    TotalsStatRow(
-                        label = stringResource(R.string.totals_total_spent),
-                        amount = MoneyFormat.format(ui.totalSpent, ui.currencyCode),
-                        amountColor = SplitEaseColors.Secondary,
-                        pillColor = SplitEaseColors.Secondary,
-                        onHelp = { showTerms = true },
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    TotalsStatRow(
-                        label = stringResource(R.string.totals_your_share),
-                        amount = MoneyFormat.format(ui.yourShare, ui.currencyCode),
-                        amountColor = SplitEaseColors.Navy,
-                        pillColor = SplitEaseColors.Navy,
-                        onHelp = { showTerms = true },
-                        caption =
-                            ui.sharePercent?.let {
-                                stringResource(R.string.totals_share_percent, it)
-                            } ?: stringResource(R.string.totals_share_percent_unknown),
-                    )
-                }
+                Spacer(modifier = Modifier.height(20.dp))
+                TotalsStatRow(
+                    label = stringResource(R.string.totals_your_share),
+                    amount = MoneyFormat.format(ui.yourShare, ui.currencyCode),
+                    amountColor = SplitEaseColors.Navy,
+                    pillColor = SplitEaseColors.Navy,
+                    onHelp = { showTerms = true },
+                    caption =
+                        ui.sharePercent?.let {
+                            stringResource(R.string.totals_share_percent, it)
+                        } ?: stringResource(R.string.totals_share_percent_unknown),
+                )
             }
         }
     }
 
     if (showTerms) {
         TotalsTermsDialog(onDismiss = { showTerms = false })
-    }
-}
-
-@Composable
-private fun TotalsTopBar(
-    onBack: () -> Unit,
-    onHelp: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp)
-                .height(56.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(48.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            SeChevronBackButton(onClick = onBack)
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = onHelp) {
-            Icon(
-                imageVector = Icons.Filled.HelpOutline,
-                contentDescription = stringResource(R.string.cd_totals_help),
-                tint = SplitEaseColors.Navy,
-            )
-        }
     }
 }
 

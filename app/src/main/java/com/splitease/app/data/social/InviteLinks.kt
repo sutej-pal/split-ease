@@ -63,15 +63,6 @@ object InviteLinks {
     fun clipboardLink(token: String): String = urlFor(token)
 
     /**
-     * Custom-scheme URI for Android deep-link intake tests / diagnostics.
-     * Do **not** use for share or clipboard — prefer [urlFor].
-     *
-     * @param token Opaque invite token.
-     * @return `splitease://invite/{token}`.
-     */
-    fun deepLinkUri(token: String): String = "$DEEP_LINK_SCHEME://$DEEP_LINK_HOST/$token"
-
-    /**
      * Chrome-friendly Intent URI that opens the installed app, with https fallback.
      *
      * @param token Opaque invite token.

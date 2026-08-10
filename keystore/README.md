@@ -1,6 +1,6 @@
 # SplitEase signing keystore (local only)
 
-`*.jks` / `*.keystore` are gitignored. Do **not** commit this folder’s secrets.
+`*.jks` / `*.keystore` are gitignored. Do **not** commit this folder's secrets.
 
 ## Files
 

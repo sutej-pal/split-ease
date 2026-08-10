@@ -1,7 +1,7 @@
 package com.splitease.app.presentation.common
 
 /**
- * Splitwise-style short label for tree/branch copy: "Deepak joshi" → "Deepak j.".
+ * Splitwise-style short label for tree/branch copy (example: Deepak Joshi becomes Deepak j.).
  * Strips an optional "(invited)" suffix before shortening.
  */
 fun shortDisplayName(name: String): String {

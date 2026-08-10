@@ -17,7 +17,7 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 - [ ] **Invite email delivery** — MVP uses the system share sheet; automated send via mail-service still TODO.
 - [ ] **App Links / invite https** — Host [docs/assetlinks.json](docs/assetlinks.json) at `/.well-known/assetlinks.json` on invite hosts for verified Open-by-default links. See [docs/app-links-setup.md](docs/app-links-setup.md).
 - [ ] **Install Referrer E2E** — Full deferred-invite proof needs a Play install (Internal testing). Sideload does not populate referrer.
-- [ ] **Redeploy mail-service `/invite/:token`** — Open-app then Play Store with `referrer=invite_token%3Dâ€¦`; redeploy Render after pulling mail-service changes.
+- [ ] **Redeploy mail-service `/invite/:token`** — Open-app then Play Store with `referrer=invite_token%3D...`; redeploy Render after pulling mail-service changes.
 
 ## Sync, live updates & notifications
 
@@ -54,9 +54,9 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 ## Store / release
 
 - [ ] **Feature graphic** — 1024Ã—500 (`docs/store-listing.md`).
-- [ ] **Phone screenshots** — â‰¥2 in `docs/screenshots/`.
-- [ ] **Privacy policy URL** — Required for Play submission.
-- [ ] **Support contact** — Email / website TBD before Play submission.
+- [ ] **Phone screenshots** — >=2 in `docs/screenshots/`.
+- [x] **Privacy policy URL** — https://splitease-server-eight.vercel.app/privacy (HTML in SplitEase Server `legal/`).
+- [x] **Support contact** — `support@splitease.app` / https://splitease.app
 - [ ] Release checklist items in [docs/release-checklist.md](docs/release-checklist.md).
 
 ## Ops / SQL (existing projects)
@@ -67,8 +67,8 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 
 ## In-code markers
 
-| File | Marker |
-|---|---|
-| `presentation/theme/Color.kt` | `TODO(design)` — semantic balance colors |
-| `presentation/theme/Theme.kt` | `TODO(design)` — error* placeholders for "you owe" |
-| `presentation/theme/SplitEaseColors.kt` | `TODO(design)` — semantic balance colors |
+| File                                    | Marker                                             |
+| --------------------------------------- | -------------------------------------------------- |
+| `presentation/theme/Color.kt`           | `TODO(design)` — semantic balance colors           |
+| `presentation/theme/Theme.kt`           | `TODO(design)` — error* placeholders for "you owe" |
+| `presentation/theme/SplitEaseColors.kt` | `TODO(design)` — semantic balance colors           |

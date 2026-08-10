@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.splitease.app.R
@@ -56,7 +57,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
  * `isAppearanceLightStatusBars` / `isAppearanceLightNavigationBars` (true = dark glyphs).
  *
  * On dispose, restores theme-default contrast so status-bar notification icons
- * (wifi, signal, battery) cannot linger white on a light bar after leaving a
+ * (Wi-Fi, signal, battery) cannot linger white on a light bar after leaving a
  * screen that forced light glyphs (e.g. group detail banner).
  */
 @Composable
@@ -82,10 +83,9 @@ fun SeSystemBars(
         themeSurface,
         themeDarkGlyphs,
     ) {
-        val window = (view.context as? Activity)?.window
-        if (window == null) {
-            return@DisposableEffect onDispose { }
-        }
+        val window =
+            (view.context as? Activity)?.window
+                ?: return@DisposableEffect onDispose { }
         val controller = WindowCompat.getInsetsController(window, view)
 
         @Suppress("DEPRECATION")
@@ -107,70 +107,17 @@ fun SeSystemBars(
     }
 }
 
-/**
- * Back chevron in a single 40dp circular hit target.
- * Do not wrap this in another [Box] / [IconButton] at call sites.
- */
-@Composable
-fun SeChevronBackButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    contentDescription: String = stringResource(R.string.cd_navigate_back),
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    Box(
-        modifier =
-            modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .clickable(
-                    enabled = enabled,
-                    interactionSource = interactionSource,
-                    indication = ripple(bounded = true, radius = 20.dp),
-                    role = Role.Button,
-                    onClick = onClick,
-                ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.ChevronLeft,
-            contentDescription = contentDescription,
-            tint = SplitEaseColors.Navy,
-            // ChevronLeft’s glyph sits slightly right in the 24dp viewport; nudge left.
-            modifier = Modifier.size(24.dp).offset(x = (-1).dp),
-        )
-    }
-}
-
-/**
- * Single title text used by [SeTopBar], [SeBackTitleRow], and auth headers.
- */
-@Composable
-fun SeScreenTitleText(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Start,
-    maxLines: Int = 1,
-) {
-    Text(
-        text = text,
-        modifier = modifier,
-        style = SeScreenTitleStyle(),
-        textAlign = textAlign,
-        maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
-
-/** Toolbar content height below the status bar for leading (back + title) chrome. */
+/** Toolbar content height below the status bar. */
 private val SeTopBarContentHeight = 56.dp
 
 /**
- * Canonical top app bar for secondary screens (back / close + title + actions).
+ * **The** navigation chrome for secondary screens: back/close + title + actions.
  *
- * Prefer [SeScreen] for full pages — that is the **one** wrapper for back + title.
- * Do not invent alternate title sizes or custom back rows at call sites.
+ * Prefer [SeScreen] for full pages (it hosts this bar). For custom scaffolds, put
+ * [SeTopBar] in `Scaffold(topBar = …)` — or inline with [consumeWindowInsets] = false
+ * when the parent already applied status-bar padding.
+ *
+ * Do not invent alternate back rows or title styles at call sites.
  *
  * - [centered] = false → leading layout (back/close at [SeLayout.detailHorizontal], title beside it).
  * - [centered] = true → Material center-aligned bar (e.g. create-group close sheet).
@@ -182,7 +129,12 @@ fun SeTopBar(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
     onClose: (() -> Unit)? = null,
+    enabled: Boolean = true,
     centered: Boolean = false,
+    consumeWindowInsets: Boolean = true,
+    /** Side inset for leading chrome; auth forms pass [SeLayout.screenHorizontal]. */
+    horizontalPadding: Dp = SeLayout.detailHorizontal,
+    navigationExtra: @Composable RowScope.() -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     if (centered) {
@@ -196,7 +148,7 @@ fun SeTopBar(
         CenterAlignedTopAppBar(
             modifier = modifier,
             title = {
-                SeScreenTitleText(
+                SeTopBarTitleText(
                     text = title,
                     textAlign = TextAlign.Center,
                 )
@@ -204,12 +156,13 @@ fun SeTopBar(
             navigationIcon = {
                 when {
                     onClose != null ->
-                        IconButton(onClick = onClose) {
+                        IconButton(onClick = onClose, enabled = enabled) {
                             Icon(Icons.Filled.Close, contentDescription = "Close")
                         }
                     onBack != null ->
-                        SeChevronBackButton(
+                        SeTopBarBackButton(
                             onClick = onBack,
+                            enabled = enabled,
                             modifier = Modifier.padding(start = 4.dp),
                         )
                 }
@@ -218,110 +171,64 @@ fun SeTopBar(
             colors = colors,
         )
     } else {
-        SeLeadingTopBar(
-            title = title,
-            modifier = modifier,
-            onBack = onBack,
-            onClose = onClose,
-            actions = actions,
-        )
-    }
-}
-
-/**
- * Leading back/close + title + actions — one [Row], 20dp side margin, no nested boxes
- * around the back control.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SeLeadingTopBar(
-    title: String,
-    modifier: Modifier = Modifier,
-    onBack: (() -> Unit)? = null,
-    onClose: (() -> Unit)? = null,
-    enabled: Boolean = true,
-    consumeWindowInsets: Boolean = true,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    val insetsModifier =
-        if (consumeWindowInsets) {
-            Modifier.windowInsetsPadding(TopAppBarDefaults.windowInsets)
-        } else {
-            Modifier
-        }
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .then(insetsModifier)
-                .height(SeTopBarContentHeight)
-                .padding(horizontal = SeLayout.detailHorizontal),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        when {
-            onClose != null ->
-                IconButton(
-                    onClick = onClose,
-                    enabled = enabled,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Close",
-                        tint = SplitEaseColors.Navy,
+        val insetsModifier =
+            if (consumeWindowInsets) {
+                Modifier.windowInsetsPadding(TopAppBarDefaults.windowInsets)
+            } else {
+                Modifier
+            }
+        Row(
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .then(insetsModifier)
+                    .height(SeTopBarContentHeight)
+                    .padding(horizontal = horizontalPadding),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when {
+                onClose != null ->
+                    IconButton(
+                        onClick = onClose,
+                        enabled = enabled,
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close",
+                            tint = SplitEaseColors.NavyMuted,
+                        )
+                    }
+                onBack != null ->
+                    SeTopBarBackButton(
+                        onClick = onBack,
+                        enabled = enabled,
                     )
-                }
-            onBack != null ->
-                SeChevronBackButton(
-                    onClick = onBack,
-                    enabled = enabled,
+            }
+            navigationExtra()
+            if (title.isNotEmpty()) {
+                SeTopBarTitleText(
+                    text = title,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .padding(start = SeLayout.itemGap),
                 )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+            actions()
         }
-        if (title.isNotEmpty()) {
-            SeScreenTitleText(
-                text = title,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .padding(start = SeLayout.itemGap),
-            )
-        } else {
-            Spacer(modifier = Modifier.weight(1f))
-        }
-        actions()
     }
-}
-
-/**
- * Inline back + optional title for rare non-[SeScreen] scaffolds.
- *
- * Prefer [SeScreen] / [SeTopBar] for full secondary screens. Kept for embedded headers
- * that cannot host a Scaffold top bar — does not consume status-bar insets.
- */
-@Composable
-fun SeBackTitleRow(
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    title: String? = null,
-    enabled: Boolean = true,
-) {
-    SeLeadingTopBar(
-        title = title.orEmpty(),
-        modifier = modifier,
-        onBack = onBack,
-        enabled = enabled,
-        consumeWindowInsets = false,
-    )
 }
 
 /**
  * Standard secondary screen scaffold: system bars + [SeTopBar] + content.
  *
- * This is the **one** navigation chrome for back + title across the app.
  * Body horizontal rhythm: apply [SeLayout.detailHorizontal] / [seDetailHorizontal]
  * for Activity / Balances / Totals (match group-detail 16dp), or
- * [SeLayout.screenHorizontal] for form screens. Do not invent per-screen title sizes.
+ * [SeLayout.screenHorizontal] for form screens.
  */
 @Composable
 fun SeScreen(
@@ -369,7 +276,7 @@ fun SeScreen(
             ) {
                 Text(
                     text = subtitle,
-                    style = SeScreenSubtitleStyle(),
+                    style = seScreenSubtitleStyle(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(SeLayout.headerToContent))
@@ -386,6 +293,56 @@ data class PaddingValuesAware(
     val values: PaddingValues,
 )
 
+@Composable
+private fun SeTopBarBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentDescription: String = stringResource(R.string.cd_navigate_back),
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier =
+            modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .clickable(
+                    enabled = enabled,
+                    interactionSource = interactionSource,
+                    indication = ripple(bounded = true, radius = 20.dp),
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.ChevronLeft,
+            contentDescription = contentDescription,
+            // Muted vs title so the chevron stays secondary chrome.
+            tint = SplitEaseColors.NavyMuted,
+            // ChevronLeft’s glyph sits slightly right in the 24dp viewport; nudge left.
+            modifier = Modifier.size(22.dp).offset(x = (-1).dp),
+        )
+    }
+}
+
+@Composable
+private fun SeTopBarTitleText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+    maxLines: Int = 1,
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        style = seScreenTitleStyle(),
+        textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 @Preview(name = "Top bar", showBackground = true)
 @Composable
 private fun SeTopBarPreview() {
@@ -397,17 +354,11 @@ private fun SeTopBarPreview() {
                 onClose = {},
                 centered = true,
             )
-        }
-    }
-}
-
-@Preview(name = "Back title row", showBackground = true)
-@Composable
-private fun SeBackTitleRowPreview() {
-    SePreview {
-        Column {
-            SeBackTitleRow(title = "Forgot password", onBack = {})
-            SeBackTitleRow(onBack = {})
+            SeTopBar(
+                title = "Welcome to SplitEase!",
+                onBack = {},
+                consumeWindowInsets = false,
+            )
         }
     }
 }

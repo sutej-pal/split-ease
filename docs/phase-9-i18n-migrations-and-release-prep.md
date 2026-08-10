@@ -23,13 +23,13 @@ Ship release-hardening: 7+ languages, real Room migrations (no destructive wipe 
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| `AppCompatDelegate.setApplicationLocales` | Per-app language without process restart hacks; persists via AppCompat |
-| Sign-up returns `SignUpResult` (SignedIn vs PendingEmailConfirmation) | Works with Confirm email ON or OFF |
-| Manual `Migration` objects from exported schemas | Schemas 1–4 already exported; no AutoMigration annotation churn |
-| Keep destructive fallback **off** in release DB builder | Data loss on upgrade is unacceptable for 1.0 |
-| Compose UI smoke on Welcome | Proves instrumentation + Compose test deps without brittle nav graphs |
+| Decision                                                              | Rationale                                                              |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `AppCompatDelegate.setApplicationLocales`                             | Per-app language without process restart hacks; persists via AppCompat |
+| Sign-up returns `SignUpResult` (SignedIn vs PendingEmailConfirmation) | Works with Confirm email ON or OFF                                     |
+| Manual `Migration` objects from exported schemas                      | Schemas 1–4 already exported; no AutoMigration annotation churn        |
+| Keep destructive fallback **off** in release DB builder               | Data loss on upgrade is unacceptable for 1.0                           |
+| Compose UI smoke on Welcome                                           | Proves instrumentation + Compose test deps without brittle nav graphs  |
 
 ## Plan
 
@@ -56,19 +56,19 @@ Phase 8 was already complete (payments / CSV / Vico). Phase 9 delivered i18n (8 
 
 ### Files Added/Modified
 
-| Path | Purpose |
-|---|---|
-| `data/local/db/SplitEaseMigrations.kt` | Migrations 1→2→3→4 |
-| `data/di/DatabaseModule.kt` | `addMigrations`; removed destructive fallback |
-| `domain/model/SignUpResult.kt` | Signup outcome sealed type |
-| `domain/settings/AppLocale.kt` | Language preference enum |
-| `presentation/auth/*` | Verify-email UI + ViewModel/repo changes |
-| `presentation/settings/*` | Language settings screen |
-| `MainActivity` / `AndroidManifest` | Auth deep-link handling |
-| `res/values-*/strings.xml` | es, fr, de, pt, hi, ja, it |
-| `docs/release-checklist.md`, `docs/store-listing.md` | Release prep |
-| `androidTest/.../WelcomeScreenComposeTest.kt` | Compose smoke |
-| `androidTest/.../SplitEaseMigrationsTest.kt` | Migration validation |
+| Path                                                 | Purpose                                       |
+| ---------------------------------------------------- | --------------------------------------------- |
+| `data/local/db/SplitEaseMigrations.kt`               | Migrations 1→2→3→4                            |
+| `data/di/DatabaseModule.kt`                          | `addMigrations`; removed destructive fallback |
+| `domain/model/SignUpResult.kt`                       | Signup outcome sealed type                    |
+| `domain/settings/AppLocale.kt`                       | Language preference enum                      |
+| `presentation/auth/*`                                | Verify-email UI + ViewModel/repo changes      |
+| `presentation/settings/*`                            | Language settings screen                      |
+| `MainActivity` / `AndroidManifest`                   | Auth deep-link handling                       |
+| `res/values-*/strings.xml`                           | es, fr, de, pt, hi, ja, it                    |
+| `docs/release-checklist.md`, `docs/store-listing.md` | Release prep                                  |
+| `androidTest/.../WelcomeScreenComposeTest.kt`        | Compose smoke                                 |
+| `androidTest/.../SplitEaseMigrationsTest.kt`         | Migration validation                          |
 
 ### Screens/UI Added
 

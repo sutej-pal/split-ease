@@ -206,6 +206,8 @@ fun ExpenseSplitEntity.toDomain(): ExpenseSplit =
         owedAmount = owedAmount,
         percentage = percentage,
         shares = shares,
+        paidAmount = paidAmount,
+        adjustmentAmount = adjustmentAmount,
         syncStatus = syncStatus,
     )
 
@@ -218,6 +220,8 @@ fun ExpenseSplit.toEntity(): ExpenseSplitEntity =
         owedAmount = owedAmount,
         percentage = percentage,
         shares = shares,
+        paidAmount = paidAmount,
+        adjustmentAmount = adjustmentAmount,
         syncStatus = syncStatus,
     )
 

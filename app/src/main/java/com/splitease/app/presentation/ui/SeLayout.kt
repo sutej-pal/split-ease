@@ -18,14 +18,14 @@ import com.splitease.app.presentation.theme.SplitEaseColors
  *
  * Secondary screens (back + title) must use [SeScreen] (or [SeTopBar] inside a
  * Scaffold) so chevron + title placement stays identical. Prefer
- * [SeScreenTitleStyle] over raw `headline*` / `title*` picks in screen headers.
+ * [seScreenTitleStyle] over raw `headline*` / `title*` picks in screen headers.
  *
  * List / balance / totals body content should use [detailHorizontal] (16dp) so it
  * matches group-detail rows. Detail banners are a separate chrome pattern.
  */
 object SeLayout {
     /** Horizontal inset for form-style bodies (auth, settings). */
-    val screenHorizontal: Dp = 24.dp
+    val screenHorizontal: Dp = 20.dp
 
     /**
      * Canonical content margin for group-detail-style screens: Activity, Balances,
@@ -62,15 +62,15 @@ fun Modifier.seDetailHorizontal(): Modifier =
     this.padding(horizontal = SeLayout.detailHorizontal)
 
 /**
- * Canonical text style for secondary-screen titles (app bar / back+title chrome).
+ * Canonical text style for secondary-screen titles (app bar / [SeTopBar] chrome).
  *
  * Uses Material [Typography.titleLarge] (22sp) so titles are consistent — not a mix
  * of `headlineMedium` and `titleMedium`. [includeFontPadding] is off so the glyph
- * centers optically beside [SeChevronBackButton].
+ * centers optically beside the back chevron in [SeTopBar].
  */
 @Composable
 @ReadOnlyComposable
-fun SeScreenTitleStyle(): TextStyle =
+fun seScreenTitleStyle(): TextStyle =
     MaterialTheme.typography.titleLarge.copy(
         fontWeight = FontWeight.SemiBold,
         color = SplitEaseColors.Navy,
@@ -87,7 +87,7 @@ fun SeScreenTitleStyle(): TextStyle =
  */
 @Composable
 @ReadOnlyComposable
-fun SeScreenSubtitleStyle(): TextStyle =
+fun seScreenSubtitleStyle(): TextStyle =
     MaterialTheme.typography.bodyMedium.copy(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

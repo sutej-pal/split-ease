@@ -34,7 +34,7 @@ fun ForgotPasswordScreen(
         subtitle = stringResource(R.string.forgot_subtitle),
         formState = formState,
         modifier = modifier,
-        contentPlacement = AuthContentPlacement.Top,
+        contentPlacement = AuthContentPlacement.Center,
         onNavigateBack = onNavigateBack,
         showLoadingIndicator = false,
     ) {

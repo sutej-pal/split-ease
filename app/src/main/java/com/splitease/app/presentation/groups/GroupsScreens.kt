@@ -115,6 +115,8 @@ import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.LedgerBalanceSide
 import com.splitease.app.presentation.expenses.LedgerListItem
 import com.splitease.app.presentation.expenses.ledgerEntries
+import com.splitease.app.presentation.media.ImagePickPresets
+import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeEmptyState
@@ -138,6 +140,7 @@ import java.io.File
 import java.math.BigDecimal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.core.graphics.get
 import androidx.core.net.toUri
 
 @Composable
@@ -153,7 +156,14 @@ fun CreateGroupScreen(
     val selectedType = runCatching { GroupType.valueOf(groupType) }.getOrDefault(GroupType.OTHER)
     val isSubmitting = uiState.isSubmitting
     val canCreate = name.isNotBlank() && !isSubmitting
-    val photoPicker = rememberGroupPhotoPicker { photoUri = it }
+    val photoPicker =
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.group_photo_source_title),
+            sourceBody = stringResource(R.string.group_photo_source_body),
+            cropTitle = stringResource(R.string.image_crop_title),
+            cropBody = stringResource(R.string.image_crop_body),
+            cropSpec = ImagePickPresets.GroupPhoto,
+        ) { photoUri = it }
     val focusManager = LocalFocusManager.current
 
     Scaffold(
@@ -175,13 +185,13 @@ fun CreateGroupScreen(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = { focusManager.clearFocus() },
-                    )
+                    ) { focusManager.clearFocus() }
                     .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                // Bottom-align so the photo tracks the outlined box (not the float-label inset).
+                verticalAlignment = Alignment.Bottom,
             ) {
                 Box(
                     modifier =
@@ -354,12 +364,12 @@ fun GroupDetailScreen(
         .collectAsStateWithLifecycle()
     val context = LocalContext.current
     val me = expensesViewModel.currentUserId()
-    val isSolo = membersReady && members.size <= 1
+    val isSolo = membersReady && (members.size <= 1)
     val nets = groupBalance?.myNetByCurrency
     val iAmSettled =
         nets != null &&
             (nets.isEmpty() || nets.values.all { it.compareTo(BigDecimal.ZERO) == 0 })
-    var showSettledExpenses by rememberSaveable(groupId) { mutableStateOf(false) }
+    var showSettledExpenses by rememberSaveable(groupId) { mutableStateOf(value = false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val bannerColor = lerp((group?.groupType ?: GroupType.OTHER).tint(), SplitEaseColors.Navy, 0.28f)
 
@@ -424,7 +434,7 @@ fun GroupDetailScreen(
             object : NestedScrollConnection {
                 override fun onPreScroll(
                     available: Offset,
-                    source: NestedScrollSource,
+                    _source: NestedScrollSource,
                 ): Offset {
                     // Collapse the banner before the list scrolls up.
                     if (available.y >= 0f) return Offset.Zero
@@ -435,9 +445,9 @@ fun GroupDetailScreen(
                 }
 
                 override fun onPostScroll(
-                    consumed: Offset,
+                    _consumed: Offset,
                     available: Offset,
-                    source: NestedScrollSource,
+                    _source: NestedScrollSource,
                 ): Offset {
                     // Expand the banner after the list can no longer scroll down.
                     if (available.y <= 0f) return Offset.Zero
@@ -834,7 +844,7 @@ private fun android.graphics.Bitmap.averageTopLuminance(topFraction: Float = 0.2
     while (y < sampleHeight) {
         var x = 0
         while (x < width) {
-            val pixel = getPixel(x, y)
+            val pixel = this[x, y]
             val r = ((pixel ushr 16) and 0xFF) / 255.0
             val g = ((pixel ushr 8) and 0xFF) / 255.0
             val b = (pixel and 0xFF) / 255.0
@@ -907,7 +917,7 @@ internal fun GroupOverallBalanceBlock(
     onClick: (() -> Unit)? = null,
 ) {
     if (balance == null) return
-    var expanded by rememberSaveable { mutableStateOf(true) }
+    var expanded by rememberSaveable { mutableStateOf(value = true) }
     val myDebts =
         balance.simplifiedDebts.filter { debt ->
             debt.fromLabel == "You" || debt.toLabel == "You"

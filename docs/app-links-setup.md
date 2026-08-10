@@ -1,6 +1,6 @@
 # Android App Links (verified invite https)
 
-## Why Settings shows “0 verified links”
+## Why Settings shows "0 verified links"
 
 Android only lists a host under **Open by default → Verified links** after **Digital Asset Links** succeed for that host.
 
@@ -23,9 +23,9 @@ Until then, https invite links may show an open-with chooser. Custom-scheme link
 
 ## Fingerprints in the JSON
 
-| Build | Source |
-|---|---|
-| Debug | Machine debug keystore (`AndroidDebugKey`) |
+| Build   | Source                                             |
+| ------- | -------------------------------------------------- |
+| Debug   | Machine debug keystore (`AndroidDebugKey`)         |
 | Release | `keystore/splitease-release.jks` alias `splitease` |
 
 If you rotate the release keystore, update the SHA-256 in `assetlinks.json` (colons allowed):
@@ -41,8 +41,8 @@ keytool -list -v -keystore keystore/splitease-release.jks -alias splitease
 3. On a device with SplitEase installed, open that https page — the bridge should hand off into the app.
 4. Legacy `splitease://invite/…` still opens the app if pasted or opened directly; it is inbound-only and not shared by the app.
 
-## Host an https bridge (optional)
+## Host a https bridge (optional)
 
 The mail-service already serves this via `GET /invite/:token` (see `server/server.js`). It tries `splitease://` / `intent://` so Chrome can open the installed app even before App Links are verified.
 
-**Important:** Do **not** auto-redirect to Play Store. Until `com.splitease.app` is published, Chrome’s Play fallback shows unrelated apps with a similar name. Keep Play as a manual button only; set `S.browser_fallback_url` back to the invite page (not `market://`).
+**Important:** Do **not** auto-redirect to Play Store. Until `com.splitease.app` is published, Chrome's Play fallback shows unrelated apps with a similar name. Keep Play as a manual button only; set `S.browser_fallback_url` back to the invite page (not `market://`).

@@ -130,10 +130,6 @@ class FindPeopleViewModel
             }
         }
 
-        fun clearSelection() {
-            _uiState.update { it.copy(selectedContactIds = emptySet()) }
-        }
-
         /**
          * Seeds the Review screen with selected contacts (default phone, else email).
          *
@@ -256,22 +252,6 @@ class FindPeopleViewModel
                 if (outcome != null && !outcome.isInvitePending) {
                     onDone()
                 }
-            }
-        }
-
-        fun addContact(
-            contact: DeviceContact,
-            onNeedManualAdd: (name: String, contactValue: String) -> Unit,
-            onDone: () -> Unit,
-        ) {
-            val email = contact.email?.trim().orEmpty()
-            val phone = contact.phoneNumber?.trim().orEmpty()
-            val name = contact.displayName
-            when {
-                email.isNotEmpty() ->
-                    submitContact(name = name, contactValue = email, onDone = onDone)
-                phone.isNotEmpty() -> onNeedManualAdd(name, phone)
-                else -> onNeedManualAdd(name, "")
             }
         }
 

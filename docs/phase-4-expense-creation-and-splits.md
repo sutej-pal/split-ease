@@ -25,14 +25,14 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Domain `SplitCalculator` pure functions | Testable money math; no Android deps |
-| `ExpenseInteractor` in data layer (like Social) | Room-first then PostgREST |
-| No FK from remote `expense_splits.user_id` → `auth.users` | Allows placeholder UUIDs until invite accept |
-| Soft local `group_members` for invited users | Group expense pickers can include them; remote membership waits for accept |
-| Extend `accept_pending_invites()` to remap splits/payer | Invitee inherits history without client-only hacks |
-| Best-effort expense sync (not Phase 7 queue) | Enough for invitee visibility after login |
+| Decision                                                  | Rationale                                                                  |
+| --------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Domain `SplitCalculator` pure functions                   | Testable money math; no Android deps                                       |
+| `ExpenseInteractor` in data layer (like Social)           | Room-first then PostgREST                                                  |
+| No FK from remote `expense_splits.user_id` → `auth.users` | Allows placeholder UUIDs until invite accept                               |
+| Soft local `group_members` for invited users              | Group expense pickers can include them; remote membership waits for accept |
+| Extend `accept_pending_invites()` to remap splits/payer   | Invitee inherits history without client-only hacks                         |
+| Best-effort expense sync (not Phase 7 queue)              | Enough for invitee visibility after login                                  |
 
 ## Data Model Changes
 
@@ -42,17 +42,17 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 
 ## Files Added/Modified
 
-| Path | Notes |
-|---|---|
-| `domain/split/SplitCalculator.kt` | Equal / unequal / % / shares |
-| `data/expense/ExpenseInteractor.kt` | Create + sync + refresh |
-| `data/remote/ExpenseRemoteDataSource.kt` | PostgREST expenses |
-| `docs/sql/migration_db.sql` | Cloud schema + accept remap |
-| `presentation/expenses/*` | Add expense, friend detail, list section |
-| `presentation/groups/GroupsScreens.kt` | Expense list + FAB |
-| `presentation/friends/FriendsScreens.kt` | Open friend detail |
-| `presentation/navigation/SplitEaseNavHost.kt` | New routes |
-| Auth / SocialInteractor | Claim invites + refresh expenses; soft members |
+| Path                                          | Notes                                          |
+| --------------------------------------------- | ---------------------------------------------- |
+| `domain/split/SplitCalculator.kt`             | Equal / unequal / % / shares                   |
+| `data/expense/ExpenseInteractor.kt`           | Create + sync + refresh                        |
+| `data/remote/ExpenseRemoteDataSource.kt`      | PostgREST expenses                             |
+| `docs/sql/migration_db.sql`                   | Cloud schema + accept remap                    |
+| `presentation/expenses/*`                     | Add expense, friend detail, list section       |
+| `presentation/groups/GroupsScreens.kt`        | Expense list + FAB                             |
+| `presentation/friends/FriendsScreens.kt`      | Open friend detail                             |
+| `presentation/navigation/SplitEaseNavHost.kt` | New routes                                     |
+| Auth / SocialInteractor                       | Claim invites + refresh expenses; soft members |
 
 ## Screens/UI Added
 
@@ -73,11 +73,11 @@ Let users create unlimited expenses with equal / unequal / percentage / shares s
 - Expense sync is best-effort (full queue in Phase 7).
 - Invitee must use the invited email for accept remap.
 - Deep link open of invite URL still placeholder.
-- Capture screenshot into `docs/screenshots/phase-4.png`.
+- Capture a local screenshot for this phase when needed.
 
 ## Screenshots placeholder
 
-![phase-4-screenshot](./screenshots/phase-4.png)
+_(No screenshot checked in for this phase.)_
 
 ---
 

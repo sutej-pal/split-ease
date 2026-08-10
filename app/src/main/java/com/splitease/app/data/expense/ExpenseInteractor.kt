@@ -1,14 +1,22 @@
 package com.splitease.app.data.expense
 
+import android.content.Context
+import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.data.remote.ExpenseReceiptStorage
 import com.splitease.app.data.remote.ExpenseRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
+import com.splitease.app.data.remote.dto.ExpenseCommentDto
 import com.splitease.app.data.remote.dto.ExpenseDto
+import com.splitease.app.data.remote.dto.ExpensePhotoDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
 import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
 import com.splitease.app.domain.model.Expense
+import com.splitease.app.domain.model.ExpenseComment
+import com.splitease.app.domain.model.ExpenseCommentKind
+import com.splitease.app.domain.model.ExpensePhoto
 import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
@@ -17,12 +25,16 @@ import com.splitease.app.domain.model.User
 import com.splitease.app.domain.recurrence.RecurrenceScheduler
 import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.CategoryRepository
+import com.splitease.app.domain.repository.ExpenseCommentRepository
+import com.splitease.app.domain.repository.ExpensePhotoRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.split.SplitCalculator
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
+import java.io.File
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.util.Date
@@ -37,13 +49,15 @@ import javax.inject.Singleton
  * @property description Title.
  * @property amount Total amount.
  * @property currencyCode ISO currency.
- * @property paidByUserId Payer.
+ * @property paidByUserId Primary payer (largest paid amount when multi-payer).
  * @property participantIds All participants (must include payer).
  * @property splitType Split mode.
  * @property groupId Optional group.
  * @property unequalAmounts For [SplitType.UNEQUAL].
  * @property percentages For [SplitType.PERCENTAGE].
  * @property shares For [SplitType.SHARES].
+ * @property adjustments For [SplitType.ADJUSTMENT].
+ * @property paidAmounts Optional multi-payer map (userId → paid). Empty = single payer.
  * @property notes Optional notes.
  * @property categoryId Optional category.
  * @property recurrenceFrequency Recurrence cadence; [RecurrenceFrequency.NONE] for one-off.
@@ -61,6 +75,8 @@ data class CreateExpenseInput(
     val unequalAmounts: Map<String, BigDecimal> = emptyMap(),
     val percentages: Map<String, BigDecimal> = emptyMap(),
     val shares: Map<String, Int> = emptyMap(),
+    val adjustments: Map<String, BigDecimal> = emptyMap(),
+    val paidAmounts: Map<String, BigDecimal> = emptyMap(),
     val notes: String? = null,
     val categoryId: String? = null,
     val recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
@@ -75,12 +91,16 @@ data class CreateExpenseInput(
 class ExpenseInteractor
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         private val expenseRepository: ExpenseRepository,
+        private val expenseCommentRepository: ExpenseCommentRepository,
+        private val expensePhotoRepository: ExpensePhotoRepository,
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
         private val groupRepository: GroupRepository,
         private val activityEventRepository: ActivityEventRepository,
         private val remote: ExpenseRemoteDataSource,
+        private val receiptStorage: ExpenseReceiptStorage,
         private val socialRemote: SocialRemoteDataSource,
         private val syncInteractor: Provider<SyncInteractor>,
     ) {
@@ -125,6 +145,7 @@ class ExpenseInteractor
                 val existing =
                     expenseRepository.getExpenseById(expenseId)
                         ?: error("Expense not found.")
+                val existingSplits = expenseRepository.getSplits(expenseId)
                 val built = buildExpenseAndSplits(input = input, existing = existing)
                 val synced = pushAndPersistSynced(expense = built.expense, splits = built.splits)
                 val actor = actorUserId?.takeIf { it.isNotBlank() } ?: synced.paidByUserId
@@ -134,14 +155,99 @@ class ExpenseInteractor
                     participantIds = built.splits.map { it.userId },
                     actorUserId = actor,
                 )
+                recordExpenseUpdateComment(
+                    before = existing,
+                    beforeSplits = existingSplits,
+                    after = synced,
+                    afterSplits = built.splits,
+                    actorUserId = actor,
+                )
                 synced
             }
+
+        /**
+         * Adds a free-form user comment on an expense (best-effort cloud sync).
+         */
+        suspend fun addComment(
+            expenseId: String,
+            body: String,
+            actorUserId: String,
+        ): Result<ExpenseComment> =
+            runCatching {
+                val trimmed = body.trim()
+                require(trimmed.isNotEmpty()) { "Comment cannot be empty." }
+                expenseRepository.getExpenseById(expenseId) ?: error("Expense not found.")
+                ensureLocalUserExists(actorUserId)
+                val comment =
+                    ExpenseComment(
+                        id = UUID.randomUUID().toString(),
+                        expenseId = expenseId,
+                        authorUserId = actorUserId,
+                        body = trimmed,
+                        kind = ExpenseCommentKind.USER,
+                        createdAtEpochMs = System.currentTimeMillis(),
+                        syncStatus = SyncStatus.PENDING,
+                    )
+                expenseCommentRepository.upsert(comment)
+                pushCommentBestEffort(comment)
+            }
+
+        /**
+         * Attaches a receipt photo from a cropped image URI (gallery or camera).
+         * Also writes a SplitEase system comment that a photo was added.
+         */
+        suspend fun addExpensePhoto(
+            expenseId: String,
+            croppedPhotoUri: String,
+            actorUserId: String,
+        ): Result<ExpensePhoto> =
+            runCatching {
+                expenseRepository.getExpenseById(expenseId) ?: error("Expense not found.")
+                ensureLocalUserExists(actorUserId)
+                val photoId = UUID.randomUUID().toString()
+                val dir = File(appContext.filesDir, "expense_photos/$expenseId").apply { mkdirs() }
+                val dest = File(dir, "$photoId.jpg")
+                AvatarImageIO.copyScaledJpeg(
+                    context = appContext,
+                    photoUri = croppedPhotoUri,
+                    destFile = dest,
+                    maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
+                )
+                val photo =
+                    ExpensePhoto(
+                        id = photoId,
+                        expenseId = expenseId,
+                        createdByUserId = actorUserId,
+                        localPath = dest.absolutePath,
+                        remoteUrl = null,
+                        createdAtEpochMs = System.currentTimeMillis(),
+                        syncStatus = SyncStatus.PENDING,
+                    )
+                expensePhotoRepository.upsert(photo)
+                val actorName = displayNameOf(actorUserId)
+                persistSystemComment(
+                    expenseId = expenseId,
+                    actorUserId = actorUserId,
+                    body = "This expense was updated by $actorName.\nAdded a photo.",
+                )
+                pushPhotoBestEffort(photo)
+            }
+
+        /** Pushes pending comments / photos that failed earlier (called from sync flush). */
+        suspend fun flushPendingCommentsAndPhotos() {
+            expenseCommentRepository.getPendingSync().forEach { comment ->
+                runCatching { pushCommentBestEffort(comment) }
+            }
+            expensePhotoRepository.getPendingSync().forEach { photo ->
+                runCatching { pushPhotoBestEffort(photo) }
+            }
+        }
 
         /**
          * Deletes an expense locally and best-effort remotely; writes a deleted activity event.
          *
          * @param expenseId Expense id.
-         * @param actorUserId User performing the delete (for the activity feed).
+         * @param actorUserId User performing the deletion (for the activity feed).
          */
         suspend fun deleteExpense(
             expenseId: String,
@@ -161,6 +267,9 @@ class ExpenseInteractor
                 runCatching {
                     remote.deleteSplitsForExpense(expenseId)
                     remote.deleteExpense(expenseId)
+                }
+                runCatching {
+                    File(appContext.filesDir, "expense_photos/$expenseId").deleteRecursively()
                 }
                 expenseRepository.deleteExpenseById(expenseId)
             }
@@ -209,6 +318,15 @@ class ExpenseInteractor
                                         .mapNotNull { split ->
                                         split.shares?.let { split.userId to it }
                                     }.toMap()
+                                } else {
+                                    emptyMap()
+                                },
+                            adjustments =
+                                if (template.splitType == SplitType.ADJUSTMENT) {
+                                    templateSplits.associate { split ->
+                                        split.userId to
+                                            (split.adjustmentAmount ?: BigDecimal.ZERO.setScale(2))
+                                    }
                                 } else {
                                     emptyMap()
                                 },
@@ -335,6 +453,18 @@ class ExpenseInteractor
             require(input.participantIds.contains(input.paidByUserId)) {
                 "Payer must be included in participants."
             }
+            if (input.paidAmounts.isNotEmpty()) {
+                require(input.paidAmounts.keys.all { it in input.participantIds }) {
+                    "Every payer must be included in participants."
+                }
+                val paidSum =
+                    input.paidAmounts.values
+                        .fold(BigDecimal.ZERO) { acc, v -> acc.add(v) }
+                        .setScale(2, java.math.RoundingMode.HALF_UP)
+                require(paidSum.compareTo(input.amount.setScale(2, java.math.RoundingMode.HALF_UP)) == 0) {
+                    "Paid amounts must add up to the expense total."
+                }
+            }
 
             val owed =
                 SplitCalculator.calculate(
@@ -344,9 +474,10 @@ class ExpenseInteractor
                     unequalAmounts = input.unequalAmounts,
                     percentages = input.percentages,
                     shares = input.shares,
+                    adjustments = input.adjustments,
                 )
 
-            (input.participantIds + input.paidByUserId).distinct().forEach { id ->
+            (input.participantIds + input.paidByUserId + input.paidAmounts.keys).distinct().forEach { id ->
                 ensureLocalUserExists(id)
             }
 
@@ -411,6 +542,18 @@ class ExpenseInteractor
                         owedAmount = amount,
                         percentage = input.percentages[userId],
                         shares = input.shares[userId],
+                        paidAmount =
+                            if (input.paidAmounts.isNotEmpty()) {
+                                input.paidAmounts[userId] ?: BigDecimal.ZERO.setScale(2)
+                            } else {
+                                null
+                            },
+                        adjustmentAmount =
+                            if (input.adjustments.isNotEmpty()) {
+                                input.adjustments[userId] ?: BigDecimal.ZERO.setScale(2)
+                            } else {
+                                null
+                            },
                         syncStatus = SyncStatus.PENDING,
                     )
                 }
@@ -573,10 +716,227 @@ class ExpenseInteractor
                         owedAmount = BigDecimal(split.owedAmount),
                         percentage = split.percentage?.let { BigDecimal(it) },
                         shares = split.shares,
+                        paidAmount = split.paidAmount?.let { BigDecimal(it) },
+                        adjustmentAmount = split.adjustmentAmount?.let { BigDecimal(it) },
                         syncStatus = SyncStatus.SYNCED,
                     )
                 },
             )
+            pullCommentsAndPhotos(dto.id)
+        }
+
+        private suspend fun pullCommentsAndPhotos(expenseId: String) {
+            runCatching {
+                val remoteComments = remote.fetchComments(expenseId)
+                if (remoteComments.isNotEmpty()) {
+                    expenseCommentRepository.upsertAll(
+                        remoteComments.map { dto ->
+                            ensureLocalUserExists(dto.authorUserId)
+                            ExpenseComment(
+                                id = dto.id,
+                                expenseId = dto.expenseId,
+                                authorUserId = dto.authorUserId,
+                                body = dto.body,
+                                kind =
+                                    runCatching { ExpenseCommentKind.valueOf(dto.kind) }
+                                        .getOrDefault(ExpenseCommentKind.USER),
+                                createdAtEpochMs = dto.createdAtEpochMs,
+                                syncStatus = SyncStatus.SYNCED,
+                            )
+                        },
+                    )
+                }
+            }
+            runCatching {
+                val remotePhotos = remote.fetchPhotos(expenseId)
+                if (remotePhotos.isEmpty()) return@runCatching
+                val localById =
+                    expensePhotoRepository
+                        .observeForExpense(expenseId)
+                        .first()
+                        .associateBy { it.id }
+                expensePhotoRepository.upsertAll(
+                    remotePhotos.map { dto ->
+                        ensureLocalUserExists(dto.createdByUserId)
+                        val existing = localById[dto.id]
+                        ExpensePhoto(
+                            id = dto.id,
+                            expenseId = dto.expenseId,
+                            createdByUserId = dto.createdByUserId,
+                            localPath = existing?.localPath,
+                            remoteUrl = dto.remoteUrl ?: existing?.remoteUrl,
+                            createdAtEpochMs = dto.createdAtEpochMs,
+                            syncStatus = SyncStatus.SYNCED,
+                        )
+                    },
+                )
+            }
+        }
+
+        private suspend fun recordExpenseUpdateComment(
+            before: Expense,
+            beforeSplits: List<ExpenseSplit>,
+            after: Expense,
+            afterSplits: List<ExpenseSplit>,
+            actorUserId: String,
+        ) {
+            val changes = describeExpenseChanges(before, beforeSplits, after, afterSplits)
+            if (changes.isEmpty()) return
+            val actorName = displayNameOf(actorUserId)
+            val body =
+                buildString {
+                    append("This expense was updated by ")
+                    append(actorName)
+                    append('.')
+                    changes.forEach { change ->
+                        append('\n')
+                        append(change)
+                    }
+                }
+            persistSystemComment(
+                expenseId = after.id,
+                actorUserId = actorUserId,
+                body = body,
+            )
+        }
+
+        private fun describeExpenseChanges(
+            before: Expense,
+            beforeSplits: List<ExpenseSplit>,
+            after: Expense,
+            afterSplits: List<ExpenseSplit>,
+        ): List<String> {
+            val changes = mutableListOf<String>()
+            if (before.description != after.description) {
+                changes += "Description: \"${before.description}\" → \"${after.description}\""
+            }
+            if (before.amount.compareTo(after.amount) != 0) {
+                changes +=
+                    "Amount: ${before.currencyCode} ${before.amount.toPlainString()} → " +
+                        "${after.currencyCode} ${after.amount.toPlainString()}"
+            }
+            if (before.paidByUserId != after.paidByUserId) {
+                changes += "Paid by changed"
+            }
+            if (before.splitType != after.splitType) {
+                changes += "Split type: ${before.splitType.name} → ${after.splitType.name}"
+            }
+            if ((before.notes.orEmpty()) != (after.notes.orEmpty())) {
+                changes += "Notes updated"
+            }
+            if (before.expenseDateEpochMs != after.expenseDateEpochMs) {
+                changes += "Date updated"
+            }
+            if (before.categoryId != after.categoryId) {
+                changes += "Category updated"
+            }
+            val beforeOwed =
+                beforeSplits.associate { it.userId to it.owedAmount.stripTrailingZeros().toPlainString() }
+            val afterOwed =
+                afterSplits.associate { it.userId to it.owedAmount.stripTrailingZeros().toPlainString() }
+            val beforePaid =
+                beforeSplits.associate {
+                    it.userId to (it.paidAmount?.stripTrailingZeros()?.toPlainString() ?: "")
+                }
+            val afterPaid =
+                afterSplits.associate {
+                    it.userId to (it.paidAmount?.stripTrailingZeros()?.toPlainString() ?: "")
+                }
+            if (beforeOwed != afterOwed ||
+                beforePaid != afterPaid ||
+                beforeSplits.map { it.userId }.toSet() != afterSplits.map { it.userId }.toSet()
+            ) {
+                changes += "Split details updated"
+            }
+            return changes
+        }
+
+        private suspend fun persistSystemComment(
+            expenseId: String,
+            actorUserId: String,
+            body: String,
+        ) {
+            val comment =
+                ExpenseComment(
+                    id = UUID.randomUUID().toString(),
+                    expenseId = expenseId,
+                    authorUserId = actorUserId,
+                    body = body,
+                    kind = ExpenseCommentKind.SYSTEM,
+                    createdAtEpochMs = System.currentTimeMillis(),
+                    syncStatus = SyncStatus.PENDING,
+                )
+            expenseCommentRepository.upsert(comment)
+            runCatching { pushCommentBestEffort(comment) }
+        }
+
+        private suspend fun pushCommentBestEffort(comment: ExpenseComment): ExpenseComment {
+            val pushed =
+                runCatching {
+                    remote.upsertComment(
+                        ExpenseCommentDto(
+                            id = comment.id,
+                            expenseId = comment.expenseId,
+                            authorUserId = comment.authorUserId,
+                            body = comment.body,
+                            kind = comment.kind.name,
+                            createdAtEpochMs = comment.createdAtEpochMs,
+                        ),
+                    )
+                    comment.copy(syncStatus = SyncStatus.SYNCED)
+                }.getOrElse {
+                    comment.copy(syncStatus = SyncStatus.PENDING)
+                }
+            expenseCommentRepository.upsert(pushed)
+            return pushed
+        }
+
+        private suspend fun pushPhotoBestEffort(photo: ExpensePhoto): ExpensePhoto {
+            val localPath = photo.localPath
+            val remoteUrl =
+                when {
+                    !photo.remoteUrl.isNullOrBlank() -> photo.remoteUrl
+                    !localPath.isNullOrBlank() ->
+                        runCatching {
+                            receiptStorage.uploadReceipt(
+                                expenseId = photo.expenseId,
+                                photoId = photo.id,
+                                localJpegPath = localPath,
+                            )
+                        }.getOrNull()
+                    else -> null
+                }
+            val withUrl = photo.copy(remoteUrl = remoteUrl ?: photo.remoteUrl)
+            // Without a Storage URL the row is not fully pushed; keep PENDING so flush retries
+            // the upload instead of treating a metadata-only upsert as done.
+            if (withUrl.remoteUrl.isNullOrBlank()) {
+                val pending = withUrl.copy(syncStatus = SyncStatus.PENDING)
+                expensePhotoRepository.upsert(pending)
+                return pending
+            }
+            val pushed =
+                runCatching {
+                    remote.upsertPhoto(
+                        ExpensePhotoDto(
+                            id = withUrl.id,
+                            expenseId = withUrl.expenseId,
+                            createdByUserId = withUrl.createdByUserId,
+                            remoteUrl = withUrl.remoteUrl,
+                            createdAtEpochMs = withUrl.createdAtEpochMs,
+                        ),
+                    )
+                    withUrl.copy(syncStatus = SyncStatus.SYNCED)
+                }.getOrElse {
+                    withUrl.copy(syncStatus = SyncStatus.PENDING)
+                }
+            expensePhotoRepository.upsert(pushed)
+            return pushed
+        }
+
+        private suspend fun displayNameOf(userId: String): String {
+            val user = userRepository.getUserById(userId)
+            val name = user?.displayName?.trim().orEmpty()
+            return name.ifBlank { "Someone" }
         }
 
         private suspend fun pushExpense(expense: Expense, splits: List<ExpenseSplit>) {
@@ -605,6 +965,8 @@ class ExpenseInteractor
                         owedAmount = split.owedAmount.toPlainString(),
                         percentage = split.percentage?.toPlainString(),
                         shares = split.shares,
+                        paidAmount = split.paidAmount?.toPlainString(),
+                        adjustmentAmount = split.adjustmentAmount?.toPlainString(),
                     )
                 },
             )

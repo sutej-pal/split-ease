@@ -47,10 +47,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data
-                    android:host="invite"
-                    android:pathPrefix="/"
-                    android:scheme="splitease" />
+                <data android:scheme="splitease" />
+                <data android:host="invite" />
+                <data android:pathPrefix="/" />
             </intent-filter>
             <!--
               Verified https App Links. Requires Digital Asset Links on each host:
@@ -64,14 +63,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data
-                    android:host="splitease.app"
-                    android:pathPrefix="/invite"
-                    android:scheme="https" />
-                <data
-                    android:host="www.splitease.app"
-                    android:pathPrefix="/invite"
-                    android:scheme="https" />
+                <data android:scheme="https" />
+                <data android:host="splitease.app" />
+                <data android:host="www.splitease.app" />
+                <data android:pathPrefix="/invite" />
             </intent-filter>
             <!-- Optional mail-service host (from MAIL_SERVICE_BASE_URL → inviteWebHost). -->
             <intent-filter android:autoVerify="true">
@@ -80,10 +75,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data
-                    android:host="${inviteWebHost}"
-                    android:pathPrefix="/invite"
-                    android:scheme="https" />
+                <data android:scheme="https" />
+                <data android:host="${inviteWebHost}" />
+                <data android:pathPrefix="/invite" />
             </intent-filter>
         </activity>
 

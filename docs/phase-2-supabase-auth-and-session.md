@@ -25,53 +25,53 @@ Replace the planned Firebase Auth path with **Supabase Auth** using the provided
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Backend = **Supabase** (not Firebase) | User-provided project credentials; explicit override of default Firebase |
-| Store only URL + anon key in app | Anon key is client-safe with RLS; DB password must never ship in APK |
-| `supabase-kt` 3.1.4 + Ktor Android 3.1.3 | Official Kotlin client for Auth |
-| Session-driven NavHost | Logged-out → auth graph; logged-in → home |
-| Upsert Room `User` on successful auth | Keeps Phase 1 offline cache aligned with auth identity |
-| Skip email confirmation (MVP) | Faster local testing; signup can establish a session immediately when Confirm email is off in Supabase |
+| Decision                                 | Rationale                                                                                              |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Backend = **Supabase** (not Firebase)    | User-provided project credentials; explicit override of default Firebase                               |
+| Store only URL + anon key in app         | Anon key is client-safe with RLS; DB password must never ship in APK                                   |
+| `supabase-kt` 3.1.4 + Ktor Android 3.1.3 | Official Kotlin client for Auth                                                                        |
+| Session-driven NavHost                   | Logged-out → auth graph; logged-in → home                                                              |
+| Upsert Room `User` on successful auth    | Keeps Phase 1 offline cache aligned with auth identity                                                 |
+| Skip email confirmation (MVP)            | Faster local testing; signup can establish a session immediately when Confirm email is off in Supabase |
 
 ## Data Model Changes
 
 No Room schema version bump. On auth success, upsert into existing `users` with:
 
-| Field | Value |
-|---|---|
-| id / remoteId | Supabase auth user UUID |
-| email | Account email |
-| displayName | `user_metadata.display_name` or email local-part |
-| syncStatus | `SYNCED` |
+| Field         | Value                                            |
+| ------------- | ------------------------------------------------ |
+| id / remoteId | Supabase auth user UUID                          |
+| email         | Account email                                    |
+| displayName   | `user_metadata.display_name` or email local-part |
+| syncStatus    | `SYNCED`                                         |
 
 ## Files Added/Modified
 
-| File path | Purpose |
-|---|---|
-| `local.properties` (gitignored) | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
-| `app/build.gradle.kts` | BuildConfig fields, supabase deps, serialization plugin, v0.3.0 |
-| `gradle/libs.versions.toml` | supabase BOM, auth-kt, ktor-android |
-| `data/di/SupabaseModule.kt` | Hilt `SupabaseClient` |
-| `data/repository/SupabaseAuthRepository.kt` | Auth + Room user upsert |
-| `domain/model/AuthSession.kt` | Session sealed type |
-| `domain/repository/AuthRepository.kt` | Auth interface |
-| `presentation/auth/*` | Screens + AuthViewModel |
-| `presentation/home/HomeScreen.kt` | Empty dashboard |
-| `presentation/navigation/SplitEaseNavHost.kt` | Session-gated nav |
-| `presentation/welcome/WelcomeScreen.kt` | CTAs to signup/login |
-| `AndroidManifest.xml` | `INTERNET` permission |
-| `src/test/.../AuthViewModelTest.kt` | ViewModel unit tests |
+| File path                                     | Purpose                                                         |
+| --------------------------------------------- | --------------------------------------------------------------- |
+| `local.properties` (gitignored)               | `SUPABASE_URL`, `SUPABASE_ANON_KEY`                             |
+| `app/build.gradle.kts`                        | BuildConfig fields, supabase deps, serialization plugin, v0.3.0 |
+| `gradle/libs.versions.toml`                   | supabase BOM, auth-kt, ktor-android                             |
+| `data/di/SupabaseModule.kt`                   | Hilt `SupabaseClient`                                           |
+| `data/repository/SupabaseAuthRepository.kt`   | Auth + Room user upsert                                         |
+| `domain/model/AuthSession.kt`                 | Session sealed type                                             |
+| `domain/repository/AuthRepository.kt`         | Auth interface                                                  |
+| `presentation/auth/*`                         | Screens + AuthViewModel                                         |
+| `presentation/home/HomeScreen.kt`             | Empty dashboard                                                 |
+| `presentation/navigation/SplitEaseNavHost.kt` | Session-gated nav                                               |
+| `presentation/welcome/WelcomeScreen.kt`       | CTAs to signup/login                                            |
+| `AndroidManifest.xml`                         | `INTERNET` permission                                           |
+| `src/test/.../AuthViewModelTest.kt`           | ViewModel unit tests                                            |
 
 ## Screens/UI Added
 
-| Screen | Description |
-|---|---|
-| Welcome | Brand + Get started / Log in |
-| Login | Email/password + Google stub |
-| Signup | Name / email / password |
-| ForgotPassword | Send reset email |
-| Home | Greeting + empty state + Sign out |
+| Screen         | Description                       |
+| -------------- | --------------------------------- |
+| Welcome        | Brand + Get started / Log in      |
+| Login          | Email/password + Google stub      |
+| Signup         | Name / email / password           |
+| ForgotPassword | Send reset email                  |
+| Home           | Greeting + empty state + Sign out |
 
 ## How to Test This Phase
 
@@ -79,7 +79,7 @@ No Room schema version bump. On auth success, upsert into existing `users` with:
 1. Ensure `local.properties` has `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 2. In Supabase Dashboard → **Authentication → Providers → Email**: enabled.
 3. **MVP (required for skip-confirm flow):** Authentication → **Providers → Email** → turn **Confirm email** **OFF**  
-   (or Authentication → Settings → disable “Enable email confirmations”, depending on dashboard layout).
+   (or Authentication → Settings → disable "Enable email confirmations", depending on dashboard layout).
 4. Run the app → Welcome → Sign up → should land on Home without waiting for a confirmation email.
 5. Sign out → Log in again → Home.
 6. Forgot password → check email for reset link (reset mail still uses Supabase email; separate from signup confirm).
@@ -95,16 +95,16 @@ No Room schema version bump. On auth success, upsert into existing `users` with:
 
 ## Known Issues / TODOs carried forward
 
-- **TODO — Re-enable email confirmation before production:** Signup confirmation mails are **intentionally skipped** for MVP. Keep Supabase **Confirm email** disabled until we add a proper verify-email UX (deep link / in-app “check your inbox” state). Track this before Phase 9 release prep.
+- **TODO — Re-enable email confirmation before production:** Signup confirmation mails are **intentionally skipped** for MVP. Keep Supabase **Confirm email** disabled until we add a proper verify-email UX (deep link / in-app "check your inbox" state). Track this before Phase 9 release prep.
 - **Google Sign-In** not wired — configure Google provider in Supabase + Android OAuth redirect / deep link in a later pass.
 - Password reset deep-link / in-app new-password screen not built (email link opens browser/Supabase page).
 - Supabase free-tier Auth limits (MAUs / email rate limits) can throttle abuse testing — flag for prod.
 - **Security:** Database password was shared in chat — rotate it in Supabase if this chat is retained; it is **not** stored in the app.
-- Capture screenshot into `docs/screenshots/phase-2.png`.
+- Capture a local screenshot for this phase when needed.
 
 ## Screenshots placeholder
 
-![phase-2-screenshot](./screenshots/phase-2.png)
+_(No screenshot checked in for this phase.)_
 
 ---
 

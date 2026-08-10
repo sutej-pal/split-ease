@@ -15,6 +15,9 @@ enum class SplitType {
 
     /** Each participant owes proportional to integer shares. */
     SHARES,
+
+    /** Extra owed amounts; remainder is split equally. */
+    ADJUSTMENT,
 }
 
 /**

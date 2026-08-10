@@ -1,7 +1,9 @@
 package com.splitease.app.presentation.expenses
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,7 +29,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,7 +37,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,23 +47,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.domain.model.ExpenseCommentKind
 import com.splitease.app.domain.spending.GroupMonthSpending
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.common.shortDisplayName
+import com.splitease.app.presentation.media.ImagePickPresets
+import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
-import com.splitease.app.presentation.ui.SeChevronBackButton
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
@@ -73,6 +79,7 @@ import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTopBar
 import java.math.BigDecimal
 import java.text.DateFormatSymbols
 import java.time.Instant
@@ -91,7 +98,7 @@ private val CategoryPastels =
     )
 
 /**
- * Expense detail: summary, payer/owes, optional group spending trends.
+ * Expense detail: summary, payer/owes, photos, comments, optional group spending trends.
  */
 @Composable
 fun ExpenseDetailScreen(
@@ -103,6 +110,8 @@ fun ExpenseDetailScreen(
     viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
     val detail by viewModel.observeExpenseDetail(expenseId).collectAsStateWithLifecycle()
+    val comments by viewModel.observeExpenseComments(expenseId).collectAsStateWithLifecycle()
+    val photos by viewModel.observeExpensePhotos(expenseId).collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var commentDraft by remember { mutableStateOf("") }
@@ -110,6 +119,17 @@ fun ExpenseDetailScreen(
     val me = viewModel.currentUserId()
     val bg = MaterialTheme.colorScheme.background
     val lightIconsOnBars = bg.luminance() > 0.5f
+
+    val imagePicker =
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.expense_photo_source_title),
+            sourceBody = stringResource(R.string.expense_photo_source_body),
+            cropTitle = stringResource(R.string.image_crop_title),
+            cropBody = stringResource(R.string.image_crop_body),
+            cropSpec = ImagePickPresets.ExpenseReceipt,
+        ) { croppedUri ->
+            viewModel.addExpensePhoto(expenseId = expenseId, croppedPhotoUri = croppedUri)
+        }
 
     SeSystemBars(
         statusBarColor = bg,
@@ -121,12 +141,44 @@ fun ExpenseDetailScreen(
     Scaffold(
         containerColor = bg,
         topBar = {
-            ExpenseDetailTopBar(
-                detail = detail,
-                hasExpense = hasExpense,
+            val detailSnapshot = detail
+            SeTopBar(
+                title = "",
                 onBack = onBack,
-                onEdit = { onEdit(expenseId) },
-                onDelete = { showDeleteConfirm = true },
+                navigationExtra = {
+                    if (detailSnapshot != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        CategoryChip(
+                            iconKey = detailSnapshot.categoryIconKey,
+                            onClick = { onEdit(expenseId) },
+                        )
+                    }
+                },
+                actions = {
+                    if (hasExpense) {
+                        IconButton(onClick = { imagePicker.launch() }) {
+                            Icon(
+                                Icons.Filled.AddAPhoto,
+                                contentDescription = stringResource(R.string.cd_add_expense_photo),
+                                tint = SplitEaseColors.Navy,
+                            )
+                        }
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = stringResource(R.string.cd_delete_expense),
+                                tint = SplitEaseColors.Navy,
+                            )
+                        }
+                        IconButton(onClick = { onEdit(expenseId) }) {
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = stringResource(R.string.cd_edit_expense),
+                                tint = SplitEaseColors.Navy,
+                            )
+                        }
+                    }
+                },
             )
         },
         bottomBar = {
@@ -134,7 +186,12 @@ fun ExpenseDetailScreen(
                 ExpenseCommentBar(
                     value = commentDraft,
                     onValueChange = { commentDraft = it },
-                    onSend = { commentDraft = "" },
+                    onSend = {
+                        val draft = commentDraft
+                        viewModel.addExpenseComment(expenseId, draft) {
+                            commentDraft = ""
+                        }
+                    },
                 )
             }
         },
@@ -148,7 +205,7 @@ fun ExpenseDetailScreen(
                     .padding(horizontal = SeLayout.detailHorizontal),
             ) {
                 SeErrorText(uiState.errorMessage ?: stringResource(R.string.expense_not_found))
-                Spacer(Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 SeTextButton(
                     text = stringResource(R.string.cd_back),
                     onClick = onBack,
@@ -171,7 +228,7 @@ fun ExpenseDetailScreen(
                 fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.Navy,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text =
                     MoneyFormat.format(
@@ -182,7 +239,7 @@ fun ExpenseDetailScreen(
                 fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.Navy,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text =
                     stringResource(
@@ -193,7 +250,7 @@ fun ExpenseDetailScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.NavyMuted,
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             ExpensePaidOwesBlock(
                 detail = snapshot,
@@ -201,13 +258,13 @@ fun ExpenseDetailScreen(
             )
 
             if (!snapshot.expense.notes.isNullOrBlank()) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.label_notes),
                     style = MaterialTheme.typography.labelMedium,
                     color = SplitEaseColors.NavyMuted,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = snapshot.expense.notes.orEmpty(),
                     style = MaterialTheme.typography.bodyLarge,
@@ -215,10 +272,22 @@ fun ExpenseDetailScreen(
                 )
             }
 
+            if (photos.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = stringResource(R.string.expense_photos_section),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                ExpensePhotosRow(photos = photos)
+            }
+
             if (snapshot.spendingTrendMonths.isNotEmpty()) {
-                Spacer(Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(28.dp))
                 HorizontalDivider(color = SplitEaseColors.Outline)
-                Spacer(Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 ExpenseSpendingTrendsSection(
                     detail = snapshot,
                     onViewMoreCharts =
@@ -228,9 +297,26 @@ fun ExpenseDetailScreen(
                 )
             }
 
+            if (comments.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(28.dp))
+                HorizontalDivider(color = SplitEaseColors.Outline)
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = stringResource(R.string.expense_comments_section),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                comments.forEach { comment ->
+                    ExpenseCommentRow(comment = comment)
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+            }
+
             val error = uiState.errorMessage
             if (error != null) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 SeErrorText(error)
             }
         }
@@ -239,9 +325,9 @@ fun ExpenseDetailScreen(
     if (showDeleteConfirm) {
         SeModal(onDismissRequest = { showDeleteConfirm = false }) {
             SeModalTitle(stringResource(R.string.expense_delete_title))
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             SeModalBody(stringResource(R.string.expense_delete_body))
-            Spacer(Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             SePrimaryButton(
                 text = stringResource(R.string.action_delete_expense),
                 onClick = {
@@ -249,7 +335,7 @@ fun ExpenseDetailScreen(
                     viewModel.deleteExpense(expenseId, onSuccess = onDeleted)
                 },
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             SeTextButton(
                 text = stringResource(R.string.action_cancel),
                 onClick = { showDeleteConfirm = false },
@@ -258,55 +344,83 @@ fun ExpenseDetailScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExpenseDetailTopBar(
-    detail: ExpenseDetailUi?,
-    hasExpense: Boolean,
-    onBack: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-) {
+private fun ExpensePhotosRow(photos: List<ExpensePhotoUi>) {
+    val context = LocalContext.current
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(TopAppBarDefaults.windowInsets)
-                .height(56.dp)
-                .padding(horizontal = SeLayout.detailHorizontal),
-        verticalAlignment = Alignment.CenterVertically,
+                .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SeChevronBackButton(onClick = onBack)
-        if (detail != null) {
-            Spacer(Modifier.width(4.dp))
-            CategoryChip(
-                iconKey = detail.categoryIconKey,
-                onClick = onEdit,
-            )
+        photos.forEach { photo ->
+            val bitmap =
+                remember(photo.displayUri) {
+                    AvatarImageIO
+                        .decodeScaled(
+                            context = context,
+                            photoUrl = photo.displayUri,
+                            maxSidePx = 480,
+                        )?.asImageBitmap()
+                }
+            Box(
+                modifier =
+                    Modifier
+                        .size(112.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SplitEaseColors.Outline.copy(alpha = 0.35f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = stringResource(R.string.cd_expense_photo),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
-        Spacer(Modifier.weight(1f))
-        if (hasExpense) {
-            IconButton(onClick = onEdit) {
-                Icon(
-                    Icons.Filled.AddAPhoto,
-                    contentDescription = stringResource(R.string.cd_add_expense_photo),
-                    tint = SplitEaseColors.Navy,
+    }
+}
+
+@Composable
+private fun ExpenseCommentRow(comment: ExpenseCommentUi) {
+    val isSystem = comment.kind == ExpenseCommentKind.SYSTEM
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+    ) {
+        SeAvatarBadge(
+            name = comment.authorLabel,
+            photoUrl = comment.authorPhotoUrl,
+            size = 36.dp,
+            borderWidth = 0.dp,
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = comment.authorLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = formatCommentTime(comment.createdAtEpochMs),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SplitEaseColors.NavyMuted,
                 )
             }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete_expense),
-                    tint = SplitEaseColors.Navy,
-                )
-            }
-            IconButton(onClick = onEdit) {
-                Icon(
-                    Icons.Filled.Edit,
-                    contentDescription = stringResource(R.string.cd_edit_expense),
-                    tint = SplitEaseColors.Navy,
-                )
-            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = comment.body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isSystem) SplitEaseColors.NavyMuted else SplitEaseColors.Navy,
+                fontStyle = if (isSystem) FontStyle.Italic else FontStyle.Normal,
+            )
         }
     }
 }
@@ -480,13 +594,13 @@ private fun ExpenseSpendingTrendsSection(
         fontWeight = FontWeight.SemiBold,
         color = SplitEaseColors.Navy,
     )
-    Spacer(Modifier.height(14.dp))
+    Spacer(modifier = Modifier.height(14.dp))
     ExpenseTrendBars(
         months = detail.spendingTrendMonths,
         currencyCode = detail.expense.currencyCode,
     )
     if (onViewMoreCharts != null) {
-        Spacer(Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(18.dp))
         Button(
             onClick = onViewMoreCharts,
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -502,7 +616,7 @@ private fun ExpenseSpendingTrendsSection(
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = stringResource(R.string.expense_view_more_charts),
                 style = MaterialTheme.typography.labelLarge,
@@ -545,7 +659,7 @@ private fun ExpenseTrendBars(
                     color = SplitEaseColors.Navy,
                     modifier = Modifier.widthIn(min = 72.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Box(
                     modifier =
                         Modifier
@@ -603,7 +717,7 @@ private fun ExpenseCommentBar(
                     unfocusedContainerColor = SplitEaseColors.Surface,
                 ),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         IconButton(
             onClick = onSend,
             enabled = value.isNotBlank(),
@@ -636,6 +750,14 @@ private fun formatExpenseAddedDate(epochMs: Long): String {
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
     return DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()).format(date)
+}
+
+private fun formatCommentTime(epochMs: Long): String {
+    val dateTime =
+        Instant
+            .ofEpochMilli(epochMs)
+            .atZone(ZoneId.systemDefault())
+    return DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.getDefault()).format(dateTime)
 }
 
 private fun shortMonthLabel(month: Int): String {

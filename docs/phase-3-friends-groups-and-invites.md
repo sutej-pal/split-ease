@@ -25,14 +25,14 @@ Let signed-in users manage friends (add by email) and groups (create/edit, add m
 
 ## Architecture Decisions
 
-| Decision | Rationale |
-|---|---|
-| Supabase PostgREST instead of Firestore | Matches Phase 2 backend choice |
-| Room write-first, then best-effort cloud upsert | Offline-first; pending rows kept if sync fails |
-| `profiles` table mirroring auth users | Enables friend lookup by email without exposing `auth.users` |
-| SQL schema shipped as `docs/sql/migration_db.sql` | Anon key cannot create tables; apply once in SQL editor |
-| `SocialInteractor` in `data/social` | Orchestrates Room + remote without polluting domain |
-| Nested signed-in NavHost from Home | Keeps auth graph separate from app graph |
+| Decision                                          | Rationale                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------ |
+| Supabase PostgREST instead of Firestore           | Matches Phase 2 backend choice                               |
+| Room write-first, then best-effort cloud upsert   | Offline-first; pending rows kept if sync fails               |
+| `profiles` table mirroring auth users             | Enables friend lookup by email without exposing `auth.users` |
+| SQL schema shipped as `docs/sql/migration_db.sql` | Anon key cannot create tables; apply once in SQL editor      |
+| `SocialInteractor` in `data/social`               | Orchestrates Room + remote without polluting domain          |
+| Nested signed-in NavHost from Home                | Keeps auth graph separate from app graph                     |
 
 ## Data Model Changes
 
@@ -40,38 +40,38 @@ Room schema unchanged (v1).
 
 Supabase public tables (see [migration_db.sql](./sql/migration_db.sql)):
 
-| Table | Purpose |
-|---|---|
-| `profiles` | Public user mirror for email lookup |
-| `friends` | Owner → friend edges |
-| `groups` | Shared expense groups |
-| `group_members` | Membership + role |
+| Table           | Purpose                             |
+| --------------- | ----------------------------------- |
+| `profiles`      | Public user mirror for email lookup |
+| `friends`       | Owner → friend edges                |
+| `groups`        | Shared expense groups               |
+| `group_members` | Membership + role                   |
 
 ## Files Added/Modified
 
-| File path | Purpose |
-|---|---|
-| `docs/sql/migration_db.sql` | Supabase DDL + RLS |
-| `data/remote/dto/SocialDtos.kt` | PostgREST DTOs |
-| `data/remote/SocialRemoteDataSource.kt` | PostgREST calls |
-| `data/social/SocialInteractor.kt` | Add friend / create group / refresh |
-| `data/di/SupabaseModule.kt` | Install Auth + Postgrest |
-| `presentation/friends/*` | Friends list + add |
-| `presentation/groups/*` | Groups list / create / detail |
-| `presentation/home/HomeScreen.kt` | Hub shortcuts |
-| `presentation/navigation/SplitEaseNavHost.kt` | Signed-in nested nav |
-| `gradle/libs.versions.toml` | `postgrest-kt` |
-| `app/build.gradle.kts` | v0.4.0 + postgrest dep |
+| File path                                     | Purpose                             |
+| --------------------------------------------- | ----------------------------------- |
+| `docs/sql/migration_db.sql`                   | Supabase DDL + RLS                  |
+| `data/remote/dto/SocialDtos.kt`               | PostgREST DTOs                      |
+| `data/remote/SocialRemoteDataSource.kt`       | PostgREST calls                     |
+| `data/social/SocialInteractor.kt`             | Add friend / create group / refresh |
+| `data/di/SupabaseModule.kt`                   | Install Auth + Postgrest            |
+| `presentation/friends/*`                      | Friends list + add                  |
+| `presentation/groups/*`                       | Groups list / create / detail       |
+| `presentation/home/HomeScreen.kt`             | Hub shortcuts                       |
+| `presentation/navigation/SplitEaseNavHost.kt` | Signed-in nested nav                |
+| `gradle/libs.versions.toml`                   | `postgrest-kt`                      |
+| `app/build.gradle.kts`                        | v0.4.0 + postgrest dep              |
 
 ## Screens/UI Added
 
-| Screen | Description |
-|---|---|
-| HomeHub | Friends / Groups shortcuts + sign out |
-| FriendsList | List friends; FAB to add |
-| AddFriend | Email form to add friend |
-| GroupsList | List groups; FAB to create |
-| CreateGroup | Name, currency, optional friend members |
+| Screen      | Description                                                         |
+| ----------- | ------------------------------------------------------------------- |
+| HomeHub     | Friends / Groups shortcuts + sign out                               |
+| FriendsList | List friends; FAB to add                                            |
+| AddFriend   | Email form to add friend                                            |
+| GroupsList  | List groups; FAB to create                                          |
+| CreateGroup | Name, currency, optional friend members                             |
 | GroupDetail | Edit name/currency, members, add from friends, expenses placeholder |
 
 ## How to Test This Phase
@@ -83,7 +83,7 @@ Supabase public tables (see [migration_db.sql](./sql/migration_db.sql)):
 
 ### Manual
 1. Install app; sign up user A and user B (two accounts) with Confirm email OFF.
-2. As A: Home → Friends → + → enter B’s email → friend appears.
+2. As A: Home → Friends → + → enter B's email → friend appears.
 3. Kill app / airplane mode briefly → friend still listed (Room cache).
 4. As A: Groups → + → name + currency → optionally check B → Create → detail shows members.
 5. Edit group name → Save → reopen after restart → name persists.

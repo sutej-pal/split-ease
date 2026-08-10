@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -56,7 +57,8 @@ import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
-import com.splitease.app.presentation.groups.rememberGroupPhotoPicker
+import com.splitease.app.presentation.media.ImagePickPresets
+import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
@@ -69,6 +71,7 @@ import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeOverallSummary
 import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -101,8 +104,14 @@ fun GroupsHomeScreen(
     val sheetState = rememberModalBottomSheetState()
     val changePhotoCd = stringResource(R.string.cd_change_group_photo)
     val groupPhotoPicker =
-        rememberGroupPhotoPicker { uri ->
-            val groupId = photoTargetGroupId ?: return@rememberGroupPhotoPicker
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.group_photo_source_title),
+            sourceBody = stringResource(R.string.group_photo_source_body),
+            cropTitle = stringResource(R.string.image_crop_title),
+            cropBody = stringResource(R.string.image_crop_body),
+            cropSpec = ImagePickPresets.GroupPhoto,
+        ) { uri ->
+            val groupId = photoTargetGroupId ?: return@rememberImagePicker
             photoTargetGroupId = null
             viewModel.updateGroupPhoto(groupId, uri)
         }
@@ -271,7 +280,12 @@ fun GroupsHomeScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 SeOutlinedButton(
-                                    text = stringResource(R.string.groups_show_settled, hiddenSettledCount),
+                                    text =
+                                        pluralStringResource(
+                                            R.plurals.groups_show_settled,
+                                            hiddenSettledCount,
+                                            hiddenSettledCount,
+                                        ),
                                     onClick = { showSettledGroups = true },
                                 )
                             }
@@ -310,7 +324,7 @@ fun GroupsHomeScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 )
-                SeOutlinedButton(
+                SePrimaryButton(
                     text = stringResource(R.string.action_create_group),
                     onClick = {
                         showExpensePicker = false

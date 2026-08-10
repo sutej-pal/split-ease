@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import com.splitease.app.data.local.dao.ActivityEventDao
 import com.splitease.app.data.local.dao.CategoryDao
+import com.splitease.app.data.local.dao.ExpenseCommentDao
 import com.splitease.app.data.local.dao.ExpenseDao
+import com.splitease.app.data.local.dao.ExpensePhotoDao
 import com.splitease.app.data.local.dao.FriendDao
 import com.splitease.app.data.local.dao.GroupDao
 import com.splitease.app.data.local.dao.InviteDao
@@ -63,6 +65,14 @@ object DatabaseModule {
     /** @param db Database. @return [ExpenseDao]. */
     @Provides
     fun provideExpenseDao(db: SplitEaseDatabase): ExpenseDao = db.expenseDao()
+
+    /** @param db Database. @return [ExpenseCommentDao]. */
+    @Provides
+    fun provideExpenseCommentDao(db: SplitEaseDatabase): ExpenseCommentDao = db.expenseCommentDao()
+
+    /** @param db Database. @return [ExpensePhotoDao]. */
+    @Provides
+    fun provideExpensePhotoDao(db: SplitEaseDatabase): ExpensePhotoDao = db.expensePhotoDao()
 
     /** @param db Database. @return [PaymentDao]. */
     @Provides

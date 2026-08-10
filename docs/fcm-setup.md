@@ -28,19 +28,13 @@ Run in order:
 
 ### Edge Function
 
-1. Deploy [`supabase/functions/notify-group-members`](../supabase/functions/notify-group-members/index.ts):
+1. Deploy [`supabase/functions/notify-group-members`](../supabase/functions/notify-group-members/index.ts).
+2. Set secrets (`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are usually injected automatically):
 
 ```bash
 supabase functions deploy notify-group-members
-```
-
-2. Set secrets:
-
-```bash
 supabase secrets set FIREBASE_SERVICE_ACCOUNT_JSON="$(cat path/to/service-account.json)"
 ```
-
-(`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are usually injected automatically.)
 
 ### Database Webhook (recommended)
 

@@ -1,9 +1,5 @@
 package com.splitease.app.presentation.pinboard
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -42,19 +38,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.presentation.media.ImagePickPresets
+import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
-import com.splitease.app.presentation.ui.SeScreenSubtitleStyle
-import com.splitease.app.presentation.ui.SeScreenTitleText
+import com.splitease.app.presentation.ui.seScreenSubtitleStyle
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -118,8 +114,13 @@ fun PinBoardScreen(
     }
 
     val imagePicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
-            if (uri == null) return@rememberLauncherForActivityResult
+        rememberImagePicker(
+            sourceTitle = stringResource(R.string.pin_board_image_source_title),
+            sourceBody = stringResource(R.string.pin_board_image_source_body),
+            cropTitle = stringResource(R.string.image_crop_title),
+            cropBody = stringResource(R.string.image_crop_body),
+            cropSpec = ImagePickPresets.Content,
+        ) { croppedUri ->
             val path =
                 runCatching {
                     val dir =
@@ -127,26 +128,26 @@ fun PinBoardScreen(
                     val dest = File(dir, "${UUID.randomUUID()}.jpg")
                     AvatarImageIO.copyScaledJpeg(
                         context = context,
-                        photoUri = uri.toString(),
+                        photoUri = croppedUri,
                         destFile = dest,
                         maxSidePx = 1280,
                     )
-                }.getOrNull() ?: return@rememberLauncherForActivityResult
+                }.getOrNull() ?: return@rememberImagePicker
             insertAtCursor("\n![]($path)\n")
         }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            // Back + Save only — title stacks in the body (same pattern as auth screens).
             SeTopBar(
-                title = "",
+                title = stringResource(R.string.pin_board_title),
                 onBack = onBack,
                 actions = {
                     SeTextButton(
                         text = stringResource(R.string.action_save),
                         onClick = { viewModel.save() },
                         enabled = state.isDirty && !state.isSaving && !state.isLoading,
+                        emphasized = true,
                     )
                 },
             )
@@ -170,20 +171,11 @@ fun PinBoardScreen(
                     SeErrorText(it, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal))
                 }
 
-                Spacer(modifier = Modifier.height(SeLayout.screenTop))
-                SeScreenTitleText(
-                    text = stringResource(R.string.pin_board_title),
-                    textAlign = TextAlign.Start,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = SeLayout.screenHorizontal),
-                )
                 if (state.groupName.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
+                    Spacer(modifier = Modifier.height(SeLayout.screenTop))
                     Text(
                         text = state.groupName,
-                        style = SeScreenSubtitleStyle(),
+                        style = seScreenSubtitleStyle(),
                         color = SplitEaseColors.NavyMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -192,18 +184,16 @@ fun PinBoardScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = SeLayout.screenHorizontal),
                     )
+                    Spacer(modifier = Modifier.height(SeLayout.headerToContent))
+                } else {
+                    Spacer(modifier = Modifier.height(SeLayout.headerToContent))
                 }
-                Spacer(modifier = Modifier.height(SeLayout.headerToContent))
 
                 MarkdownToolbar(
                     onBold = { insertAroundSelection("**", "**") },
                     onItalic = { insertAroundSelection("_", "_") },
                     onChecklist = { insertAroundSelection("- [ ] ", "") },
-                    onImage = {
-                        imagePicker.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    },
+                    onImage = imagePicker::launch,
                 )
 
                 Spacer(modifier = Modifier.height(SeLayout.itemGap))

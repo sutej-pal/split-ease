@@ -71,11 +71,6 @@ class InviteJoinViewModel
             }
         }
 
-        /** Clears a transient error message. */
-        fun clearError() {
-            _uiState.update { it.copy(errorMessage = null) }
-        }
-
         /**
          * Dismisses the invite flow without joining.
          */

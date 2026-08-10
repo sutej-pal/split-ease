@@ -33,7 +33,7 @@ import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
-import com.splitease.app.presentation.ui.SeScreenSubtitleStyle
+import com.splitease.app.presentation.ui.seScreenSubtitleStyle
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.seDetailHorizontal
 import java.math.BigDecimal
@@ -128,7 +128,7 @@ private fun GroupBalancesContent(
                     Spacer(modifier = Modifier.height(SeLayout.itemGap))
                     Text(
                         text = stringResource(R.string.group_balances_settle_hint),
-                        style = SeScreenSubtitleStyle(),
+                        style = seScreenSubtitleStyle(),
                     )
                     Spacer(modifier = Modifier.height(SeLayout.sectionGap))
 

@@ -126,7 +126,78 @@ object SplitEaseMigrations {
             }
         }
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 8. */
+    /** Adds optional multi-payer paid amount on expense splits. */
+    val MIGRATION_8_9 =
+        object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `expense_splits` ADD COLUMN `paidAmount` TEXT")
+            }
+        }
+
+    /** Adds optional adjustment amount on expense splits. */
+    val MIGRATION_9_10 =
+        object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `expense_splits` ADD COLUMN `adjustmentAmount` TEXT")
+            }
+        }
+
+    /** Adds expense comments + receipt photos (detail screen thread). */
+    val MIGRATION_10_11 =
+        object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `expense_comments` (
+                        `id` TEXT NOT NULL,
+                        `expenseId` TEXT NOT NULL,
+                        `authorUserId` TEXT NOT NULL,
+                        `body` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `createdAtEpochMs` INTEGER NOT NULL,
+                        `syncStatus` TEXT NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`expenseId`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_expense_comments_expenseId` ON `expense_comments` (`expenseId`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_expense_comments_createdAtEpochMs` ON `expense_comments` (`createdAtEpochMs`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_expense_comments_syncStatus` ON `expense_comments` (`syncStatus`)",
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `expense_photos` (
+                        `id` TEXT NOT NULL,
+                        `expenseId` TEXT NOT NULL,
+                        `createdByUserId` TEXT NOT NULL,
+                        `localPath` TEXT,
+                        `remoteUrl` TEXT,
+                        `createdAtEpochMs` INTEGER NOT NULL,
+                        `syncStatus` TEXT NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`expenseId`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_expense_photos_expenseId` ON `expense_photos` (`expenseId`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_expense_photos_createdAtEpochMs` ON `expense_photos` (`createdAtEpochMs`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_expense_photos_syncStatus` ON `expense_photos` (`syncStatus`)",
+                )
+            }
+        }
+
+    /** All migrations from version 1 through [SplitEaseDatabase] version 11. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
@@ -136,5 +207,8 @@ object SplitEaseMigrations {
             MIGRATION_5_6,
             MIGRATION_6_7,
             MIGRATION_7_8,
+            MIGRATION_8_9,
+            MIGRATION_9_10,
+            MIGRATION_10_11,
         )
 }

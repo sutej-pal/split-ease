@@ -10,8 +10,9 @@ import java.math.RoundingMode
  * Derives net balances from expenses and splits.
  *
  * **Convention:** net > 0 ⇒ user is owed money; net < 0 ⇒ user owes money.
- * Per expense: payer is credited [Expense.amount]; each split participant is
- * debited their [ExpenseSplit.owedAmount].
+ * Per expense: each payer is credited their paid amount (or the full
+ * [Expense.amount] to [Expense.paidByUserId] in legacy single-payer mode);
+ * each split participant is debited their [ExpenseSplit.owedAmount].
  *
  * Settlements ([Payment]): [Payment.fromUserId] gains +amount (debt reduced);
  * [Payment.toUserId] gains −amount (credit reduced).
@@ -21,6 +22,35 @@ import java.math.RoundingMode
  */
 object BalanceCalculator {
     private val ZERO = BigDecimal.ZERO.setScale(2)
+
+    /**
+     * Net for [userId] on a single expense (paid − owed).
+     *
+     * Multi-payer: credits [ExpenseSplit.paidAmount] when any split has a non-null paid
+     * amount; otherwise credits the full [Expense.amount] to [Expense.paidByUserId].
+     * Debits the viewer's [ExpenseSplit.owedAmount] (zero if not on the split list).
+     *
+     * @return Scale-2 net; may be zero when the viewer is fully settled on this expense.
+     */
+    fun viewerNetForExpense(
+        userId: String,
+        expense: Expense,
+        splits: List<ExpenseSplit>,
+    ): BigDecimal {
+        val multiPayer = splits.any { it.paidAmount != null }
+        val mySplit = splits.firstOrNull { it.userId == userId }
+        val paid =
+            if (multiPayer) {
+                (mySplit?.paidAmount ?: ZERO).setScale(2, RoundingMode.HALF_UP)
+            } else if (expense.paidByUserId == userId) {
+                expense.amount.setScale(2, RoundingMode.HALF_UP)
+            } else {
+                ZERO
+            }
+        val owed =
+            mySplit?.owedAmount?.setScale(2, RoundingMode.HALF_UP) ?: ZERO
+        return paid.subtract(owed).setScale(2, RoundingMode.HALF_UP)
+    }
 
     /**
      * Computes net balance per user for expenses already filtered to one currency.
@@ -35,10 +65,21 @@ object BalanceCalculator {
     ): Map<String, BigDecimal> {
         val nets = mutableMapOf<String, BigDecimal>()
         expenses.forEach { expense ->
-            val credit = expense.amount.setScale(2, RoundingMode.HALF_UP)
-            nets[expense.paidByUserId] =
-                nets.getOrDefault(expense.paidByUserId, ZERO).add(credit)
             val splits = splitsByExpenseId[expense.id].orEmpty()
+            val multiPayer = splits.any { it.paidAmount != null }
+            if (multiPayer) {
+                splits.forEach { split ->
+                    val credit =
+                        (split.paidAmount ?: ZERO).setScale(2, RoundingMode.HALF_UP)
+                    if (credit.compareTo(ZERO) != 0) {
+                        nets[split.userId] = nets.getOrDefault(split.userId, ZERO).add(credit)
+                    }
+                }
+            } else {
+                val credit = expense.amount.setScale(2, RoundingMode.HALF_UP)
+                nets[expense.paidByUserId] =
+                    nets.getOrDefault(expense.paidByUserId, ZERO).add(credit)
+            }
             splits.forEach { split ->
                 val debit = split.owedAmount.setScale(2, RoundingMode.HALF_UP)
                 nets[split.userId] = nets.getOrDefault(split.userId, ZERO).subtract(debit)
@@ -88,6 +129,13 @@ object BalanceCalculator {
                     buildSet {
                         add(expense.paidByUserId)
                         addAll(splitsByExpenseId[expense.id].orEmpty().map { it.userId })
+                        splitsByExpenseId[expense.id].orEmpty().forEach { split ->
+                            if (split.paidAmount != null &&
+                                split.paidAmount.compareTo(BigDecimal.ZERO) != 0
+                            ) {
+                                add(split.userId)
+                            }
+                        }
                     }
                 viewerUserId in participants && otherUserId in participants
             }

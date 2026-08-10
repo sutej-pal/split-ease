@@ -77,7 +77,7 @@ class SharedPreferencesAppSettingsRepository
             withContext(Dispatchers.IO) {
                 prefs.edit { putBoolean(simplifyKey(groupId), enabled) }
             }
-            simplifyMapFlow.value = simplifyMapFlow.value + (groupId to enabled)
+            simplifyMapFlow.value += (groupId to enabled)
         }
 
         override fun observeThemeMode(): Flow<ThemeMode> = themeModeFlow.asStateFlow()

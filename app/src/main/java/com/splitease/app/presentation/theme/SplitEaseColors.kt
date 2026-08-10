@@ -40,11 +40,6 @@ object SplitEaseColors {
     val Accent: Color
         get() = MaterialTheme.colorScheme.tertiary
 
-    @get:Composable
-    @get:ReadOnlyComposable
-    val AccentSoft: Color
-        get() = MaterialTheme.colorScheme.tertiaryContainer
-
     /** Body / heading text on background and surface. */
     @get:Composable
     @get:ReadOnlyComposable
@@ -106,7 +101,4 @@ object SplitEaseColors {
     // Explicit positive pair for callers that need containers
     /** PLACEHOLDER — positive fill. Confirm before shipping. */
     val Positive = PositivePlaceholder
-
-    /** PLACEHOLDER — positive container. Confirm before shipping. */
-    val PositiveContainer = PositiveContainerPlaceholder
 }

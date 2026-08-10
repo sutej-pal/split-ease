@@ -26,7 +26,7 @@ class DebtSimplifierTest {
 
     @Test
     fun three_person_minimizes_to_two_transfers() {
-        // a is owed 80, b owes 30, c owes 50
+        // user "a" is owed 80; "b" owes 30; "c" owes 50
         val nets =
             mapOf(
                 "a" to BigDecimal("80.00"),

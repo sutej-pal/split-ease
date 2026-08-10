@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.splitease.app.R
@@ -73,7 +75,7 @@ fun SegmentedOtpInput(
     val digits = remember(value, length) { normalizeOtp(value, length) }
     val focusRequesters = remember(length) { List(length) { FocusRequester() } }
     val focusManager = LocalFocusManager.current
-    var focusedIndex by remember { mutableStateOf(0) }
+    var focusedIndex by remember { mutableIntStateOf(0) }
     val shakeOffset = remember { Animatable(0f) }
     var lastCompleted by remember { mutableStateOf<String?>(null) }
 
@@ -154,7 +156,7 @@ fun SegmentedOtpInput(
         modifier =
             modifier
                 .fillMaxWidth()
-                .offset(x = shakeOffset.value.dp),
+                .offset { IntOffset(shakeOffset.value.dp.roundToPx(), 0) },
         horizontalArrangement = Arrangement.spacedBy(8.dp, horizontalAlignment),
         verticalAlignment = Alignment.CenterVertically,
     ) {
