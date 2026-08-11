@@ -29,8 +29,10 @@ Track development phases. Always check this file at the start of a session to de
 - Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)
 - Condensed history: [docs/phase-bundles.md](docs/phase-bundles.md)
 - Maintenance: [email OTP verification](docs/maintenance-email-otp-verification.md)
+- Ordered Supabase follow-ups: [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md)
 
 ### Carried-forward TODOs
+- **Supabase architecture TODOs (ordered)** — Remote delete tombstones → conflict policy → category sync → pin-board boundary → Edge Functions non-CRUD → ops hygiene ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md)).
 - **OTP ops checklist** — Keep Supabase signup + recovery OTP operational (Confirm email ON, `{{ .Token }}` in templates / mail-service Send Email hook, SMTP/provider health) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
 - **Redeploy mail-service** — Recovery password-reset template lives in the mail-service; redeploy Render so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-email-otp.md)).
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.

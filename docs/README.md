@@ -20,6 +20,7 @@ Use this order to stay fast and consistent.
 - App Links: [app-links-setup.md](app-links-setup.md)
 - Release: [release-checklist.md](release-checklist.md), [store-listing.md](store-listing.md)
 - Extras backlog: [extras-group-live-updates-notifications.md](extras-group-live-updates-notifications.md)
+- Supabase architecture TODOs (ordered): [supabase-architecture-todos.md](supabase-architecture-todos.md)
 - FCM / Realtime ops: [fcm-setup.md](fcm-setup.md)
 - Design tokens: [design-tokens.md](design-tokens.md)
 - Mail server repo notes: [splitease-server-repo.md](splitease-server-repo.md)
