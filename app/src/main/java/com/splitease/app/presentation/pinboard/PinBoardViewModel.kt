@@ -94,9 +94,10 @@ class PinBoardViewModel
             viewModelScope.launch {
                 try {
                     _uiState.value = _uiState.value.copy(isSaving = true, errorMessage = null)
-                    interactor.save(gid, content, uid)
+                    val synced = interactor.save(gid, content, uid)
                     val editorName = socialRemote.fetchProfileById(uid)?.displayName
                     _uiState.value = _uiState.value.copy(
+                        content = synced,
                         isSaving = false,
                         isDirty = false,
                         lastEditedBy = editorName,
@@ -109,4 +110,12 @@ class PinBoardViewModel
                 }
             }
         }
+
+        /**
+         * Uploads [localPath] when possible and returns a display URL (remote preferred).
+         */
+        suspend fun ensureImageUploaded(
+            groupId: String,
+            localPath: String,
+        ): String = interactor.uploadLocalImage(groupId, localPath) ?: localPath
     }

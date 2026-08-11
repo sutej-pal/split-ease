@@ -11,7 +11,7 @@
     <string name="invite_paste_body">Paste the https invite link (or token) from your email.</string>
     <string name="invite_paste_label">Invite link or token</string>
     <string name="invite_paste_continue">Continue</string>
-    <string name="invite_paste_invalid">Couldn't find an invite link in that text.</string>
+    <string name="invite_paste_invalid">Couldn\'t find an invite link in that text.</string>
     <string name="action_log_in">Log in</string>
     <string name="action_sign_up">Sign up</string>
     <string name="action_signup">Signup</string>
@@ -24,14 +24,14 @@
     <string name="action_allow_contacts">Allow contacts access</string>
     <string name="label_name">Name</string>
     <string name="label_phone_or_email">Phone number or email address</string>
-    <string name="add_friend_review_hint">Don't worry, nothing sends just yet. You will have another chance to review before sending.</string>
+    <string name="add_friend_review_hint">Don\'t worry, nothing sends just yet. You will have another chance to review before sending.</string>
     <string name="review_friends_title">Review</string>
-    <string name="review_friends_hint">These people will be notified you've added them as a friend. You can start adding expenses right away.</string>
+    <string name="review_friends_hint">These people will be notified you\'ve added them as a friend. You can start adding expenses right away.</string>
     <string name="review_friends_missing_contact">Tap Edit to add a phone or email</string>
     <string name="cd_remove_review_friend">Remove from list</string>
     <string name="msg_review_empty">Select at least one person to add.</string>
     <string name="msg_review_contact_required">Add a phone or email for %1$s.</string>
-    <string name="msg_friend_add_failed">Couldn't add friend. Try again.</string>
+    <string name="msg_friend_add_failed">Couldn\'t add friend. Try again.</string>
     <string name="edit_contact_title">Edit contact</string>
     <string name="edit_contact_enter_phone">Enter a new phone number</string>
     <string name="edit_contact_enter_email">Enter a new email address</string>
@@ -44,7 +44,7 @@
     <string name="friend_settings_shared_groups">Shared groups</string>
     <string name="friend_settings_no_shared_groups">You and %1$s do not share any groups.</string>
     <string name="friend_settings_manage">Manage relationship</string>
-    <string name="friend_invite_pending_card">%1$s's invite has not been accepted. Is the phone number or email '%2$s' correct?</string>
+    <string name="friend_invite_pending_card">%1$s\'s invite has not been accepted. Is the phone number or email \'%2$s\' correct?</string>
     <string name="action_edit_contact_info">No, edit contact info</string>
     <string name="action_resend_invite">Yes, resend invite</string>
     <string name="action_remove_from_friends">Remove from friends list</string>
@@ -56,12 +56,12 @@
     <string name="action_remove">Remove</string>
     <string name="friend_remove_confirm_title">Remove %1$s?</string>
     <string name="friend_remove_confirm_body">This will remove this user from your friends list, and delete any non-group expenses you two have shared.</string>
-    <string name="friend_remove_confirm_body_2">They will be able to see you've removed them (from Activity) but they won't receive an email or push notification.</string>
+    <string name="friend_remove_confirm_body_2">They will be able to see you\'ve removed them (from Activity) but they won\'t receive an email or push notification.</string>
     <string name="friend_block_confirm_body">This will remove them from your friends list and suppress future expenses and notifications from them.</string>
     <string name="friend_report_confirm_body">Report this account for abuse, spam, or suspicious activity?</string>
     <string name="msg_friend_removed">Removed from friends.</string>
     <string name="msg_invite_resent">Invite ready to share again.</string>
-    <string name="msg_report_submitted">Thanks — we've recorded your report.</string>
+    <string name="msg_report_submitted">Thanks — we\'ve recorded your report.</string>
     <string name="friend_detail_no_expenses_yet">No expenses here yet.</string>
     <string name="friend_detail_empty_title">No expenses here yet.</string>
     <string name="friend_detail_empty_body">Add an expense to get this party started.</string>
@@ -84,7 +84,7 @@
     <string name="find_people_contacts_permission">Allow SplitEase to read your contacts to invite people faster.</string>
     <string name="action_create_group">Create group</string>
     <string name="create_group_title">Create a group</string>
-    <string name="create_group_invite_note">You'll be able to invite members by email or SMS once the group is created.</string>
+    <string name="create_group_invite_note">You\'ll be able to invite members by email or SMS once the group is created.</string>
     <string name="group_creating">Creating group…</string>
     <string name="action_close">Close</string>
     <string name="cd_group_photo">Add group photo</string>
@@ -143,13 +143,13 @@
     <string name="settings_timeout_15_minutes">15 minutes</string>
     <string name="settings_timeout_1_hour">1 hour</string>
     <string name="security_unlock_title">Unlock SplitEase</string>
-    <string name="security_unlock_subtitle">Confirm it's you to continue</string>
+    <string name="security_unlock_subtitle">Confirm it\'s you to continue</string>
     <string name="security_unlock_action">Unlock</string>
     <string name="security_biometrics_unavailable">Biometrics or device lock screen is not available on this device.</string>
     <string name="action_cancel">Cancel</string>
     <string name="settings_currency_item">Currency</string>
     <string name="settings_currency_hint">Used for all new expenses and groups. Change it here only.</string>
-    <string name="group_solo_title">You're the only one here!</string>
+    <string name="group_solo_title">You\'re the only one here!</string>
     <string name="action_add_group_members">Add group members</string>
     <string name="action_share_group_link">Share group link</string>
     <string name="group_chip_balances">Balances</string>
@@ -210,7 +210,7 @@
     <string name="group_delete_confirm">Delete this group for everyone? Expenses and balances in the group will be removed from this device.</string>
     <string name="login_title">Welcome back</string>
     <string name="signup_welcome_title">Welcome to SplitEase!</string>
-    <string name="signup_welcome_subtitle">Let's create your account.</string>
+    <string name="signup_welcome_subtitle">Let\'s create your account.</string>
     <string name="label_full_name">Full name</string>
     <string name="label_email_address">Email address</string>
     <string name="label_phone_number">Phone number</string>
@@ -229,10 +229,10 @@
     <string name="signup_error_name_required">Enter your full name.</string>
     <string name="signup_error_password_short">Password must be at least 8 characters.</string>
     <string name="forgot_title">Reset password</string>
-    <string name="forgot_subtitle">Enter your email and we'll send a 6-digit code if an account exists.</string>
+    <string name="forgot_subtitle">Enter your email and we\'ll send a 6-digit code if an account exists.</string>
     <string name="reset_password_title">Choose a new password</string>
     <string name="reset_password_subtitle_before">If an account exists for</string>
-    <string name="reset_password_subtitle_after">, we've sent a code. Enter it below, then set your new password.</string>
+    <string name="reset_password_subtitle_after">, we\'ve sent a code. Enter it below, then set your new password.</string>
     <string name="reset_otp_hint">Enter the 6-digit code we sent you</string>
     <string name="label_new_password">New password</string>
     <string name="label_confirm_password">Confirm password</string>
@@ -243,7 +243,7 @@
     <string name="reset_password_rule_number">At least one number</string>
     <string name="reset_password_requirements">Password must include 8+ characters, upper &amp; lowercase letters, and a number.</string>
     <string name="action_set_new_password">Update password</string>
-    <string name="reset_otp_sent">If an account exists for %1$s, we've sent a code.</string>
+    <string name="reset_otp_sent">If an account exists for %1$s, we\'ve sent a code.</string>
     <string name="reset_otp_invalid_or_expired">Invalid or expired code.</string>
     <string name="reset_password_mismatch">Passwords do not match.</string>
     <string name="reset_password_success">Password updated.</string>
@@ -336,7 +336,7 @@
     <string name="cd_share_invite_again">Share invite again</string>
     <string name="invite_link_copied">Invite link copied</string>
     <string name="msg_invite_link_unavailable">No pending invite link found for this person.</string>
-    <string name="invite_email_subject">You're invited to SplitEase</string>
+    <string name="invite_email_subject">You\'re invited to SplitEase</string>
     <string name="invite_pending_label">Invite pending</string>
     <string name="invite_select_name">Select your name:</string>
     <string name="invite_members_empty">No members to show yet.</string>
@@ -350,11 +350,11 @@
     <string name="invite_join_group_title">JOIN \"%1$s\"</string>
     <string name="invite_join_title">JOIN SPLITEASE</string>
     <string name="invite_signup_name_label">Hi there! My name is</string>
-    <string name="invite_signup_email_label">Here's my email address:</string>
-    <string name="invite_signup_password_label">And here's my password:</string>
+    <string name="invite_signup_email_label">Here\'s my email address:</string>
+    <string name="invite_signup_password_label">And here\'s my password:</string>
     <string name="invite_signup_cta">Sign me up!</string>
     <string name="invite_not_found">This invite link is invalid or has already been used.</string>
-    <string name="invite_preview_failed">Couldn't load this invite. Check your connection and try again.</string>
+    <string name="invite_preview_failed">Couldn\'t load this invite. Check your connection and try again.</string>
     <string name="action_back">Back</string>
     <string name="action_back_to_welcome">Back to welcome</string>
     <string name="action_add_expense">Add expense</string>
@@ -397,7 +397,7 @@
     <string name="split_unequal_title">Split by exact amounts</string>
     <string name="split_unequal_subtitle">Specify exactly how much each person owes.</string>
     <string name="split_percent_title">Split by percentages</string>
-    <string name="split_percent_subtitle">Enter the percentage split that's fair for your situation.</string>
+    <string name="split_percent_subtitle">Enter the percentage split that\'s fair for your situation.</string>
     <string name="split_shares_title">Split by shares</string>
     <string name="split_shares_subtitle">Great for time-based splitting (2 nights → 2 shares) and splitting across families (family of 3 → 3 shares).</string>
     <string name="split_adjustment_title">Split by adjustment</string>
@@ -420,15 +420,15 @@
     <string name="label_amount">Amount</string>
     <string name="google_sign_in_soon">Google Sign-In needs OAuth setup in Supabase (coming next).</string>
     <string name="error_generic">Something went wrong. Try again.</string>
-    <string name="error_signup_email_delivery">We couldn't send the verification email. Please try again in a moment.</string>
+    <string name="error_signup_email_delivery">We couldn\'t send the verification email. Please try again in a moment.</string>
     <string name="error_signup_email_rate_limit">Too many verification emails were sent. Wait a few minutes and try again.</string>
     <string name="error_invalid_email">Enter a valid email address.</string>
     <string name="error_login_fields_required">Enter your email and password.</string>
     <string name="error_invalid_credentials">Invalid email or password. Try again.</string>
-    <string name="error_not_registered">You're not registered with us. Please sign up.</string>
+    <string name="error_not_registered">You\'re not registered with us. Please sign up.</string>
     <string name="error_email_already_registered">This email is already registered. Please log in.</string>
     <string name="error_phone_already_registered">This phone number is already registered. Please log in.</string>
-    <string name="error_already_registered">You're already registered with us. Please log in.</string>
+    <string name="error_already_registered">You\'re already registered with us. Please log in.</string>
     <string name="error_auth_rate_login">Too many login attempts. %1$s</string>
     <string name="error_auth_rate_signup">Too many sign-up attempts. %1$s</string>
     <string name="error_auth_rate_forgot_password">Too many password-reset requests. %1$s</string>
@@ -493,7 +493,7 @@
     <string name="settings_language_ja">日本語</string>
     <string name="msg_not_signed_in">Not signed in.</string>
     <string name="msg_local_profile_missing">Your local profile is missing. Sign out, sign in again, then retry.</string>
-    <string name="msg_group_sync_rls">Couldn't sync this group to the cloud. Create a new group while signed in, then try the invite link again.</string>
+    <string name="msg_group_sync_rls">Couldn\'t sync this group to the cloud. Create a new group while signed in, then try the invite link again.</string>
     <string name="msg_friend_added">Friend added.</string>
     <string name="msg_invite_ready">Invite ready — share the link so they can join.</string>
     <string name="msg_group_updated">Group updated.</string>
@@ -502,7 +502,7 @@
     <string name="expense_saving">Saving expense…</string>
     <string name="msg_expense_updated">Expense updated.</string>
     <string name="msg_expense_deleted">Expense deleted.</string>
-    <string name="msg_expense_saved_not_synced">Expense saved on this device, but cloud sync failed — other members won't see it yet. Connect to the internet and pull to refresh the group to retry.</string>
+    <string name="msg_expense_saved_not_synced">Expense saved on this device, but cloud sync failed — other members won\'t see it yet. Connect to the internet and pull to refresh the group to retry.</string>
     <string name="msg_expense_cloud_rls">Could not save to cloud due to Supabase permissions (RLS). Verify you are a member of this group and run docs/sql/phase-4c-fix-expense-select-rls-returning.sql in Supabase SQL Editor.</string>
     <string name="msg_expense_cloud_schema">Could not sync expense splits — the cloud database is missing a column (paid_amount / adjustment_amount). Run the expense_splits ALTER statements in docs/sql/migration_db.sql, then retry.</string>
     <string name="expense_not_found">Expense not found.</string>
@@ -544,7 +544,7 @@
         <item quantity="other">Synced %1$s; %2$d failed</item>
     </plurals>
     <string name="msg_cloud_tables_missing">Cloud tables are not set up yet. Group was not saved to the cloud — run docs/sql/phase-3-schema.sql in the Supabase SQL Editor.</string>
-    <string name="msg_cloud_unreachable">Couldn't reach the cloud. Showing saved data — check your connection and try again.</string>
+    <string name="msg_cloud_unreachable">Couldn\'t reach the cloud. Showing saved data — check your connection and try again.</string>
     <string name="uncategorized_label">Uncategorized</string>
     <string name="activity_you_created">You created \"%1$s\"</string>
     <string name="balances_you_are_owed_plain">You are owed</string>
@@ -569,5 +569,7 @@
     <string name="pin_board_italic">Italic</string>
     <string name="pin_board_checklist">Checklist</string>
     <string name="pin_board_image">Add image</string>
+    <string name="pin_board_remove_image">Remove image</string>
+    <string name="pin_board_image_unavailable">Image unavailable on this device</string>
     <string name="action_open_pin_board">Pin Board</string>
 </resources>
