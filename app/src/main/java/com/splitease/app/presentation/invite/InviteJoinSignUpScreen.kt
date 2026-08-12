@@ -57,7 +57,14 @@ fun InviteJoinSignUpScreen(
     viewModel: InviteJoinViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val prefillEmail = uiState.preview?.email.orEmpty()
+    // Person invites may prefill a real address; group share links use a placeholder and stay blank.
+    val prefillEmail =
+        uiState.preview
+            ?.email
+            .orEmpty()
+            .trim()
+            .takeUnless { it.endsWith("@splitease.invalid", ignoreCase = true) }
+            .orEmpty()
 
     var displayName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -65,6 +72,9 @@ fun InviteJoinSignUpScreen(
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(prefillEmail) {
+        if (email.trim().endsWith("@splitease.invalid", ignoreCase = true)) {
+            email = ""
+        }
         if (email.isBlank() && prefillEmail.isNotBlank()) {
             email = prefillEmail
         }

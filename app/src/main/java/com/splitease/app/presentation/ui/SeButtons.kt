@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -194,11 +195,14 @@ fun SeTextButton(
     enabled: Boolean = true,
     isLoading: Boolean = false,
     emphasized: Boolean = false,
+    /** Idle label color; null uses brand primary (link accent). */
+    color: Color? = null,
     // Equal insets for the press ripple. Pass horizontal 0 when the label must
     // sit flush with a form edge.
     contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
 ) {
     val interactive = enabled && !isLoading
+    val labelColor = color ?: SplitEaseColors.Primary
     val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier =
@@ -221,7 +225,7 @@ fun SeTextButton(
             CircularProgressIndicator(
                 modifier = Modifier.size(16.dp),
                 strokeWidth = 2.dp,
-                color = SplitEaseColors.Primary,
+                color = labelColor,
             )
             Spacer(modifier = Modifier.width(8.dp))
         }
@@ -233,7 +237,7 @@ fun SeTextButton(
                 ),
             color =
                 if (interactive || isLoading) {
-                    SplitEaseColors.Primary
+                    labelColor
                 } else {
                     SplitEaseColors.NavyMuted
                 },

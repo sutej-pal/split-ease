@@ -60,18 +60,16 @@ import com.splitease.app.presentation.theme.IndigoLight
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.TextPrimaryLight
 import com.splitease.app.presentation.ui.SeActionChip
+import com.splitease.app.presentation.ui.SeConfirmDialog
+import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeInfoText
-import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalBody
-import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeSystemBars
-import com.splitease.app.presentation.ui.SeTextButton
 
 private enum class NonGroupDetailPane {
     Expenses,
@@ -327,15 +325,13 @@ fun NonGroupExpensesScreen(
     }
 
     if (showInfo) {
-        SeModal(onDismissRequest = { showInfo = false }) {
-            SeModalTitle(text = stringResource(R.string.non_group_expenses))
-            SeModalBody(text = stringResource(R.string.non_group_expenses_info))
-            Spacer(modifier = Modifier.height(8.dp))
-            SeTextButton(
-                text = stringResource(R.string.action_done),
-                onClick = { showInfo = false },
-            )
-        }
+        SeConfirmDialog(
+            title = stringResource(R.string.non_group_expenses),
+            body = stringResource(R.string.non_group_expenses_info),
+            onDismissRequest = { showInfo = false },
+            icon = Icons.Filled.Info,
+            tone = SeConfirmTone.Primary,
+        )
     }
 
     if (showFriendPicker) {

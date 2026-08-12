@@ -71,12 +71,10 @@ import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeConfirmDialog
+import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
-import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalBody
-import com.splitease.app.presentation.ui.SeModalTitle
-import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -323,24 +321,18 @@ fun ExpenseDetailScreen(
     }
 
     if (showDeleteConfirm) {
-        SeModal(onDismissRequest = { showDeleteConfirm = false }) {
-            SeModalTitle(stringResource(R.string.expense_delete_title))
-            Spacer(modifier = Modifier.height(8.dp))
-            SeModalBody(stringResource(R.string.expense_delete_body))
-            Spacer(modifier = Modifier.height(20.dp))
-            SePrimaryButton(
-                text = stringResource(R.string.action_delete_expense),
-                onClick = {
-                    showDeleteConfirm = false
-                    viewModel.deleteExpense(expenseId, onSuccess = onDeleted)
-                },
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            SeTextButton(
-                text = stringResource(R.string.action_cancel),
-                onClick = { showDeleteConfirm = false },
-            )
-        }
+        SeConfirmDialog(
+            title = stringResource(R.string.expense_delete_title),
+            body = stringResource(R.string.expense_delete_body),
+            confirmLabel = stringResource(R.string.action_delete_expense),
+            onDismissRequest = { showDeleteConfirm = false },
+            onConfirm = {
+                showDeleteConfirm = false
+                viewModel.deleteExpense(expenseId, onSuccess = onDeleted)
+            },
+            icon = Icons.Filled.Delete,
+            tone = SeConfirmTone.Danger,
+        )
     }
 }
 

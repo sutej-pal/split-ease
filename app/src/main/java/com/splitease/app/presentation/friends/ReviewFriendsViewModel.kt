@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.friends
 
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
@@ -98,10 +99,15 @@ class ReviewFriendsViewModel
                 }
 
                 _uiState.update {
-                    it.copy(isSubmitting = true, errorMessage = null, pendingShareTexts = emptyList())
+                    it.copy(
+                        isSubmitting = true,
+                        errorMessage = null,
+                        pendingShareTexts = emptyList(),
+                    )
                 }
 
                 val shareTexts = mutableListOf<String>()
+                var emailsSent = 0
                 var firstError: String? = null
                 val groupId = reviewStore.groupId.value
 
@@ -122,7 +128,14 @@ class ReviewFriendsViewModel
                             )
                         break
                     }
-                    outcome.inviteShareText?.takeIf { it.isNotBlank() }?.let { shareTexts += it }
+                    // Drop successes immediately so a partial-failure retry does not
+                    // re-process them (duplicate invites / emails).
+                    reviewStore.remove(draft.id)
+                    if (outcome.inviteEmailSent) {
+                        emailsSent += 1
+                    } else {
+                        outcome.inviteShareText?.takeIf { it.isNotBlank() }?.let { shareTexts += it }
+                    }
                 }
 
                 if (firstError != null) {
@@ -133,6 +146,15 @@ class ReviewFriendsViewModel
                 }
 
                 reviewStore.clear()
+                if (emailsSent > 0) {
+                    val info =
+                        if (emailsSent == 1) {
+                            appContext.getString(R.string.msg_invite_email_sent_one)
+                        } else {
+                            appContext.getString(R.string.msg_invite_emails_sent, emailsSent)
+                        }
+                    Toast.makeText(appContext, info, Toast.LENGTH_SHORT).show()
+                }
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,

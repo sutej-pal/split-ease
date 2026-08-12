@@ -23,11 +23,9 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +49,8 @@ import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.presentation.theme.AmberLight
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeConfirmDialog
+import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
@@ -191,142 +191,77 @@ fun FriendSettingsScreen(
     )
 
     if (showSharedGroupsBlock) {
-        AlertDialog(
+        SeConfirmDialog(
+            title = stringResource(R.string.friend_shared_groups_title),
+            body = stringResource(R.string.friend_shared_groups_body),
             onDismissRequest = { showSharedGroupsBlock = false },
-            title = { Text(stringResource(R.string.friend_shared_groups_title)) },
-            text = { Text(stringResource(R.string.friend_shared_groups_body)) },
-            confirmButton = {
-                TextButton(onClick = { showSharedGroupsBlock = false }) {
-                    Text(
-                        text = stringResource(R.string.action_ok),
-                        color = SplitEaseColors.Primary,
-                    )
-                }
-            },
+            dismissLabel = stringResource(R.string.action_ok),
+            icon = Icons.Filled.Group,
+            tone = SeConfirmTone.Primary,
         )
     }
 
     if (showRemoveConfirm) {
-        AlertDialog(
+        SeConfirmDialog(
+            title = stringResource(R.string.friend_remove_confirm_title, personLabel),
+            body =
+                stringResource(R.string.friend_remove_confirm_body) +
+                    "\n\n" +
+                    stringResource(R.string.friend_remove_confirm_body_2),
+            confirmLabel = stringResource(R.string.action_remove),
             onDismissRequest = { showRemoveConfirm = false },
-            title = {
-                Text(
-                    stringResource(
-                        R.string.friend_remove_confirm_title,
-                        personLabel,
-                    ),
-                )
+            onConfirm = {
+                showRemoveConfirm = false
+                viewModel.removeFriend(onRemoved)
             },
-            text = {
-                Column {
-                    Text(stringResource(R.string.friend_remove_confirm_body))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(stringResource(R.string.friend_remove_confirm_body_2))
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showRemoveConfirm = false
-                        viewModel.removeFriend(onRemoved)
-                    },
-                    enabled = !uiState.isSubmitting,
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_remove),
-                        color = SplitEaseColors.Primary,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRemoveConfirm = false }) {
-                    Text(
-                        text = stringResource(R.string.action_cancel),
-                        color = SplitEaseColors.Primary,
-                    )
-                }
-            },
+            icon = Icons.Filled.PersonRemove,
+            tone = SeConfirmTone.Danger,
         )
     }
 
     if (showBlockConfirm) {
-        AlertDialog(
+        SeConfirmDialog(
+            title = stringResource(R.string.friend_block_confirm_title, personLabel),
+            body =
+                stringResource(R.string.friend_block_confirm_body) +
+                    "\n\n" +
+                    stringResource(R.string.friend_block_confirm_body_2),
+            confirmLabel = stringResource(R.string.action_block),
             onDismissRequest = { showBlockConfirm = false },
-            title = {
-                Text(stringResource(R.string.friend_block_confirm_title, personLabel))
+            onConfirm = {
+                showBlockConfirm = false
+                viewModel.blockFriend(onRemoved)
             },
-            text = {
-                Column {
-                    Text(stringResource(R.string.friend_block_confirm_body))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(stringResource(R.string.friend_block_confirm_body_2))
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showBlockConfirm = false
-                        viewModel.blockFriend(onRemoved)
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_block),
-                        color = SplitEaseColors.Primary,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBlockConfirm = false }) {
-                    Text(
-                        text = stringResource(R.string.action_cancel),
-                        color = SplitEaseColors.Primary,
-                    )
-                }
-            },
+            icon = Icons.Filled.Block,
+            tone = SeConfirmTone.Danger,
         )
     }
 
     if (showReportConfirm) {
-        AlertDialog(
+        SeConfirmDialog(
+            title = stringResource(R.string.friend_report_confirm_title, personLabel),
+            body = stringResource(R.string.friend_report_confirm_body),
+            confirmLabel = stringResource(R.string.action_report_abuse),
             onDismissRequest = { showReportConfirm = false },
-            title = {
-                Text(stringResource(R.string.friend_report_confirm_title, personLabel))
+            onConfirm = {
+                showReportConfirm = false
+                viewModel.reportFriend()
             },
-            text = { Text(stringResource(R.string.friend_report_confirm_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showReportConfirm = false
-                        viewModel.reportFriend()
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_report_abuse),
-                        color = SplitEaseColors.YouOwe,
-                    )
-                }
+            dismissLabel = stringResource(R.string.action_other_customer_support),
+            onDismissClick = {
+                showReportConfirm = false
+                val supportEmail = context.getString(R.string.support_email)
+                val subject = context.getString(R.string.support_email_subject)
+                val intent =
+                    Intent(Intent.ACTION_SENDTO).apply {
+                        data = android.net.Uri.parse("mailto:")
+                        putExtra(Intent.EXTRA_EMAIL, arrayOf(supportEmail))
+                        putExtra(Intent.EXTRA_SUBJECT, subject)
+                    }
+                runCatching { context.startActivity(intent) }
             },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showReportConfirm = false
-                        val supportEmail = context.getString(R.string.support_email)
-                        val subject = context.getString(R.string.support_email_subject)
-                        val intent =
-                            Intent(Intent.ACTION_SENDTO).apply {
-                                data = android.net.Uri.parse("mailto:")
-                                putExtra(Intent.EXTRA_EMAIL, arrayOf(supportEmail))
-                                putExtra(Intent.EXTRA_SUBJECT, subject)
-                            }
-                        runCatching { context.startActivity(intent) }
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_other_customer_support),
-                        color = SplitEaseColors.Primary,
-                    )
-                }
-            },
+            icon = Icons.Filled.Report,
+            tone = SeConfirmTone.Danger,
         )
     }
 }

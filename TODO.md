@@ -14,7 +14,7 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 
 ## Invites & App Links
 
-- [ ] **Invite email delivery** — MVP uses the system share sheet; automated send via mail-service still TODO.
+- [x] **Invite email delivery** — Add people / Review sends invite mail via mail-service when the contact is an email; phone contacts still fall back to the share sheet.
 - [ ] **App Links / invite https** — Host [docs/assetlinks.json](docs/assetlinks.json) at `/.well-known/assetlinks.json` on invite hosts for verified Open-by-default links. See [docs/app-links-setup.md](docs/app-links-setup.md).
 - [ ] **Install Referrer E2E** — Full deferred-invite proof needs a Play install (Internal testing). Sideload does not populate referrer.
 - [ ] **Redeploy mail-service `/invite/:token`** — Open-app then Play Store with `referrer=invite_token%3D...`; redeploy Vercel after pulling mail-service changes.

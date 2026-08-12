@@ -240,6 +240,8 @@ class SocialInteractor
 
                 friendRepository.getByOwnerAndEmail(ownerUserId, normalized)?.let { existing ->
                     val pendingInvite = inviteRepository.getByFriendRowId(existing.id)
+                    // Do not auto-resend email here — Review retries and re-adds would
+                    // duplicate mail. Explicit resend uses deliverPendingInvite().
                     val share =
                         if (pendingInvite?.status == InviteStatus.PENDING) {
                             InviteLinks.friendShareText(
@@ -427,6 +429,53 @@ class SocialInteractor
             }
 
             if (normalized.contains("@")) {
+                // Reuse a local pending invite placeholder instead of creating a duplicate.
+                friendRepository.getByOwnerAndEmail(ownerUserId, normalized)?.let { existing ->
+                    val pendingInvite = inviteRepository.getByFriendRowId(existing.id)
+                    val isPlaceholder =
+                        pendingInvite?.status == InviteStatus.PENDING ||
+                            existing.displayNameSnapshot.contains("(invited)", ignoreCase = true)
+                    if (isPlaceholder) {
+                        // Same as addExistingFriendToGroup: if they already registered,
+                        // promote the placeholder and add them as a real member.
+                        val profile =
+                            runCatching { remote.findProfileByEmail(normalized) }.getOrNull()
+                        if (profile != null && profile.id != ownerUserId) {
+                            if (pendingInvite != null) {
+                                promotePendingInviteIfJoined(ownerUserId, pendingInvite)
+                            }
+                            addMemberToGroup(
+                                groupId = groupId,
+                                userId = profile.id,
+                                actingUserId = ownerUserId,
+                            ).getOrThrow()
+                            val linked =
+                                friendRepository.getByFriendUserId(profile.id)
+                                    ?: existing.copy(friendUserId = profile.id)
+                            return AddPersonOutcome(
+                                friend = linked,
+                                inviteShareText = null,
+                                isInvitePending = false,
+                            )
+                        }
+                        return ensureGroupInviteForPendingFriend(
+                            ownerUserId = ownerUserId,
+                            friend = existing,
+                            groupId = groupId,
+                        )
+                    }
+                    addMemberToGroup(
+                        groupId = groupId,
+                        userId = existing.friendUserId,
+                        actingUserId = ownerUserId,
+                    ).getOrThrow()
+                    return AddPersonOutcome(
+                        friend = existing,
+                        inviteShareText = null,
+                        isInvitePending = false,
+                    )
+                }
+
                 val profile = remote.findProfileByEmail(normalized)
                 if (profile != null) {
                     require(profile.id != ownerUserId) { "You can't invite yourself." }
@@ -565,10 +614,17 @@ class SocialInteractor
                         AvatarImageIO.cacheRemoteImage(appContext, photoUrl)
                     }
                 }
+            // Generic group share links store a non-user placeholder so email-based
+            // accept cannot burn the token; never prefill that into signup.
+            val previewEmail =
+                dto.email.trim().takeUnless {
+                    it.equals(GROUP_SHARE_LINK_EMAIL, ignoreCase = true) ||
+                        it.endsWith("@splitease.invalid", ignoreCase = true)
+                }.orEmpty()
             return InvitePreview(
                 token = dto.token,
                 kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
-                email = dto.email,
+                email = previewEmail,
                 inviterName = dto.inviterName.ifBlank { "A friend" },
                 groupId = dto.groupId,
                 groupName = dto.groupName,
@@ -1159,6 +1215,7 @@ class SocialInteractor
             }
 
             val existingInvite = inviteRepository.getByFriendRowId(friend.id)
+            var shouldSendEmail = true
             val invite =
                 when (existingInvite?.status) {
                     InviteStatus.PENDING -> {
@@ -1168,6 +1225,9 @@ class SocialInteractor
                         ) {
                             if (existingInvite.syncStatus != SyncStatus.SYNCED) {
                                 pushInviteToCloud(existingInvite)
+                            } else {
+                                // Already delivered for this group — avoid duplicate emails.
+                                shouldSendEmail = false
                             }
                             existingInvite
                         } else {
@@ -1214,12 +1274,16 @@ class SocialInteractor
                 userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
             val shareText = InviteLinks.groupShareText(inviterName, group.name, invite.token)
             val emailSent =
-                trySendInviteEmail(
-                    toEmail = email,
-                    inviterName = inviterName,
-                    groupName = group.name,
-                    token = invite.token,
-                )
+                if (shouldSendEmail) {
+                    trySendInviteEmail(
+                        toEmail = email,
+                        inviterName = inviterName,
+                        groupName = group.name,
+                        token = invite.token,
+                    )
+                } else {
+                    false
+                }
             return AddPersonOutcome(
                 friend = friend,
                 inviteShareText = if (emailSent) null else shareText,

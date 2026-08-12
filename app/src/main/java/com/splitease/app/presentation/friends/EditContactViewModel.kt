@@ -389,7 +389,8 @@ class EditContactViewModel
         }
 
         /**
-         * Prefers the default (first) phone; falls back to a matching contact or first email.
+         * Prefers a matching contact value, then email (so invite mail can be sent),
+         * then the first phone.
          */
         private fun preferredDefaultOptionId(
             options: List<ContactMethodOption>,
@@ -406,8 +407,8 @@ class EditContactViewModel
                 }?.id
                     ?.let { return it }
             }
-            options.firstOrNull { it.kind == ContactMethodKind.EXISTING_PHONE }?.id?.let { return it }
             options.firstOrNull { it.kind == ContactMethodKind.EXISTING_EMAIL }?.id?.let { return it }
+            options.firstOrNull { it.kind == ContactMethodKind.EXISTING_PHONE }?.id?.let { return it }
             return options.first().id
         }
 

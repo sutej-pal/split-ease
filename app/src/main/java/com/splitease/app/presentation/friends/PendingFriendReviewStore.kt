@@ -41,7 +41,8 @@ class PendingFriendReviewStore
         val groupId: StateFlow<String?> = _groupId.asStateFlow()
 
         /**
-         * Replaces the review list with defaults from device contacts (primary phone, else email).
+         * Replaces the review list with defaults from device contacts (email when available,
+         * otherwise primary phone) so mail invites can be delivered automatically.
          */
         fun replaceFromDeviceContacts(
             contacts: List<DeviceContact>,
@@ -51,10 +52,10 @@ class PendingFriendReviewStore
             _entries.value =
                 contacts.map { contact ->
                     val defaultContact =
-                        contact.phoneNumber
+                        contact.email
                             ?.trim()
                             .orEmpty()
-                            .ifBlank { contact.email?.trim().orEmpty() }
+                            .ifBlank { contact.phoneNumber?.trim().orEmpty() }
                     ReviewFriendEntry(
                         id = contact.id,
                         contactId = contact.id,

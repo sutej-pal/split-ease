@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,8 +71,11 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLoadingOverlay
+import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeTextButton
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.util.Calendar
@@ -715,27 +717,29 @@ fun AddExpenseScreen(
                 initialMinute = cal.get(Calendar.MINUTE),
                 is24Hour = false,
             )
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            confirmButton = {
-                TextButton(
+        SeModal(onDismissRequest = { showTimePicker = false }) {
+            SeModalTitle(stringResource(R.string.action_pick_time))
+            Spacer(modifier = Modifier.height(12.dp))
+            TimePicker(state = timeState)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            ) {
+                SeTextButton(
+                    text = stringResource(R.string.action_close),
+                    onClick = { showTimePicker = false },
+                )
+                SeTextButton(
+                    text = stringResource(R.string.action_done),
                     onClick = {
                         expenseDateMs =
                             applyLocalTime(expenseDateMs, timeState.hour, timeState.minute)
                         showTimePicker = false
                     },
-                ) {
-                    Text(stringResource(R.string.action_done))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) {
-                    Text(stringResource(R.string.action_close))
-                }
-            },
-            title = { Text(stringResource(R.string.action_pick_time)) },
-            text = { TimePicker(state = timeState) },
-        )
+                )
+            }
+        }
     }
 }
 

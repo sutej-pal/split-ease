@@ -202,6 +202,8 @@
     <string name="action_link_copied">Copied</string>
     <string name="action_share_link">Share link</string>
     <string name="action_change_link">Change link</string>
+    <string name="invite_link_change_confirm_title">Change invite link?</string>
+    <string name="invite_link_change_confirm_body">The current link will stop working. Anyone who still has it won\'t be able to join with it. A new link will be created.</string>
     <string name="invite_link_loading">Preparing invite link…</string>
     <string name="invite_link_changing">Creating a new invite link…</string>
     <string name="invite_link_changed">New invite link ready. The previous link no longer works.</string>
@@ -514,6 +516,8 @@
     <string name="msg_friend_added">Friend added.</string>
     <string name="msg_invite_ready">Invite ready — share the link so they can join.</string>
     <string name="msg_invite_email_sent">Invite email sent to %1$s.</string>
+    <string name="msg_invite_email_sent_one">Invite email sent.</string>
+    <string name="msg_invite_emails_sent">Invite emails sent to %1$d people.</string>
     <string name="msg_invite_email_resent">Invite email resent to %1$s.</string>
     <string name="msg_group_updated">Group updated.</string>
     <string name="msg_member_added">Member added.</string>

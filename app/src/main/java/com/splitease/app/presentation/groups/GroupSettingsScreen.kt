@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.HideImage
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,7 +43,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -73,15 +71,20 @@ import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeConfirmDialog
+import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTypeChip
 import java.math.BigDecimal
@@ -345,16 +348,12 @@ fun GroupSettingsScreen(
                     color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.padding(start = 54.dp, end = 8.dp, bottom = 4.dp),
                 )
-                TextButton(
+                SeTextButton(
+                    text = stringResource(R.string.action_learn_more),
                     onClick = { showSimplifyInfo = true },
+                    emphasized = true,
                     modifier = Modifier.padding(start = 40.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_learn_more),
-                        color = SplitEaseColors.Primary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+                )
                 HorizontalDivider(color = SplitEaseColors.Outline)
 
                 SettingsActionRow(
@@ -416,54 +415,52 @@ fun GroupSettingsScreen(
     }
 
     if (showLeaveConfirm) {
-        ConfirmDialog(
+        SeConfirmDialog(
             title = stringResource(R.string.action_leave_group),
             body = stringResource(R.string.group_leave_confirm),
             confirmLabel = stringResource(R.string.action_leave_group),
-            onDismiss = { showLeaveConfirm = false },
+            onDismissRequest = { showLeaveConfirm = false },
             onConfirm = {
                 showLeaveConfirm = false
                 viewModel.leaveGroup(groupId, onLeftOrDeleted)
             },
+            icon = Icons.AutoMirrored.Filled.ExitToApp,
+            tone = SeConfirmTone.Danger,
         )
     }
 
     if (showDeleteConfirm) {
-        ConfirmDialog(
+        SeConfirmDialog(
             title = stringResource(R.string.action_delete_group),
             body = stringResource(R.string.group_delete_confirm),
             confirmLabel = stringResource(R.string.action_delete_group),
-            onDismiss = { showDeleteConfirm = false },
+            onDismissRequest = { showDeleteConfirm = false },
             onConfirm = {
                 showDeleteConfirm = false
                 viewModel.deleteGroup(groupId, onLeftOrDeleted)
             },
+            icon = Icons.Filled.Delete,
+            tone = SeConfirmTone.Danger,
         )
     }
 
     if (showSimplifyInfo) {
-        AlertDialog(
+        SeConfirmDialog(
+            title = stringResource(R.string.group_settings_simplify_title),
+            body = stringResource(R.string.group_settings_simplify_learn_more),
             onDismissRequest = { showSimplifyInfo = false },
-            title = { Text(stringResource(R.string.group_settings_simplify_title)) },
-            text = { Text(stringResource(R.string.group_settings_simplify_learn_more)) },
-            confirmButton = {
-                TextButton(onClick = { showSimplifyInfo = false }) {
-                    Text(stringResource(R.string.action_done))
-                }
-            },
+            icon = Icons.Filled.AccountTree,
+            tone = SeConfirmTone.Primary,
         )
     }
 
     if (showDefaultSplitInfo) {
-        AlertDialog(
+        SeConfirmDialog(
+            title = stringResource(R.string.group_settings_default_split),
+            body = stringResource(R.string.group_settings_default_split_pro_body),
             onDismissRequest = { showDefaultSplitInfo = false },
-            title = { Text(stringResource(R.string.group_settings_default_split)) },
-            text = { Text(stringResource(R.string.group_settings_default_split_pro_body)) },
-            confirmButton = {
-                TextButton(onClick = { showDefaultSplitInfo = false }) {
-                    Text(stringResource(R.string.action_done))
-                }
-            },
+            icon = Icons.Filled.AccountTree,
+            tone = SeConfirmTone.Primary,
         )
     }
 
@@ -497,16 +494,18 @@ fun GroupSettingsScreen(
     }
 
     memberPendingRemove?.let { pending ->
-        ConfirmDialog(
+        SeConfirmDialog(
             title = stringResource(R.string.action_remove_from_group),
             body = stringResource(R.string.member_remove_confirm, pending.displayName),
             confirmLabel = stringResource(R.string.action_remove),
-            onDismiss = { memberPendingRemove = null },
+            onDismissRequest = { memberPendingRemove = null },
             onConfirm = {
                 val userId = pending.userId
                 memberPendingRemove = null
                 viewModel.removeGroupMember(groupId, userId)
             },
+            icon = Icons.Filled.Person,
+            tone = SeConfirmTone.Danger,
         )
     }
 }
@@ -849,88 +848,59 @@ private fun EditGroupDialog(
     var type by rememberSaveable(group.id) { mutableStateOf(group.groupType.name) }
     val selected = runCatching { GroupType.valueOf(type) }.getOrDefault(GroupType.OTHER)
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.action_edit)) },
-        text = {
-            Column {
-                SeTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = stringResource(R.string.label_group_name),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                SeSectionHeader(text = stringResource(R.string.label_group_type))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SeTypeChip(
-                        label = stringResource(R.string.group_type_friends),
-                        icon = Icons.Filled.Group,
-                        selected = selected == GroupType.FRIENDS,
-                        onClick = { type = GroupType.FRIENDS.name },
-                        modifier = Modifier.weight(1f),
-                    )
-                    SeTypeChip(
-                        label = stringResource(R.string.group_type_home),
-                        icon = Icons.Filled.Home,
-                        selected = selected == GroupType.HOME,
-                        onClick = { type = GroupType.HOME.name },
-                        modifier = Modifier.weight(1f),
-                    )
-                    SeTypeChip(
-                        label = stringResource(R.string.group_type_other),
-                        icon = Icons.AutoMirrored.Filled.List,
-                        selected = selected == GroupType.OTHER,
-                        onClick = { type = GroupType.OTHER.name },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
+    SeModal(onDismissRequest = onDismiss) {
+        SeModalTitle(stringResource(R.string.action_edit))
+        Spacer(modifier = Modifier.height(14.dp))
+        SeTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = stringResource(R.string.label_group_name),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        SeSectionHeader(text = stringResource(R.string.label_group_type))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SeTypeChip(
+                label = stringResource(R.string.group_type_friends),
+                icon = Icons.Filled.Group,
+                selected = selected == GroupType.FRIENDS,
+                onClick = { type = GroupType.FRIENDS.name },
+                modifier = Modifier.weight(1f),
+            )
+            SeTypeChip(
+                label = stringResource(R.string.group_type_home),
+                icon = Icons.Filled.Home,
+                selected = selected == GroupType.HOME,
+                onClick = { type = GroupType.HOME.name },
+                modifier = Modifier.weight(1f),
+            )
+            SeTypeChip(
+                label = stringResource(R.string.group_type_other),
+                icon = Icons.AutoMirrored.Filled.List,
+                selected = selected == GroupType.OTHER,
+                onClick = { type = GroupType.OTHER.name },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        ) {
+            SeTextButton(
+                text = stringResource(R.string.action_close),
+                onClick = onDismiss,
+            )
+            SeTextButton(
+                text = stringResource(R.string.action_save),
                 onClick = {
                     val trimmed = name.trim()
                     if (trimmed.isNotEmpty()) onSave(trimmed, selected)
                 },
                 enabled = !isSubmitting && name.isNotBlank(),
-            ) {
-                Text(stringResource(R.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_close))
-            }
-        },
-    )
-}
-
-@Composable
-private fun ConfirmDialog(
-    title: String,
-    body: String,
-    confirmLabel: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = confirmLabel,
-                    color = SplitEaseColors.YouOwe,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_close))
-            }
-        },
-    )
+                color = SplitEaseColors.Primary,
+            )
+        }
+    }
 }
 
 private fun GroupType.settingsIcon(): ImageVector =

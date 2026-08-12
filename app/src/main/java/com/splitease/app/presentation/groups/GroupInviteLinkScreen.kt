@@ -38,7 +38,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +56,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeConfirmDialog
+import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLottieOnce
 import com.splitease.app.presentation.ui.SeScreen
@@ -73,6 +78,7 @@ fun GroupInviteLinkScreen(
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
     val snackbarHostState = remember { SnackbarHostState() }
+    var showChangeLinkConfirm by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -206,7 +212,7 @@ fun GroupInviteLinkScreen(
                     icon = Icons.Filled.RemoveCircleOutline,
                     title = stringResource(R.string.action_change_link),
                     enabled = !uiState.isLoading && !uiState.isChanging,
-                    onClick = viewModel::changeLink,
+                    onClick = { showChangeLinkConfirm = true },
                     showDivider = false,
                 )
 
@@ -217,6 +223,21 @@ fun GroupInviteLinkScreen(
             }
         },
     )
+
+    if (showChangeLinkConfirm) {
+        SeConfirmDialog(
+            title = stringResource(R.string.invite_link_change_confirm_title),
+            body = stringResource(R.string.invite_link_change_confirm_body),
+            confirmLabel = stringResource(R.string.action_change_link),
+            onDismissRequest = { showChangeLinkConfirm = false },
+            onConfirm = {
+                showChangeLinkConfirm = false
+                viewModel.changeLink()
+            },
+            icon = Icons.Filled.Link,
+            tone = SeConfirmTone.Danger,
+        )
+    }
 }
 
 @Composable

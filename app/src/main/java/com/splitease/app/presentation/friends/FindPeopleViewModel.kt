@@ -166,7 +166,7 @@ class FindPeopleViewModel
         }
 
         /**
-         * Seeds the Review screen with selected contacts (default phone, else email).
+         * Seeds the Review screen with selected contacts (email when available, else phone).
          *
          * @return true when at least one contact was queued for review.
          */
