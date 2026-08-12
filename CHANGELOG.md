@@ -53,8 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FCM push for other group members on expense/payment changes (`device_tokens`, Edge Function `notify-group-members`, [fcm-setup.md](docs/fcm-setup.md))
 - Deferred invite deep link: mail-service Play Store fallback with `referrer=invite_token%3D...` + Android Play Install Referrer bootstrap into `pending_invite_token` (same OTP / accept path as live deep links)
 - Group settings > **Invite via link** opens an Invite link screen (copy / share / change link) instead of jumping straight to the share sheet
-- Onboarding-start transactional email trigger via external Render mail service (`/send-mail`) when onboarding first opens for a signed-in user ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
-- `MailRepository` + Render-backed remote data source and `BuildConfig` keys (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`)
+- Onboarding-start transactional email trigger via external mail service (`/send-mail`) when onboarding first opens for a signed-in user ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
+- `MailRepository` + remote mail data source and `BuildConfig` keys (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`)
 - Invite deep-link join flow: landing screen + join signup > OTP gate > accept invite / join group ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md))
 - Deep links for `https://splitease.app/invite/{token}` and `splitease://invite/{token}`
 - Supabase RPCs `get_invite_preview` + `accept_invite_by_token` ([sql/migration_db.sql](docs/sql/migration_db.sql))

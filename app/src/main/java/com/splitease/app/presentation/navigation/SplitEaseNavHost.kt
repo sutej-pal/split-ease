@@ -406,10 +406,6 @@ fun SplitEaseNavHost(
                         onSignUp = { email, password, displayName ->
                             authViewModel.signUp(email, password, displayName)
                         },
-                        onNavigateLogin = {
-                            authViewModel.clearMessages()
-                            navController.navigate(Routes.LOGIN)
-                        },
                         onBack = {
                             authViewModel.clearMessages()
                             navController.popBackStack()
@@ -909,6 +905,9 @@ private fun SignedInNavHost(
                     },
                     onAddPeople = { navController.navigate(Routes.findPeople(groupId)) },
                     onInviteViaLink = { navController.navigate(Routes.groupInviteLink(groupId)) },
+                    onViewMemberSettings = { friendUserId ->
+                        navController.navigate(Routes.friendSettings(friendUserId))
+                    },
                 )
             }
             composable(

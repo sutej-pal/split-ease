@@ -4,7 +4,7 @@ Post-MVP hardening in one doc: expense detail (edit/delete) + local Activity eve
 
 ## Phase Goal
 
-After core phases 0–9, harden day-to-day product flows: editable expense history, gated new-user setup, invite links that land in-app through OTP, and a best-effort welcome email via the Render mail service.
+After core phases 0–9, harden day-to-day product flows: editable expense history, gated new-user setup, invite links that land in-app through OTP, and a best-effort welcome email via the mail service.
 
 ## Scope (In / Out)
 
@@ -70,7 +70,7 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 
 **Onboarding mail**
 - `MAIL_SERVICE_BASE_URL` / `MAIL_SERVICE_API_KEY` BuildConfig
-- Trigger on first signed-in session; Render Free blocks SMTP — prefer Resend HTTPS or paid/local SMTP ([splitease-server-repo.md](splitease-server-repo.md))
+- Trigger on first signed-in session; production uses Brevo HTTPS via SplitEase Server on Vercel ([splitease-server-repo.md](splitease-server-repo.md))
 
 ## Screens/UI
 
@@ -95,7 +95,7 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 - Onboarding-complete is per-device
 - App Links need hosted [assetlinks.json](assetlinks.json) ([app-links-setup.md](app-links-setup.md))
 - Invite email still share-sheet MVP; Install Referrer E2E needs a Play install
-- Render Free SMTP blocked — use Resend or non-Free hosting for production mail
+- Mail provider must be healthy (Brevo HTTPS on Vercel, or local SMTP for dev)
 
 ## Outcome
 

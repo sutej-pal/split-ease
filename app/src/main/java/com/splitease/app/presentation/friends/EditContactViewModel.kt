@@ -174,6 +174,11 @@ class EditContactViewModel
                         infoMessage =
                             when {
                                 outcome == null -> null
+                                outcome.inviteEmailSent ->
+                                    appContext.getString(
+                                        R.string.msg_invite_email_sent,
+                                        outcome.friend.emailSnapshot,
+                                    )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)
                                 else ->

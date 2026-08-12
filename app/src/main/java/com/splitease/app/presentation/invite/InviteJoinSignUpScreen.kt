@@ -26,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -53,15 +52,12 @@ import com.splitease.app.presentation.ui.SeTextField
 fun InviteJoinSignUpScreen(
     formState: AuthFormState,
     onSignUp: (email: String, password: String, displayName: String) -> Unit,
-    onNavigateLogin: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: InviteJoinViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val preview = uiState.preview
-    val prefillEmail = preview?.email.orEmpty()
-    val groupName = preview?.groupName
+    val prefillEmail = uiState.preview?.email.orEmpty()
 
     var displayName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -97,25 +93,6 @@ fun InviteJoinSignUpScreen(
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start,
         ) {
-            Text(
-                text =
-                    if (!groupName.isNullOrBlank()) {
-                        stringResource(R.string.invite_join_group_title, groupName)
-                    } else {
-                        stringResource(R.string.invite_join_title)
-                    },
-                style = MaterialTheme.typography.labelLarge,
-                color = SplitEaseColors.NavyMuted,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            SeTextButton(
-                text = stringResource(R.string.invite_already_have_account),
-                onClick = onNavigateLogin,
-                enabled = !formState.isLoading,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
             Text(
                 text = stringResource(R.string.invite_signup_name_label),
                 style = MaterialTheme.typography.bodyLarge,
@@ -218,7 +195,6 @@ private fun InviteJoinSignUpPreview() {
         InviteJoinSignUpScreen(
             formState = AuthFormState(),
             onSignUp = { _, _, _ -> },
-            onNavigateLogin = {},
             onBack = {},
         )
     }

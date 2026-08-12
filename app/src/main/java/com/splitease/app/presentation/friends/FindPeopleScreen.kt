@@ -234,13 +234,16 @@ fun FindPeopleScreen(
                         isGroupMode &&
                             friend.friendUserId in uiState.memberUserIds &&
                             !syncedInGroup
+                    val pendingGroupInvite =
+                        isGroupMode && friend.friendUserId in uiState.pendingGroupInviteUserIds
+                    val alreadyInGroup = syncedInGroup || locallyOnly || pendingGroupInvite
                     FriendPickRow(
                         friend = friend,
-                        alreadyInGroup = syncedInGroup,
-                        locallyPending = locallyOnly,
-                        enabled = !uiState.isSubmitting && (!isGroupMode || !syncedInGroup),
+                        alreadyInGroup = alreadyInGroup,
+                        locallyPending = locallyOnly && !pendingGroupInvite && !syncedInGroup,
+                        enabled = !uiState.isSubmitting && (!isGroupMode || !alreadyInGroup),
                         onClick = {
-                            if (isGroupMode && !syncedInGroup) {
+                            if (isGroupMode && !alreadyInGroup) {
                                 viewModel.addFriendToGroup(friend.friendUserId)
                             }
                         },

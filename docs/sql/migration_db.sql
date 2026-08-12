@@ -96,7 +96,8 @@ create table if not exists public.groups (
   default_currency_code text not null,
   created_by_user_id uuid not null references auth.users (id) on delete cascade,
   updated_at_epoch_ms bigint not null default 0,
-  cover_url text
+  cover_url text,
+  photo_url text
 );
 
 alter table public.groups enable row level security;
@@ -303,6 +304,7 @@ declare
   inv record;
   v_inviter_name text;
   v_group_name text;
+  v_group_photo_url text;
   v_members jsonb;
 begin
   if p_token is null or length(trim(p_token)) = 0 then
@@ -326,7 +328,10 @@ begin
   where p.id = inv.inviter_user_id;
 
   if inv.group_id is not null then
-    select g.name into v_group_name from public.groups g where g.id = inv.group_id;
+    select g.name, g.photo_url
+      into v_group_name, v_group_photo_url
+    from public.groups g
+    where g.id = inv.group_id;
 
     select coalesce(jsonb_agg(row_data order by sort_name), '[]'::jsonb)
       into v_members
@@ -375,6 +380,7 @@ begin
     'inviter_name', coalesce(v_inviter_name, 'A friend'),
     'group_id', inv.group_id,
     'group_name', v_group_name,
+    'group_photo_url', v_group_photo_url,
     'members', coalesce(v_members, '[]'::jsonb)
   );
 end;

@@ -20,8 +20,9 @@ fun Group.toDto(updatedAtEpochMs: Long = this.updatedAtEpochMs): GroupDto =
         defaultCurrencyCode = defaultCurrencyCode,
         createdByUserId = createdByUserId,
         updatedAtEpochMs = updatedAtEpochMs,
-        // Only sync cloud URLs — local file paths must not overwrite cover_url remotely.
+        // Only sync cloud URLs — local file paths must not overwrite media columns remotely.
         coverUrl = coverUrl?.takeIf { it.isRemoteMediaUrl() },
+        photoUrl = photoUrl?.takeIf { it.isRemoteMediaUrl() },
     )
 
 /** True when [this] is an http(s) media URL safe to store in PostgREST / Storage. */

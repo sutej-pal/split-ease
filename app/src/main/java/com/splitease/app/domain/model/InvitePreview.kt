@@ -9,6 +9,7 @@ package com.splitease.app.domain.model
  * @property inviterName Display name of the sender.
  * @property groupId Target group when [kind] is [InviteKind.GROUP].
  * @property groupName Target group name when applicable.
+ * @property groupPhotoUrl Public Storage URL for the group list avatar when available.
  * @property members Existing / pending people shown for context.
  */
 data class InvitePreview(
@@ -18,6 +19,7 @@ data class InvitePreview(
     val inviterName: String,
     val groupId: String? = null,
     val groupName: String? = null,
+    val groupPhotoUrl: String? = null,
     val members: List<InvitePreviewMember> = emptyList(),
 )
 

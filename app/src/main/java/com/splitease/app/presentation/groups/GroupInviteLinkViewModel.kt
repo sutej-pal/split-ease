@@ -13,6 +13,8 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,8 +31,9 @@ import javax.inject.Inject
  * @property groupName Display name for trust copy.
  * @property inviteUrl Absolute https invite URL, or null when unavailable.
  * @property shareText Plain share body for the system share sheet.
+ * @property linkCopied True briefly after a successful copy (inline row feedback).
  * @property errorMessage Last error, if any.
- * @property infoMessage Transient success message (e.g. copied).
+ * @property infoMessage Transient success message (e.g. link regenerated).
  * @property pendingShareText Share text queued for the system share sheet.
  */
 data class GroupInviteLinkUiState(
@@ -39,6 +42,7 @@ data class GroupInviteLinkUiState(
     val groupName: String = "",
     val inviteUrl: String? = null,
     val shareText: String? = null,
+    val linkCopied: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingShareText: String? = null,
@@ -60,6 +64,8 @@ class GroupInviteLinkViewModel
 
         private val _uiState = MutableStateFlow(GroupInviteLinkUiState())
         val uiState: StateFlow<GroupInviteLinkUiState> = _uiState.asStateFlow()
+
+        private var copiedResetJob: Job? = null
 
         init {
             loadLink()
@@ -89,7 +95,12 @@ class GroupInviteLinkViewModel
                     return@launch
                 }
                 _uiState.update {
-                    it.copy(isLoading = true, errorMessage = null, infoMessage = null)
+                    it.copy(
+                        isLoading = true,
+                        linkCopied = false,
+                        errorMessage = null,
+                        infoMessage = null,
+                    )
                 }
                 val result = socialInteractor.getOrCreateGroupShareLink(ownerId, groupId)
                 val link = result.getOrNull()
@@ -115,6 +126,7 @@ class GroupInviteLinkViewModel
                     it.copy(
                         errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
                         infoMessage = null,
+                        linkCopied = false,
                     )
                 }
                 return
@@ -123,10 +135,17 @@ class GroupInviteLinkViewModel
             clipboard?.setPrimaryClip(ClipData.newPlainText("SplitEase invite", url))
             _uiState.update {
                 it.copy(
-                    infoMessage = appContext.getString(R.string.invite_link_copied),
+                    linkCopied = true,
                     errorMessage = null,
+                    infoMessage = null,
                 )
             }
+            copiedResetJob?.cancel()
+            copiedResetJob =
+                viewModelScope.launch {
+                    delay(2_000L)
+                    _uiState.update { it.copy(linkCopied = false) }
+                }
         }
 
         /**
@@ -164,9 +183,11 @@ class GroupInviteLinkViewModel
                     }
                     return@launch
                 }
+                copiedResetJob?.cancel()
                 _uiState.update {
                     it.copy(
                         isChanging = true,
+                        linkCopied = false,
                         errorMessage = null,
                         infoMessage = null,
                     )

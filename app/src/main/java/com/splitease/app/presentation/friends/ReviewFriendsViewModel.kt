@@ -115,8 +115,11 @@ class ReviewFriendsViewModel
                         )
                     val outcome = result.getOrNull()
                     if (outcome == null) {
-                        firstError = result.exceptionOrNull()?.message
-                            ?: appContext.getString(R.string.msg_friend_add_failed)
+                        firstError =
+                            userFacingError(
+                                result.exceptionOrNull()?.message
+                                    ?: appContext.getString(R.string.msg_friend_add_failed),
+                            )
                         break
                     }
                     outcome.inviteShareText?.takeIf { it.isNotBlank() }?.let { shareTexts += it }
@@ -147,4 +150,12 @@ class ReviewFriendsViewModel
             val session = authRepository.observeSession().first { it !is AuthSession.Loading }
             return (session as? AuthSession.SignedIn)?.user?.userId
         }
+
+        private fun userFacingError(raw: String): String =
+            when {
+                raw.contains("FOREIGN KEY", ignoreCase = true) ||
+                    raw.contains("SQLITE_CONSTRAINT_FOREIGNKEY", ignoreCase = true) ->
+                    appContext.getString(R.string.msg_local_profile_missing)
+                else -> raw
+            }
     }

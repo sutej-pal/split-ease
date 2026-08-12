@@ -71,7 +71,7 @@ None (Room / PostgREST unchanged).
 
 ## Known Issues / TODOs
 
-- mail-service must be redeployed for recovery copy to reach users on Render.
+- mail-service must be redeployed for recovery copy to reach users on Vercel.
 - Free-tier Auth email rate limits apply to recovery resend.
 - If Send Email hook is off and dashboard Reset password template still has a link only, in-app OTP will fail until `{{ .Token }}` is present (use [supabase-reset-password-otp.html](supabase-reset-password-otp.html)).
 
@@ -86,7 +86,7 @@ Updated 2026-08-04: forgot-password uses the same mail-service Send Email hook w
 - Unit tests cover gate arming, soft-success navigate, verify+update, generic invalid OTP, mismatch, and password-only retry after OTP success.
 
 Operator requirements:
-- Redeploy Render mail-service so recovery copy is live.
+- Redeploy mail-service on Vercel so recovery copy is live.
 - If the Send Email hook is off, paste the reset OTP HTML into Authentication → Email Templates → **Reset password**.
 - Mailer OTP length must remain **6**.
 

@@ -187,11 +187,11 @@ class GroupsViewModel
             viewModelScope.launch {
                 val friend =
                     friends.value.firstOrNull { it.friendUserId == memberUserId }
-                val text =
+                val outcome =
                     friend?.let {
-                        runCatching { socialInteractor.pendingInviteShareText(it.id) }.getOrNull()
+                        runCatching { socialInteractor.deliverPendingInvite(it.id) }.getOrNull()
                     }
-                if (text.isNullOrBlank()) {
+                if (outcome == null) {
                     _uiState.update {
                         it.copy(
                             errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
@@ -202,9 +202,17 @@ class GroupsViewModel
                 }
                 _uiState.update {
                     it.copy(
-                        pendingShareText = text,
+                        pendingShareText = outcome.inviteShareText,
                         errorMessage = null,
-                        infoMessage = null,
+                        infoMessage =
+                            if (outcome.inviteEmailSent) {
+                                appContext.getString(
+                                    R.string.msg_invite_email_resent,
+                                    outcome.friend.emailSnapshot,
+                                )
+                            } else {
+                                null
+                            },
                     )
                 }
             }
@@ -442,7 +450,13 @@ class GroupsViewModel
                         infoMessage =
                             when {
                                 outcome == null -> null
-                                outcome.isInvitePending -> "Invite ready — share the link so they can join."
+                                outcome.inviteEmailSent ->
+                                    appContext.getString(
+                                        R.string.msg_invite_email_sent,
+                                        outcome.friend.emailSnapshot,
+                                    )
+                                outcome.isInvitePending ->
+                                    appContext.getString(R.string.msg_invite_ready)
                                 else -> appContext.getString(R.string.msg_member_added)
                             },
                         pendingShareText = outcome?.inviteShareText,
@@ -467,6 +481,31 @@ class GroupsViewModel
                     )
                 }
                 if (result.isSuccess) onLeft()
+            }
+        }
+
+        fun removeGroupMember(groupId: String, targetUserId: String, onRemoved: () -> Unit = {}) {
+            viewModelScope.launch {
+                val id = requireUserId()
+                if (id == null) {
+                    _uiState.update { it.copy(errorMessage = appContext.getString(R.string.msg_not_signed_in)) }
+                    return@launch
+                }
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null, infoMessage = null) }
+                val result = socialInteractor.removeGroupMember(groupId, id, targetUserId)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = result.exceptionOrNull()?.message,
+                        infoMessage =
+                            if (result.isSuccess) {
+                                appContext.getString(R.string.msg_member_removed)
+                            } else {
+                                null
+                            },
+                    )
+                }
+                if (result.isSuccess) onRemoved()
             }
         }
 

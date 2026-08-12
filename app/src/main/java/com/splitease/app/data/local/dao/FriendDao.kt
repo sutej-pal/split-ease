@@ -35,6 +35,25 @@ interface FriendDao {
     suspend fun getByFriendUserId(friendUserId: String): FriendEntity?
 
     /**
+     * Finds a friendship by owner + friend user id.
+     *
+     * @param ownerUserId Owner user id.
+     * @param friendUserId The other party's user id.
+     * @return Matching friend or null.
+     */
+    @Query(
+        """
+        SELECT * FROM friends
+        WHERE ownerUserId = :ownerUserId AND friendUserId = :friendUserId
+        LIMIT 1
+        """,
+    )
+    suspend fun getByOwnerAndFriendUserId(
+        ownerUserId: String,
+        friendUserId: String,
+    ): FriendEntity?
+
+    /**
      * Finds a friendship by owner + email snapshot (case-insensitive).
      *
      * @param ownerUserId Owner user id.

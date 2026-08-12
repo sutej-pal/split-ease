@@ -25,14 +25,17 @@ import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
+import com.splitease.app.domain.repository.MailRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -55,6 +58,7 @@ class SocialInteractor
         private val remote: SocialRemoteDataSource,
         private val groupCoverStorage: GroupCoverStorage,
         private val expenseInteractor: com.splitease.app.data.expense.ExpenseInteractor,
+        private val mailRepository: MailRepository,
     ) {
         /**
          * Removes a friend, deletes non-group expenses/payments between the two users,
@@ -70,8 +74,7 @@ class SocialInteractor
             runCatching {
                 val friend =
                     friendRepository
-                        .getByFriendUserId(friendUserId)
-                        ?.takeIf { it.ownerUserId == ownerUserId }
+                        .getByOwnerAndFriendUserId(ownerUserId, friendUserId)
                         ?: error("Friend not found.")
 
                 inviteRepository.getByFriendRowId(friend.id)?.let { invite ->
@@ -114,8 +117,7 @@ class SocialInteractor
             runCatching {
                 val friend =
                     friendRepository
-                        .getByFriendUserId(friendUserId)
-                        ?.takeIf { it.ownerUserId == ownerUserId }
+                        .getByOwnerAndFriendUserId(ownerUserId, friendUserId)
                         ?: error("Friend not found.")
                 val normalized = contact.trim()
                 require(normalized.isNotBlank()) { "Email or phone is required." }
@@ -219,6 +221,9 @@ class SocialInteractor
                 require(looksLikeEmail || normalized.any { it.isDigit() }) {
                     "Enter a valid email or phone number."
                 }
+                // Friendship rows FK to users(ownerUserId). Rebuild the local owner profile
+                // before writes so Review/Add friends never fails with raw FK errors.
+                ensureLocalUserExists(ownerUserId)
                 val selfEmail = userRepository.getUserById(ownerUserId)?.email
                 require(!normalized.equals(selfEmail, ignoreCase = true)) {
                     "You can't add yourself."
@@ -495,6 +500,44 @@ class SocialInteractor
         }
 
         /**
+         * Re-delivers a pending invite: emails the join link when the contact is an email,
+         * otherwise returns share text for the system share sheet.
+         *
+         * @param friendRowId Local friendship row id linked to the invite.
+         * @return Outcome with email-sent or share-text delivery, or null when no pending invite.
+         */
+        suspend fun deliverPendingInvite(friendRowId: String): AddPersonOutcome? {
+            val invite = inviteRepository.getByFriendRowId(friendRowId) ?: return null
+            if (invite.status != InviteStatus.PENDING) return null
+            val friend = friendRepository.getById(friendRowId) ?: return null
+            val inviterName =
+                userRepository.getUserById(invite.inviterUserId)?.displayName ?: "A friend"
+            val groupName =
+                invite.groupId
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { groupRepository.getGroupById(it)?.name ?: "a group" }
+            val shareText =
+                if (groupName != null) {
+                    InviteLinks.groupShareText(inviterName, groupName, invite.token)
+                } else {
+                    InviteLinks.friendShareText(inviterName, invite.token)
+                }
+            val emailSent =
+                trySendInviteEmail(
+                    toEmail = invite.email,
+                    inviterName = inviterName,
+                    groupName = groupName,
+                    token = invite.token,
+                )
+            return AddPersonOutcome(
+                friend = friend,
+                inviteShareText = if (emailSent) null else shareText,
+                isInvitePending = true,
+                inviteEmailSent = emailSent,
+            )
+        }
+
+        /**
          * Invite URL suitable for clipboard copy (reuses the existing pending token).
          *
          * @param friendRowId Local friendship row id linked to the invite.
@@ -514,6 +557,14 @@ class SocialInteractor
          */
         suspend fun loadInvitePreview(token: String): InvitePreview? {
             val dto = remote.fetchInvitePreview(token) ?: return null
+            dto.groupPhotoUrl
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { photoUrl ->
+                    withContext(Dispatchers.IO) {
+                        AvatarImageIO.cacheRemoteImage(appContext, photoUrl)
+                    }
+                }
             return InvitePreview(
                 token = dto.token,
                 kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
@@ -521,6 +572,7 @@ class SocialInteractor
                 inviterName = dto.inviterName.ifBlank { "A friend" },
                 groupId = dto.groupId,
                 groupName = dto.groupName,
+                groupPhotoUrl = dto.groupPhotoUrl?.trim()?.takeIf { it.isNotEmpty() },
                 members =
                     dto.members.map { member ->
                         InvitePreviewMember(
@@ -923,6 +975,18 @@ class SocialInteractor
                     }
                 }
 
+                val local = groupRepository.getGroupById(groupId) ?: group
+                if (cloudError == null && !local.photoUrl.isNullOrBlank()) {
+                    runCatching { ensurePhotoUploaded(local) }
+                        .onSuccess { uploaded ->
+                            if (uploaded.photoUrl != local.photoUrl) {
+                                groupRepository.upsertGroup(
+                                    uploaded.copy(remoteId = uploaded.id, syncStatus = SyncStatus.SYNCED),
+                                )
+                            }
+                        }
+                }
+
                 groupRepository.getGroupById(groupId) ?: group
             }
 
@@ -964,8 +1028,7 @@ class SocialInteractor
             runCatching {
                 val friend =
                     friendRepository
-                        .getByFriendUserId(friendUserId)
-                        ?.takeIf { it.ownerUserId == ownerUserId }
+                        .getByOwnerAndFriendUserId(ownerUserId, friendUserId)
                         ?: error("Friend not found.")
                 val pendingInvite = inviteRepository.getByFriendRowId(friend.id)
                 val isPending =
@@ -1149,11 +1212,19 @@ class SocialInteractor
 
             val inviterName =
                 userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
+            val shareText = InviteLinks.groupShareText(inviterName, group.name, invite.token)
+            val emailSent =
+                trySendInviteEmail(
+                    toEmail = email,
+                    inviterName = inviterName,
+                    groupName = group.name,
+                    token = invite.token,
+                )
             return AddPersonOutcome(
                 friend = friend,
-                inviteShareText =
-                    InviteLinks.groupShareText(inviterName, group.name, invite.token),
+                inviteShareText = if (emailSent) null else shareText,
                 isInvitePending = true,
+                inviteEmailSent = emailSent,
             )
         }
 
@@ -1176,6 +1247,66 @@ class SocialInteractor
                 groupRepository.deleteMemberById(member.id)
                 runCatching { remote.deleteGroupMember(member.id) }
             }
+
+        /**
+         * Removes another member from a group. Does not delete the friendship.
+         *
+         * @param groupId Group id.
+         * @param requesterId Member performing the removal.
+         * @param targetUserId Member to remove (must not be [requesterId]).
+         */
+        suspend fun removeGroupMember(
+            groupId: String,
+            requesterId: String,
+            targetUserId: String,
+        ): Result<Unit> =
+            runCatching {
+                require(requesterId != targetUserId) {
+                    "Use leave group to remove yourself."
+                }
+                groupRepository.getMember(groupId, requesterId)
+                    ?: error("You are not a member of this group.")
+                val target =
+                    groupRepository.getMember(groupId, targetUserId)
+                        ?: error("That person is not in this group.")
+                val members = groupRepository.observeMembers(groupId).first()
+                if (members.size <= 1) {
+                    error("Cannot remove the last member of a group.")
+                }
+                groupRepository.deleteMemberById(target.id)
+                runCatching { remote.deleteGroupMember(target.id) }
+                detachPendingGroupInvite(groupId, targetUserId)
+            }
+
+        /**
+         * Downgrades a per-person GROUP invite to FRIEND so removal from a group does not
+         * leave a claimable group link or allow silent re-add via Find people.
+         */
+        private suspend fun detachPendingGroupInvite(
+            groupId: String,
+            targetUserId: String,
+        ) {
+            val friend = friendRepository.getByFriendUserId(targetUserId) ?: return
+            val invite = inviteRepository.getByFriendRowId(friend.id) ?: return
+            if (
+                invite.status != InviteStatus.PENDING ||
+                invite.kind != InviteKind.GROUP ||
+                invite.groupId != groupId
+            ) {
+                return
+            }
+            val downgraded =
+                invite.copy(
+                    kind = InviteKind.FRIEND,
+                    groupId = null,
+                    syncStatus = SyncStatus.PENDING,
+                )
+            inviteRepository.upsert(downgraded)
+            runCatching {
+                remote.upsertInvite(downgraded.toDto())
+                inviteRepository.upsert(downgraded.copy(syncStatus = SyncStatus.SYNCED))
+            }
+        }
 
         /**
          * Deletes a group locally and from the cloud when possible. Owner-only.
@@ -1235,7 +1366,7 @@ class SocialInteractor
                                     groupType =
                                         existing?.groupType
                                             ?: com.splitease.app.domain.model.GroupType.OTHER,
-                                    photoUrl = existing?.photoUrl,
+                                    photoUrl = resolvePhotoUrlForRefresh(existing?.photoUrl, dto.photoUrl),
                                     coverUrl = resolveCoverUrlForRefresh(existing?.coverUrl, dto.coverUrl),
                                     createdByUserId = dto.createdByUserId,
                                     remoteId = dto.id,
@@ -1316,7 +1447,7 @@ class SocialInteractor
                                     groupType =
                                         existing?.groupType
                                             ?: com.splitease.app.domain.model.GroupType.OTHER,
-                                    photoUrl = existing?.photoUrl,
+                                    photoUrl = resolvePhotoUrlForRefresh(existing?.photoUrl, dto.photoUrl),
                                     coverUrl = resolveCoverUrlForRefresh(existing?.coverUrl, dto.coverUrl),
                                     createdByUserId = dto.createdByUserId,
                                     remoteId = dto.id,
@@ -1642,12 +1773,49 @@ class SocialInteractor
                 } else {
                     InviteLinks.friendShareText(inviterName, invite.token)
                 }
+            val emailSent =
+                trySendInviteEmail(
+                    toEmail = email,
+                    inviterName = inviterName,
+                    groupName = if (groupId != null) groupName ?: "a group" else null,
+                    token = invite.token,
+                )
 
             return AddPersonOutcome(
                 friend = friend,
-                inviteShareText = shareText,
+                inviteShareText = if (emailSent) null else shareText,
                 isInvitePending = true,
+                inviteEmailSent = emailSent,
             )
+        }
+
+        /**
+         * Best-effort invite email via the mail service. Phone contacts and placeholder
+         * share-link emails are skipped so the caller can fall back to the share sheet.
+         *
+         * @param toEmail Candidate recipient.
+         * @param inviterName Display name of the sender.
+         * @param groupName Group name for group invites; null for friend invites.
+         * @param token Invite token.
+         * @return True when the mail service accepted the send.
+         */
+        private suspend fun trySendInviteEmail(
+            toEmail: String,
+            inviterName: String,
+            groupName: String?,
+            token: String,
+        ): Boolean {
+            val normalized = toEmail.trim()
+            if (!normalized.contains("@")) return false
+            if (normalized.equals(GROUP_SHARE_LINK_EMAIL, ignoreCase = true)) return false
+            if (normalized.endsWith("@splitease.invalid", ignoreCase = true)) return false
+            return mailRepository
+                .sendInviteEmail(
+                    toEmail = normalized,
+                    inviterName = inviterName,
+                    groupName = groupName,
+                    token = token,
+                ).isSuccess
         }
 
         private fun newInviteToken(): String = UUID.randomUUID().toString().replace("-", "")
@@ -1759,7 +1927,8 @@ class SocialInteractor
         }
 
         /**
-         * Copies [photoUri] into app-private storage and updates the group's [Group.photoUrl].
+         * Copies [photoUri] into app-private storage, uploads to Supabase Storage, and stores
+         * the public URL on the group so all members see the same list avatar.
          */
         suspend fun updateGroupPhoto(
             groupId: String,
@@ -1769,8 +1938,29 @@ class SocialInteractor
                 val group =
                     groupRepository.getGroupById(groupId)
                         ?: error("Group not found.")
-                val path = persistGroupPhoto(groupId, photoUri)
-                updateGroup(group.copy(photoUrl = path)).getOrThrow()
+                val localPath = persistGroupPhoto(groupId, photoUri)
+                val remoteUrl =
+                    runCatching { groupCoverStorage.uploadPhoto(groupId, localPath) }
+                        .getOrElse { err ->
+                            // Keep the local photo for this device; retry upload on next sync.
+                            updateGroup(group.copy(photoUrl = localPath)).getOrThrow()
+                            throw err
+                        }
+                runCatching {
+                    AvatarImageIO.seedRemoteImageCache(appContext, remoteUrl, File(localPath))
+                }
+                val now = System.currentTimeMillis()
+                val updated = group.copy(photoUrl = remoteUrl, updatedAtEpochMs = now)
+                groupRepository.upsertGroup(updated.copy(syncStatus = SyncStatus.PENDING))
+                runCatching {
+                    remote.patchGroupPhotoUrl(groupId, remoteUrl, now)
+                    remote.upsertGroup(updated.toDto(updatedAtEpochMs = now))
+                    groupRepository.upsertGroup(
+                        updated.copy(remoteId = updated.id, syncStatus = SyncStatus.SYNCED),
+                    )
+                }.getOrElse {
+                    groupRepository.upsertGroup(updated.copy(syncStatus = SyncStatus.PENDING))
+                }
             }
 
         /**
@@ -1840,13 +2030,27 @@ class SocialInteractor
         private fun resolveCoverUrlForRefresh(
             existingCoverUrl: String?,
             remoteCoverUrl: String?,
+        ): String? = resolveMediaUrlForRefresh(existingCoverUrl, remoteCoverUrl)
+
+        /**
+         * Picks the list photo URL after a cloud pull.
+         * Prefers remote https; keeps a pending local-only photo when cloud has none.
+         */
+        private fun resolvePhotoUrlForRefresh(
+            existingPhotoUrl: String?,
+            remotePhotoUrl: String?,
+        ): String? = resolveMediaUrlForRefresh(existingPhotoUrl, remotePhotoUrl)
+
+        private fun resolveMediaUrlForRefresh(
+            existingUrl: String?,
+            remoteUrl: String?,
         ): String? {
-            val remote = remoteCoverUrl?.trim()?.takeIf { it.isNotEmpty() }
+            val remote = remoteUrl?.trim()?.takeIf { it.isNotEmpty() }
             if (remote != null) {
                 runCatching { AvatarImageIO.cacheRemoteImage(appContext, remote) }
                 return remote
             }
-            val existing = existingCoverUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            val existing = existingUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return null
             // Pending local file not yet uploaded — keep it. Drop stale remote URL if cloud cleared.
             return if (existing.isRemoteMediaUrl()) null else existing
         }
@@ -1865,6 +2069,22 @@ class SocialInteractor
             val now = System.currentTimeMillis()
             runCatching { remote.patchGroupCoverUrl(group.id, remoteUrl, now) }
             return group.copy(coverUrl = remoteUrl, updatedAtEpochMs = now)
+        }
+
+        /**
+         * If [group] still has a local-only list photo path, uploads it and returns the group
+         * with the public URL. Used by sync flush / create so photos reach other devices.
+         */
+        suspend fun ensurePhotoUploaded(group: Group): Group {
+            val photo = group.photoUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return group
+            if (photo.isRemoteMediaUrl()) return group
+            val local = File(photo)
+            if (!local.exists()) return group.copy(photoUrl = null)
+            val remoteUrl = groupCoverStorage.uploadPhoto(group.id, local.absolutePath)
+            AvatarImageIO.seedRemoteImageCache(appContext, remoteUrl, local)
+            val now = System.currentTimeMillis()
+            runCatching { remote.patchGroupPhotoUrl(group.id, remoteUrl, now) }
+            return group.copy(photoUrl = remoteUrl, updatedAtEpochMs = now)
         }
 
         private fun persistGroupPhoto(

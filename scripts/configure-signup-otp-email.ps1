@@ -1,7 +1,7 @@
 # Configure SplitEase signup confirmation email delivery.
 #
 # Preferred path (Free tier friendly):
-#   Use the Render mail-service as a Supabase "Send Email" Auth Hook.
+#   Use the SplitEase Server mail-service as a Supabase "Send Email" Auth Hook.
 #   That bypasses the Free-tier restriction that blocks editing Auth email templates
 #   when using Supabase's default mail provider.
 #
@@ -108,7 +108,7 @@ if (-not $TemplateOnly) {
 Mail-service hook endpoint is not deployed yet:
   $hookUri
 
-Redeploy mail-service (sutej-pal/mail-service) on Render, then re-run this script.
+Redeploy mail-service on Vercel, then re-run this script.
 "@
         }
         # 401 (signature required) still means the route exists.
@@ -132,7 +132,7 @@ Redeploy mail-service (sutej-pal/mail-service) on Render, then re-run this scrip
     Write-Host 'Done. Signup confirmation emails will be delivered by mail-service as 6-digit OTPs.'
     Write-Host "Dashboard: https://supabase.com/dashboard/project/$ProjectRef/auth/hooks"
     if (-not $HookSecret) {
-        Write-Host 'Note: set SEND_EMAIL_HOOK_SECRET on Render + as hook secret in Supabase for signature verification.'
+        Write-Host 'Note: set SEND_EMAIL_HOOK_SECRET on Vercel + as hook secret in Supabase for signature verification.'
     }
     return
 }

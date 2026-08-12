@@ -27,6 +27,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +48,8 @@ import androidx.core.net.toUri
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SeIconTile(
@@ -84,11 +88,16 @@ fun SeGroupIconTile(
 ) {
     val context = LocalContext.current
     val contentStamp = localAvatarContentStamp(photoUrl)
-    val bitmap =
-        remember(photoUrl, contentStamp) {
-            loadLocalAvatarBitmap(context, photoUrl)
-        }
-    if (bitmap != null) {
+    val bitmap by produceState<ImageBitmap?>(null, photoUrl, contentStamp) {
+        value = null
+        if (photoUrl.isNullOrBlank()) return@produceState
+        value =
+            withContext(Dispatchers.IO) {
+                loadLocalAvatarBitmap(context, photoUrl)
+            }
+    }
+    val loadedBitmap = bitmap
+    if (loadedBitmap != null) {
         Box(
             modifier =
                 modifier
@@ -96,7 +105,7 @@ fun SeGroupIconTile(
                     .clip(RoundedCornerShape(14.dp)),
         ) {
             Image(
-                bitmap = bitmap,
+                bitmap = loadedBitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -152,10 +161,14 @@ fun SeAvatarBadge(
     val context = LocalContext.current
     // Include file mtime so overwriting the same path still reloads the bitmap.
     val contentStamp = localAvatarContentStamp(photoUrl)
-    val bitmap =
-        remember(photoUrl, contentStamp) {
-            loadLocalAvatarBitmap(context, photoUrl)
-        }
+    val bitmap by produceState<ImageBitmap?>(null, photoUrl, contentStamp) {
+        value = null
+        if (photoUrl.isNullOrBlank()) return@produceState
+        value =
+            withContext(Dispatchers.IO) {
+                loadLocalAvatarBitmap(context, photoUrl)
+            }
+    }
     Box(
         modifier =
             modifier
@@ -170,9 +183,10 @@ fun SeAvatarBadge(
                 .background(SplitEaseColors.PrimaryDark),
         contentAlignment = Alignment.Center,
     ) {
-        if (bitmap != null) {
+        val loadedBitmap = bitmap
+        if (loadedBitmap != null) {
             Image(
-                bitmap = bitmap,
+                bitmap = loadedBitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

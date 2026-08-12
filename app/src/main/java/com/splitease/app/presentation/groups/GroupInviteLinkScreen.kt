@@ -1,6 +1,12 @@
 package com.splitease.app.presentation.groups
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -48,6 +54,7 @@ import com.splitease.app.R
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLottieOnce
 import com.splitease.app.presentation.ui.SeScreen
 
 /**
@@ -184,9 +191,8 @@ fun GroupInviteLinkScreen(
                 Spacer(modifier = Modifier.height(20.dp))
                 HorizontalDivider(color = SplitEaseColors.Outline)
 
-                InviteLinkActionRow(
-                    icon = Icons.Filled.ContentCopy,
-                    title = stringResource(R.string.action_copy_link),
+                InviteLinkCopyRow(
+                    copied = uiState.linkCopied,
                     enabled = !uiState.isLoading && !uiState.isChanging && uiState.inviteUrl != null,
                     onClick = viewModel::copyLink,
                 )
@@ -211,6 +217,71 @@ fun GroupInviteLinkScreen(
             }
         },
     )
+}
+
+@Composable
+private fun InviteLinkCopyRow(
+    copied: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        AnimatedContent(
+            targetState = copied,
+            transitionSpec = {
+                (fadeIn() + scaleIn(initialScale = 0.85f)) togetherWith
+                    (fadeOut() + scaleOut(targetScale = 0.85f))
+            },
+            label = "invite_link_copy_feedback",
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = enabled, onClick = onClick)
+                    .padding(vertical = 16.dp),
+        ) { isCopied ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(28.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isCopied) {
+                        SeLottieOnce(
+                            rawRes = R.raw.success_check,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.ContentCopy,
+                            contentDescription = null,
+                            tint =
+                                if (enabled) {
+                                    SplitEaseColors.Navy
+                                } else {
+                                    SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
+                                },
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
+                    text =
+                        stringResource(
+                            if (isCopied) R.string.action_link_copied else R.string.action_copy_link,
+                        ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color =
+                        when {
+                            isCopied -> SplitEaseColors.Positive
+                            enabled -> SplitEaseColors.Navy
+                            else -> SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
+                        },
+                )
+            }
+        }
+        HorizontalDivider(color = SplitEaseColors.Outline)
+    }
 }
 
 @Composable

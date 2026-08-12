@@ -32,6 +32,15 @@ interface FriendRepository {
     suspend fun getByFriendUserId(friendUserId: String): Friend?
 
     /**
+     * Finds a friendship by owner + friend user id.
+     *
+     * @param ownerUserId Owner user id.
+     * @param friendUserId The other party's user id.
+     * @return Matching friend, or null.
+     */
+    suspend fun getByOwnerAndFriendUserId(ownerUserId: String, friendUserId: String): Friend?
+
+    /**
      * Finds a friendship by owner and email snapshot.
      *
      * @param ownerUserId Owner user id.

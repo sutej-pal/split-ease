@@ -52,9 +52,9 @@ None (Room / PostgREST unchanged).
 ## How to Test
 
 ### Preferred: mail-service Auth Hook (Free tier)
-1. Redeploy Render `mail-service` with `POST /supabase/send-email-hook`.
+1. Redeploy mail-service on Vercel with `POST /supabase/send-email-hook`.
 2. Run `.\scripts\configure-signup-otp-email.ps1` (enables hook + sets OTP length 6).
-3. Optional: set matching `SEND_EMAIL_HOOK_SECRET` on Render and in Supabase Auth Hooks.
+3. Optional: set matching `SEND_EMAIL_HOOK_SECRET` on Vercel and in Supabase Auth Hooks.
 4. Sign up > receive SplitEase 6-digit OTP email from mail-service > verify in app.
 
 ### Fallback: Supabase template (Custom SMTP / Pro only)
@@ -94,7 +94,7 @@ _Placeholder — add device captures of verify-OTP screen when available._
 
 ## Outcome
 
-Updated 2026-07-29: signup OTP delivery moved to the Render **mail-service** via Supabase **Send Email Auth Hook**.
+Updated 2026-07-29: signup OTP delivery moved to the **mail-service** via Supabase **Send Email Auth Hook**.
 
 - Verify screen enforces a 6-digit numeric code.
 - `AuthViewModel.verifySignupOtp` calls `AuthRepository.verifySignupOtp(...)`.
@@ -106,5 +106,5 @@ Operator requirements remain:
 - Confirm email must stay ON for OTP-gated signup behavior.
 - Mailer OTP length must be **6** (`mailer_otp_length`).
 - Send Email hook must point at a healthy mail-service (otherwise signup fails).
-- SMTP/provider configuration must be healthy (Resend HTTPS on Render Free).
+- SMTP/provider configuration must be healthy (Brevo HTTPS on Vercel).
 - **Resend testing mode blocker (2026-07-29):** without a verified domain, Resend only delivers to the Resend account email (`sutejpal@hotmail.com`). Until a domain is verified and `MAIL_FROM` uses it, keep `mailer_autoconfirm=true` + Send Email hook OFF so emulator/dev signup can create a session; re-enable Confirm email + hook after Resend domain verification.

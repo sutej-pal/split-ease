@@ -20,7 +20,7 @@ class InviteLinksTest {
         assertEquals(
             "5159bf4f5b9e4834a7362c9dfba81809",
             InviteLinks.tokenFromUriString(
-                "https://mail-service-7rzy.onrender.com/invite/5159bf4f5b9e4834a7362c9dfba81809",
+                "https://splitease-server-eight.vercel.app/invite/5159bf4f5b9e4834a7362c9dfba81809",
             ),
         )
     }

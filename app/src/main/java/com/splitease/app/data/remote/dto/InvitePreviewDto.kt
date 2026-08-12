@@ -14,6 +14,7 @@ data class InvitePreviewDto(
     @SerialName("inviter_name") val inviterName: String,
     @SerialName("group_id") val groupId: String? = null,
     @SerialName("group_name") val groupName: String? = null,
+    @SerialName("group_photo_url") val groupPhotoUrl: String? = null,
     val members: List<InvitePreviewMemberDto> = emptyList(),
 )
 

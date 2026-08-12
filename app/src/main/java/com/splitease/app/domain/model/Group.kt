@@ -7,7 +7,8 @@ package com.splitease.app.domain.model
  * @property name Group display name.
  * @property defaultCurrencyCode ISO 4217 code used for new expenses (e.g. `"INR"`).
  * @property groupType Friends / Home / Other category for UI.
- * @property photoUrl Optional local path to a custom group image (square list/settings icon).
+ * @property photoUrl Optional square list/settings image — synced https Storage URL,
+ *   or a local path while upload is pending.
  * @property coverUrl Optional banner image — synced https Storage URL, or a local path
  *   while upload is pending.
  * @property createdByUserId User who created the group.

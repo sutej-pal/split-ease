@@ -4,6 +4,7 @@ import com.splitease.app.data.remote.dto.FriendDto
 import com.splitease.app.data.remote.dto.GroupCoverUrlPatch
 import com.splitease.app.data.remote.dto.GroupDto
 import com.splitease.app.data.remote.dto.GroupMemberDto
+import com.splitease.app.data.remote.dto.GroupPhotoUrlPatch
 import com.splitease.app.data.remote.dto.InviteDto
 import com.splitease.app.data.remote.dto.InvitePreviewDto
 import com.splitease.app.data.remote.dto.ProfileDto
@@ -143,6 +144,26 @@ class SocialRemoteDataSource
             supabase.from("groups").update(
                 GroupCoverUrlPatch(
                     coverUrl = coverUrl,
+                    updatedAtEpochMs = updatedAtEpochMs,
+                ),
+            ) {
+                filter {
+                    eq("id", groupId)
+                }
+            }
+        }
+
+        /**
+         * Sets or clears `groups.photo_url` without rewriting other columns via full upsert.
+         */
+        suspend fun patchGroupPhotoUrl(
+            groupId: String,
+            photoUrl: String?,
+            updatedAtEpochMs: Long,
+        ) {
+            supabase.from("groups").update(
+                GroupPhotoUrlPatch(
+                    photoUrl = photoUrl,
                     updatedAtEpochMs = updatedAtEpochMs,
                 ),
             ) {

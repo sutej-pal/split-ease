@@ -21,6 +21,7 @@ class MailRemoteDataSource
             subject: String,
             text: String,
             fromName: String,
+            html: String? = null,
         ) = withContext(Dispatchers.IO) {
             val baseUrl = BuildConfig.MAIL_SERVICE_BASE_URL.trim().trimEnd('/')
             require(baseUrl.isNotEmpty()) { "MAIL_SERVICE_BASE_URL is missing." }
@@ -28,7 +29,7 @@ class MailRemoteDataSource
             val endpoint = URL("$baseUrl/send-mail")
             val connection = (endpoint.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
-                // Render free tier cold start + SMTP handshake can exceed 20s.
+                // Mail-service cold start + provider handshake can exceed 20s.
                 connectTimeout = 30_000
                 readTimeout = 60_000
                 doOutput = true
@@ -47,6 +48,9 @@ class MailRemoteDataSource
                     append("\"to\":\"${to.jsonEscape()}\",")
                     append("\"subject\":\"${subject.jsonEscape()}\",")
                     append("\"text\":\"${text.jsonEscape()}\",")
+                    if (!html.isNullOrBlank()) {
+                        append("\"html\":\"${html.jsonEscape()}\",")
+                    }
                     append("\"fromName\":\"${fromName.jsonEscape()}\"")
                     append("}")
                 }

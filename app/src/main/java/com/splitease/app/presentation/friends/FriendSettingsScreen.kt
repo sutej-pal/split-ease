@@ -72,6 +72,7 @@ fun FriendSettingsScreen(
     val sharedGroups by viewModel.sharedGroups.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showRemoveConfirm by rememberSaveable { mutableStateOf(false) }
+    var showSharedGroupsBlock by rememberSaveable { mutableStateOf(false) }
     var showBlockConfirm by rememberSaveable { mutableStateOf(false) }
     var showReportConfirm by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
@@ -84,6 +85,7 @@ fun FriendSettingsScreen(
             ?.trim()
             .orEmpty()
     val firstName = viewModel.firstName()
+    val personLabel = displayName.ifBlank { firstName }
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -154,7 +156,13 @@ fun FriendSettingsScreen(
                     subtitle = stringResource(R.string.friend_settings_remove_subtitle),
                     titleColor = SplitEaseColors.YouOwe,
                     iconTint = SplitEaseColors.YouOwe,
-                    onClick = { showRemoveConfirm = true },
+                    onClick = {
+                        if (sharedGroups.isNotEmpty()) {
+                            showSharedGroupsBlock = true
+                        } else {
+                            showRemoveConfirm = true
+                        }
+                    },
                 )
                 ManageActionRow(
                     icon = Icons.Filled.Block,
@@ -182,6 +190,22 @@ fun FriendSettingsScreen(
         },
     )
 
+    if (showSharedGroupsBlock) {
+        AlertDialog(
+            onDismissRequest = { showSharedGroupsBlock = false },
+            title = { Text(stringResource(R.string.friend_shared_groups_title)) },
+            text = { Text(stringResource(R.string.friend_shared_groups_body)) },
+            confirmButton = {
+                TextButton(onClick = { showSharedGroupsBlock = false }) {
+                    Text(
+                        text = stringResource(R.string.action_ok),
+                        color = SplitEaseColors.Primary,
+                    )
+                }
+            },
+        )
+    }
+
     if (showRemoveConfirm) {
         AlertDialog(
             onDismissRequest = { showRemoveConfirm = false },
@@ -189,7 +213,7 @@ fun FriendSettingsScreen(
                 Text(
                     stringResource(
                         R.string.friend_remove_confirm_title,
-                        displayName.ifBlank { firstName },
+                        personLabel,
                     ),
                 )
             },
@@ -228,8 +252,16 @@ fun FriendSettingsScreen(
     if (showBlockConfirm) {
         AlertDialog(
             onDismissRequest = { showBlockConfirm = false },
-            title = { Text(stringResource(R.string.action_block_user)) },
-            text = { Text(stringResource(R.string.friend_block_confirm_body)) },
+            title = {
+                Text(stringResource(R.string.friend_block_confirm_title, personLabel))
+            },
+            text = {
+                Column {
+                    Text(stringResource(R.string.friend_block_confirm_body))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(stringResource(R.string.friend_block_confirm_body_2))
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -238,14 +270,17 @@ fun FriendSettingsScreen(
                     },
                 ) {
                     Text(
-                        text = stringResource(R.string.action_block_user),
-                        color = SplitEaseColors.YouOwe,
+                        text = stringResource(R.string.action_block),
+                        color = SplitEaseColors.Primary,
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showBlockConfirm = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(
+                        text = stringResource(R.string.action_cancel),
+                        color = SplitEaseColors.Primary,
+                    )
                 }
             },
         )
@@ -254,7 +289,9 @@ fun FriendSettingsScreen(
     if (showReportConfirm) {
         AlertDialog(
             onDismissRequest = { showReportConfirm = false },
-            title = { Text(stringResource(R.string.action_report_user)) },
+            title = {
+                Text(stringResource(R.string.friend_report_confirm_title, personLabel))
+            },
             text = { Text(stringResource(R.string.friend_report_confirm_body)) },
             confirmButton = {
                 TextButton(
@@ -264,14 +301,30 @@ fun FriendSettingsScreen(
                     },
                 ) {
                     Text(
-                        text = stringResource(R.string.action_report_user),
-                        color = SplitEaseColors.Primary,
+                        text = stringResource(R.string.action_report_abuse),
+                        color = SplitEaseColors.YouOwe,
                     )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showReportConfirm = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                TextButton(
+                    onClick = {
+                        showReportConfirm = false
+                        val supportEmail = context.getString(R.string.support_email)
+                        val subject = context.getString(R.string.support_email_subject)
+                        val intent =
+                            Intent(Intent.ACTION_SENDTO).apply {
+                                data = android.net.Uri.parse("mailto:")
+                                putExtra(Intent.EXTRA_EMAIL, arrayOf(supportEmail))
+                                putExtra(Intent.EXTRA_SUBJECT, subject)
+                            }
+                        runCatching { context.startActivity(intent) }
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_other_customer_support),
+                        color = SplitEaseColors.Primary,
+                    )
                 }
             },
         )

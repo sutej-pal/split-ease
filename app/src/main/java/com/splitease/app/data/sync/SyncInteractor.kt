@@ -109,8 +109,12 @@ class SyncInteractor
                         } else {
                             group
                         }
-                    val toUpload = socialInteractor.get().ensureCoverUploaded(withCreator)
-                    if (toUpload.coverUrl != group.coverUrl) {
+                    val withCover = socialInteractor.get().ensureCoverUploaded(withCreator)
+                    val toUpload = socialInteractor.get().ensurePhotoUploaded(withCover)
+                    if (
+                        toUpload.coverUrl != group.coverUrl ||
+                        toUpload.photoUrl != group.photoUrl
+                    ) {
                         groupRepository.upsertGroup(toUpload.copy(syncStatus = SyncStatus.PENDING))
                     }
                     socialRemote.upsertGroup(toUpload.toDto())

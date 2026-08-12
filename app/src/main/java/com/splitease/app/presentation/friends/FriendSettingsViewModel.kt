@@ -100,9 +100,9 @@ class FriendSettingsViewModel
         fun resendInvite() {
             viewModelScope.launch {
                 val rowId = friend.value?.id ?: return@launch
-                val text =
-                    runCatching { socialInteractor.pendingInviteShareText(rowId) }.getOrNull()
-                if (text.isNullOrBlank()) {
+                val outcome =
+                    runCatching { socialInteractor.deliverPendingInvite(rowId) }.getOrNull()
+                if (outcome == null) {
                     _uiState.update {
                         it.copy(
                             errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
@@ -113,9 +113,17 @@ class FriendSettingsViewModel
                 }
                 _uiState.update {
                     it.copy(
-                        pendingShareText = text,
+                        pendingShareText = outcome.inviteShareText,
                         errorMessage = null,
-                        infoMessage = appContext.getString(R.string.msg_invite_resent),
+                        infoMessage =
+                            if (outcome.inviteEmailSent) {
+                                appContext.getString(
+                                    R.string.msg_invite_email_resent,
+                                    outcome.friend.emailSnapshot,
+                                )
+                            } else {
+                                appContext.getString(R.string.msg_invite_resent)
+                            },
                     )
                 }
             }

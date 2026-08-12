@@ -12,10 +12,13 @@ import com.splitease.app.data.contacts.DeviceContactsDataSource
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
+import com.splitease.app.domain.model.InviteKind
+import com.splitease.app.domain.model.InviteStatus
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.InviteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +52,8 @@ data class FindPeopleUiState(
     val memberUserIds: Set<String> = emptySet(),
     /** Members confirmed SYNCED to Supabase. */
     val syncedMemberUserIds: Set<String> = emptySet(),
+    /** Pending per-person GROUP invites for the current group. */
+    val pendingGroupInviteUserIds: Set<String> = emptySet(),
 )
 
 /**
@@ -62,6 +67,7 @@ class FindPeopleViewModel
         private val authRepository: AuthRepository,
         friendRepository: FriendRepository,
         private val groupRepository: GroupRepository,
+        private val inviteRepository: InviteRepository,
         private val socialInteractor: SocialInteractor,
         private val deviceContactsDataSource: DeviceContactsDataSource,
         private val reviewStore: PendingFriendReviewStore,
@@ -87,22 +93,51 @@ class FindPeopleViewModel
 
         init {
             viewModelScope.launch {
-                combine(groupIdFlow, userId) { groupId, _ -> groupId }
-                    .flatMapLatest { groupId ->
+                combine(groupIdFlow, userId, friends) { groupId, me, friendList ->
+                    Triple(groupId, me, friendList)
+                }
+                    .flatMapLatest { (groupId, me, friendList) ->
                         if (groupId.isNullOrBlank()) {
-                            flowOf(emptyList())
+                            flowOf(Triple(emptySet<String>(), emptySet(), emptySet()))
                         } else {
-                            groupRepository.observeMembers(groupId)
+                            combine(
+                                groupRepository.observeMembers(groupId),
+                                if (me == null) {
+                                    flowOf(emptyList())
+                                } else {
+                                    inviteRepository.observeSentInvites(me)
+                                },
+                            ) { members, invites ->
+                                val memberUserIds = members.map { it.userId }.toSet()
+                                val syncedMemberUserIds =
+                                    members
+                                        .filter { it.syncStatus == SyncStatus.SYNCED }
+                                        .map { it.userId }
+                                        .toSet()
+                                val pendingFriendRowIds =
+                                    invites
+                                        .filter { invite ->
+                                            invite.status == InviteStatus.PENDING &&
+                                                invite.kind == InviteKind.GROUP &&
+                                                invite.groupId == groupId &&
+                                                invite.friendRowId != null
+                                        }
+                                        .mapNotNull { it.friendRowId }
+                                        .toSet()
+                                val pendingGroupInviteUserIds =
+                                    friendList
+                                        .filter { it.id in pendingFriendRowIds }
+                                        .map { it.friendUserId }
+                                        .toSet()
+                                Triple(memberUserIds, syncedMemberUserIds, pendingGroupInviteUserIds)
+                            }
                         }
-                    }.collect { members ->
+                    }.collect { (memberUserIds, syncedMemberUserIds, pendingGroupInviteUserIds) ->
                         _uiState.update {
                             it.copy(
-                                memberUserIds = members.map { m -> m.userId }.toSet(),
-                                syncedMemberUserIds =
-                                    members
-                                        .filter { m -> m.syncStatus == SyncStatus.SYNCED }
-                                        .map { m -> m.userId }
-                                        .toSet(),
+                                memberUserIds = memberUserIds,
+                                syncedMemberUserIds = syncedMemberUserIds,
+                                pendingGroupInviteUserIds = pendingGroupInviteUserIds,
                             )
                         }
                     }
@@ -243,6 +278,11 @@ class FindPeopleViewModel
                         infoMessage =
                             when {
                                 outcome == null -> null
+                                outcome.inviteEmailSent ->
+                                    appContext.getString(
+                                        R.string.msg_invite_email_sent,
+                                        outcome.friend.emailSnapshot,
+                                    )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)
                                 else -> appContext.getString(R.string.msg_member_added)
@@ -291,6 +331,11 @@ class FindPeopleViewModel
                         infoMessage =
                             when {
                                 outcome == null -> null
+                                outcome.inviteEmailSent ->
+                                    appContext.getString(
+                                        R.string.msg_invite_email_sent,
+                                        outcome.friend.emailSnapshot,
+                                    )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)
                                 else -> appContext.getString(R.string.msg_friend_added)

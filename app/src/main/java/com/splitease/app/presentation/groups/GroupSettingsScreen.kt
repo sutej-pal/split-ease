@@ -33,16 +33,19 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.HideImage
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,9 +65,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
+import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -73,10 +78,20 @@ import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeMoneyText
+import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTypeChip
+import java.math.BigDecimal
+
+private data class SelectedGroupMember(
+    val userId: String,
+    val displayName: String,
+    val email: String?,
+    val pending: Boolean,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,7 +101,9 @@ fun GroupSettingsScreen(
     onLeftOrDeleted: () -> Unit,
     onAddPeople: () -> Unit,
     onInviteViaLink: () -> Unit,
+    onViewMemberSettings: (friendUserId: String) -> Unit = {},
     viewModel: GroupsViewModel = hiltViewModel(),
+    balancesViewModel: BalancesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
@@ -98,14 +115,20 @@ fun GroupSettingsScreen(
         .collectAsStateWithLifecycle()
     val group by remember(groupId) { viewModel.observeGroup(groupId) }
         .collectAsStateWithLifecycle()
+    val groupBalance by remember(groupId) { balancesViewModel.observeGroupBalance(groupId) }
+        .collectAsStateWithLifecycle()
     var showEdit by rememberSaveable { mutableStateOf(false) }
     var showLeaveConfirm by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     var showSimplifyInfo by rememberSaveable { mutableStateOf(false) }
     var showDefaultSplitInfo by rememberSaveable { mutableStateOf(false) }
+    var selectedMember by remember { mutableStateOf<SelectedGroupMember?>(null) }
+    var memberPendingRemove by remember { mutableStateOf<SelectedGroupMember?>(null) }
+    val memberSheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
     val me = viewModel.currentUserId()
     val isOwner = group?.createdByUserId == me
+    val currencyFallback = group?.defaultCurrencyCode.orEmpty()
     val photoPicker =
         rememberImagePicker(
             sourceTitle = stringResource(R.string.group_photo_source_title),
@@ -201,26 +224,41 @@ fun GroupSettingsScreen(
                     val isYou = member.userId == me
                     val pending =
                         friend?.displayNameSnapshot?.contains("(invited)", ignoreCase = true) == true
+                    val rawName =
+                        friend?.displayNameSnapshot
+                            ?.removeSuffix(" (invited)")
+                            ?.trim()
+                            .orEmpty()
+                            .ifBlank {
+                                userDisplayNames[member.userId]
+                                    ?: member.userId.take(8)
+                            }
                     val title =
                         if (isYou) {
                             stringResource(
                                 R.string.member_you_label,
                                 friend?.displayNameSnapshot
+                                    ?.removeSuffix(" (invited)")
+                                    ?.trim()
+                                    ?.ifBlank { null }
                                     ?: userDisplayNames[member.userId]
                                     ?: stringResource(R.string.you_label),
                             )
-                        } else {
+                        } else if (pending) {
                             friend?.displayNameSnapshot
                                 ?: userDisplayNames[member.userId]
                                 ?: member.userId.take(8)
+                        } else {
+                            rawName
                         }
+                    val memberNets = memberNets(groupBalance, member.userId)
                     SeListRow(
                         title = title,
                         subtitle =
                             when {
                                 pending ->
                                     listOfNotNull(
-                                        friend.emailSnapshot,
+                                        friend?.emailSnapshot,
                                         stringResource(R.string.invite_pending_label),
                                     ).joinToString(" · ")
                                 else -> friend?.emailSnapshot
@@ -233,34 +271,57 @@ fun GroupSettingsScreen(
                             )
                         },
                         trailing =
-                            if (pending) {
-                                {
-                                    Row {
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.copyInviteLinkForMember(member.userId)
-                                            },
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.ContentCopy,
-                                                contentDescription =
-                                                    stringResource(R.string.cd_copy_invite_link),
-                                                tint = SplitEaseColors.Primary,
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.shareInviteAgainForMember(member.userId)
-                                            },
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.Share,
-                                                contentDescription =
-                                                    stringResource(R.string.cd_share_invite_again),
-                                                tint = SplitEaseColors.Primary,
-                                            )
+                            when {
+                                pending -> {
+                                    {
+                                        Row {
+                                            IconButton(
+                                                onClick = {
+                                                    viewModel.copyInviteLinkForMember(member.userId)
+                                                },
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.ContentCopy,
+                                                    contentDescription =
+                                                        stringResource(R.string.cd_copy_invite_link),
+                                                    tint = SplitEaseColors.Primary,
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    viewModel.shareInviteAgainForMember(member.userId)
+                                                },
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.Share,
+                                                    contentDescription =
+                                                        stringResource(R.string.cd_share_invite_again),
+                                                    tint = SplitEaseColors.Primary,
+                                                )
+                                            }
                                         }
                                     }
+                                }
+                                !isYou -> {
+                                    {
+                                        MemberNetStatus(
+                                            netByCurrency = memberNets,
+                                            currencyFallback = currencyFallback,
+                                        )
+                                    }
+                                }
+                                else -> null
+                            },
+                        onClick =
+                            if (!isYou) {
+                                {
+                                    selectedMember =
+                                        SelectedGroupMember(
+                                            userId = member.userId,
+                                            displayName = rawName.ifBlank { title },
+                                            email = friend?.emailSnapshot,
+                                            pending = pending,
+                                        )
                                 }
                             } else {
                                 null
@@ -405,6 +466,227 @@ fun GroupSettingsScreen(
             },
         )
     }
+
+    val sheetMember = selectedMember
+    if (sheetMember != null) {
+        val nets = memberNets(groupBalance, sheetMember.userId)
+        val canRemove = nets.isEmpty()
+        ModalBottomSheet(
+            onDismissRequest = { selectedMember = null },
+            sheetState = memberSheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            GroupMemberActionsSheet(
+                member = sheetMember,
+                netByCurrency = nets,
+                currencyFallback = currencyFallback,
+                canRemove = canRemove,
+                onViewSettings = {
+                    val userId = sheetMember.userId
+                    selectedMember = null
+                    onViewMemberSettings(userId)
+                },
+                onRemove = {
+                    if (canRemove) {
+                        memberPendingRemove = sheetMember
+                        selectedMember = null
+                    }
+                },
+            )
+        }
+    }
+
+    memberPendingRemove?.let { pending ->
+        ConfirmDialog(
+            title = stringResource(R.string.action_remove_from_group),
+            body = stringResource(R.string.member_remove_confirm, pending.displayName),
+            confirmLabel = stringResource(R.string.action_remove),
+            onDismiss = { memberPendingRemove = null },
+            onConfirm = {
+                val userId = pending.userId
+                memberPendingRemove = null
+                viewModel.removeGroupMember(groupId, userId)
+            },
+        )
+    }
+}
+
+@Composable
+private fun GroupMemberActionsSheet(
+    member: SelectedGroupMember,
+    netByCurrency: Map<String, BigDecimal>,
+    currencyFallback: String,
+    canRemove: Boolean,
+    onViewSettings: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SeIconTile(
+                icon = Icons.Filled.Person,
+                tint = SplitEaseColors.IconOther,
+                size = 48,
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = member.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                )
+                if (!member.email.isNullOrBlank()) {
+                    Text(
+                        text = member.email,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SplitEaseColors.NavyMuted,
+                    )
+                }
+            }
+            MemberNetStatus(
+                netByCurrency = netByCurrency,
+                currencyFallback = currencyFallback,
+                settledLowercase = true,
+            )
+        }
+        HorizontalDivider(
+            color = SplitEaseColors.Outline,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+        MemberSheetActionRow(
+            icon = Icons.Outlined.Person,
+            title = stringResource(R.string.action_view_settings),
+            onClick = onViewSettings,
+        )
+        MemberSheetActionRow(
+            icon = Icons.AutoMirrored.Filled.ExitToApp,
+            title = stringResource(R.string.action_remove_from_group),
+            titleColor = SplitEaseColors.YouOwe,
+            iconTint = SplitEaseColors.YouOwe,
+            enabled = canRemove,
+            onClick = onRemove,
+            showDivider = false,
+            dimWhenDisabled = false,
+        )
+        if (!canRemove) {
+            Text(
+                text = stringResource(R.string.member_remove_blocked_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = SplitEaseColors.NavyMuted,
+                modifier = Modifier.padding(start = 38.dp, end = 8.dp, bottom = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MemberSheetActionRow(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    titleColor: Color? = null,
+    iconTint: Color? = null,
+    enabled: Boolean = true,
+    showDivider: Boolean = true,
+    dimWhenDisabled: Boolean = true,
+) {
+    val alpha = if (!enabled && dimWhenDisabled) 0.45f else 1f
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (enabled) {
+                            Modifier.clickable(onClick = onClick)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = (iconTint ?: SplitEaseColors.NavyMuted).copy(alpha = alpha),
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = (titleColor ?: SplitEaseColors.Navy).copy(alpha = alpha),
+            )
+        }
+        if (showDivider) {
+            HorizontalDivider(color = SplitEaseColors.Outline)
+        }
+    }
+}
+
+@Composable
+private fun MemberNetStatus(
+    netByCurrency: Map<String, BigDecimal>,
+    currencyFallback: String,
+    settledLowercase: Boolean = false,
+) {
+    if (netByCurrency.isEmpty()) {
+        val settled = stringResource(R.string.balances_settled_up)
+        SeMoneyText(
+            amount = BigDecimal.ZERO,
+            currencyCode = currencyFallback.ifBlank { "USD" },
+            tone = SeMoneyTone.SETTLED,
+            prefix = if (settledLowercase) settled.lowercase() else settled,
+        )
+        return
+    }
+    Column(horizontalAlignment = Alignment.End) {
+        netByCurrency.toSortedMap().forEach { (currency, net) ->
+            val code = currency.ifBlank { currencyFallback }
+            when {
+                net < BigDecimal.ZERO ->
+                    SeMoneyText(
+                        amount = net.abs(),
+                        currencyCode = code,
+                        tone = SeMoneyTone.YOU_OWE,
+                        prefix = stringResource(R.string.member_balance_owes),
+                    )
+                net > BigDecimal.ZERO ->
+                    SeMoneyText(
+                        amount = net,
+                        currencyCode = code,
+                        tone = SeMoneyTone.OWED_TO_YOU,
+                        prefix = stringResource(R.string.member_balance_gets_back),
+                    )
+            }
+        }
+    }
+}
+
+private fun memberNets(
+    balance: GroupBalanceUi?,
+    userId: String,
+): Map<String, BigDecimal> {
+    if (balance == null) return emptyMap()
+    return balance.memberNetsByCurrency
+        .mapNotNull { (currency, nets) ->
+            val net = nets[userId] ?: return@mapNotNull null
+            if (net.compareTo(BigDecimal.ZERO) == 0) null else currency to net
+        }.toMap()
 }
 
 @Composable

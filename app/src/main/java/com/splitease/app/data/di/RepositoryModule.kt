@@ -1,6 +1,6 @@
 package com.splitease.app.data.di
 
-import com.splitease.app.data.repository.RenderMailRepository
+import com.splitease.app.data.repository.RemoteMailRepository
 import com.splitease.app.data.repository.RoomActivityEventRepository
 import com.splitease.app.data.repository.RoomCategoryRepository
 import com.splitease.app.data.repository.RoomExpenseCommentRepository
@@ -98,8 +98,8 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindAppSettingsRepository(impl: SharedPreferencesAppSettingsRepository): AppSettingsRepository
 
-    /** Binds [MailRepository] to [RenderMailRepository]. */
+    /** Binds [MailRepository] to [RemoteMailRepository]. */
     @Binds
     @Singleton
-    abstract fun bindMailRepository(impl: RenderMailRepository): MailRepository
+    abstract fun bindMailRepository(impl: RemoteMailRepository): MailRepository
 }

@@ -49,6 +49,13 @@ data class GroupDto(
     @SerialName("cover_url")
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val coverUrl: String? = null,
+    /**
+     * Public Storage URL for the square list/settings avatar.
+     * Omitted when null so name/currency upserts do not wipe an existing photo.
+     */
+    @SerialName("photo_url")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val photoUrl: String? = null,
 )
 
 /**
@@ -57,6 +64,15 @@ data class GroupDto(
 @Serializable
 data class GroupCoverUrlPatch(
     @SerialName("cover_url") val coverUrl: String?,
+    @SerialName("updated_at_epoch_ms") val updatedAtEpochMs: Long,
+)
+
+/**
+ * Partial update used to clear or set [photo_url] without rewriting other group fields.
+ */
+@Serializable
+data class GroupPhotoUrlPatch(
+    @SerialName("photo_url") val photoUrl: String?,
     @SerialName("updated_at_epoch_ms") val updatedAtEpochMs: Long,
 )
 

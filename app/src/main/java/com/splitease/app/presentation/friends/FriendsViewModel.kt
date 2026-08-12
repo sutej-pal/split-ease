@@ -168,10 +168,9 @@ class FriendsViewModel
          */
         fun shareInviteAgain(friendRowId: String) {
             viewModelScope.launch {
-                val text =
-                    runCatching { socialInteractor.pendingInviteShareText(friendRowId) }
-                        .getOrNull()
-                if (text.isNullOrBlank()) {
+                val outcome =
+                    runCatching { socialInteractor.deliverPendingInvite(friendRowId) }.getOrNull()
+                if (outcome == null) {
                     _uiState.update {
                         it.copy(
                             errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
@@ -182,9 +181,17 @@ class FriendsViewModel
                 }
                 _uiState.update {
                     it.copy(
-                        pendingShareText = text,
+                        pendingShareText = outcome.inviteShareText,
                         errorMessage = null,
-                        infoMessage = null,
+                        infoMessage =
+                            if (outcome.inviteEmailSent) {
+                                appContext.getString(
+                                    R.string.msg_invite_email_resent,
+                                    outcome.friend.emailSnapshot,
+                                )
+                            } else {
+                                null
+                            },
                     )
                 }
             }
@@ -243,6 +250,11 @@ class FriendsViewModel
                         infoMessage =
                             when {
                                 outcome == null -> null
+                                outcome.inviteEmailSent ->
+                                    appContext.getString(
+                                        R.string.msg_invite_email_sent,
+                                        outcome.friend.emailSnapshot,
+                                    )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)
                                 else -> appContext.getString(R.string.msg_friend_added)

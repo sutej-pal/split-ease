@@ -54,7 +54,7 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProp("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "MAIL_SERVICE_BASE_URL", "\"${localProp("MAIL_SERVICE_BASE_URL")}\"")
         buildConfigField("String", "MAIL_SERVICE_API_KEY", "\"${localProp("MAIL_SERVICE_API_KEY")}\"")
-        // Host for https://{host}/invite/{token} browser → app redirects (Render mail-service).
+        // Host for https://{host}/invite/{token} browser → app redirects (mail-service).
         manifestPlaceholders["inviteWebHost"] = inviteWebHost
     }
 
@@ -157,6 +157,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
+    implementation(libs.lottie.compose)
 
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)

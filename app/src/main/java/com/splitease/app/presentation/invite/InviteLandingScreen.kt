@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.invite
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +29,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -41,10 +47,11 @@ import com.splitease.app.domain.model.InviteKind
 import com.splitease.app.domain.model.InvitePreview
 import com.splitease.app.domain.model.InvitePreviewMember
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTextButton
 
 /**
@@ -100,6 +107,13 @@ private fun InviteLandingContent(
                     .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = stringResource(R.string.app_name),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(72.dp),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
@@ -124,10 +138,13 @@ private fun InviteLandingContent(
                                 .padding(vertical = 28.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        SeIconTile(
-                            icon = Icons.Filled.Home,
-                            tint = SplitEaseColors.Primary,
-                            size = 56,
+                        val preview = uiState.preview
+                        val (icon, tint) = inviteHeroIcon(preview?.kind)
+                        SeGroupIconTile(
+                            photoUrl = preview?.groupPhotoUrl,
+                            fallbackIcon = icon,
+                            fallbackTint = tint,
+                            size = 64,
                         )
                     }
 
@@ -171,7 +188,7 @@ private fun InviteLandingContent(
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
-                                SeOutlinedButton(
+                                SePrimaryButton(
                                     text = stringResource(R.string.invite_join_as_new),
                                     onClick = onJoinAsNew,
                                     enabled = !uiState.isLoading,
@@ -211,6 +228,13 @@ private fun InviteLandingContent(
         }
     }
 }
+
+@Composable
+private fun inviteHeroIcon(kind: InviteKind?): Pair<ImageVector, Color> =
+    when (kind) {
+        InviteKind.FRIEND -> Icons.Filled.PersonAdd to SplitEaseColors.Primary
+        InviteKind.GROUP, null -> Icons.Filled.Group to SplitEaseColors.IconFriends
+    }
 
 @Composable
 private fun InviteMessage(preview: InvitePreview) {
