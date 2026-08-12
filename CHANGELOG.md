@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs
 
 ### Fixed
+- Co-member expense categories were lost on pull when devices used different default UUIDs: stable `cat_*` ids on the wire, Room v12 remaps legacy defaults, pull auto-seeds missing builtins ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #3)
+- Flush no longer inflates local `updatedAtEpochMs` after push (keeps cloud LWW aligned with PostgREST); remote-delete prune skips when fetch may hit PostgREST row cap
+- Pull could overwrite a newer local `PENDING` expense/payment with a stale remote row: `SyncConflictPolicy` enforces LWW on `updatedAtEpochMs` and protects equal-or-older remote from clobbering unflushed local edits ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #2)
+- Remote deletes lingered in Room (pull was upsert-only): after group / 1:1 pull, prune local `SYNCED` expenses and payments missing from the remote set; Realtime DELETE uses the same refresh path ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #1 / extras A5)
 - Crash when leaving a screen during an in-flight Supabase call (seen on Motorola): Ktor Android engine closed HTTP on Main (`NetworkOnMainThreadException`); switch to OkHttp and pin `httpEngine` in [SupabaseModule](app/src/main/java/com/splitease/app/data/di/SupabaseModule.kt)
 - Password reset showed generic `Something went wrong` after a valid OTP: `updatePassword` no longer fails the whole flow when local hydrate hiccups, and Supabase `same_password` / expired-session errors map to clear copy
 - Forgot-password never reveals whether an email is registered: `requestPasswordReset` always soft-succeeds, always opens the OTP screen with `If an account exists...` copy, and OTP verify failures use a generic `Invalid or expired code` (Supabase rate-limits resend server-side)

@@ -32,7 +32,7 @@ Track development phases. Always check this file at the start of a session to de
 - Ordered Supabase follow-ups: [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md)
 
 ### Carried-forward TODOs
-- **Supabase architecture TODOs (ordered)** — Remote delete tombstones → conflict policy → category sync → pin-board boundary → Edge Functions non-CRUD → ops hygiene ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md)).
+- **Supabase architecture TODOs (ordered)** — ~~Remote delete tombstones~~ → ~~conflict policy~~ → ~~category sync (defaults)~~ → ~~pin-board boundary~~ → Edge Functions non-CRUD → ops hygiene ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md)).
 - **OTP ops checklist** — Keep Supabase signup + recovery OTP operational (Confirm email ON, `{{ .Token }}` in templates / mail-service Send Email hook, SMTP/provider health) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
 - **Redeploy mail-service** — Recovery password-reset template lives in the mail-service; redeploy Render so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-email-otp.md)).
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
@@ -42,8 +42,8 @@ Track development phases. Always check this file at the start of a session to de
 - **SplitEase Server (separate repo)** — lives at `C:\splitease\server` beside the Android app at `C:\splitease\app` ([docs/splitease-server-repo.md](docs/splitease-server-repo.md)). Prefer Nodemailer SMTP locally. Render Free blocks SMTP — use local/ngrok, paid host, or Resend + verified domain.
 - **Render Free SMTP** — outbound SMTP ports are blocked on Free; onboarding mail needs Resend HTTPS + verified domain on Render, or a paid instance / local SMTP for Gmail ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md)).
 - **App Links / invite https** — share links use `MAIL_SERVICE_BASE_URL/invite/{token}` when set, else `splitease.app`. Host [docs/assetlinks.json](docs/assetlinks.json) for verified Open-by-default links ([app-links-setup.md](docs/app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification.
-- **Group live updates & push notifications (extra)** — Realtime + FCM path implemented; finish Firebase/`google-services.json` + Edge Function deploy per [docs/fcm-setup.md](docs/fcm-setup.md). Mute prefs / delete tombstones still TODO ([docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)).
-- **Category sync** — default category ids are now stable on fresh installs; older devices still use local UUIDs (remote pull drops unknown `category_id`). Full category cloud sync still TODO.
+- **Group live updates & push notifications (extra)** — Realtime + FCM path implemented; finish Firebase/`google-services.json` + Edge Function deploy per [docs/fcm-setup.md](docs/fcm-setup.md). Mute prefs still TODO; remote delete prune (A5) done ([docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)).
+- **Category sync** — stable default ids (`cat_*`) on the wire; Room v12 remaps legacy random defaults; custom categories remain device-local ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md) #3).
 - **FX rates** — multi-currency remains per-bucket; live FX is still deferred.
 - **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
 - **Social PENDING flush** — groups/members are now flushed in `SyncInteractor` before expenses (still verify Supabase SQL is applied).

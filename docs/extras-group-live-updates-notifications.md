@@ -1,8 +1,8 @@
 # Extras — Group live updates & member notifications
 
-**Status:** Realtime (B7) + FCM push path (B1–B5) implemented. Mute prefs / Activity badges / delete tombstones still TODO.  
+**Status:** Realtime (B7) + FCM push path (B1–B5) + remote delete prune (A5) implemented. Mute prefs / Activity badges still TODO.  
 **Added:** 2026-07-23 (post Phase 9 — out of original roadmap)  
-**Updated:** 2026-07-29 — Realtime + FCM slice  
+**Updated:** 2026-08-12 — A5 missing-id prune on expense/payment pull  
 **Why this doc exists:** Capture product extras that are **not** part of Phases 0–9, so we can implement and regress them later without losing intent.
 
 ---
@@ -32,7 +32,7 @@ Use this list as the implementation backlog. Mark items when done.
 | A2  | On group open / resume, also flush PENDING local writes then pull friends/groups/expenses/payments      | **Done (MVP)** | `SyncInteractor.syncForUser` + group expense pull                        |
 | A3  | Fix `syncForUser` so remote **pull always runs** (not only when invite-accept fails)                    | **Done**       | Was a bug blocking multi-device visibility                               |
 | A4  | Pull payments scoped to group (or involving current user) on open                                       | **Done (MVP)** | Via `syncForUser` > `refreshPaymentsForUser`                             |
-| A5  | Propagate **deletes** from cloud (tombstones or missing-id cleanup) so remote deletes disappear locally | TODO           | Today pull is upsert-mostly; deleted remote rows may linger offline      |
+| A5  | Propagate **deletes** from cloud (tombstones or missing-id cleanup) so remote deletes disappear locally | **Done**       | Missing-id prune of `SYNCED` rows after group / 1:1 pull; PENDING kept   |
 | A6  | Optional: pull-to-refresh gesture on group ledger                                                       | TODO           | UX nicety                                                                |
 
 ### B. Notifications to other members
@@ -89,7 +89,7 @@ GroupDetail RESUMED / Realtime event > sync pull > UI Flow updates
 **Foreground:** Supabase Realtime on `expenses` / `payments` filtered by `group_id` while GroupDetail is visible (`GroupLiveSync`).  
 **Background:** FCM via Edge Function (see [fcm-setup.md](fcm-setup.md)).
 
-**Remote pull into Room:** `persistRemoteExpense` / `persistRemotePayment` must stub missing payer/participant users and drop unknown `category_id` values. Default categories used to be random UUIDs per device, which made Room reject co-member expenses on FK (fixed 2026-07-29).
+**Remote pull into Room:** `persistRemoteExpense` / `persistRemotePayment` stub missing payer/participant users. Default categories use stable `cat_*` ids (auto-seeded on pull); custom category ids from other devices are still dropped until a cloud `categories` table exists.
 
 ---
 
@@ -98,7 +98,7 @@ GroupDetail RESUMED / Realtime event > sync pull > UI Flow updates
 - Supabase Realtime concurrent connections and FCM/Edge Function invocations count toward free-tier quotas — monitor before wide rollout.
 - Without `app/google-services.json`, FCM registration no-ops at runtime (Realtime still works).
 - Notify triggers no-op until `app.settings.notify_function_url` + `service_role_key` are set (or use Dashboard webhooks instead).
-- Remote delete tombstones (A5) and mute prefs (B8) are still TODO.
+- Mute prefs (B8) are still TODO.
 
 ---
 
@@ -122,7 +122,8 @@ Still deferred:
 2. Device A adds an expense in the shared group; wait for automatic background sync.
 3. Device B opens (or returns to) that group > expense and balances appear without reinstall.
 4. Repeat for settle-up payment.
-5. (Later) B receives a push when A saves; tap opens the group.
+5. Device A deletes an expense; Device B opens/resumes the group (or stays on detail with Realtime) > the expense disappears from B's ledger.
+6. (Later) B receives a push when A saves; tap opens the group.
 
 ---
 
@@ -130,6 +131,7 @@ Still deferred:
 
 - [PROGRESS.md](../PROGRESS.md) — carried-forward TODO pointer
 - [ARCHITECTURE.md](../ARCHITECTURE.md) — sync layer
+- [supabase-architecture-todos.md](./supabase-architecture-todos.md) — ordered sync follow-ups (A5 = TODO 1)
 - [phase-7-search-categories-currency-offline-sync.md](./phase-7-search-categories-currency-offline-sync.md) — offline queue / hydrate
 - Invite deep links still placeholder (`splitease.app`) — notification tap targets should align when App Links land
 
@@ -142,3 +144,4 @@ Still deferred:
 | 2026-07-23 | Created this extras doc; fixed `syncForUser` pull; group open runs full sync + group expense refresh                  |
 | 2026-07-23 | Find people + Add friend contact UI (device contacts, search) — related social UX extra                               |
 | 2026-07-29 | Slice 1 Realtime (`GroupLiveSync` + publication SQL) and Slice 2 FCM (device_tokens, Edge Function, MessagingService) |
+| 2026-08-12 | A5: prune local `SYNCED` expenses/payments missing after group / 1:1 pull (hard-delete remote deletes)               |

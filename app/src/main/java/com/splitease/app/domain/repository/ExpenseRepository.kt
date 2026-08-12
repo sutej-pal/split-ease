@@ -141,4 +141,18 @@ interface ExpenseRepository {
      * Loads expenses that still need cloud sync.
      */
     suspend fun getPendingSync(): List<Expense>
+
+    /**
+     * SYNCED expense ids for [groupId] (used to prune remote deletes).
+     *
+     * @param groupId Group filter.
+     */
+    suspend fun getSyncedIdsByGroup(groupId: String): List<String>
+
+    /**
+     * SYNCED non-group expense ids involving [userId] (used to prune remote deletes).
+     *
+     * @param userId User id.
+     */
+    suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String>
 }

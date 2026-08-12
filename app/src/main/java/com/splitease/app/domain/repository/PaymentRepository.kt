@@ -56,4 +56,18 @@ interface PaymentRepository {
      * Loads payments that still need cloud sync.
      */
     suspend fun getPendingSync(): List<Payment>
+
+    /**
+     * SYNCED payment ids for [groupId] (used to prune remote deletes).
+     *
+     * @param groupId Group filter.
+     */
+    suspend fun getSyncedIdsByGroup(groupId: String): List<String>
+
+    /**
+     * SYNCED non-group payment ids involving [userId] (used to prune remote deletes).
+     *
+     * @param userId User id.
+     */
+    suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String>
 }

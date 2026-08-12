@@ -81,4 +81,32 @@ interface PaymentDao {
         """,
     )
     suspend fun getPendingSync(): List<PaymentEntity>
+
+    /**
+     * SYNCED payment ids for [groupId] (candidates for remote-delete prune).
+     *
+     * @param groupId Group filter.
+     */
+    @Query(
+        """
+        SELECT id FROM payments
+        WHERE groupId = :groupId AND syncStatus = 'SYNCED'
+        """,
+    )
+    suspend fun getSyncedIdsByGroup(groupId: String): List<String>
+
+    /**
+     * SYNCED non-group payment ids involving [userId] as payer or payee.
+     *
+     * @param userId User id.
+     */
+    @Query(
+        """
+        SELECT id FROM payments
+        WHERE groupId IS NULL
+          AND syncStatus = 'SYNCED'
+          AND (fromUserId = :userId OR toUserId = :userId)
+        """,
+    )
+    suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String>
 }

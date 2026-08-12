@@ -10,7 +10,10 @@ import com.splitease.app.data.remote.dto.ExpenseDto
 import com.splitease.app.data.remote.dto.ExpensePhotoDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
 import com.splitease.app.data.remote.mapper.toDto
+import com.splitease.app.data.sync.REMOTE_FETCH_ROW_CAP
+import com.splitease.app.data.sync.SyncConflictPolicy
 import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.data.sync.isCompleteRemoteFetch
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
 import com.splitease.app.domain.model.Expense
@@ -358,12 +361,16 @@ class ExpenseInteractor
         }
 
         /**
-         * Pulls remote expenses for a group into Room.
+         * Pulls remote expenses for a group into Room, then removes local SYNCED rows
+         * that are no longer present remotely (hard-deleted on another device).
+         *
+         * PENDING / LOCAL_ONLY rows are never pruned.
          *
          * @param groupId Group id.
          */
         suspend fun refreshGroupExpenses(groupId: String) {
-            remote.fetchByGroup(groupId).forEach { dto ->
+            val remoteRows = remote.fetchByGroup(groupId)
+            remoteRows.forEach { dto ->
                 runCatching { persistRemoteExpense(dto) }
                     .onFailure { err ->
                         android.util.Log.w(
@@ -373,6 +380,11 @@ class ExpenseInteractor
                         )
                     }
             }
+            pruneSyncedMissingRemote(
+                localSyncedIds = expenseRepository.getSyncedIdsByGroup(groupId),
+                remoteIds = remoteRows.map { it.id }.toSet(),
+                remoteRowCount = remoteRows.size,
+            )
         }
 
         /**
@@ -382,6 +394,9 @@ class ExpenseInteractor
          * - expenses where [userId] is payer or split participant
          * - all expenses in groups [userId] belongs to (needed after invite join —
          *   membership alone does not put the user on historical split rows)
+         *
+         * After hydrate, prunes SYNCED 1:1 rows missing remotely; group rows are
+         * pruned inside [refreshGroupExpenses].
          *
          * @param userId Current user id.
          */
@@ -408,6 +423,39 @@ class ExpenseInteractor
             // joiner is not (yet) on any split.
             groupRepository.observeGroupsForUser(userId).first().forEach { group ->
                 refreshGroupExpenses(group.id)
+            }
+
+            // 1:1 (non-group) SYNCED rows: prune when absent from the involving-user set.
+            pruneSyncedMissingRemote(
+                localSyncedIds = expenseRepository.getSyncedNonGroupIdsInvolvingUser(userId),
+                remoteIds = ids.toSet(),
+                remoteRowCount = ids.size,
+            )
+        }
+
+        /**
+         * Deletes local SYNCED expenses that disappeared from a complete remote id set.
+         * Also removes on-disk photo folders. Never touches PENDING / LOCAL_ONLY.
+         */
+        private suspend fun pruneSyncedMissingRemote(
+            localSyncedIds: List<String>,
+            remoteIds: Set<String>,
+            remoteRowCount: Int,
+        ) {
+            if (!isCompleteRemoteFetch(remoteRowCount)) {
+                android.util.Log.w(
+                    "ExpenseSync",
+                    "Skip remote-delete prune: fetch returned $remoteRowCount rows (cap=$REMOTE_FETCH_ROW_CAP)",
+                )
+                return
+            }
+            localSyncedIds.forEach { id ->
+                if (id in remoteIds) return@forEach
+                runCatching {
+                    File(appContext.filesDir, "expense_photos/$id").deleteRecursively()
+                }
+                expenseRepository.deleteExpenseById(id)
+                android.util.Log.d("ExpenseSync", "Pruned remote-deleted expense $id")
             }
         }
 
@@ -674,15 +722,28 @@ class ExpenseInteractor
         }
 
         private suspend fun persistRemoteExpense(dto: ExpenseDto) {
+            val existing = expenseRepository.getExpenseById(dto.id)
+            if (
+                !SyncConflictPolicy.shouldApplyRemote(
+                    localUpdatedAtEpochMs = existing?.updatedAtEpochMs,
+                    localSyncStatus = existing?.syncStatus,
+                    remoteUpdatedAtEpochMs = dto.updatedAtEpochMs,
+                )
+            ) {
+                android.util.Log.d(
+                    "ExpenseSync",
+                    "Skip remote expense ${dto.id}: local ${existing?.syncStatus} " +
+                        "updatedAt=${existing?.updatedAtEpochMs} >= remote ${dto.updatedAtEpochMs}",
+                )
+                return
+            }
             val splits = remote.fetchSplits(dto.id)
             // Room FKs require local user rows for payer + participants (other members).
             ensureLocalUserExists(dto.paidByUserId)
             splits.forEach { ensureLocalUserExists(it.userId) }
-            // Default category ids are device-local UUIDs (not synced). Drop unknown
-            // category_id so a co-member's expense still lands in Room.
-            val categoryId =
-                dto.categoryId?.takeIf { id -> categoryRepository.getById(id) != null }
-            val existing = expenseRepository.getExpenseById(dto.id)
+            // Default category ids are device-local UUIDs on older installs; stable `cat_*`
+            // ids are auto-seeded on pull. Custom categories remain local-only.
+            val categoryId = categoryRepository.resolveCategoryForRemotePull(dto.categoryId)
             // Cloud expenses have no created_at column; never clobber local creation
             // time with updated_at (that would move the expense after every edit sync).
             val createdAt =
@@ -946,7 +1007,7 @@ class ExpenseInteractor
                     description = expense.description,
                     amount = expense.amount.toPlainString(),
                     currencyCode = expense.currencyCode,
-                    categoryId = expense.categoryId,
+                    categoryId = categoryRepository.categoryIdForCloud(expense.categoryId),
                     paidByUserId = expense.paidByUserId,
                     groupId = expense.groupId,
                     expenseDateEpochMs = expense.expenseDateEpochMs,

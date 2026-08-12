@@ -49,4 +49,10 @@ class RoomPaymentRepository
 
         override suspend fun getPendingSync(): List<Payment> =
             paymentDao.getPendingSync().map { it.toDomain() }
+
+        override suspend fun getSyncedIdsByGroup(groupId: String): List<String> =
+            paymentDao.getSyncedIdsByGroup(groupId)
+
+        override suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String> =
+            paymentDao.getSyncedNonGroupIdsInvolvingUser(userId)
     }

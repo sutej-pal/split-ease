@@ -51,6 +51,15 @@ interface ExpenseDao {
     @Query("DELETE FROM expenses WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    /**
+     * Remaps expense category references (legacy default id → stable id).
+     *
+     * @param fromId Old category id.
+     * @param toId New category id.
+     */
+    @Query("UPDATE expenses SET categoryId = :toId WHERE categoryId = :fromId")
+    suspend fun remapCategoryId(fromId: String, toId: String)
+
     /** @param expenseId Parent expense. @return Flow of splits. */
     @Query("SELECT * FROM expense_splits WHERE expenseId = :expenseId")
     fun observeSplits(expenseId: String): Flow<List<ExpenseSplitEntity>>
@@ -160,6 +169,35 @@ interface ExpenseDao {
         """,
     )
     suspend fun getPendingSync(): List<ExpenseEntity>
+
+    /**
+     * SYNCED expense ids for [groupId] (candidates for remote-delete prune).
+     *
+     * @param groupId Group filter.
+     */
+    @Query(
+        """
+        SELECT id FROM expenses
+        WHERE groupId = :groupId AND syncStatus = 'SYNCED'
+        """,
+    )
+    suspend fun getSyncedIdsByGroup(groupId: String): List<String>
+
+    /**
+     * SYNCED non-group expense ids involving [userId] as payer or split participant.
+     *
+     * @param userId User id.
+     */
+    @Query(
+        """
+        SELECT DISTINCT e.id FROM expenses e
+        LEFT JOIN expense_splits s ON s.expenseId = e.id
+        WHERE e.groupId IS NULL
+          AND e.syncStatus = 'SYNCED'
+          AND (e.paidByUserId = :userId OR s.userId = :userId)
+        """,
+    )
+    suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String>
 
     /**
      * Expenses in an inclusive date window.

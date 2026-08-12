@@ -12,7 +12,7 @@ Add a shared per-group "Pin Board" — a single rich-text notepad visible and ed
 - Supabase `pin_boards` table (one row per group, RLS by membership)
 - Online-only read/write via PostgREST
 - Markdown-based content with toolbar (bold, italic, checklist, gallery image)
-- Auto-save with 2-second debounce; save on back navigation
+- Explicit Save (toolbar button); load on screen open
 - "Last edited by" footer
 - Accessible via action chip on group detail screen
 
@@ -24,9 +24,10 @@ Add a shared per-group "Pin Board" — a single rich-text notepad visible and ed
 
 ## Architecture Decisions
 
-- **Online-only:** The pin board is a lightweight collaborative surface. Always-latest content matters more than offline availability. Room cache can be added later.
+- **Online-only (hard boundary):** The pin board is a lightweight collaborative surface. Always-latest content matters more than offline availability. **No Room entity, no `SyncStatus`, no [SyncInteractor](../app/src/main/java/com/splitease/app/data/sync/SyncInteractor.kt) flush/pull.** Code guardrail: [PinBoardPolicy.kt](../app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt). Re-open the screen to refresh from cloud; second device does not get Realtime updates.
 - **Markdown storage:** Avoids heavy rich-text serialization libraries. The toolbar inserts Markdown syntax; content is displayed/edited as source text.
 - **Single board per group:** `pin_boards.group_id` is the PK — one document, not a collection of notes.
+- **Explicit Save:** User taps Save to persist (no debounced auto-save queue).
 
 ## Data Model Changes
 
@@ -70,9 +71,9 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 1. Run `docs/sql/migration_db.sql` in Supabase SQL Editor.
 2. Open a group with 2+ members (both signed in on separate devices).
 3. Tap the "Pin Board" chip on the group detail screen.
-4. Type content; wait 2 seconds — content auto-saves.
-5. Open the same group's pin board on the second device — content should appear.
-6. Edit on device 2 → navigate back → reopen on device 1 — latest content visible.
+4. Type content; tap **Save** — content persists to Supabase.
+5. Open the same group's pin board on the second device — content should appear after open.
+6. Edit on device 2 → Save → reopen on device 1 — latest content visible.
 
 ## Known Issues / TODOs
 

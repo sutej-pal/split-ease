@@ -1,9 +1,11 @@
 package com.splitease.app.data.repository
 
 import com.splitease.app.data.local.dao.CategoryDao
+import com.splitease.app.data.local.dao.ExpenseDao
 import com.splitease.app.data.local.entity.CategoryEntity
 import com.splitease.app.data.local.mapper.toDomain
 import com.splitease.app.data.local.mapper.toEntity
+import com.splitease.app.domain.category.DefaultCategories
 import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.CategoryRepository
@@ -16,12 +18,14 @@ import javax.inject.Singleton
  * Room-backed [CategoryRepository].
  *
  * @property categoryDao Local categories DAO.
+ * @property expenseDao Used to remap legacy default ids on expenses.
  */
 @Singleton
 class RoomCategoryRepository
     @Inject
     constructor(
         private val categoryDao: CategoryDao,
+        private val expenseDao: ExpenseDao,
     ) : CategoryRepository {
         override fun observeCategories(): Flow<List<Category>> =
             categoryDao.observeAll().map { rows -> rows.map { it.toDomain() } }
@@ -37,26 +41,68 @@ class RoomCategoryRepository
         }
 
         override suspend fun ensureDefaults() {
-            if (categoryDao.count() > 0) return
-            // Stable ids so co-members share the same category_id over the wire.
-            // (Older installs used random UUIDs; remote pull drops unknown category ids.)
-            val defaults =
-                listOf(
-                    Triple("cat_general", "General", "category_general"),
-                    Triple("cat_food", "Food", "category_food"),
-                    Triple("cat_travel", "Travel", "category_travel"),
-                    Triple("cat_rent", "Rent", "category_rent"),
-                    Triple("cat_utilities", "Utilities", "category_utilities"),
-                    Triple("cat_entertainment", "Entertainment", "category_entertainment"),
-                ).map { (id, name, icon) ->
-                    CategoryEntity(
-                        id = id,
-                        name = name,
-                        iconKey = icon,
-                        isDefault = true,
-                        syncStatus = SyncStatus.LOCAL_ONLY,
-                    )
+            migrateLegacyDefaultIdsToStable()
+            seedMissingStableDefaults()
+        }
+
+        override fun categoryIdForCloud(localCategoryId: String?): String? =
+            DefaultCategories.categoryIdForCloud(localCategoryId)
+
+        override suspend fun resolveCategoryForRemotePull(remoteCategoryId: String?): String? {
+            if (remoteCategoryId.isNullOrBlank()) return null
+            if (categoryDao.getById(remoteCategoryId) != null) return remoteCategoryId
+            val definition = DefaultCategories.byId(remoteCategoryId) ?: return null
+            categoryDao.upsert(definition.toEntity())
+            return remoteCategoryId
+        }
+
+        /**
+         * Rewrites pre-stable default rows (random UUID per install) to shared `cat_*` ids
+         * and updates referencing expenses.
+         */
+        private suspend fun migrateLegacyDefaultIdsToStable() {
+            DefaultCategories.ALL.forEach { definition ->
+                val stableId = definition.id
+                val stableRow = categoryDao.getById(stableId)
+                val legacyRow =
+                    categoryDao.getByNameIgnoreCase(definition.name)
+                        ?.takeIf { it.id != stableId && it.isDefault }
+
+                if (stableRow != null) {
+                    if (legacyRow != null) {
+                        expenseDao.remapCategoryId(legacyRow.id, stableId)
+                        categoryDao.deleteById(legacyRow.id)
+                    }
+                    return@forEach
                 }
-            categoryDao.upsertAll(defaults)
+
+                if (legacyRow != null) {
+                    // Free the unique `name` index before inserting the stable row.
+                    categoryDao.upsert(
+                        legacyRow.copy(name = "__legacy__${legacyRow.id}"),
+                    )
+                    categoryDao.upsert(definition.toEntity())
+                    expenseDao.remapCategoryId(legacyRow.id, stableId)
+                    categoryDao.deleteById(legacyRow.id)
+                }
+            }
+        }
+
+        /** Inserts any missing built-in defaults (fresh install or partial seed). */
+        private suspend fun seedMissingStableDefaults() {
+            DefaultCategories.ALL.forEach { definition ->
+                if (categoryDao.getById(definition.id) != null) return@forEach
+                if (categoryDao.getByNameIgnoreCase(definition.name) != null) return@forEach
+                categoryDao.upsert(definition.toEntity())
+            }
         }
     }
+
+private fun DefaultCategories.Definition.toEntity(): CategoryEntity =
+    CategoryEntity(
+        id = id,
+        name = name,
+        iconKey = iconKey,
+        isDefault = true,
+        syncStatus = SyncStatus.LOCAL_ONLY,
+    )

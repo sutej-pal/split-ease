@@ -2,6 +2,9 @@ package com.splitease.app.data.payment
 
 import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.dto.PaymentDto
+import com.splitease.app.data.sync.REMOTE_FETCH_ROW_CAP
+import com.splitease.app.data.sync.SyncConflictPolicy
+import com.splitease.app.data.sync.isCompleteRemoteFetch
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
@@ -80,10 +83,14 @@ class PaymentInteractor
         /**
          * Pulls remote payments visible to [userId] into Room (payer/payee + member groups).
          *
+         * Prunes SYNCED 1:1 rows missing remotely; group rows are pruned inside
+         * [refreshGroupPayments]. PENDING / LOCAL_ONLY are never pruned.
+         *
          * @param userId Current user id.
          */
         suspend fun refreshPaymentsForUser(userId: String) {
-            remote.fetchInvolvingUser(userId).forEach { dto ->
+            val remoteRows = remote.fetchInvolvingUser(userId)
+            remoteRows.forEach { dto ->
                 runCatching { persistRemotePayment(dto) }
                     .onFailure { err ->
                         android.util.Log.w(
@@ -96,15 +103,24 @@ class PaymentInteractor
             groupRepository.observeGroupsForUser(userId).first().forEach { group ->
                 refreshGroupPayments(group.id)
             }
+            pruneSyncedMissingRemote(
+                localSyncedIds = paymentRepository.getSyncedNonGroupIdsInvolvingUser(userId),
+                remoteIds = remoteRows.map { it.id }.toSet(),
+                remoteRowCount = remoteRows.size,
+            )
         }
 
         /**
-         * Pulls remote payments for a group into Room.
+         * Pulls remote payments for a group into Room, then removes local SYNCED rows
+         * that are no longer present remotely (hard-deleted on another device).
+         *
+         * PENDING / LOCAL_ONLY rows are never pruned.
          *
          * @param groupId Group id.
          */
         suspend fun refreshGroupPayments(groupId: String) {
-            remote.fetchByGroup(groupId).forEach { dto ->
+            val remoteRows = remote.fetchByGroup(groupId)
+            remoteRows.forEach { dto ->
                 runCatching { persistRemotePayment(dto) }
                     .onFailure { err ->
                         android.util.Log.w(
@@ -114,12 +130,50 @@ class PaymentInteractor
                         )
                     }
             }
+            pruneSyncedMissingRemote(
+                localSyncedIds = paymentRepository.getSyncedIdsByGroup(groupId),
+                remoteIds = remoteRows.map { it.id }.toSet(),
+                remoteRowCount = remoteRows.size,
+            )
+        }
+
+        private suspend fun pruneSyncedMissingRemote(
+            localSyncedIds: List<String>,
+            remoteIds: Set<String>,
+            remoteRowCount: Int,
+        ) {
+            if (!isCompleteRemoteFetch(remoteRowCount)) {
+                android.util.Log.w(
+                    "PaymentSync",
+                    "Skip remote-delete prune: fetch returned $remoteRowCount rows (cap=$REMOTE_FETCH_ROW_CAP)",
+                )
+                return
+            }
+            localSyncedIds.forEach { id ->
+                if (id in remoteIds) return@forEach
+                paymentRepository.deleteById(id)
+                android.util.Log.d("PaymentSync", "Pruned remote-deleted payment $id")
+            }
         }
 
         private suspend fun persistRemotePayment(dto: PaymentDto) {
+            val existing = paymentRepository.getById(dto.id)
+            if (
+                !SyncConflictPolicy.shouldApplyRemote(
+                    localUpdatedAtEpochMs = existing?.updatedAtEpochMs,
+                    localSyncStatus = existing?.syncStatus,
+                    remoteUpdatedAtEpochMs = dto.updatedAtEpochMs,
+                )
+            ) {
+                android.util.Log.d(
+                    "PaymentSync",
+                    "Skip remote payment ${dto.id}: local ${existing?.syncStatus} " +
+                        "updatedAt=${existing?.updatedAtEpochMs} >= remote ${dto.updatedAtEpochMs}",
+                )
+                return
+            }
             ensureLocalUserExists(dto.fromUserId)
             ensureLocalUserExists(dto.toUserId)
-            val existing = paymentRepository.getById(dto.id)
             paymentRepository.upsert(
                 Payment(
                     id = dto.id,

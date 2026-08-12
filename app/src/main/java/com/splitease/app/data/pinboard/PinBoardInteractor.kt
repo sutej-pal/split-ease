@@ -9,7 +9,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Orchestrates pin board load / save. Stateless — persistence is triggered by explicit Save.
+ * Orchestrates pin board load / save.
+ *
+ * **Online-only** — see [PinBoardPolicy]. No Room cache, no [com.splitease.app.data.sync.SyncInteractor]
+ * flush path. Each [load] / [save] hits PostgREST directly.
  */
 @Singleton
 class PinBoardInteractor

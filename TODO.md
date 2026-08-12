@@ -24,16 +24,16 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board boundary → Edge Functions → ops): [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md).
 
 - [ ] **Group live updates & push** — Finish Firebase/`google-services.json` + Edge Function deploy per [docs/fcm-setup.md](docs/fcm-setup.md).
-- [ ] **A5 — Remote delete tombstones** — Propagate deletes from cloud so remote deletes disappear locally (pull is upsert-mostly today). See architecture TODO **1**.
-- [ ] **Conflict policy** — Explicit last-write-wins (or equivalent) on pull; never overwrite local `PENDING` with older remote. See architecture TODO **2**.
+- [x] **A5 — Remote delete tombstones** — Pull prunes local `SYNCED` expenses/payments missing from the remote group (or 1:1) set. See architecture TODO **1**.
+- [x] **Conflict policy** — Pull LWW on `updatedAtEpochMs`; never overwrite local `PENDING` / `LOCAL_ONLY` with equal-or-older remote (`SyncConflictPolicy`). See architecture TODO **2**.
 - [ ] **A6 — Pull-to-refresh** — Optional pull-to-refresh gesture on group ledger.
 - [ ] **B6 — Activity badges** — Extend Activity feed / badge when remote events arrive.
 - [ ] **B8 — Notification preferences** — Mute group / mute all.
-- [ ] **Category sync** — Full category cloud sync; older devices still use local UUIDs (remote pull drops unknown `category_id`). See architecture TODO **3**.
+- [x] **Category sync** — Stable default ids (`cat_*`) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
 - [ ] **FX rates** — Multi-currency remains per-bucket; live FX is deferred.
 - [ ] **Social PENDING flush** — Groups/members flush in `SyncInteractor` before expenses (still verify Supabase SQL is applied).
 - [ ] **Activity events cross-device** — Activity events do not sync to other devices.
-- [ ] **Pin board offline / realtime** — No offline cache; second device sees updates only on (re-)open. Keep online-only boundary (architecture TODO **4**).
+- [ ] **Pin board offline / realtime** — No offline cache by design; second device sees updates on (re-)open only. Boundary documented (architecture TODO **4** — done).
 
 ## Payments & stretch
 

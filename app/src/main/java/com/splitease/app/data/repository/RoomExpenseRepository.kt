@@ -102,4 +102,10 @@ class RoomExpenseRepository
 
         override suspend fun getPendingSync(): List<Expense> =
             expenseDao.getPendingSync().map { it.toDomain() }
+
+        override suspend fun getSyncedIdsByGroup(groupId: String): List<String> =
+            expenseDao.getSyncedIdsByGroup(groupId)
+
+        override suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String> =
+            expenseDao.getSyncedNonGroupIdsInvolvingUser(userId)
     }

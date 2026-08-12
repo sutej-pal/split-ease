@@ -197,7 +197,60 @@ object SplitEaseMigrations {
             }
         }
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 11. */
+    /**
+     * Remaps legacy random default category ids to stable `cat_*` ids so co-members
+     * share the same `expenses.category_id` over the wire.
+     */
+    val MIGRATION_11_12 =
+        object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("PRAGMA foreign_keys=OFF")
+                STABLE_DEFAULT_CATEGORIES.forEach { (stableId, name, iconKey) ->
+                    db.execSQL(
+                        """
+                        UPDATE expenses
+                        SET categoryId = ?
+                        WHERE categoryId IN (
+                            SELECT id FROM categories
+                            WHERE lower(name) = lower(?)
+                              AND id != ?
+                              AND isDefault = 1
+                        )
+                        """.trimIndent(),
+                        arrayOf(stableId, name, stableId),
+                    )
+                    db.execSQL(
+                        """
+                        DELETE FROM categories
+                        WHERE lower(name) = lower(?)
+                          AND id != ?
+                          AND isDefault = 1
+                        """.trimIndent(),
+                        arrayOf(name, stableId),
+                    )
+                    db.execSQL(
+                        """
+                        INSERT OR IGNORE INTO categories (id, name, iconKey, isDefault, syncStatus)
+                        VALUES (?, ?, ?, 1, 'LOCAL_ONLY')
+                        """.trimIndent(),
+                        arrayOf(stableId, name, iconKey),
+                    )
+                }
+                db.execSQL("PRAGMA foreign_keys=ON")
+            }
+        }
+
+    private val STABLE_DEFAULT_CATEGORIES =
+        listOf(
+            Triple("cat_general", "General", "category_general"),
+            Triple("cat_food", "Food", "category_food"),
+            Triple("cat_travel", "Travel", "category_travel"),
+            Triple("cat_rent", "Rent", "category_rent"),
+            Triple("cat_utilities", "Utilities", "category_utilities"),
+            Triple("cat_entertainment", "Entertainment", "category_entertainment"),
+        )
+
+    /** All migrations from version 1 through [SplitEaseDatabase] version 12. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
@@ -210,5 +263,6 @@ object SplitEaseMigrations {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
+            MIGRATION_11_12,
         )
 }

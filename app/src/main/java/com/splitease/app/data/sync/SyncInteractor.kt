@@ -9,12 +9,14 @@ import com.splitease.app.data.remote.dto.ExpenseDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
 import com.splitease.app.data.remote.dto.PaymentDto
 import com.splitease.app.data.remote.mapper.toDto
+import com.splitease.app.data.pinboard.PinBoardPolicy
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.pendingOpenTarget
+import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
@@ -50,6 +52,9 @@ data class SyncFlushResult(
  *
  * Flush order: groups → members → invites → expenses → payments (FK-safe).
  * Hydrate pulls friends/groups/expenses/payments into Room.
+ *
+ * **Out of scope (online-only surfaces):** pin boards ([PinBoardPolicy]), activity events.
+ * Do not add them here without an explicit offline-first design.
  */
 @Singleton
 class SyncInteractor
@@ -60,6 +65,7 @@ class SyncInteractor
         private val inviteRepository: InviteRepository,
         private val expenseRepository: ExpenseRepository,
         private val paymentRepository: PaymentRepository,
+        private val categoryRepository: CategoryRepository,
         private val socialRemote: SocialRemoteDataSource,
         private val expenseRemote: ExpenseRemoteDataSource,
         private val paymentRemote: PaymentRemoteDataSource,
@@ -153,7 +159,6 @@ class SyncInteractor
                         expense.copy(
                             remoteId = expense.remoteId ?: expense.id,
                             syncStatus = SyncStatus.SYNCED,
-                            updatedAtEpochMs = System.currentTimeMillis(),
                         )
                     expenseRepository.upsertExpenseWithSplits(
                         synced,
@@ -172,7 +177,6 @@ class SyncInteractor
                         payment.copy(
                             remoteId = payment.remoteId ?: payment.id,
                             syncStatus = SyncStatus.SYNCED,
-                            updatedAtEpochMs = System.currentTimeMillis(),
                         ),
                     )
                     paymentsSynced++
@@ -263,7 +267,7 @@ class SyncInteractor
                     description = expense.description,
                     amount = expense.amount.toPlainString(),
                     currencyCode = expense.currencyCode,
-                    categoryId = expense.categoryId,
+                    categoryId = categoryRepository.categoryIdForCloud(expense.categoryId),
                     paidByUserId = expense.paidByUserId,
                     groupId = expense.groupId,
                     expenseDateEpochMs = expense.expenseDateEpochMs,

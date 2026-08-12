@@ -28,7 +28,7 @@ import com.splitease.app.data.local.entity.PaymentEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 11 — expense comments + photos).
+ * Offline-first Room database for SplitEase (version 12 — stable default category ids).
  */
 @Database(
     entities = [
@@ -45,7 +45,7 @@ import com.splitease.app.data.local.entity.UserEntity
         InviteEntity::class,
         ActivityEventEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)

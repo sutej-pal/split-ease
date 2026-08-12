@@ -8,13 +8,13 @@ Work items below are improvements on top of that design. Check boxes when done; 
 
 ## Ordered TODOs
 
-- [ ] **1 — Remote deletes / tombstones** — Pull is upsert-mostly today, so a delete on another device can linger in Room. Propagate deletes (soft-delete + `deleted_at`, or prune local ids missing from the remote set for a group). Highest-impact sync correctness gap. Cross-ref: [extras A5](extras-group-live-updates-notifications.md), [TODO.md](../TODO.md).
+- [x] **1 — Remote deletes / tombstones** — After a successful full pull for a group (or 1:1 involving-user set), prune local `SYNCED` expenses/payments whose ids are missing remotely. Never prune `PENDING` / `LOCAL_ONLY`. Matches hard deletes (no `deleted_at`). Realtime DELETE → same refresh path. Cross-ref: [extras A5](extras-group-live-updates-notifications.md), [TODO.md](../TODO.md).
 
-- [ ] **2 — Explicit conflict policy** — Rows already carry `updatedAtEpochMs`; define and enforce last-write-wins (or equivalent) on pull. Do not overwrite a local `PENDING` row with an older remote row when two devices edit the same expense offline.
+- [x] **2 — Explicit conflict policy** — Pull uses last-write-wins on `updatedAtEpochMs` (`SyncConflictPolicy`). Local `PENDING` / `LOCAL_ONLY` is never replaced by an equal-or-older remote row; `SYNCED` skips strictly older remote. Applied in `persistRemoteExpense` / `persistRemotePayment`.
 
-- [ ] **3 — Category cloud sync** — Unstable / device-local category UUIDs break `category_id` on pull. Sync categories end-to-end, or keep only stable default ids in the cloud. Cross-ref: [PROGRESS.md](../PROGRESS.md), [TODO.md](../TODO.md).
+- [x] **3 — Category cloud sync** — Stable built-in ids (`cat_*`) on the wire; no Supabase `categories` table. Legacy random default ids remapped on upgrade (Room v12 + `ensureDefaults`). Push sends stable ids only; pull auto-seeds missing defaults. Custom categories stay device-local until product needs a cloud table. Cross-ref: [PROGRESS.md](../PROGRESS.md), [TODO.md](../TODO.md).
 
-- [ ] **4 — Pin board product rule** — Pin board is online-only by design. Document and keep that boundary clear so it is never queued like offline expenses (no accidental Room/PENDING flush path). Cross-ref: [phase-11](phase-11-group-pin-board.md).
+- [x] **4 — Pin board product rule** — Online-only by design: no Room cache, no PENDING flush, no Realtime. Documented in [phase-11](phase-11-group-pin-board.md) and enforced via [PinBoardPolicy.kt](../app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt) + [SyncInteractor](../app/src/main/java/com/splitease/app/data/sync/SyncInteractor.kt) out-of-scope note.
 
 - [ ] **5 — Edge Functions stay non-CRUD** — Keep Edge Functions for push/notify/hooks only. Shared privileged rules belong in SQL RPCs; money math stays on-device. Do not add a second API server for table writes.
 
