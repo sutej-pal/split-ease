@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,9 +23,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,6 +58,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -64,6 +67,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.splitease.app.R
+import com.splitease.app.domain.category.DefaultCategories
+import com.splitease.app.domain.category.ExpenseCategoryMatcher
+import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.settings.AppCurrencies
@@ -72,7 +78,6 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLoadingOverlay
 import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
@@ -95,12 +100,16 @@ fun AddExpenseScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currencyCode by viewModel.currencyCode.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     val editingExpense by
         viewModel.observeExpenseDetail(expenseId.orEmpty()).collectAsStateWithLifecycle()
     val isEdit = !expenseId.isNullOrBlank()
     var title by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
+    var selectedCategoryId by rememberSaveable { mutableStateOf(DefaultCategories.ALL.first().id) }
+    var categoryManuallySet by rememberSaveable { mutableStateOf(false) }
+    var showCategoryPicker by rememberSaveable { mutableStateOf(false) }
     var splitType by rememberSaveable { mutableStateOf(SplitType.EQUAL.name) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var paidBy by rememberSaveable { mutableStateOf("") }
@@ -128,6 +137,10 @@ fun AddExpenseScreen(
     var prefilled by rememberSaveable(expenseId) { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val me by viewModel.signedInUserId.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.ensureDefaultCategories()
+    }
 
     LaunchedEffect(groupId, isEdit) {
         if (groupId == null || isEdit) {
@@ -183,6 +196,8 @@ fun AddExpenseScreen(
         title = expense.description
         amount = expense.amount.toPlainString()
         notes = expense.notes.orEmpty()
+        selectedCategoryId = expense.categoryId ?: DefaultCategories.ALL.first().id
+        categoryManuallySet = true
         splitType = expense.splitType.name
         paidBy = expense.paidByUserId
         selected = detail.splits.map { it.userId }.toSet()
@@ -283,12 +298,30 @@ fun AddExpenseScreen(
                 .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                 .format(Date(expenseDateMs))
         }
+    val selectedCategory =
+        categories.firstOrNull { it.id == selectedCategoryId }
+            ?: DefaultCategories.byId(selectedCategoryId)?.let { DefaultCategories.toCategory(it) }
+            ?: DefaultCategories.toCategory(DefaultCategories.ALL.first())
+    val titleCategoryIcon = categoryIcon(selectedCategory.iconKey)
+    val pickerCategories =
+        remember(categories) {
+            val defaults =
+                DefaultCategories.ALL.map { definition ->
+                    categories.firstOrNull { it.id == definition.id }
+                        ?: DefaultCategories.toCategory(definition)
+                }
+            val customs =
+                categories.filter { category ->
+                    !DefaultCategories.isStableId(category.id)
+                }
+            defaults + customs
+        }
 
     fun saveExpense() {
         if (uiState.isSubmitting) return
         val multiPaidAmounts =
             if (isMultiPayer) {
-                selected.associateWith { id ->
+                paidAmountTexts.keys.associateWith { id ->
                     BigDecimal(paidAmountTexts[id]?.trim().orEmpty().ifBlank { "0" })
                 }
             } else {
@@ -340,7 +373,7 @@ fun AddExpenseScreen(
                 shares = sharesMap,
                 adjustments = adjustmentsMap,
                 paidAmounts = multiPaidAmounts,
-                categoryId = editingExpense?.expense?.categoryId,
+                categoryId = selectedCategoryId,
                 notes = notes.trim().ifBlank { null },
                 expenseDateEpochMs = expenseDateMs,
                 onSuccess = onDone,
@@ -360,7 +393,7 @@ fun AddExpenseScreen(
                 adjustments = adjustmentsMap,
                 paidAmounts = multiPaidAmounts,
                 recurrenceFrequency = RecurrenceFrequency.NONE,
-                categoryId = null,
+                categoryId = selectedCategoryId,
                 notes = notes.trim().ifBlank { null },
                 expenseDateEpochMs = expenseDateMs,
                 onSuccess = onDone,
@@ -368,7 +401,6 @@ fun AddExpenseScreen(
         }
     }
 
-    val paidParticipants = participants.filter { it.userId in selected }
     val expenseTotal =
         runCatching { BigDecimal(amount.trim().ifBlank { "0" }) }
             .getOrDefault(BigDecimal.ZERO)
@@ -377,7 +409,7 @@ fun AddExpenseScreen(
         !isMultiPayer ||
             run {
                 val sum =
-                    selected
+                    paidAmountTexts.keys
                         .fold(BigDecimal.ZERO) { acc, id ->
                             acc.add(
                                 runCatching {
@@ -386,7 +418,7 @@ fun AddExpenseScreen(
                             )
                         }.setScale(2, java.math.RoundingMode.HALF_UP)
                 sum.compareTo(expenseTotal) == 0 &&
-                    selected.any {
+                    paidAmountTexts.keys.any {
                         runCatching {
                             BigDecimal(paidAmountTexts[it]?.trim().orEmpty().ifBlank { "0" })
                         }.getOrDefault(BigDecimal.ZERO) > BigDecimal.ZERO
@@ -396,7 +428,7 @@ fun AddExpenseScreen(
     when (currentPaidByStep) {
         PaidByStep.WhoPaid -> {
             WhoPaidScreen(
-                participants = paidParticipants,
+                participants = participants,
                 selectedUserId = paidBy,
                 isMultiplePeople = isMultiPayer,
                 onBack = { paidByStep = PaidByStep.None.name },
@@ -412,7 +444,7 @@ fun AddExpenseScreen(
         }
         PaidByStep.EnterAmounts -> {
             EnterPaidAmountsScreen(
-                participants = paidParticipants,
+                participants = participants,
                 currencyCode = currencyCode,
                 totalAmount = expenseTotal,
                 initialAmounts = paidAmountTexts,
@@ -453,12 +485,8 @@ fun AddExpenseScreen(
                 percentTexts = result.percentTexts
                 shareTexts = result.shareTexts
                 adjustmentTexts = result.adjustmentTexts
-                if (paidBy !in selected) {
+                if (paidBy.isBlank()) {
                     paidBy = me.orEmpty()
-                    isMultiPayer = false
-                    paidAmountTexts = emptyMap()
-                } else if (isMultiPayer) {
-                    paidAmountTexts = paidAmountTexts.filterKeys { it in selected }
                 }
                 showAdjustSplit = false
             },
@@ -479,7 +507,7 @@ fun AddExpenseScreen(
                     title.isNotBlank() &&
                         amount.isNotBlank() &&
                         selected.isNotEmpty() &&
-                        paidBy in selected &&
+                        paidBy.isNotBlank() &&
                         multiPayerValid,
             ) {
                 if (uiState.isSubmitting) {
@@ -539,13 +567,8 @@ fun AddExpenseScreen(
                                             } else {
                                                 participants.map { it.userId }.toSet()
                                             }
-                                        if (paidBy !in selected) {
+                                        if (paidBy.isBlank()) {
                                             paidBy = me.orEmpty()
-                                            isMultiPayer = false
-                                            paidAmountTexts = emptyMap()
-                                        } else if (isMultiPayer) {
-                                            paidAmountTexts =
-                                                paidAmountTexts.filterKeys { it in selected }
                                         }
                                     },
                                 )
@@ -561,13 +584,8 @@ fun AddExpenseScreen(
                                             } else {
                                                 selected + option.userId
                                             }
-                                        if (paidBy !in selected) {
+                                        if (paidBy.isBlank()) {
                                             paidBy = me.orEmpty()
-                                            isMultiPayer = false
-                                            paidAmountTexts = emptyMap()
-                                        } else if (isMultiPayer) {
-                                            paidAmountTexts =
-                                                paidAmountTexts.filterKeys { it in selected }
                                         }
                                     },
                                 )
@@ -579,9 +597,16 @@ fun AddExpenseScreen(
                 Spacer(modifier = Modifier.height(28.dp))
                 ExpenseUnderlineField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { newTitle ->
+                        title = newTitle
+                        if (!categoryManuallySet) {
+                            selectedCategoryId = ExpenseCategoryMatcher.matchCategoryId(newTitle)
+                        }
+                    },
                     placeholder = stringResource(R.string.label_expense_title),
-                    icon = Icons.Filled.Receipt,
+                    icon = titleCategoryIcon,
+                    onIconClick = { showCategoryPicker = true },
+                    iconContentDescription = stringResource(R.string.cd_expense_category),
                     enabled = !uiState.isSubmitting,
                     textStyle =
                         MaterialTheme.typography.titleLarge.copy(
@@ -638,32 +663,13 @@ fun AddExpenseScreen(
                 )
 
                 Spacer(modifier = Modifier.height(28.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.expense_paid_by_and_split),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SplitEaseColors.Navy,
-                    )
-                    ChoicePill(
-                        text = paidByLabel,
-                        onClick = { paidByStep = PaidByStep.WhoPaid.name },
-                        enabled = !uiState.isSubmitting,
-                    )
-                    Text(
-                        text = stringResource(R.string.expense_and_split),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SplitEaseColors.Navy,
-                    )
-                    ChoicePill(
-                        text = splitLabel,
-                        onClick = { showAdjustSplit = true },
-                        enabled = !uiState.isSubmitting,
-                    )
-                }
+                PaidByAndSplitRow(
+                    paidByLabel = paidByLabel,
+                    splitLabel = splitLabel,
+                    onPaidByClick = { paidByStep = PaidByStep.WhoPaid.name },
+                    onSplitClick = { showAdjustSplit = true },
+                    enabled = !uiState.isSubmitting,
+                )
 
                 uiState.errorMessage?.let {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -717,29 +723,33 @@ fun AddExpenseScreen(
                 initialMinute = cal.get(Calendar.MINUTE),
                 is24Hour = false,
             )
-        SeModal(onDismissRequest = { showTimePicker = false }) {
-            SeModalTitle(stringResource(R.string.action_pick_time))
-            Spacer(modifier = Modifier.height(12.dp))
+        SeModal(
+            onDismissRequest = { showTimePicker = false },
+            title = stringResource(R.string.action_pick_time),
+            icon = Icons.Filled.AccessTime,
+            dismissLabel = stringResource(R.string.action_close),
+            confirmLabel = stringResource(R.string.action_done),
+            onConfirm = {
+                expenseDateMs =
+                    applyLocalTime(expenseDateMs, timeState.hour, timeState.minute)
+                showTimePicker = false
+            },
+        ) {
             TimePicker(state = timeState)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-            ) {
-                SeTextButton(
-                    text = stringResource(R.string.action_close),
-                    onClick = { showTimePicker = false },
-                )
-                SeTextButton(
-                    text = stringResource(R.string.action_done),
-                    onClick = {
-                        expenseDateMs =
-                            applyLocalTime(expenseDateMs, timeState.hour, timeState.minute)
-                        showTimePicker = false
-                    },
-                )
-            }
         }
+    }
+
+    if (showCategoryPicker) {
+        CategoryPickerDialog(
+            categories = pickerCategories,
+            selectedCategoryId = selectedCategoryId,
+            onDismiss = { showCategoryPicker = false },
+            onSelect = { id ->
+                selectedCategoryId = id
+                categoryManuallySet = true
+                showCategoryPicker = false
+            },
+        )
     }
 }
 
@@ -772,25 +782,86 @@ private fun ParticipantChip(
 }
 
 @Composable
+private fun PaidByAndSplitRow(
+    paidByLabel: String,
+    splitLabel: String,
+    onPaidByClick: () -> Unit,
+    onSplitClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        PaidBySplitPhrase(
+            lead = stringResource(R.string.expense_paid_by_and_split),
+            pillText = paidByLabel,
+            onPillClick = onPaidByClick,
+            enabled = enabled,
+        )
+        PaidBySplitPhrase(
+            lead = stringResource(R.string.expense_and_split),
+            pillText = splitLabel,
+            onPillClick = onSplitClick,
+            enabled = enabled,
+        )
+    }
+}
+
+@Composable
+private fun PaidBySplitPhrase(
+    lead: String,
+    pillText: String,
+    onPillClick: () -> Unit,
+    enabled: Boolean,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = lead,
+            style = MaterialTheme.typography.bodyLarge,
+            color = SplitEaseColors.Navy,
+            maxLines = 1,
+        )
+        ChoicePill(
+            text = pillText,
+            onClick = onPillClick,
+            enabled = enabled,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+    }
+}
+
+@Composable
 private fun ChoicePill(
     text: String,
     onClick: () -> Unit,
     enabled: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier =
-            Modifier
+            modifier
                 .clip(RoundedCornerShape(10.dp))
                 .border(1.dp, SplitEaseColors.Outline, RoundedCornerShape(10.dp))
                 .background(SplitEaseColors.Surface)
                 .clickable(enabled = enabled, onClick = onClick)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.CenterStart,
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
             color = SplitEaseColors.Primary,
             fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
         )
     }
 }
@@ -803,6 +874,8 @@ private fun ExpenseUnderlineField(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     leadingLabel: String? = null,
+    onIconClick: (() -> Unit)? = null,
+    iconContentDescription: String? = null,
     enabled: Boolean = true,
     readOnly: Boolean = false,
     onClick: (() -> Unit)? = null,
@@ -828,7 +901,14 @@ private fun ExpenseUnderlineField(
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .border(1.dp, SplitEaseColors.OutlineStrong, RoundedCornerShape(12.dp))
-                    .background(SplitEaseColors.SurfaceMuted),
+                    .background(SplitEaseColors.SurfaceMuted)
+                    .then(
+                        if (onIconClick != null) {
+                            Modifier.clickable(enabled = enabled, onClick = onIconClick)
+                        } else {
+                            Modifier
+                        },
+                    ),
             contentAlignment = Alignment.Center,
         ) {
             when {
@@ -840,7 +920,11 @@ private fun ExpenseUnderlineField(
                         color = SplitEaseColors.Navy,
                     )
                 icon != null ->
-                    Icon(icon, contentDescription = null, tint = SplitEaseColors.NavyMuted)
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = iconContentDescription,
+                        tint = SplitEaseColors.NavyMuted,
+                    )
             }
         }
         Spacer(modifier = Modifier.width(14.dp))
@@ -866,6 +950,59 @@ private fun ExpenseUnderlineField(
             }
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = SplitEaseColors.OutlineStrong)
+        }
+    }
+}
+
+@Composable
+private fun CategoryPickerDialog(
+    categories: List<Category>,
+    selectedCategoryId: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    SeModal(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.action_pick_category),
+        icon = Icons.Filled.Category,
+        body = stringResource(R.string.pick_category_body),
+        dismissLabel = stringResource(R.string.action_close),
+    ) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            categories.forEach { category ->
+                val selected = category.id == selectedCategoryId
+                FilterChip(
+                    selected = selected,
+                    onClick = { onSelect(category.id) },
+                    label = { Text(category.name) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = categoryIcon(category.iconKey),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    colors =
+                        FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = SplitEaseColors.PrimarySoft,
+                            selectedLabelColor = SplitEaseColors.PrimaryDark,
+                            containerColor = SplitEaseColors.Surface,
+                            labelColor = SplitEaseColors.Navy,
+                        ),
+                    border =
+                        FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selected,
+                            borderColor = SplitEaseColors.Outline,
+                            selectedBorderColor = SplitEaseColors.Primary,
+                        ),
+                )
+            }
         }
     }
 }
@@ -1019,7 +1156,7 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             value = title,
                             onValueChange = { title = it },
                             placeholder = stringResource(R.string.label_expense_title),
-                            icon = Icons.Filled.Receipt,
+                            icon = categoryIcon("category_food"),
                             enabled = !isSubmitting,
                             textStyle =
                                 MaterialTheme.typography.titleLarge.copy(
@@ -1069,32 +1206,13 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                         )
 
                         Spacer(modifier = Modifier.height(28.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.expense_paid_by_and_split),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = SplitEaseColors.Navy,
-                            )
-                            ChoicePill(
-                                text = stringResource(R.string.you_label),
-                                onClick = {},
-                                enabled = !isSubmitting,
-                            )
-                            Text(
-                                text = stringResource(R.string.expense_and_split),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = SplitEaseColors.Navy,
-                            )
-                            ChoicePill(
-                                text = stringResource(R.string.split_equally),
-                                onClick = {},
-                                enabled = !isSubmitting,
-                            )
-                        }
+                        PaidByAndSplitRow(
+                            paidByLabel = stringResource(R.string.you_label),
+                            splitLabel = stringResource(R.string.split_equally),
+                            onPaidByClick = {},
+                            onSplitClick = {},
+                            enabled = !isSubmitting,
+                        )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                     SeLoadingOverlay(

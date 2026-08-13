@@ -1,7 +1,10 @@
 package com.splitease.app.data.expense
 
 import android.content.Context
+import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.data.media.LocalMediaCleanup
+import com.splitease.app.data.media.MediaStorageCleanup
 import com.splitease.app.data.remote.ExpenseReceiptStorage
 import com.splitease.app.data.remote.ExpenseRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
@@ -53,7 +56,7 @@ import javax.inject.Singleton
  * @property amount Total amount.
  * @property currencyCode ISO currency.
  * @property paidByUserId Primary payer (largest paid amount when multi-payer).
- * @property participantIds All participants (must include payer).
+ * @property participantIds People who owe a share. The payer may be omitted when they owe nothing.
  * @property splitType Split mode.
  * @property groupId Optional group.
  * @property unequalAmounts For [SplitType.UNEQUAL].
@@ -61,6 +64,7 @@ import javax.inject.Singleton
  * @property shares For [SplitType.SHARES].
  * @property adjustments For [SplitType.ADJUSTMENT].
  * @property paidAmounts Optional multi-payer map (userId → paid). Empty = single payer.
+ *   Payers need not be in [participantIds]; they receive a zero-owed split row.
  * @property notes Optional notes.
  * @property categoryId Optional category.
  * @property recurrenceFrequency Recurrence cadence; [RecurrenceFrequency.NONE] for one-off.
@@ -87,6 +91,12 @@ data class CreateExpenseInput(
     val recurringTemplateId: String? = null,
 )
 
+/** Outcome of a batch attachment save. */
+data class AddAttachmentsResult(
+    val addedCount: Int,
+    val failedCount: Int,
+)
+
 /**
  * Creates, updates, deletes, and syncs expenses (Room first, then PostgREST).
  */
@@ -104,6 +114,7 @@ class ExpenseInteractor
         private val activityEventRepository: ActivityEventRepository,
         private val remote: ExpenseRemoteDataSource,
         private val receiptStorage: ExpenseReceiptStorage,
+        private val mediaStorageCleanup: MediaStorageCleanup,
         private val socialRemote: SocialRemoteDataSource,
         private val syncInteractor: Provider<SyncInteractor>,
     ) {
@@ -196,45 +207,81 @@ class ExpenseInteractor
             }
 
         /**
-         * Attaches a receipt photo from a cropped image URI (gallery or camera).
-         * Also writes a SplitEase system comment that a photo was added.
+         * Attaches one or more receipt images from gallery/camera URIs (no crop).
+         * Writes a single SplitEase system comment for the batch.
          */
-        suspend fun addExpensePhoto(
+        suspend fun addExpenseAttachments(
             expenseId: String,
-            croppedPhotoUri: String,
+            photoUris: List<String>,
             actorUserId: String,
-        ): Result<ExpensePhoto> =
+        ): Result<AddAttachmentsResult> =
             runCatching {
+                if (photoUris.isEmpty()) return@runCatching AddAttachmentsResult(0, 0)
                 expenseRepository.getExpenseById(expenseId) ?: error("Expense not found.")
                 ensureLocalUserExists(actorUserId)
-                val photoId = UUID.randomUUID().toString()
                 val dir = File(appContext.filesDir, "expense_photos/$expenseId").apply { mkdirs() }
-                val dest = File(dir, "$photoId.jpg")
-                AvatarImageIO.copyScaledJpeg(
-                    context = appContext,
-                    photoUri = croppedPhotoUri,
-                    destFile = dest,
-                    maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
-                )
-                val photo =
-                    ExpensePhoto(
-                        id = photoId,
-                        expenseId = expenseId,
-                        createdByUserId = actorUserId,
-                        localPath = dest.absolutePath,
-                        remoteUrl = null,
-                        createdAtEpochMs = System.currentTimeMillis(),
-                        syncStatus = SyncStatus.PENDING,
-                    )
-                expensePhotoRepository.upsert(photo)
+                var failedCount = 0
+                val added =
+                    photoUris.mapNotNull { sourceUri ->
+                        val photoId = UUID.randomUUID().toString()
+                        val dest = File(dir, "$photoId.jpg")
+                        val copied =
+                            runCatching {
+                                AvatarImageIO.copyScaledJpeg(
+                                    context = appContext,
+                                    photoUri = sourceUri,
+                                    destFile = dest,
+                                    maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
+                                )
+                            }.isSuccess
+                        LocalMediaCleanup.deleteCachedCapture(appContext, sourceUri)
+                        if (!copied) {
+                            runCatching { dest.delete() }
+                            failedCount++
+                            return@mapNotNull null
+                        }
+                        val photo =
+                            ExpensePhoto(
+                                id = photoId,
+                                expenseId = expenseId,
+                                createdByUserId = actorUserId,
+                                localPath = dest.absolutePath,
+                                remoteUrl = null,
+                                createdAtEpochMs = System.currentTimeMillis(),
+                                syncStatus = SyncStatus.PENDING,
+                            )
+                        expensePhotoRepository.upsert(photo)
+                        pushPhotoBestEffort(photo)
+                        photo
+                    }
+                if (added.isEmpty()) error(appContext.getString(R.string.msg_photo_failed))
                 val actorName = displayNameOf(actorUserId)
+                val count = added.size
+                val body =
+                    if (count == 1) {
+                        "This expense was updated by $actorName.\nAdded an attachment."
+                    } else {
+                        "This expense was updated by $actorName.\nAdded $count attachments."
+                    }
                 persistSystemComment(
                     expenseId = expenseId,
                     actorUserId = actorUserId,
-                    body = "This expense was updated by $actorName.\nAdded a photo.",
+                    body = body,
                 )
-                pushPhotoBestEffort(photo)
+                // Bump the parent expense so group Realtime / refresh pulls pick up new photos.
+                touchExpenseForSideData(expenseId)
+                AddAttachmentsResult(addedCount = count, failedCount = failedCount)
             }
+
+        /**
+         * Pulls comments and receipt photos for [expenseId] from Supabase into Room.
+         * Safe to call when opening expense detail so other members' attachments appear.
+         */
+        suspend fun refreshExpenseSideData(expenseId: String) {
+            val id = expenseId.trim()
+            if (id.isEmpty()) return
+            pullCommentsAndPhotos(id)
+        }
 
         /** Pushes pending comments / photos that failed earlier (called from sync flush). */
         suspend fun flushPendingCommentsAndPhotos() {
@@ -260,6 +307,7 @@ class ExpenseInteractor
                 val existing =
                     expenseRepository.getExpenseById(expenseId)
                         ?: error("Expense not found.")
+                val photos = expensePhotoRepository.getForExpense(expenseId)
                 val splits = expenseRepository.getSplits(expenseId)
                 recordExpenseActivity(
                     kind = ActivityEventKind.EXPENSE_DELETED,
@@ -271,11 +319,18 @@ class ExpenseInteractor
                     remote.deleteSplitsForExpense(expenseId)
                     remote.deleteExpense(expenseId)
                 }
-                runCatching {
-                    File(appContext.filesDir, "expense_photos/$expenseId").deleteRecursively()
-                }
+                mediaStorageCleanup.purgeExpenseAttachments(expenseId, photos)
                 expenseRepository.deleteExpenseById(expenseId)
             }
+
+        /**
+         * Deletes cloud + local attachment files for an expense without touching the DB row.
+         * Used before bulk deletes (group / friend removal) where Room cascades later.
+         */
+        suspend fun purgeExpenseMedia(expenseId: String) {
+            val photos = expensePhotoRepository.getForExpense(expenseId)
+            mediaStorageCleanup.purgeExpenseAttachments(expenseId, photos)
+        }
 
         /**
          * Materializes due recurring templates into one-off expense instances and advances schedules.
@@ -451,9 +506,7 @@ class ExpenseInteractor
             }
             localSyncedIds.forEach { id ->
                 if (id in remoteIds) return@forEach
-                runCatching {
-                    File(appContext.filesDir, "expense_photos/$id").deleteRecursively()
-                }
+                purgeExpenseMedia(id)
                 expenseRepository.deleteExpenseById(id)
                 android.util.Log.d("ExpenseSync", "Pruned remote-deleted expense $id")
             }
@@ -498,13 +551,8 @@ class ExpenseInteractor
             existing: Expense?,
         ): BuiltExpense {
             require(input.description.isNotBlank()) { "Description is required." }
-            require(input.participantIds.contains(input.paidByUserId)) {
-                "Payer must be included in participants."
-            }
+            require(input.paidByUserId.isNotBlank()) { "Payer is required." }
             if (input.paidAmounts.isNotEmpty()) {
-                require(input.paidAmounts.keys.all { it in input.participantIds }) {
-                    "Every payer must be included in participants."
-                }
                 val paidSum =
                     input.paidAmounts.values
                         .fold(BigDecimal.ZERO) { acc, v -> acc.add(v) }
@@ -581,30 +629,46 @@ class ExpenseInteractor
                 } else {
                     emptyMap()
                 }
-            val splits =
-                owed.map { (userId, amount) ->
-                    ExpenseSplit(
-                        id = existingSplits[userId]?.id ?: UUID.randomUUID().toString(),
-                        expenseId = expenseId,
-                        userId = userId,
-                        owedAmount = amount,
-                        percentage = input.percentages[userId],
-                        shares = input.shares[userId],
-                        paidAmount =
-                            if (input.paidAmounts.isNotEmpty()) {
-                                input.paidAmounts[userId] ?: BigDecimal.ZERO.setScale(2)
-                            } else {
-                                null
-                            },
-                        adjustmentAmount =
-                            if (input.adjustments.isNotEmpty()) {
-                                input.adjustments[userId] ?: BigDecimal.ZERO.setScale(2)
-                            } else {
-                                null
-                            },
-                        syncStatus = SyncStatus.PENDING,
-                    )
+            val isMultiPayer = input.paidAmounts.isNotEmpty()
+            val zero = BigDecimal.ZERO.setScale(2)
+
+            fun splitRow(
+                userId: String,
+                owedAmount: BigDecimal,
+            ): ExpenseSplit =
+                ExpenseSplit(
+                    id = existingSplits[userId]?.id ?: UUID.randomUUID().toString(),
+                    expenseId = expenseId,
+                    userId = userId,
+                    owedAmount = owedAmount,
+                    percentage = input.percentages[userId],
+                    shares = input.shares[userId],
+                    paidAmount =
+                        if (isMultiPayer) {
+                            input.paidAmounts[userId] ?: zero
+                        } else {
+                            null
+                        },
+                    adjustmentAmount =
+                        if (input.adjustments.isNotEmpty()) {
+                            input.adjustments[userId] ?: zero
+                        } else {
+                            null
+                        },
+                    syncStatus = SyncStatus.PENDING,
+                )
+            val extraPayerSplits =
+                if (isMultiPayer) {
+                    input.paidAmounts.mapNotNull { (userId, paid) ->
+                        if (userId in owed) return@mapNotNull null
+                        val normalized = paid.setScale(2, java.math.RoundingMode.HALF_UP)
+                        if (normalized <= zero) return@mapNotNull null
+                        splitRow(userId, zero)
+                    }
+                } else {
+                    emptyList()
                 }
+            val splits = owed.map { (userId, amount) -> splitRow(userId, amount) } + extraPayerSplits
             return BuiltExpense(expense, splits)
         }
 
@@ -723,18 +787,21 @@ class ExpenseInteractor
 
         private suspend fun persistRemoteExpense(dto: ExpenseDto) {
             val existing = expenseRepository.getExpenseById(dto.id)
-            if (
-                !SyncConflictPolicy.shouldApplyRemote(
+            val shouldApply =
+                SyncConflictPolicy.shouldApplyRemote(
                     localUpdatedAtEpochMs = existing?.updatedAtEpochMs,
                     localSyncStatus = existing?.syncStatus,
                     remoteUpdatedAtEpochMs = dto.updatedAtEpochMs,
                 )
-            ) {
+            if (!shouldApply) {
                 android.util.Log.d(
                     "ExpenseSync",
                     "Skip remote expense ${dto.id}: local ${existing?.syncStatus} " +
                         "updatedAt=${existing?.updatedAtEpochMs} >= remote ${dto.updatedAtEpochMs}",
                 )
+                // Attachments/comments are child tables — still pull them even when the
+                // expense row itself is not re-applied (LWW skip / local PENDING edit).
+                pullCommentsAndPhotos(dto.id)
                 return
             }
             val splits = remote.fetchSplits(dto.id)
@@ -786,6 +853,29 @@ class ExpenseInteractor
             pullCommentsAndPhotos(dto.id)
         }
 
+        /**
+         * Marks the parent expense as updated so group Realtime listeners refresh and
+         * other members pull new comments/photos.
+         */
+        private suspend fun touchExpenseForSideData(expenseId: String) {
+            val expense = expenseRepository.getExpenseById(expenseId) ?: return
+            val splits = expenseRepository.getSplits(expenseId)
+            val now = System.currentTimeMillis()
+            val bumped =
+                expense.copy(
+                    updatedAtEpochMs = now,
+                    syncStatus = SyncStatus.PENDING,
+                )
+            expenseRepository.upsertExpenseWithSplits(bumped, splits)
+            runCatching {
+                pushExpense(bumped, splits)
+                expenseRepository.upsertExpenseWithSplits(
+                    bumped.copy(syncStatus = SyncStatus.SYNCED, remoteId = bumped.id),
+                    splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
+                )
+            }
+        }
+
         private suspend fun pullCommentsAndPhotos(expenseId: String) {
             runCatching {
                 val remoteComments = remote.fetchComments(expenseId)
@@ -812,10 +902,7 @@ class ExpenseInteractor
                 val remotePhotos = remote.fetchPhotos(expenseId)
                 if (remotePhotos.isEmpty()) return@runCatching
                 val localById =
-                    expensePhotoRepository
-                        .observeForExpense(expenseId)
-                        .first()
-                        .associateBy { it.id }
+                    expensePhotoRepository.getForExpense(expenseId).associateBy { it.id }
                 expensePhotoRepository.upsertAll(
                     remotePhotos.map { dto ->
                         ensureLocalUserExists(dto.createdByUserId)

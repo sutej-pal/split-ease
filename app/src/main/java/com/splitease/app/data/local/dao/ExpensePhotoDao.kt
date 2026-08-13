@@ -18,6 +18,15 @@ interface ExpensePhotoDao {
     )
     fun observeForExpense(expenseId: String): Flow<List<ExpensePhotoEntity>>
 
+    @Query(
+        """
+        SELECT * FROM expense_photos
+        WHERE expenseId = :expenseId
+        ORDER BY createdAtEpochMs ASC
+        """,
+    )
+    suspend fun getForExpense(expenseId: String): List<ExpensePhotoEntity>
+
     @Query("SELECT * FROM expense_photos WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ExpensePhotoEntity?
 

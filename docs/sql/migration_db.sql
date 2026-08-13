@@ -622,7 +622,7 @@ create table if not exists public.expenses (
   group_id uuid references public.groups (id) on delete cascade,
   expense_date_epoch_ms bigint not null,
   split_type text not null
-    check (split_type in ('EQUAL', 'UNEQUAL', 'PERCENTAGE', 'SHARES')),
+    check (split_type in ('EQUAL', 'UNEQUAL', 'PERCENTAGE', 'SHARES', 'ADJUSTMENT')),
   notes text,
   updated_at_epoch_ms bigint not null default 0
 );

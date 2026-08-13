@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -111,6 +112,7 @@ import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.common.shortDisplayName
 import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.LedgerBalanceSide
 import com.splitease.app.presentation.expenses.LedgerListItem
@@ -119,14 +121,13 @@ import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
+import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeLayout
-import com.splitease.app.presentation.ui.SeMoneyText
-import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -519,7 +520,7 @@ fun GroupDetailScreen(
                             GroupOverallBalanceBlock(
                                 balance = groupBalance,
                                 currencyFallback = group?.defaultCurrencyCode.orEmpty(),
-                                onClick = onOpenBalances,
+                                currentUserId = me,
                             )
                         }
                     }
@@ -914,28 +915,29 @@ internal fun BannerCircleIconButton(
 internal fun GroupOverallBalanceBlock(
     balance: GroupBalanceUi?,
     currencyFallback: String,
-    onClick: (() -> Unit)? = null,
+    currentUserId: String? = null,
 ) {
     if (balance == null) return
     var expanded by rememberSaveable { mutableStateOf(value = true) }
+    val youLabel = stringResource(R.string.you_label)
     val myDebts =
-        balance.simplifiedDebts.filter { debt ->
-            debt.fromLabel == "You" || debt.toLabel == "You"
+        remember(balance.simplifiedDebts, currentUserId, youLabel) {
+            balance.simplifiedDebts.filter { debt ->
+                if (currentUserId != null) {
+                    debt.fromUserId == currentUserId || debt.toUserId == currentUserId
+                } else {
+                    debt.fromLabel.equals(youLabel, ignoreCase = true) ||
+                        debt.toLabel.equals(youLabel, ignoreCase = true)
+                }
+            }
         }
     val nets = balance.myNetByCurrency
-    val canExpand = myDebts.isNotEmpty() && onClick == null
+    val canExpand = myDebts.isNotEmpty()
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(SplitEaseColors.SurfaceMuted)
-                .clickable {
-                    if (onClick != null) {
-                        onClick()
-                    } else if (myDebts.isNotEmpty()) {
-                        expanded = !expanded
-                    }
-                }
+                .clickable(enabled = canExpand) { expanded = !expanded }
                 .padding(horizontal = SeLayout.detailHorizontal, vertical = 14.dp),
     ) {
         Row(
@@ -956,15 +958,20 @@ internal fun GroupOverallBalanceBlock(
                         } else {
                             Icons.Filled.KeyboardArrowDown
                         },
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_toggle_balance_details),
                     tint = SplitEaseColors.NavyMuted,
                 )
             }
         }
         AnimatedVisibility(visible = canExpand && expanded) {
-            Column(modifier = Modifier.padding(top = 8.dp)) {
-                myDebts.forEach { debt ->
-                    GroupOverallDebtLine(debt)
+            Column(modifier = Modifier.padding(top = 4.dp)) {
+                myDebts.forEachIndexed { index, debt ->
+                    GroupOverallDebtTreeRow(
+                        debt = debt,
+                        isLast = index == myDebts.lastIndex,
+                        currentUserId = currentUserId,
+                        youLabel = youLabel,
+                    )
                 }
             }
         }
@@ -1023,37 +1030,86 @@ private fun GroupOverallHeadline(
 }
 
 @Composable
-private fun GroupOverallDebtLine(debt: LabeledDebt) {
-    val youOwe = debt.fromLabel == "You"
+private fun GroupOverallDebtTreeRow(
+    debt: LabeledDebt,
+    isLast: Boolean,
+    currentUserId: String?,
+    youLabel: String,
+) {
+    val youOwe =
+        if (currentUserId != null) {
+            debt.fromUserId == currentUserId
+        } else {
+            debt.fromLabel.equals(youLabel, ignoreCase = true)
+        }
+    val otherLabel =
+        shortDisplayName(
+            if (youOwe) debt.toLabel else debt.fromLabel,
+        )
+    val accent = if (youOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou
+    val relation =
+        if (youOwe) {
+            stringResource(R.string.balances_you_owe_person, otherLabel)
+        } else {
+            stringResource(R.string.balances_person_owes_you, otherLabel)
+        }
+    val money = MoneyFormat.format(debt.amount, debt.currencyCode)
+    val rowHeight = 44.dp
+    val gutterWidth = 28.dp
+    val avatarSize = 24.dp
+
     Row(
-        modifier = Modifier.padding(vertical = 3.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(rowHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier =
                 Modifier
-                    .padding(end = 10.dp)
-                    .width(3.dp)
-                    .height(18.dp)
-                    .background(
-                        if (youOwe) {
-                            SplitEaseColors.YouOwe.copy(alpha = 0.35f)
-                        } else {
-                            SplitEaseColors.OwedToYou.copy(alpha = 0.35f)
-                        },
-                        RoundedCornerShape(2.dp),
-                    ),
+                    .width(gutterWidth)
+                    .fillMaxSize(),
+        ) {
+            val branchColor = SplitEaseColors.OutlineStrong
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .width(2.dp)
+                        .fillMaxHeight(if (isLast) 0.5f else 1f)
+                        .background(branchColor),
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = gutterWidth / 2)
+                        .width(gutterWidth / 2 - 2.dp)
+                        .height(2.dp)
+                        .background(branchColor),
+            )
+        }
+        SeAvatarBadge(
+            name = otherLabel,
+            photoUrl = if (youOwe) debt.toPhotoUrl else debt.fromPhotoUrl,
+            size = avatarSize,
+            borderWidth = 0.dp,
         )
-        SeMoneyText(
-            amount = debt.amount,
-            currencyCode = debt.currencyCode,
-            tone = if (youOwe) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU,
-            prefix =
-                if (youOwe) {
-                    stringResource(R.string.balances_you_owe_person, debt.toLabel)
-                } else {
-                    stringResource(R.string.balances_person_owes_you, debt.fromLabel)
-                },
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = relation,
+            style = MaterialTheme.typography.bodyMedium,
+            color = SplitEaseColors.Navy,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = money,
+            style = MaterialTheme.typography.bodyMedium,
+            color = accent,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -1177,7 +1233,7 @@ fun GroupOverallBalanceBlockPreview() {
                     ),
             ),
         currencyFallback = "INR",
-        onClick = {},
+        currentUserId = "1",
     )
 }
 
@@ -1209,6 +1265,14 @@ private fun GroupExpenseListPreview() {
                         fromLabel = "You",
                         toLabel = "Sam",
                         amount = BigDecimal("420.00"),
+                        currencyCode = "INR",
+                    ),
+                    LabeledDebt(
+                        fromUserId = "u3",
+                        toUserId = "u1",
+                        fromLabel = "Alex",
+                        toLabel = "You",
+                        amount = BigDecimal("80.00"),
                         currencyCode = "INR",
                     ),
                 ),
@@ -1296,7 +1360,7 @@ private fun GroupExpenseListPreview() {
                         GroupOverallBalanceBlock(
                             balance = sampleBalance,
                             currencyFallback = sampleGroup.defaultCurrencyCode,
-                            onClick = {},
+                            currentUserId = "u1",
                         )
                     }
                     item {

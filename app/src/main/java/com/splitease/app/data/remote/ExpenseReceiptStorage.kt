@@ -37,6 +37,28 @@ class ExpenseReceiptStorage
             return supabase.storage.from(BUCKET).publicUrl(path)
         }
 
+        /** Deletes a single receipt object (no-op when missing). */
+        suspend fun deleteReceipt(
+            expenseId: String,
+            photoId: String,
+        ) {
+            runCatching {
+                supabase.storage.from(BUCKET).delete(objectPath(expenseId, photoId))
+            }
+        }
+
+        /** Deletes all receipt objects for [expenseId] (no-op when [photoIds] is empty). */
+        suspend fun deleteAllForExpense(
+            expenseId: String,
+            photoIds: Collection<String>,
+        ) {
+            if (photoIds.isEmpty()) return
+            val paths = photoIds.map { objectPath(expenseId, it) }
+            runCatching {
+                supabase.storage.from(BUCKET).delete(paths)
+            }
+        }
+
         companion object {
             const val BUCKET = "expense-receipts"
 

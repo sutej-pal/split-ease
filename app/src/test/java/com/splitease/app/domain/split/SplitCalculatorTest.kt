@@ -22,6 +22,17 @@ class SplitCalculatorTest {
     }
 
     @Test
+    fun equal_split_one_person_owes_the_full_amount() {
+        val result =
+            SplitCalculator.calculate(
+                total = BigDecimal("1240.00"),
+                splitType = SplitType.EQUAL,
+                participantIds = listOf("b"),
+            )
+        assertEquals(BigDecimal("1240.00"), result["b"])
+    }
+
+    @Test
     fun unequal_requires_exact_sum() {
         val result =
             SplitCalculator.calculate(

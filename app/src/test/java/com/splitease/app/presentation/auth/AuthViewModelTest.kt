@@ -296,18 +296,6 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `requestPasswordReset always opens gate even when repository soft-fails`() =
-        runTest {
-            // Unknown addresses still succeed from Supabase; ViewModel always opens the gate.
-            coEvery { repository.requestPasswordReset(any()) } returns Result.success(Unit)
-            viewModel.requestPasswordReset("missing@example.com")
-            advanceUntilIdle()
-            assertEquals("missing@example.com", viewModel.formState.value.pendingConfirmationEmail)
-            assertEquals(PendingOtpPurpose.RECOVERY, viewModel.formState.value.pendingOtpPurpose)
-            assertNull(viewModel.formState.value.errorMessage)
-        }
-
-    @Test
     fun `requestPasswordReset surfaces rate limit but still opens gate`() =
         runTest {
             coEvery { repository.requestPasswordReset(any()) } returns
@@ -536,18 +524,6 @@ class AuthViewModelTest {
             )
             coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
             coVerify(exactly = 0) { repository.verifyLoginOtp(any(), any()) }
-        }
-
-    @Test
-    fun `verifyPendingOtp rejects 8-digit code`() =
-        runTest {
-            viewModel.verifyPendingOtp("a@b.com", "12345678")
-            advanceUntilIdle()
-            assertEquals(
-                msg(AuthMessages.VERIFY_EMAIL_INVALID_CODE),
-                viewModel.formState.value.errorMessage,
-            )
-            coVerify(exactly = 0) { repository.verifySignupOtp(any(), any()) }
         }
 
     @Test

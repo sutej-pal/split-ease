@@ -1,6 +1,5 @@
 package com.splitease.app.data.local.db
 
-import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -11,7 +10,7 @@ import org.junit.runner.RunWith
 import java.io.IOException
 
 /**
- * Verifies Room migrations from schema v1 through v4 without destructive wipe.
+ * Verifies Room migrations from the oldest exported schema (v5) through current (v12).
  */
 @RunWith(AndroidJUnit4::class)
 class SplitEaseMigrationsTest {
@@ -29,18 +28,7 @@ class SplitEaseMigrationsTest {
     @Test
     @Throws(IOException::class)
     fun migrateAll() {
-        helper.createDatabase(dbName, 1).close()
-        Room
-            .databaseBuilder(
-            InstrumentationRegistry.getInstrumentation().targetContext,
-            SplitEaseDatabase::class.java,
-            dbName,
-        ).addMigrations(*SplitEaseMigrations.ALL)
-            .build()
-            .apply {
-                openHelper.writableDatabase
-                close()
-            }
-        helper.runMigrationsAndValidate(dbName, 8, true, *SplitEaseMigrations.ALL)
+        helper.createDatabase(dbName, 5).close()
+        helper.runMigrationsAndValidate(dbName, 12, true, *SplitEaseMigrations.ALL)
     }
 }

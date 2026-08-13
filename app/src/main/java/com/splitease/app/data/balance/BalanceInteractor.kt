@@ -39,6 +39,8 @@ data class LabeledDebt(
     val toLabel: String,
     val amount: BigDecimal,
     val currencyCode: String,
+    val fromPhotoUrl: String? = null,
+    val toPhotoUrl: String? = null,
 )
 
 /**
@@ -470,7 +472,7 @@ class BalanceInteractor
             viewerUserId: String,
             byCurrency: Map<String, Map<String, BigDecimal>>,
             transfers: List<DebtTransfer>,
-        ): Map<String, String> {
+        ): Map<String, MemberLook> {
             val ids =
                 buildSet {
                     byCurrency.values.forEach { nets -> addAll(nets.keys) }
@@ -486,25 +488,37 @@ class BalanceInteractor
                     .first()
                     .associate { it.friendUserId to it.displayNameSnapshot }
             return ids.associateWith { id ->
-                when (id) {
-                    viewerUserId -> "You"
-                    else ->
-                        friendLabels[id]
-                            ?: userRepository.getUserById(id)?.displayName
-                            ?: id.take(8)
-                }
+                val user = userRepository.getUserById(id)
+                MemberLook(
+                    label =
+                        when (id) {
+                            viewerUserId -> "You"
+                            else ->
+                                friendLabels[id]
+                                    ?: user?.displayName
+                                    ?: id.take(8)
+                        },
+                    photoUrl = user?.photoUrl,
+                )
             }
         }
 
-        private fun DebtTransfer.toLabeled(labels: Map<String, String>) =
+        private fun DebtTransfer.toLabeled(labels: Map<String, MemberLook>) =
             LabeledDebt(
                 fromUserId = fromUserId,
-                fromLabel = labels[fromUserId] ?: fromUserId.take(8),
+                fromLabel = labels[fromUserId]?.label ?: fromUserId.take(8),
                 toUserId = toUserId,
-                toLabel = labels[toUserId] ?: toUserId.take(8),
+                toLabel = labels[toUserId]?.label ?: toUserId.take(8),
                 amount = amount,
                 currencyCode = currencyCode,
+                fromPhotoUrl = labels[fromUserId]?.photoUrl,
+                toPhotoUrl = labels[toUserId]?.photoUrl,
             )
+
+        private data class MemberLook(
+            val label: String,
+            val photoUrl: String?,
+        )
 
         private data class OverallInputs(
             val expenses: List<Expense>,

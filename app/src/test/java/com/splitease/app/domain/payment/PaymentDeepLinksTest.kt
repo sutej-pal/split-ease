@@ -45,10 +45,10 @@ class PaymentDeepLinksTest {
         val text =
             PaymentDeepLinks.shareText(
                 amount = BigDecimal("5"),
-                currencyCode = "EUR",
+                currencyCode = "INR",
                 counterpartyLabel = "Sam",
             )
-        assertTrue(text.contains("EUR"))
+        assertTrue(text.contains("INR"))
         assertTrue(text.contains("5.00"))
         assertTrue(text.contains("Sam"))
     }

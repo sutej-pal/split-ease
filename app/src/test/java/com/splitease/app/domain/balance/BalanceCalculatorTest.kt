@@ -85,6 +85,26 @@ class BalanceCalculatorTest {
     }
 
     @Test
+    fun payer_not_on_split_is_owed_the_full_amount() {
+        val expense = expense(id = "e1", amount = "80.00", paidBy = "a", currency = "INR")
+        val splits =
+            mapOf(
+                "e1" to listOf(split("e1", "b", "80.00")),
+            )
+        val nets = BalanceCalculator.netBalances(listOf(expense), splits)
+        assertEquals(BigDecimal("80.00"), nets["a"])
+        assertEquals(BigDecimal("-80.00"), nets["b"])
+        assertEquals(
+            BigDecimal("80.00"),
+            BalanceCalculator.viewerNetForExpense("a", expense, splits.getValue("e1")),
+        )
+        assertEquals(
+            BigDecimal("-80.00"),
+            BalanceCalculator.viewerNetForExpense("b", expense, splits.getValue("e1")),
+        )
+    }
+
+    @Test
     fun viewer_net_single_payer_matches_legacy() {
         val expense = expense(id = "e1", amount = "100.00", paidBy = "a", currency = "INR")
         val splits =

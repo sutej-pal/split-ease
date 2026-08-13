@@ -1,5 +1,7 @@
 package com.splitease.app.presentation.welcome
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,8 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalBody
-import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -119,11 +119,21 @@ fun WelcomeScreen(
                 showPasteInvite = false
                 pasteError = false
             },
+            title = stringResource(R.string.invite_paste_title),
+            icon = Icons.Filled.Link,
+            body = stringResource(R.string.invite_paste_body),
+            dismissLabel = stringResource(R.string.action_cancel),
+            confirmLabel = stringResource(R.string.invite_paste_continue),
+            onConfirm = {
+                if (onOpenInviteLink(pasteValue)) {
+                    showPasteInvite = false
+                    pasteValue = ""
+                    pasteError = false
+                } else {
+                    pasteError = true
+                }
+            },
         ) {
-            SeModalTitle(stringResource(R.string.invite_paste_title))
-            Spacer(modifier = Modifier.height(8.dp))
-            SeModalBody(stringResource(R.string.invite_paste_body))
-            Spacer(modifier = Modifier.height(16.dp))
             SeTextField(
                 value = pasteValue,
                 onValueChange = {
@@ -139,29 +149,8 @@ fun WelcomeScreen(
                     text = stringResource(R.string.invite_paste_invalid),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            SePrimaryButton(
-                text = stringResource(R.string.invite_paste_continue),
-                onClick = {
-                    if (onOpenInviteLink(pasteValue)) {
-                        showPasteInvite = false
-                        pasteValue = ""
-                        pasteError = false
-                    } else {
-                        pasteError = true
-                    }
-                },
-            )
-            SeTextButton(
-                text = stringResource(R.string.action_cancel),
-                onClick = {
-                    showPasteInvite = false
-                    pasteError = false
-                },
-            )
         }
     }
 }

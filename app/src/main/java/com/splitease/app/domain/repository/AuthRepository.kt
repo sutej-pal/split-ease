@@ -165,7 +165,8 @@ interface AuthRepository {
 
     /**
      * Updates the signed-in user's profile photo. Copies [photoUri] into app-private storage,
-     * then persists the local path in Supabase metadata, Room, and remote `profiles`.
+     * uploads it to Storage when possible, then persists the public URL (or local path) in
+     * Supabase metadata, Room, and remote `profiles`.
      *
      * @param photoUri Content or file URI string from gallery / camera.
      * @return [Result] success or failure with message.

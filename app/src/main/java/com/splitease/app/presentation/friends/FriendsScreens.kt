@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
@@ -70,10 +69,10 @@ import com.splitease.app.domain.model.Friend
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.common.shortDisplayName
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
-import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
@@ -106,6 +105,7 @@ fun FriendsListScreen(
 ) {
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val inviteFlags by viewModel.inviteFlags.collectAsStateWithLifecycle()
+    val userPhotoUrls by viewModel.userPhotoUrls.collectAsStateWithLifecycle()
     val balances by viewModel.overallBalances.collectAsStateWithLifecycle()
     val currencyCode by viewModel.currencyCode.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -265,6 +265,7 @@ fun FriendsListScreen(
                             isSettled =
                                 settledFriends.any { it.friendUserId == friend.friendUserId },
                             currencyFallback = currencyCode,
+                            photoUrl = userPhotoUrls[friend.friendUserId],
                             onClick = { onOpenFriend(friend.friendUserId) },
                             onCopyInvite = { viewModel.copyInviteLink(friend.id) },
                             onShareInvite = { viewModel.shareInviteAgain(friend.id) },
@@ -474,6 +475,7 @@ private fun FriendBalanceListItem(
     balance: FriendBalanceUi?,
     isSettled: Boolean,
     currencyFallback: String,
+    photoUrl: String?,
     onClick: () -> Unit,
     onCopyInvite: () -> Unit,
     onShareInvite: () -> Unit,
@@ -489,7 +491,12 @@ private fun FriendBalanceListItem(
                     .padding(vertical = 12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 56)
+            SeAvatarBadge(
+                name = friend.displayNameSnapshot,
+                photoUrl = photoUrl,
+                size = 56.dp,
+                borderWidth = 0.dp,
+            )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

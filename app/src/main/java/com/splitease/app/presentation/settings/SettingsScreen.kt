@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -54,11 +55,9 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
-import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 
 @Composable
@@ -360,9 +359,12 @@ fun SecuritySettingsScreen(
     )
 
     if (showTimeoutPicker) {
-        SeModal(onDismissRequest = { showTimeoutPicker = false }) {
-            SeModalTitle(text = stringResource(R.string.settings_timeout_title))
-            Spacer(modifier = Modifier.height(12.dp))
+        SeModal(
+            onDismissRequest = { showTimeoutPicker = false },
+            title = stringResource(R.string.settings_timeout_title),
+            icon = Icons.Filled.Timer,
+            dismissLabel = stringResource(R.string.action_cancel),
+        ) {
             AuthTimeout.entries.forEach { option ->
                 Row(
                     modifier =
@@ -393,11 +395,6 @@ fun SecuritySettingsScreen(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            SeTextButton(
-                text = stringResource(R.string.action_cancel),
-                onClick = { showTimeoutPicker = false },
-            )
         }
     }
 }

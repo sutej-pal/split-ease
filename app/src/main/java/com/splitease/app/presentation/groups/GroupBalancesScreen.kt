@@ -118,6 +118,7 @@ private fun GroupBalancesContent(
                 GroupOverallBalanceBlock(
                     balance = groupBalance,
                     currencyFallback = currencyFallback,
+                    currentUserId = currentUserId,
                 )
 
                 Column(

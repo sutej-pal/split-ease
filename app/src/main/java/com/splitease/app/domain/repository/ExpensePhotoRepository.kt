@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 interface ExpensePhotoRepository {
     fun observeForExpense(expenseId: String): Flow<List<ExpensePhoto>>
 
+    suspend fun getForExpense(expenseId: String): List<ExpensePhoto>
+
     suspend fun upsert(photo: ExpensePhoto)
 
     suspend fun upsertAll(photos: List<ExpensePhoto>)

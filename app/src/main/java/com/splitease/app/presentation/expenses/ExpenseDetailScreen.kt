@@ -3,13 +3,13 @@ package com.splitease.app.presentation.expenses
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -67,14 +69,14 @@ import com.splitease.app.domain.model.ExpenseCommentKind
 import com.splitease.app.domain.spending.GroupMonthSpending
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.common.shortDisplayName
-import com.splitease.app.presentation.media.ImagePickPresets
-import com.splitease.app.presentation.media.rememberImagePicker
+import com.splitease.app.presentation.media.rememberAttachmentImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
+import com.splitease.app.presentation.ui.SeLoadingOverlay
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -96,7 +98,7 @@ private val CategoryPastels =
     )
 
 /**
- * Expense detail: summary, payer/owes, photos, comments, optional group spending trends.
+ * Expense detail: summary, payer/owes, attachments, comments, optional group spending trends.
  */
 @Composable
 fun ExpenseDetailScreen(
@@ -105,11 +107,12 @@ fun ExpenseDetailScreen(
     onEdit: (expenseId: String) -> Unit,
     onDeleted: () -> Unit,
     onOpenGroupSpending: ((groupId: String) -> Unit)? = null,
+    onOpenAttachments: (expenseId: String, startIndex: Int) -> Unit = { _, _ -> },
     viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
     val detail by viewModel.observeExpenseDetail(expenseId).collectAsStateWithLifecycle()
     val comments by viewModel.observeExpenseComments(expenseId).collectAsStateWithLifecycle()
-    val photos by viewModel.observeExpensePhotos(expenseId).collectAsStateWithLifecycle()
+    val attachments by viewModel.observeExpensePhotos(expenseId).collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var commentDraft by remember { mutableStateOf("") }
@@ -118,15 +121,16 @@ fun ExpenseDetailScreen(
     val bg = MaterialTheme.colorScheme.background
     val lightIconsOnBars = bg.luminance() > 0.5f
 
-    val imagePicker =
-        rememberImagePicker(
+    LaunchedEffect(expenseId) {
+        viewModel.refreshExpenseSideData(expenseId)
+    }
+
+    val attachmentPicker =
+        rememberAttachmentImagePicker(
             sourceTitle = stringResource(R.string.expense_photo_source_title),
             sourceBody = stringResource(R.string.expense_photo_source_body),
-            cropTitle = stringResource(R.string.image_crop_title),
-            cropBody = stringResource(R.string.image_crop_body),
-            cropSpec = ImagePickPresets.ExpenseReceipt,
-        ) { croppedUri ->
-            viewModel.addExpensePhoto(expenseId = expenseId, croppedPhotoUri = croppedUri)
+        ) { uris ->
+            viewModel.addExpenseAttachments(expenseId = expenseId, photoUris = uris)
         }
 
     SeSystemBars(
@@ -136,6 +140,7 @@ fun ExpenseDetailScreen(
         navigationBarDarkIcons = lightIconsOnBars,
     )
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = bg,
         topBar = {
@@ -154,7 +159,10 @@ fun ExpenseDetailScreen(
                 },
                 actions = {
                     if (hasExpense) {
-                        IconButton(onClick = { imagePicker.launch() }) {
+                        IconButton(
+                            onClick = { attachmentPicker.launch() },
+                            enabled = !uiState.isAttachingPhotos,
+                        ) {
                             Icon(
                                 Icons.Filled.AddAPhoto,
                                 contentDescription = stringResource(R.string.cd_add_expense_photo),
@@ -270,16 +278,19 @@ fun ExpenseDetailScreen(
                 )
             }
 
-            if (photos.isNotEmpty()) {
+            if (attachments.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
-                    text = stringResource(R.string.expense_photos_section),
+                    text = stringResource(R.string.expense_attachments_section),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                ExpensePhotosRow(photos = photos)
+                ExpenseAttachmentsPreviewRow(
+                    attachments = attachments,
+                    onOpenAttachment = { index -> onOpenAttachments(expenseId, index) },
+                )
             }
 
             if (snapshot.spendingTrendMonths.isNotEmpty()) {
@@ -320,6 +331,11 @@ fun ExpenseDetailScreen(
         }
     }
 
+    SeLoadingOverlay(
+        visible = uiState.isAttachingPhotos,
+        text = stringResource(R.string.expense_attaching_photos),
+    )
+
     if (showDeleteConfirm) {
         SeConfirmDialog(
             title = stringResource(R.string.expense_delete_title),
@@ -334,46 +350,136 @@ fun ExpenseDetailScreen(
             tone = SeConfirmTone.Danger,
         )
     }
+    }
+}
+
+private val ExpenseAttachmentThumbSize = 112.dp
+private const val ExpenseAttachmentVisibleCount = 2
+
+@Composable
+private fun ExpenseAttachmentsPreviewRow(
+    attachments: List<ExpensePhotoUi>,
+    onOpenAttachment: (Int) -> Unit,
+) {
+    val overflowCount = (attachments.size - ExpenseAttachmentVisibleCount).coerceAtLeast(0)
+    val previewItems =
+        if (overflowCount > 0) {
+            attachments.take(ExpenseAttachmentVisibleCount) + null
+        } else {
+            attachments
+        }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        previewItems.forEachIndexed { index, attachment ->
+            if (attachment == null) {
+                ExpenseAttachmentOverflowCard(
+                    overflowCount = overflowCount,
+                    onClick = { onOpenAttachment(ExpenseAttachmentVisibleCount) },
+                )
+            } else {
+                ExpenseAttachmentThumbCard(
+                    attachment = attachment,
+                    onClick = { onOpenAttachment(index) },
+                )
+            }
+        }
+    }
 }
 
 @Composable
-private fun ExpensePhotosRow(photos: List<ExpensePhotoUi>) {
+private fun ExpenseAttachmentThumbCard(
+    attachment: ExpensePhotoUi,
+    onClick: () -> Unit,
+) {
     val context = LocalContext.current
-    Row(
+    val bitmap =
+        remember(attachment.displayUri) {
+            AvatarImageIO
+                .decodeScaled(
+                    context = context,
+                    photoUrl = attachment.displayUri,
+                    maxSidePx = 480,
+                )?.asImageBitmap()
+        }
+
+    Column(
         modifier =
             Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .width(ExpenseAttachmentThumbSize)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(bounded = true),
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
     ) {
-        photos.forEach { photo ->
-            val bitmap =
-                remember(photo.displayUri) {
-                    AvatarImageIO
-                        .decodeScaled(
-                            context = context,
-                            photoUrl = photo.displayUri,
-                            maxSidePx = 480,
-                        )?.asImageBitmap()
-                }
-            Box(
-                modifier =
-                    Modifier
-                        .size(112.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SplitEaseColors.Outline.copy(alpha = 0.35f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = stringResource(R.string.cd_expense_photo),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+        Box(
+            modifier =
+                Modifier
+                    .size(ExpenseAttachmentThumbSize)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SplitEaseColors.Outline.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = stringResource(R.string.cd_expense_attachment),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = attachment.authorLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = SplitEaseColors.NavyMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun ExpenseAttachmentOverflowCard(
+    overflowCount: Int,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .width(ExpenseAttachmentThumbSize)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(bounded = true),
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(ExpenseAttachmentThumbSize)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SplitEaseColors.PrimarySoft),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(R.string.expense_attachments_more, overflowCount),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = SplitEaseColors.PrimaryDark,
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "",
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
 
@@ -463,6 +569,14 @@ private fun CategoryChip(
     }
 }
 
+private data class ExpenseOweTreeNode(
+    val userId: String,
+    val displayName: String,
+    val amountLabel: String,
+    val isViewer: Boolean,
+    val photoUrl: String?,
+)
+
 @Composable
 private fun ExpensePaidOwesBlock(
     detail: ExpenseDetailUi,
@@ -483,83 +597,150 @@ private fun ExpensePaidOwesBlock(
         } else {
             detail.payerLabel
         }
+    val youLabel = stringResource(R.string.you_label)
+    val owesWord = stringResource(R.string.expense_split_owes)
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-    ) {
-        SeAvatarBadge(
-            name = avatarName,
-            photoUrl = null,
-            size = 48.dp,
-            borderWidth = 0.dp,
-        )
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
+    val oweNodes =
+        remember(detail.splits, currentUserId, currency, youLabel, owesWord) {
+            buildList {
+                detail.splits
+                    .filter { it.owedAmount.compareTo(BigDecimal.ZERO) != 0 }
+                    .sortedByDescending { it.userId == currentUserId }
+                    .forEach { line ->
+                        val isViewer = line.userId == currentUserId
+                        val money = MoneyFormat.format(line.owedAmount, currency)
+                        add(
+                            ExpenseOweTreeNode(
+                                userId = line.userId,
+                                displayName =
+                                    if (isViewer) {
+                                        youLabel
+                                    } else {
+                                        shortDisplayName(line.participantLabel)
+                                    },
+                                amountLabel =
+                                    if (isViewer) {
+                                        money
+                                    } else {
+                                        "$owesWord $money"
+                                    },
+                                isViewer = isViewer,
+                                photoUrl = line.photoUrl,
+                            ),
+                        )
+                    }
+            }
+        }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SeAvatarBadge(
+                name = avatarName,
+                photoUrl = detail.payerPhotoUrl,
+                size = 48.dp,
+                borderWidth = 0.dp,
+            )
+            Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = paidLine,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.Navy,
+                modifier = Modifier.weight(1f),
             )
+        }
+
+        if (oweNodes.isNotEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
-            val viewerOwed = detail.viewerOwedAmount
-            if (viewerOwed != null && viewerOwed.compareTo(BigDecimal.ZERO) != 0) {
-                Text(
-                    text =
-                        stringResource(
-                            R.string.expense_you_owe_amount,
-                            MoneyFormat.format(viewerOwed, currency),
-                        ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
+            oweNodes.forEachIndexed { index, node ->
+                ExpenseOweTreeRow(
+                    node = node,
+                    isLast = index == oweNodes.lastIndex,
                 )
-            }
-            val otherSplits =
-                detail.splits.filter {
-                    it.userId != currentUserId && it.owedAmount.compareTo(BigDecimal.ZERO) != 0
-                }
-            if (otherSplits.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                otherSplits.forEach { line ->
-                    ExpenseOtherOwesLine(
-                        line = line,
-                        currencyCode = currency,
-                        modifier = Modifier.padding(bottom = 2.dp),
-                    )
-                }
             }
         }
     }
 }
 
 @Composable
-private fun ExpenseOtherOwesLine(
-    line: ExpenseSplitLineUi,
-    currencyCode: String,
-    modifier: Modifier = Modifier,
+private fun ExpenseOweTreeRow(
+    node: ExpenseOweTreeNode,
+    isLast: Boolean,
 ) {
-    val money = MoneyFormat.format(line.owedAmount, currencyCode)
-    val body = SplitEaseColors.NavyMuted
-    val shortName = remember(line.participantLabel) { shortDisplayName(line.participantLabel) }
-    val owesWord = stringResource(R.string.expense_split_owes)
+    val branchColor = SplitEaseColors.OutlineStrong
+    val rowHeight = 40.dp
+    val gutterWidth = 48.dp
+    val avatarSize = 28.dp
 
-    Text(
-        text =
-            buildAnnotatedString {
-                withStyle(SpanStyle(color = body)) {
-                    append(shortName)
-                    append(" ")
-                    append(owesWord)
-                    append(" ")
-                }
-                withStyle(SpanStyle(color = body, fontWeight = FontWeight.Medium)) {
-                    append(money)
-                }
-            },
-        modifier = modifier,
-        style = MaterialTheme.typography.bodyMedium,
-    )
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(rowHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .width(gutterWidth)
+                    .fillMaxSize(),
+        ) {
+            // Vertical trunk from payer avatar center.
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .width(2.dp)
+                        .fillMaxHeight(if (isLast) 0.5f else 1f)
+                        .background(branchColor),
+            )
+            // Horizontal branch to child avatar.
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = gutterWidth / 2)
+                        .width(gutterWidth / 2 - 4.dp)
+                        .height(2.dp)
+                        .background(branchColor),
+            )
+        }
+        SeAvatarBadge(
+            name = node.displayName,
+            photoUrl = node.photoUrl,
+            size = avatarSize,
+            borderWidth = 0.dp,
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text =
+                buildAnnotatedString {
+                    if (node.isViewer) {
+                        withStyle(SpanStyle(color = SplitEaseColors.NavyMuted)) {
+                            append(stringResource(R.string.expense_you_owe_amount, node.amountLabel))
+                        }
+                    } else {
+                        withStyle(SpanStyle(color = SplitEaseColors.NavyMuted)) {
+                            append(node.displayName)
+                            append(" ")
+                        }
+                        withStyle(
+                            SpanStyle(
+                                color = SplitEaseColors.NavyMuted,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                        ) {
+                            append(node.amountLabel)
+                        }
+                    }
+                },
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 @Composable

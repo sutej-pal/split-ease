@@ -22,6 +22,8 @@ object DefaultCategories {
             Definition("cat_general", "General", "category_general"),
             Definition("cat_food", "Food", "category_food"),
             Definition("cat_travel", "Travel", "category_travel"),
+            Definition("cat_bus", "Bus", "category_bus"),
+            Definition("cat_train", "Train", "category_train"),
             Definition("cat_rent", "Rent", "category_rent"),
             Definition("cat_utilities", "Utilities", "category_utilities"),
             Definition("cat_entertainment", "Entertainment", "category_entertainment"),

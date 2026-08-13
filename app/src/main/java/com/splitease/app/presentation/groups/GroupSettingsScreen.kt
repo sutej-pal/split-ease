@@ -71,6 +71,7 @@ import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
@@ -79,7 +80,6 @@ import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalTitle
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeScreen
@@ -94,6 +94,7 @@ private data class SelectedGroupMember(
     val displayName: String,
     val email: String?,
     val pending: Boolean,
+    val photoUrl: String?,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,6 +112,7 @@ fun GroupSettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val userDisplayNames by viewModel.userDisplayNames.collectAsStateWithLifecycle()
+    val userPhotoUrls by viewModel.userPhotoUrls.collectAsStateWithLifecycle()
     val membersState by remember(groupId) { viewModel.observeMembers(groupId) }
         .collectAsStateWithLifecycle()
     val members = membersState.orEmpty()
@@ -267,10 +269,16 @@ fun GroupSettingsScreen(
                                 else -> friend?.emailSnapshot
                             },
                         leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Person,
-                                tint = if (isYou) SplitEaseColors.OwedToYou else SplitEaseColors.IconOther,
-                                size = 40,
+                            SeAvatarBadge(
+                                name =
+                                    if (isYou) {
+                                        stringResource(R.string.you_label)
+                                    } else {
+                                        rawName.ifBlank { title }
+                                    },
+                                photoUrl = userPhotoUrls[member.userId],
+                                size = 40.dp,
+                                borderWidth = 0.dp,
                             )
                         },
                         trailing =
@@ -324,6 +332,7 @@ fun GroupSettingsScreen(
                                             displayName = rawName.ifBlank { title },
                                             email = friend?.emailSnapshot,
                                             pending = pending,
+                                            photoUrl = userPhotoUrls[member.userId],
                                         )
                                 }
                             } else {
@@ -533,10 +542,11 @@ private fun GroupMemberActionsSheet(
                     .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SeIconTile(
-                icon = Icons.Filled.Person,
-                tint = SplitEaseColors.IconOther,
-                size = 48,
+            SeAvatarBadge(
+                name = member.displayName,
+                photoUrl = member.photoUrl,
+                size = 48.dp,
+                borderWidth = 0.dp,
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -848,9 +858,19 @@ private fun EditGroupDialog(
     var type by rememberSaveable(group.id) { mutableStateOf(group.groupType.name) }
     val selected = runCatching { GroupType.valueOf(type) }.getOrDefault(GroupType.OTHER)
 
-    SeModal(onDismissRequest = onDismiss) {
-        SeModalTitle(stringResource(R.string.action_edit))
-        Spacer(modifier = Modifier.height(14.dp))
+    SeModal(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.action_edit),
+        icon = Icons.Filled.Edit,
+        tone = SeConfirmTone.Primary,
+        dismissLabel = stringResource(R.string.action_close),
+        confirmLabel = stringResource(R.string.action_save),
+        onConfirm = {
+            val trimmed = name.trim()
+            if (trimmed.isNotEmpty()) onSave(trimmed, selected)
+        },
+        confirmEnabled = !isSubmitting && name.isNotBlank(),
+    ) {
         SeTextField(
             value = name,
             onValueChange = { name = it },
@@ -879,25 +899,6 @@ private fun EditGroupDialog(
                 selected = selected == GroupType.OTHER,
                 onClick = { type = GroupType.OTHER.name },
                 modifier = Modifier.weight(1f),
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-        ) {
-            SeTextButton(
-                text = stringResource(R.string.action_close),
-                onClick = onDismiss,
-            )
-            SeTextButton(
-                text = stringResource(R.string.action_save),
-                onClick = {
-                    val trimmed = name.trim()
-                    if (trimmed.isNotEmpty()) onSave(trimmed, selected)
-                },
-                enabled = !isSubmitting && name.isNotBlank(),
-                color = SplitEaseColors.Primary,
             )
         }
     }

@@ -21,4 +21,7 @@
     <cache-path
         name="image_capture_cache"
         path="image_capture/" />
+    <cache-path
+        name="expense_attachment_cache"
+        path="expense_attachments/" />
 </paths>

@@ -2,6 +2,9 @@ package com.splitease.app.data.social
 
 import android.content.Context
 import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.data.media.LocalMediaCleanup
+import com.splitease.app.data.media.MediaStorageCleanup
+import com.splitease.app.data.pinboard.PinBoardInteractor
 import com.splitease.app.data.remote.GroupCoverStorage
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ProfileDto
@@ -57,6 +60,8 @@ class SocialInteractor
         private val paymentRepository: PaymentRepository,
         private val remote: SocialRemoteDataSource,
         private val groupCoverStorage: GroupCoverStorage,
+        private val mediaStorageCleanup: MediaStorageCleanup,
+        private val pinBoardInteractor: PinBoardInteractor,
         private val expenseInteractor: com.splitease.app.data.expense.ExpenseInteractor,
         private val mailRepository: MailRepository,
     ) {
@@ -84,6 +89,7 @@ class SocialInteractor
                 }
 
                 expenseRepository.observeBetweenUsers(ownerUserId, friendUserId).first().forEach { expense ->
+                    expenseInteractor.purgeExpenseMedia(expense.id)
                     expenseRepository.deleteExpenseById(expense.id)
                 }
                 paymentRepository
@@ -1386,6 +1392,13 @@ class SocialInteractor
                 require(group.createdByUserId == requesterId) {
                     "Only the group owner can delete this group."
                 }
+                val expenses = expenseRepository.observeExpenses(groupId).first()
+                expenses.forEach { expense ->
+                    expenseInteractor.purgeExpenseMedia(expense.id)
+                }
+                val pinBoardContent =
+                    runCatching { pinBoardInteractor.load(groupId).content }.getOrNull()
+                mediaStorageCleanup.purgeGroupMedia(group, pinBoardContent)
                 groupRepository.deleteGroupById(groupId)
                 runCatching { remote.deleteGroup(groupId) }
             }
@@ -1585,7 +1598,7 @@ class SocialInteractor
                         id = userId,
                         email = resolvedEmail,
                         displayName = resolved.displayName.ifBlank { displayName.ifBlank { "Member" } },
-                        photoUrl = resolved.photoUrl,
+                        photoUrl = resolveUsablePhotoUrl(existing?.photoUrl, resolved.photoUrl),
                         phoneCountryCode = resolved.phoneCountryCode,
                         phoneNumber = resolved.phoneNumber,
                         preferredCurrency = resolved.preferredCurrency,
@@ -2074,6 +2087,7 @@ class SocialInteractor
                 val group =
                     groupRepository.getGroupById(groupId)
                         ?: error("Group not found.")
+                mediaStorageCleanup.evictRemoteMediaCache(group.coverUrl)
                 deleteGroupCoverFiles(groupId)
                 runCatching { groupCoverStorage.deleteCover(groupId) }
                 val now = System.currentTimeMillis()
@@ -2117,6 +2131,39 @@ class SocialInteractor
             val existing = existingUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return null
             // Pending local file not yet uploaded — keep it. Drop stale remote URL if cloud cleared.
             return if (existing.isRemoteMediaUrl()) null else existing
+        }
+
+        /**
+         * Profile photos may be a public URL or a device-local path. Ignore another
+         * device's local path so a refresh does not wipe a photo that exists here.
+         */
+        private fun resolveUsablePhotoUrl(
+            existing: String?,
+            remote: String?,
+        ): String? {
+            val remoteTrimmed = remote?.trim()?.takeIf { it.isNotEmpty() }
+            if (remoteTrimmed != null) {
+                if (remoteTrimmed.isRemoteMediaUrl()) {
+                    runCatching { AvatarImageIO.cacheRemoteImage(appContext, remoteTrimmed) }
+                    return remoteTrimmed
+                }
+                if (isExistingLocalPhoto(remoteTrimmed)) return remoteTrimmed
+            }
+            val existingTrimmed = existing?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            return existingTrimmed.takeIf { url ->
+                url.isRemoteMediaUrl() || isExistingLocalPhoto(url)
+            }
+        }
+
+        private fun isExistingLocalPhoto(path: String): Boolean {
+            if (path.startsWith("content:", ignoreCase = true)) return true
+            val filePath =
+                if (path.startsWith("file:", ignoreCase = true)) {
+                    android.net.Uri.parse(path).path
+                } else {
+                    path
+                }
+            return !filePath.isNullOrBlank() && File(filePath).isFile
         }
 
         /**
@@ -2186,9 +2233,7 @@ class SocialInteractor
         }
 
         private fun deleteGroupCoverFiles(groupId: String) {
-            val dir = File(appContext.filesDir, "group_covers")
-            if (!dir.isDirectory) return
-            pruneGroupMediaFiles(dir, groupId, keep = 0)
+            LocalMediaCleanup.deleteGroupCoverFiles(appContext, groupId)
         }
 
         private fun pruneGroupMediaFiles(
@@ -2196,19 +2241,28 @@ class SocialInteractor
             groupId: String,
             keep: Int,
         ) {
-            dir
-                .listFiles()
-                ?.filter { file ->
-                    file.isFile &&
-                        (
-                            file.name.equals("$groupId.jpg", ignoreCase = true) ||
+            when (dir.name) {
+                "group_covers" ->
+                    LocalMediaCleanup.pruneGroupCoverFiles(appContext, groupId, keepNewest = keep)
+                "group_photos" ->
+                    LocalMediaCleanup.pruneGroupPhotoFiles(appContext, groupId, keepNewest = keep)
+                else -> {
+                    if (!dir.isDirectory) return
+                    dir
+                        .listFiles()
+                        ?.filter { file ->
+                            file.isFile &&
                                 (
-                                    file.name.startsWith("${groupId}_") &&
-                                        file.name.endsWith(".jpg", ignoreCase = true)
+                                    file.name.equals("$groupId.jpg", ignoreCase = true) ||
+                                        (
+                                            file.name.startsWith("${groupId}_") &&
+                                                file.name.endsWith(".jpg", ignoreCase = true)
+                                        )
                                 )
-                        )
-                }?.sortedByDescending { it.lastModified() }
-                ?.drop(keep.coerceAtLeast(0))
-                ?.forEach { it.delete() }
+                        }?.sortedByDescending { it.lastModified() }
+                        ?.drop(keep.coerceAtLeast(0))
+                        ?.forEach { it.delete() }
+                }
+            }
         }
     }

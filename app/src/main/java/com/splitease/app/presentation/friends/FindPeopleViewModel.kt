@@ -19,6 +19,7 @@ import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
+import com.splitease.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,7 @@ class FindPeopleViewModel
     constructor(
         private val authRepository: AuthRepository,
         friendRepository: FriendRepository,
+        userRepository: UserRepository,
         private val groupRepository: GroupRepository,
         private val inviteRepository: InviteRepository,
         private val socialInteractor: SocialInteractor,
@@ -85,6 +87,13 @@ class FindPeopleViewModel
                 .flatMapLatest { id ->
                     if (id == null) flowOf(emptyList()) else friendRepository.observeFriends(id)
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        /** userId → profile photo URL when the friend has set one. */
+        val userPhotoUrls: StateFlow<Map<String, String?>> =
+            userRepository
+                .observeUsers()
+                .map { users -> users.associate { it.id to it.photoUrl } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
         private val _uiState = MutableStateFlow(FindPeopleUiState())
         val uiState: StateFlow<FindPeopleUiState> = _uiState.asStateFlow()

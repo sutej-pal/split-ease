@@ -41,6 +41,7 @@ import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.ui.SeSystemBars
+import com.splitease.app.presentation.expenses.ExpenseAttachmentsGalleryScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
 import com.splitease.app.presentation.friends.EditContactScreen
@@ -112,6 +113,8 @@ object Routes {
     const val ADD_EXPENSE =
         "add_expense?groupId={groupId}&friendUserId={friendUserId}&expenseId={expenseId}"
     const val EXPENSE_DETAIL = "expense_detail/{expenseId}"
+    const val EXPENSE_ATTACHMENTS =
+        "expense_attachments/{expenseId}?startIndex={startIndex}"
     const val PIN_BOARD = "pin_board/{groupId}"
     const val GROUP_BALANCES = "group_balances/{groupId}"
     const val GROUP_TOTALS = "group_totals/{groupId}"
@@ -135,6 +138,11 @@ object Routes {
     fun friendSettings(friendUserId: String) = "friend_settings/$friendUserId"
 
     fun expenseDetail(expenseId: String) = "expense_detail/$expenseId"
+
+    fun expenseAttachments(
+        expenseId: String,
+        startIndex: Int = 0,
+    ) = "expense_attachments/$expenseId?startIndex=$startIndex"
 
     fun findPeople(groupId: String? = null) =
         "find_people?groupId=${groupId.orEmpty()}"
@@ -992,6 +1000,28 @@ private fun SignedInNavHost(
                     onOpenGroupSpending = { groupId ->
                         navController.navigate(Routes.groupTotals(groupId))
                     },
+                    onOpenAttachments = { id, startIndex ->
+                        navController.navigate(Routes.expenseAttachments(id, startIndex))
+                    },
+                )
+            }
+            composable(
+                route = Routes.EXPENSE_ATTACHMENTS,
+                arguments =
+                    listOf(
+                        navArgument("expenseId") { type = NavType.StringType },
+                        navArgument("startIndex") {
+                            type = NavType.IntType
+                            defaultValue = 0
+                        },
+                    ),
+            ) { entry ->
+                val attachmentExpenseId = entry.arguments?.getString("expenseId").orEmpty()
+                val startIndex = entry.arguments?.getInt("startIndex") ?: 0
+                ExpenseAttachmentsGalleryScreen(
+                    expenseId = attachmentExpenseId,
+                    startIndex = startIndex,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(

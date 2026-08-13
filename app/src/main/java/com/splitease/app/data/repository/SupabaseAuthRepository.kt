@@ -2,8 +2,12 @@ package com.splitease.app.data.repository
 
 import android.content.Context
 import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.data.media.LocalMediaCleanup
+import com.splitease.app.data.media.MediaStorageCleanup
+import com.splitease.app.data.remote.ProfilePhotoStorage
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ProfileDto
+import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
@@ -47,6 +51,8 @@ class SupabaseAuthRepository
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
         private val socialRemote: SocialRemoteDataSource,
+        private val profilePhotoStorage: ProfilePhotoStorage,
+        private val mediaStorageCleanup: MediaStorageCleanup,
         private val syncInteractor: Provider<SyncInteractor>,
     ) : AuthRepository {
         override suspend fun getSignedInUserOrNull(): AuthUser? =
@@ -217,9 +223,16 @@ class SupabaseAuthRepository
                     val userId =
                         supabase.auth.currentUserOrNull()?.id
                             ?: error("Not signed in.")
+                    val previousPhotoUrl =
+                        userRepository.getUserById(userId)?.photoUrl
+                            ?: supabase.auth.currentUserOrNull()?.userMetadata?.stringMeta("photo_url")
                     val localPath = copyAvatarToInternalStorage(userId, photoUri)
+                    val stored = persistPhotoForCloud(userId, localPath) ?: localPath
                     supabase.auth.updateUser {
-                        data = buildJsonObject { put("photo_url", localPath) }
+                        data = buildJsonObject { put("photo_url", stored) }
+                    }
+                    if (!previousPhotoUrl.isNullOrBlank() && previousPhotoUrl != stored) {
+                        mediaStorageCleanup.purgeProfilePhoto(previousPhotoUrl)
                     }
                     persistCurrentUser()
                 }
@@ -289,7 +302,9 @@ class SupabaseAuthRepository
 
         override suspend fun signOut(): Result<Unit> =
             runCatching {
+                val userId = supabase.auth.currentUserOrNull()?.id
                 supabase.auth.signOut()
+                userId?.let { mediaStorageCleanup.purgeAllUserAvatars(it) }
             }
 
         override suspend fun ensureLocalProfile(): Result<Unit> =
@@ -317,7 +332,19 @@ class SupabaseAuthRepository
             val phoneNumber = meta.stringMeta("phone_number") ?: existing?.phoneNumber
             val preferredCurrency =
                 meta.stringMeta("preferred_currency") ?: existing?.preferredCurrency
-            val photoUrl = meta.stringMeta("photo_url") ?: existing?.photoUrl
+            val rawPhotoUrl = meta.stringMeta("photo_url") ?: existing?.photoUrl
+            val photoUrl = persistPhotoForCloud(authUser.userId, rawPhotoUrl)
+            if (
+                photoUrl != null &&
+                photoUrl.isRemoteMediaUrl() &&
+                photoUrl != rawPhotoUrl
+            ) {
+                runCatching {
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("photo_url", photoUrl) }
+                    }
+                }
+            }
             // Invite stubs may already own this email under a different local id.
             // Free the unique email index so the auth user row can be written.
             releaseEmailForUser(authUser.userId, authUser.email)
@@ -342,7 +369,9 @@ class SupabaseAuthRepository
                         id = authUser.userId,
                         email = authUser.email,
                         displayName = authUser.displayName,
-                        photoUrl = photoUrl,
+                        photoUrl =
+                            photoUrl?.takeIf { it.isRemoteMediaUrl() }
+                                ?: existing?.photoUrl?.takeIf { it.isRemoteMediaUrl() },
                         phoneCountryCode = phoneCountryCode,
                         phoneNumber = phoneNumber,
                         preferredCurrency = preferredCurrency,
@@ -371,6 +400,43 @@ class SupabaseAuthRepository
             )
         }
 
+        /**
+         * Returns an https Storage URL when upload succeeds, otherwise a device-local path
+         * that this install can still decode.
+         */
+        private suspend fun persistPhotoForCloud(
+            userId: String,
+            raw: String?,
+        ): String? {
+            val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            if (value.isRemoteMediaUrl()) {
+                runCatching { AvatarImageIO.cacheRemoteImage(appContext, value) }
+                return value
+            }
+            val localPath =
+                if (isExistingLocalJpeg(value)) {
+                    value
+                } else {
+                    runCatching { copyAvatarToInternalStorage(userId, value) }.getOrNull()
+                } ?: return null
+            val uploaded =
+                runCatching { profilePhotoStorage.uploadPhoto(userId, localPath) }.getOrNull()
+                    ?: return localPath
+            AvatarImageIO.seedRemoteImageCache(appContext, uploaded, File(localPath))
+            return uploaded
+        }
+
+        private fun isExistingLocalJpeg(path: String): Boolean {
+            if (path.startsWith("content:", ignoreCase = true)) return false
+            val filePath =
+                if (path.startsWith("file:", ignoreCase = true)) {
+                    android.net.Uri.parse(path).path
+                } else {
+                    path
+                }
+            return !filePath.isNullOrBlank() && File(filePath).isFile
+        }
+
         private fun copyAvatarToInternalStorage(
             userId: String,
             photoUri: String,
@@ -384,22 +450,7 @@ class SupabaseAuthRepository
                     photoUri = photoUri,
                     destFile = dest,
                 )
-            // Keep the newest couple of files so the UI can still decode the previous
-            // path for one frame while profile StateFlow catches up.
-            dir
-                .listFiles()
-                ?.filter { file ->
-                    file.isFile &&
-                        (
-                            file.name.equals("$userId.jpg", ignoreCase = true) ||
-                                (
-                                    file.name.startsWith("${userId}_") &&
-                                        file.name.endsWith(".jpg", ignoreCase = true)
-                                )
-                        )
-                }?.sortedByDescending { it.lastModified() }
-                ?.drop(2)
-                ?.forEach { it.delete() }
+            LocalMediaCleanup.deleteUserAvatars(appContext, userId, keepNewest = 2)
             return path
         }
     }

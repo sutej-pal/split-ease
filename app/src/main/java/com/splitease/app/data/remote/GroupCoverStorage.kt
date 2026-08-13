@@ -49,6 +49,12 @@ class GroupCoverStorage
             }
         }
 
+        /** Deletes both cover and list photo objects for [groupId]. */
+        suspend fun deleteAllForGroup(groupId: String) {
+            deleteCover(groupId)
+            deletePhoto(groupId)
+        }
+
         private suspend fun uploadJpeg(
             path: String,
             localJpegPath: String,

@@ -19,6 +19,9 @@ class RoomExpensePhotoRepository
         override fun observeForExpense(expenseId: String): Flow<List<ExpensePhoto>> =
             dao.observeForExpense(expenseId).map { rows -> rows.map { it.toDomain() } }
 
+        override suspend fun getForExpense(expenseId: String): List<ExpensePhoto> =
+            dao.getForExpense(expenseId).map { it.toDomain() }
+
         override suspend fun upsert(photo: ExpensePhoto) {
             dao.upsert(photo.toEntity())
         }

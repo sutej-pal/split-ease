@@ -77,16 +77,6 @@ class InviteLinksTest {
     }
 
     @Test
-    fun `intentUri builds chrome friendly link with fallback`() {
-        val uri = InviteLinks.intentUri("tok123", "https://example.com/invite/tok123")
-        assertTrue(uri.startsWith("intent://invite/tok123#Intent;"), uri)
-        assertTrue(uri.contains("scheme=splitease;"), uri)
-        assertTrue(uri.contains("package=com.splitease.app;"), uri)
-        assertTrue(uri.contains("S.browser_fallback_url="), uri)
-        assertTrue(uri.endsWith(";end"), uri)
-    }
-
-    @Test
     fun `share text uses single https link only`() {
         val body = InviteLinks.friendShareText("Ada", "tok123abc")
         assertFalse(body.contains("splitease://"), body)

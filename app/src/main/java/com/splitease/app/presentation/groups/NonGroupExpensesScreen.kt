@@ -181,6 +181,7 @@ fun NonGroupExpensesScreen(
             GroupOverallBalanceBlock(
                 balance = balance,
                 currencyFallback = currencyFallback,
+                currentUserId = me,
             )
 
             Row(

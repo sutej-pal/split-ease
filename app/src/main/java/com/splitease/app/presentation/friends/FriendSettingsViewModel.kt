@@ -12,6 +12,7 @@ import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,6 +47,7 @@ class FriendSettingsViewModel
         private val authRepository: AuthRepository,
         private val friendRepository: FriendRepository,
         private val groupRepository: GroupRepository,
+        userRepository: UserRepository,
         private val socialInteractor: SocialInteractor,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
@@ -69,6 +71,12 @@ class FriendSettingsViewModel
                         }
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+        val photoUrl: StateFlow<String?> =
+            userRepository
+                .observeUsers()
+                .map { users -> users.firstOrNull { it.id == friendUserId }?.photoUrl }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         val sharedGroups: StateFlow<List<Group>> =
             userId

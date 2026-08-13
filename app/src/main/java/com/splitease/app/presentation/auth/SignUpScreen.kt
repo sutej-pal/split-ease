@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -65,8 +67,6 @@ import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeModalTitle
-import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTextField
@@ -457,9 +457,12 @@ private fun CurrencyPickerDialog(
 ) {
     var filter by rememberSaveable { mutableStateOf("") }
     val options = remember(filter) { AppCurrencies.filter(filter) }
-    SeModal(onDismissRequest = onDismiss) {
-        SeModalTitle(stringResource(R.string.signup_pick_currency_title))
-        Spacer(modifier = Modifier.height(12.dp))
+    SeModal(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.signup_pick_currency_title),
+        icon = Icons.Filled.AttachMoney,
+        dismissLabel = stringResource(R.string.action_cancel),
+    ) {
         SeTextField(
             value = filter,
             onValueChange = { filter = it },
@@ -499,11 +502,6 @@ private fun CurrencyPickerDialog(
                 HorizontalDivider(color = SplitEaseColors.Outline)
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        SeOutlinedButton(
-            text = stringResource(R.string.action_cancel),
-            onClick = onDismiss,
-        )
     }
 }
 
@@ -514,9 +512,12 @@ private fun DialCodePickerDialog(
     onSelect: (DialCodeOption) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    SeModal(onDismissRequest = onDismiss) {
-        SeModalTitle(stringResource(R.string.signup_pick_country_title))
-        Spacer(modifier = Modifier.height(8.dp))
+    SeModal(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.signup_pick_country_title),
+        icon = Icons.Filled.Public,
+        dismissLabel = stringResource(R.string.action_cancel),
+    ) {
         Column(
             modifier =
                 Modifier
@@ -547,11 +548,6 @@ private fun DialCodePickerDialog(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        SeOutlinedButton(
-            text = stringResource(R.string.action_cancel),
-            onClick = onDismiss,
-        )
     }
 }
 

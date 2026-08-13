@@ -37,6 +37,28 @@ class PinBoardImageStorage
             return supabase.storage.from(BUCKET).publicUrl(path)
         }
 
+        /** Deletes a single pin-board image object (no-op when missing). */
+        suspend fun deleteImage(
+            groupId: String,
+            imageId: String,
+        ) {
+            runCatching {
+                supabase.storage.from(BUCKET).delete(objectPath(groupId, imageId))
+            }
+        }
+
+        /** Deletes many pin-board image objects for [groupId]. */
+        suspend fun deleteImages(
+            groupId: String,
+            imageIds: Collection<String>,
+        ) {
+            if (imageIds.isEmpty()) return
+            val paths = imageIds.map { objectPath(groupId, it) }
+            runCatching {
+                supabase.storage.from(BUCKET).delete(paths)
+            }
+        }
+
         companion object {
             const val BUCKET = "pin-board-images"
 

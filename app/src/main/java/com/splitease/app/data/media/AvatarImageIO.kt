@@ -126,6 +126,18 @@ object AvatarImageIO {
         }.getOrNull()
     }
 
+    /** Removes a cached remote image decode file for [remoteUrl], if present. */
+    fun evictRemoteCache(
+        context: Context,
+        remoteUrl: String,
+    ) {
+        if (remoteUrl.isBlank()) return
+        runCatching {
+            val file = remoteCacheFile(context, remoteUrl)
+            if (file.exists()) file.delete()
+        }
+    }
+
     private fun remoteCacheFile(
         context: Context,
         remoteUrl: String,

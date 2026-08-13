@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
@@ -51,6 +50,7 @@ import com.splitease.app.data.contacts.DeviceContact
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
@@ -75,6 +75,7 @@ fun FindPeopleScreen(
     viewModel: FindPeopleViewModel = hiltViewModel(),
 ) {
     val friends by viewModel.friends.collectAsStateWithLifecycle()
+    val userPhotoUrls by viewModel.userPhotoUrls.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var permissionRequested by rememberSaveable { mutableStateOf(false) }
@@ -239,6 +240,7 @@ fun FindPeopleScreen(
                     val alreadyInGroup = syncedInGroup || locallyOnly || pendingGroupInvite
                     FriendPickRow(
                         friend = friend,
+                        photoUrl = userPhotoUrls[friend.friendUserId],
                         alreadyInGroup = alreadyInGroup,
                         locallyPending = locallyOnly && !pendingGroupInvite && !syncedInGroup,
                         enabled = !uiState.isSubmitting && (!isGroupMode || !alreadyInGroup),
@@ -344,6 +346,7 @@ private fun FindPeopleActionTile(
 @Composable
 private fun FriendPickRow(
     friend: Friend,
+    photoUrl: String?,
     alreadyInGroup: Boolean,
     locallyPending: Boolean,
     enabled: Boolean,
@@ -357,7 +360,12 @@ private fun FriendPickRow(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SeIconTile(Icons.Filled.Person, SplitEaseColors.IconFriends, size = 48)
+        SeAvatarBadge(
+            name = friend.displayNameSnapshot,
+            photoUrl = photoUrl,
+            size = 48.dp,
+            borderWidth = 0.dp,
+        )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

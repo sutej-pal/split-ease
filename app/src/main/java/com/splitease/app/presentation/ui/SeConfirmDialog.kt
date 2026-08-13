@@ -1,35 +1,14 @@
 package com.splitease.app.presentation.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.splitease.app.R
-import com.splitease.app.presentation.theme.SplitEaseColors
 
 /**
  * App confirmation / info dialog.
@@ -63,8 +42,6 @@ fun SeConfirmDialog(
     dismissOnBackPress: Boolean = true,
     dismissOnClickOutside: Boolean = true,
 ) {
-    val accent = tone.accent()
-    val accentMuted = tone.mutedBackground()
     val showConfirm = !confirmLabel.isNullOrBlank() && onConfirm != null
     val resolvedDismissLabel =
         when {
@@ -72,129 +49,23 @@ fun SeConfirmDialog(
             showConfirm -> stringResource(R.string.action_cancel)
             else -> stringResource(R.string.action_done)
         }
-    val dismissClick = onDismissClick ?: onDismissRequest
 
-    SeDialogSurface(
+    SeModal(
         onDismissRequest = onDismissRequest,
+        title = title,
         modifier = modifier,
+        icon = icon,
+        tone = tone,
+        body = body,
         dismissOnBackPress = dismissOnBackPress,
         dismissOnClickOutside = dismissOnClickOutside,
-        maxWidth = 320.dp,
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(accentMuted),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Text(
-                text = title,
-                style =
-                    MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        platformStyle = PlatformTextStyle(includeFontPadding = false),
-                        lineHeightStyle =
-                            LineHeightStyle(
-                                alignment = LineHeightStyle.Alignment.Center,
-                                trim = LineHeightStyle.Trim.Both,
-                            ),
-                    ),
-                color = SplitEaseColors.Navy,
-            )
-        }
-
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 22.dp),
-            thickness = 1.dp,
-            color = SplitEaseColors.Outline,
-        )
-
-        Text(
-            text = body,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 8.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = SplitEaseColors.NavyMuted,
-        )
-
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (resolvedDismissLabel.isNotBlank()) {
-                SeTextButton(
-                    text = resolvedDismissLabel,
-                    onClick = dismissClick,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                )
-            }
-            if (showConfirm) {
-                SeTextButton(
-                    text = confirmLabel,
-                    onClick = onConfirm,
-                    color = accent,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                )
-            }
-        }
-    }
+        dismissLabel = resolvedDismissLabel,
+        onDismissClick = onDismissClick ?: onDismissRequest,
+        confirmLabel = confirmLabel,
+        onConfirm = onConfirm,
+        confirmTone = tone,
+    )
 }
-
-/**
- * Accent palette for [SeConfirmDialog] badge + confirm action.
- */
-enum class SeConfirmTone {
-    /** Error / destructive (delete, remove, regenerate). */
-    Danger,
-
-    /** Caution / amber warning. */
-    Warning,
-
-    /** Brand primary for neutral / positive confirms and info. */
-    Primary,
-}
-
-@Composable
-private fun SeConfirmTone.accent(): Color =
-    when (this) {
-        SeConfirmTone.Danger -> MaterialTheme.colorScheme.error
-        SeConfirmTone.Warning -> MaterialTheme.colorScheme.tertiary
-        SeConfirmTone.Primary -> SplitEaseColors.Primary
-    }
-
-@Composable
-private fun SeConfirmTone.mutedBackground(): Color =
-    when (this) {
-        SeConfirmTone.Danger ->
-            MaterialTheme.colorScheme.error.copy(alpha = 0.14f)
-        SeConfirmTone.Warning ->
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f)
-        SeConfirmTone.Primary ->
-            SplitEaseColors.Primary.copy(alpha = 0.14f)
-    }
 
 @Preview(name = "SeConfirmDialog · dark", showBackground = true)
 @Composable

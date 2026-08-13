@@ -85,6 +85,13 @@ class GroupsViewModel
                 .map { users -> users.associate { it.id to it.displayName } }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+        /** userId → profile photo URL when the member has set one. */
+        val userPhotoUrls: StateFlow<Map<String, String?>> =
+            userRepository
+                .observeUsers()
+                .map { users -> users.associate { it.id to it.photoUrl } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
         private val _uiState = MutableStateFlow(GroupsUiState())
         val uiState: StateFlow<GroupsUiState> = _uiState.asStateFlow()
 

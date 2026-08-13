@@ -33,6 +33,6 @@ class DefaultCategoriesTest {
         val names = DefaultCategories.ALL.map { it.name.lowercase() }
         assertEquals(ids.size, ids.toSet().size)
         assertEquals(names.size, names.toSet().size)
-        assertEquals(6, DefaultCategories.ALL.size)
+        assertEquals(8, DefaultCategories.ALL.size)
     }
 }

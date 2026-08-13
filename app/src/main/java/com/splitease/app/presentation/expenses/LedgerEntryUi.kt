@@ -17,12 +17,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Train
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -236,6 +238,8 @@ fun categoryIcon(iconKey: String?): ImageVector =
     when (iconKey) {
         "category_food" -> Icons.Filled.Restaurant
         "category_travel" -> Icons.Filled.Flight
+        "category_bus" -> Icons.Filled.DirectionsBus
+        "category_train" -> Icons.Filled.Train
         "category_home", "category_rent" -> Icons.Filled.Home
         "category_entertainment" -> Icons.Filled.Movie
         "category_utilities" -> Icons.Filled.Bolt

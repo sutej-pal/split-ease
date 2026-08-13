@@ -62,6 +62,7 @@ import javax.inject.Inject
 data class ExpensesUiState(
     val isRefreshing: Boolean = false,
     val isSubmitting: Boolean = false,
+    val isAttachingPhotos: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
 )
@@ -119,12 +120,14 @@ data class ExpenseSplitLineUi(
     val percentage: BigDecimal? = null,
     val shares: Int? = null,
     val adjustmentAmount: BigDecimal? = null,
+    val photoUrl: String? = null,
 )
 
 data class ExpenseDetailUi(
     val expense: Expense,
     val splits: List<ExpenseSplitLineUi>,
     val payerLabel: String,
+    val payerPhotoUrl: String? = null,
     val groupName: String?,
     val categoryName: String,
     val categoryIconKey: String,
@@ -149,6 +152,8 @@ data class ExpensePhotoUi(
     val id: String,
     val displayUri: String,
     val createdAtEpochMs: Long,
+    val createdByUserId: String,
+    val authorLabel: String,
 )
 
 private data class LedgerSource(
@@ -202,6 +207,13 @@ class ExpensesViewModel
 
         /** Reactive signed-in user id for Compose collectors. */
         val signedInUserId: StateFlow<String?> = userId
+
+        /** Seeds any missing built-in categories (e.g. Bus/Train added in a later release). */
+        fun ensureDefaultCategories() {
+            viewModelScope.launch {
+                runCatching { categoryRepository.ensureDefaults() }
+            }
+        }
 
         suspend fun getGroupName(groupId: String): String? =
             groupRepository.getGroupById(groupId)?.name
@@ -589,6 +601,7 @@ class ExpensesViewModel
             if (_uiState.value.isSubmitting) return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                runCatching { categoryRepository.ensureDefaults() }
                 if (paidByUserId.isBlank() || participantIds.isEmpty()) {
                     _uiState.update {
                         it.copy(
@@ -691,6 +704,8 @@ class ExpensesViewModel
                                         val (groupExpenses, splitsByExpense) = groupLedger
                                         val userNames =
                                             core.users.associateBy({ it.id }, { it.displayName })
+                                        val userPhotos =
+                                            core.users.associateBy({ it.id }, { it.photoUrl })
                                         val friendNames =
                                             core.friends.associateBy(
                                                 { it.friendUserId },
@@ -724,6 +739,19 @@ class ExpensesViewModel
                                                     monthCount = 3,
                                                 )
                                             }
+                                        val payerIds =
+                                            run {
+                                                val payers =
+                                                    core.splits.filter {
+                                                        (it.paidAmount ?: BigDecimal.ZERO) >
+                                                            BigDecimal.ZERO
+                                                    }
+                                                when {
+                                                    payers.size > 1 -> emptyList()
+                                                    payers.size == 1 -> listOf(payers.first().userId)
+                                                    else -> listOf(core.expense.paidByUserId)
+                                                }
+                                            }
                                         ExpenseDetailUi(
                                             expense = core.expense,
                                             splits =
@@ -736,26 +764,19 @@ class ExpensesViewModel
                                                         percentage = split.percentage,
                                                         shares = split.shares,
                                                         adjustmentAmount = split.adjustmentAmount,
+                                                        photoUrl = userPhotos[split.userId],
                                                     )
                                                 },
                                             payerLabel =
-                                                run {
-                                                    val payers =
-                                                        core.splits.filter {
-                                                            (it.paidAmount ?: BigDecimal.ZERO) >
-                                                                BigDecimal.ZERO
-                                                        }
-                                                    when {
-                                                        payers.size > 1 ->
-                                                            appContext.getString(
-                                                                R.string.expense_multiple_people,
-                                                            )
-                                                        payers.size == 1 ->
-                                                            nameOf(payers.first().userId)
-                                                        else ->
-                                                            nameOf(core.expense.paidByUserId)
-                                                    }
+                                                if (payerIds.size == 1) {
+                                                    nameOf(payerIds.first())
+                                                } else {
+                                                    appContext.getString(
+                                                        R.string.expense_multiple_people,
+                                                    )
                                                 },
+                                            payerPhotoUrl =
+                                                payerIds.singleOrNull()?.let { userPhotos[it] },
                                             groupName =
                                                 groupId?.let { gid ->
                                                     core.groups.firstOrNull { it.id == gid }?.name
@@ -832,22 +853,55 @@ class ExpensesViewModel
             }
         }
 
-        /** Observes receipt photos attached to an expense. */
+        /** Observes attachments (receipt images) on an expense. */
+        @OptIn(ExperimentalCoroutinesApi::class)
         fun observeExpensePhotos(expenseId: String): StateFlow<List<ExpensePhotoUi>> {
             if (expenseId.isBlank()) return emptyExpensePhotos
             return expensePhotoFlows.getOrPut(expenseId) {
-                expensePhotoRepository
-                    .observeForExpense(expenseId)
-                    .map { photos ->
-                        photos.mapNotNull { photo ->
-                            val uri = photo.displayUri() ?: return@mapNotNull null
-                            ExpensePhotoUi(
-                                id = photo.id,
-                                displayUri = uri,
-                                createdAtEpochMs = photo.createdAtEpochMs,
-                            )
+                userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(emptyList())
+                        } else {
+                            combine(
+                                expensePhotoRepository.observeForExpense(expenseId),
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                            ) { photos, users, friends ->
+                                val userNames = users.associateBy({ it.id }, { it.displayName })
+                                val friendNames =
+                                    friends.associateBy({ it.friendUserId }, { it.displayNameSnapshot })
+                                photos.mapNotNull { photo ->
+                                    val uri = photo.displayUri() ?: return@mapNotNull null
+                                    ExpensePhotoUi(
+                                        id = photo.id,
+                                        displayUri = uri,
+                                        createdAtEpochMs = photo.createdAtEpochMs,
+                                        createdByUserId = photo.createdByUserId,
+                                        authorLabel =
+                                            nameOf(
+                                                photo.createdByUserId,
+                                                me,
+                                                friendNames,
+                                                userNames,
+                                            ),
+                                    )
+                                }
+                            }
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            }
+        }
+
+        /**
+         * Pulls comments and attachments for [expenseId] from the cloud so photos added
+         * by other group members appear on this device.
+         */
+        fun refreshExpenseSideData(expenseId: String) {
+            val id = expenseId.trim()
+            if (id.isEmpty()) return
+            viewModelScope.launch {
+                runCatching { expenseInteractor.refreshExpenseSideData(id) }
             }
         }
 
@@ -891,9 +945,9 @@ class ExpensesViewModel
             }
         }
 
-        fun addExpensePhoto(
+        fun addExpenseAttachments(
             expenseId: String,
-            croppedPhotoUri: String,
+            photoUris: List<String>,
         ) {
             val actor = userId.value
             if (actor.isNullOrBlank()) {
@@ -902,21 +956,34 @@ class ExpensesViewModel
                 }
                 return
             }
+            if (photoUris.isEmpty()) return
+            if (_uiState.value.isAttachingPhotos) return
             viewModelScope.launch {
+                _uiState.update { it.copy(isAttachingPhotos = true, errorMessage = null) }
                 val result =
-                    expenseInteractor.addExpensePhoto(
+                    expenseInteractor.addExpenseAttachments(
                         expenseId = expenseId,
-                        croppedPhotoUri = croppedPhotoUri,
+                        photoUris = photoUris,
                         actorUserId = actor,
                     )
-                if (result.isFailure) {
-                    _uiState.update {
-                        it.copy(
-                            errorMessage =
-                                result.exceptionOrNull()?.message
-                                    ?: appContext.getString(R.string.msg_photo_failed),
-                        )
-                    }
+                val payload = result.getOrNull()
+                _uiState.update {
+                    it.copy(
+                        isAttachingPhotos = false,
+                        errorMessage =
+                            when {
+                                result.isFailure ->
+                                    result.exceptionOrNull()?.message
+                                        ?: appContext.getString(R.string.msg_photo_failed)
+                                payload != null && payload.failedCount > 0 ->
+                                    appContext.getString(
+                                        R.string.msg_attachments_partial,
+                                        payload.addedCount,
+                                        payload.addedCount + payload.failedCount,
+                                    )
+                                else -> it.errorMessage
+                            },
+                    )
                 }
             }
         }
@@ -951,6 +1018,7 @@ class ExpensesViewModel
             if (_uiState.value.isSubmitting) return
             viewModelScope.launch {
                 _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+                runCatching { categoryRepository.ensureDefaults() }
                 if (paidByUserId.isBlank() || participantIds.isEmpty()) {
                     _uiState.update {
                         it.copy(

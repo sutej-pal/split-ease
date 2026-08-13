@@ -18,7 +18,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Report
@@ -49,6 +48,7 @@ import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.presentation.theme.AmberLight
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
@@ -70,6 +70,7 @@ fun FriendSettingsScreen(
 ) {
     val friend by viewModel.friend.collectAsStateWithLifecycle()
     val sharedGroups by viewModel.sharedGroups.collectAsStateWithLifecycle()
+    val photoUrl by viewModel.photoUrl.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showRemoveConfirm by rememberSaveable { mutableStateOf(false) }
     var showSharedGroupsBlock by rememberSaveable { mutableStateOf(false) }
@@ -116,7 +117,7 @@ fun FriendSettingsScreen(
                         .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp),
             ) {
-                FriendSettingsHeader(friend = friend)
+                FriendSettingsHeader(friend = friend, photoUrl = photoUrl)
 
                 if (viewModel.isPendingInvite() && friend != null) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -267,7 +268,10 @@ fun FriendSettingsScreen(
 }
 
 @Composable
-private fun FriendSettingsHeader(friend: Friend?) {
+private fun FriendSettingsHeader(
+    friend: Friend?,
+    photoUrl: String?,
+) {
     val name = friend
         ?.displayNameSnapshot
         ?.removeSuffix(" (invited)")
@@ -281,10 +285,11 @@ private fun FriendSettingsHeader(friend: Friend?) {
                 .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SeIconTile(
-            icon = Icons.Filled.Email,
-            tint = SplitEaseColors.NavyMuted,
-            size = 64,
+        SeAvatarBadge(
+            name = name.ifBlank { stringResource(R.string.friends_title) },
+            photoUrl = photoUrl,
+            size = 64.dp,
+            borderWidth = 0.dp,
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {

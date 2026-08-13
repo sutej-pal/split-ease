@@ -488,45 +488,12 @@ private fun TotalsPeriodBar(
 
 @Composable
 private fun TotalsTermsDialog(onDismiss: () -> Unit) {
-    SeModal(onDismissRequest = onDismiss) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(SplitEaseColors.Primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "?",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopEnd),
-            ) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(R.string.action_close),
-                    tint = SplitEaseColors.Navy,
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.totals_terms_title),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = SplitEaseColors.Navy,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Start,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+    SeModal(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.totals_terms_title),
+        icon = Icons.Filled.HelpOutline,
+        dismissLabel = stringResource(R.string.action_close),
+    ) {
         TermsLine(
             term = stringResource(R.string.totals_total_spent),
             definition = stringResource(R.string.totals_terms_total_spent_body),
@@ -535,12 +502,6 @@ private fun TotalsTermsDialog(onDismiss: () -> Unit) {
         TermsLine(
             term = stringResource(R.string.totals_your_share),
             definition = stringResource(R.string.totals_terms_your_share_body),
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        SePrimaryButton(
-            text = stringResource(R.string.action_close),
-            onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
