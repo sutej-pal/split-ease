@@ -26,6 +26,19 @@ class PaymentRemoteDataSource
         }
 
         /**
+         * Deletes a payment row.
+         *
+         * @param paymentId Payment id.
+         */
+        suspend fun delete(paymentId: String) {
+            supabase.from("payments").delete {
+                filter {
+                    eq("id", paymentId)
+                }
+            }
+        }
+
+        /**
          * Fetches payments where [userId] is the payer or payee.
          *
          * @param userId Current user id.

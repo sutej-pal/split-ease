@@ -6,6 +6,7 @@ import com.splitease.app.data.media.LocalMediaCleanup
 import com.splitease.app.data.media.MediaStorageCleanup
 import com.splitease.app.data.pinboard.PinBoardInteractor
 import com.splitease.app.data.remote.GroupCoverStorage
+import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
@@ -64,6 +65,7 @@ class SocialInteractor
         private val pinBoardInteractor: PinBoardInteractor,
         private val expenseInteractor: com.splitease.app.data.expense.ExpenseInteractor,
         private val mailRepository: MailRepository,
+        private val paymentRemote: PaymentRemoteDataSource,
     ) {
         /**
          * Removes a friend, deletes non-group expenses/payments between the two users,
@@ -84,19 +86,25 @@ class SocialInteractor
 
                 inviteRepository.getByFriendRowId(friend.id)?.let { invite ->
                     if (invite.status == InviteStatus.PENDING) {
-                        inviteRepository.markStatus(invite, InviteStatus.CANCELLED)
+                        cancelInviteAndPush(invite)
                     }
                 }
 
                 expenseRepository.observeBetweenUsers(ownerUserId, friendUserId).first().forEach { expense ->
-                    expenseInteractor.purgeExpenseMedia(expense.id)
-                    expenseRepository.deleteExpenseById(expense.id)
+                    runCatching {
+                        expenseInteractor.deleteExpense(expense.id, actorUserId = ownerUserId).getOrThrow()
+                    }.onFailure {
+                        // Fall back to local+media cleanup if remote delete fails mid-remove.
+                        expenseInteractor.purgeExpenseMedia(expense.id)
+                        expenseRepository.deleteExpenseById(expense.id)
+                    }
                 }
                 paymentRepository
                     .observeBetweenUsers(ownerUserId, friendUserId)
                     .first()
                     .filter { it.groupId == null }
                     .forEach { payment ->
+                        runCatching { paymentRemote.delete(payment.id) }
                         paymentRepository.deleteById(payment.id)
                     }
 
@@ -191,7 +199,7 @@ class SocialInteractor
 
                 inviteRepository.getByFriendRowId(friend.id)?.let { invite ->
                     if (invite.status == InviteStatus.PENDING) {
-                        inviteRepository.markStatus(invite, InviteStatus.CANCELLED)
+                        cancelInviteAndPush(invite)
                     }
                 }
                 friendRepository.deleteById(friend.id)
@@ -384,16 +392,7 @@ class SocialInteractor
         private suspend fun cancelPendingGroupShareLinks(groupId: String) {
             val pending = inviteRepository.getGroupShareInvites(groupId)
             for (invite in pending) {
-                val cancelled =
-                    invite.copy(
-                        status = InviteStatus.CANCELLED,
-                        syncStatus = SyncStatus.PENDING,
-                    )
-                inviteRepository.upsert(cancelled)
-                runCatching {
-                    remote.upsertInvite(cancelled.toDto())
-                    inviteRepository.upsert(cancelled.copy(syncStatus = SyncStatus.SYNCED))
-                }
+                cancelInviteAndPush(invite)
             }
         }
 
@@ -686,7 +685,17 @@ class SocialInteractor
          */
         suspend fun refreshSentInvites(inviterUserId: String) {
             remote.fetchInvitesSentBy(inviterUserId).forEach { dto ->
-                inviteRepository.upsert(dto.toDomain())
+                val remoteInvite = dto.toDomain()
+                val local = inviteRepository.getByToken(remoteInvite.token)
+                // Do not resurrect a locally cancelled invite that still needs flush.
+                if (
+                    local != null &&
+                    local.status == InviteStatus.CANCELLED &&
+                    local.syncStatus == SyncStatus.PENDING
+                ) {
+                    return@forEach
+                }
+                inviteRepository.upsert(remoteInvite)
             }
             reconcileJoinedInvitees(inviterUserId)
         }
@@ -777,7 +786,9 @@ class SocialInteractor
 
             if (invite.kind == InviteKind.GROUP && !invite.groupId.isNullOrBlank()) {
                 val groupId = invite.groupId
-                if (groupRepository.getMember(groupId, profile.id) == null) {
+                val existingMember = groupRepository.getMember(groupId, profile.id)
+                if (existingMember == null) {
+                    // PENDING until cloud upsert succeeds so flushPending can retry.
                     val member =
                         GroupMember(
                             id = UUID.randomUUID().toString(),
@@ -785,10 +796,25 @@ class SocialInteractor
                             userId = profile.id,
                             role = MemberRole.MEMBER,
                             joinedAtEpochMs = now,
-                            syncStatus = SyncStatus.SYNCED,
+                            syncStatus = SyncStatus.PENDING,
                         )
                     groupRepository.upsertMember(member)
-                    runCatching { remote.upsertGroupMember(member.toDto()) }
+                    runCatching {
+                        ensureGroupSyncedToCloud(groupId, ownerUserId)
+                        remote.upsertGroupMember(member.toDto())
+                        groupRepository.upsertMember(member.copy(syncStatus = SyncStatus.SYNCED))
+                    }
+                } else if (
+                    existingMember.syncStatus != SyncStatus.SYNCED &&
+                    existingMember.syncStatus != SyncStatus.LOCAL_ONLY
+                ) {
+                    runCatching {
+                        ensureGroupSyncedToCloud(groupId, ownerUserId)
+                        remote.upsertGroupMember(existingMember.toDto())
+                        groupRepository.upsertMember(
+                            existingMember.copy(syncStatus = SyncStatus.SYNCED),
+                        )
+                    }
                 }
             }
 
@@ -1292,14 +1318,16 @@ class SocialInteractor
                 }
             return AddPersonOutcome(
                 friend = friend,
-                inviteShareText = if (emailSent) null else shareText,
+                // Already-synced reuse must not look like a failed email (share sheet).
+                inviteShareText = if (emailSent || !shouldSendEmail) null else shareText,
                 isInvitePending = true,
                 inviteEmailSent = emailSent,
             )
         }
 
         /**
-         * Removes the current user from a group. If they are the last member, deletes the group.
+         * Removes the current user from a group. If they are the last member, dissolves the group
+         * (even when they are not the original creator).
          *
          * @param groupId Group id.
          * @param userId User leaving.
@@ -1311,7 +1339,8 @@ class SocialInteractor
                         ?: error("You are not a member of this group.")
                 val members = groupRepository.observeMembers(groupId).first()
                 if (members.size <= 1) {
-                    deleteGroup(groupId, userId).getOrThrow()
+                    // Last remaining member may not be createdByUserId after the owner left.
+                    purgeAndDeleteGroup(groupId)
                     return@runCatching
                 }
                 groupRepository.deleteMemberById(member.id)
@@ -1392,16 +1421,42 @@ class SocialInteractor
                 require(group.createdByUserId == requesterId) {
                     "Only the group owner can delete this group."
                 }
-                val expenses = expenseRepository.observeExpenses(groupId).first()
-                expenses.forEach { expense ->
-                    expenseInteractor.purgeExpenseMedia(expense.id)
-                }
-                val pinBoardContent =
-                    runCatching { pinBoardInteractor.load(groupId).content }.getOrNull()
-                mediaStorageCleanup.purgeGroupMedia(group, pinBoardContent)
-                groupRepository.deleteGroupById(groupId)
-                runCatching { remote.deleteGroup(groupId) }
+                purgeAndDeleteGroup(groupId)
             }
+
+        /**
+         * Removes the group from cloud (best-effort), then purges media and local rows.
+         * Cloud delete runs first so a failed remote delete does not leave other members
+         * with a live group whose Storage objects were already wiped.
+         */
+        private suspend fun purgeAndDeleteGroup(groupId: String) {
+            val group =
+                groupRepository.getGroupById(groupId)
+                    ?: error("Group not found.")
+            runCatching { remote.deleteGroup(groupId) }
+            val expenses = expenseRepository.observeExpenses(groupId).first()
+            expenses.forEach { expense ->
+                expenseInteractor.purgeExpenseMedia(expense.id)
+            }
+            val pinBoardContent =
+                runCatching { pinBoardInteractor.load(groupId).content }.getOrNull()
+            mediaStorageCleanup.purgeGroupMedia(group, pinBoardContent)
+            groupRepository.deleteGroupById(groupId)
+        }
+
+        /** Cancels an invite locally and pushes CANCELLED so the token cannot be claimed. */
+        private suspend fun cancelInviteAndPush(invite: Invite) {
+            val cancelled =
+                invite.copy(
+                    status = InviteStatus.CANCELLED,
+                    syncStatus = SyncStatus.PENDING,
+                )
+            inviteRepository.upsert(cancelled)
+            runCatching {
+                remote.upsertInvite(cancelled.toDto())
+                inviteRepository.upsert(cancelled.copy(syncStatus = SyncStatus.SYNCED))
+            }
+        }
 
         /**
          * Fast Home paint: pulls group rows + the current user's memberships only.

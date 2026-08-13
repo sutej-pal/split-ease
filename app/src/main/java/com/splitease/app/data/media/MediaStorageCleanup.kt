@@ -32,9 +32,8 @@ class MediaStorageCleanup
             expenseId: String,
             photos: List<ExpensePhoto>,
         ) {
-            if (photos.isNotEmpty()) {
-                receiptStorage.deleteAllForExpense(expenseId, photos.map { it.id })
-            }
+            // Always attempt Storage cleanup — Room may be empty while objects still exist.
+            receiptStorage.deleteAllForExpense(expenseId, photos.map { it.id })
             photos.forEach { photo ->
                 photo.remoteUrl?.let { AvatarImageIO.evictRemoteCache(context, it) }
                 LocalMediaCleanup.deleteLocalFile(context, photo.localPath)

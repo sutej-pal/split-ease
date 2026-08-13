@@ -112,13 +112,31 @@ interface ExpenseDao {
         """
         SELECT e.* FROM expenses e
         WHERE e.groupId IS NULL
-          AND EXISTS (
-            SELECT 1 FROM expense_splits s1
-            WHERE s1.expenseId = e.id AND s1.userId = :userId
-          )
-          AND EXISTS (
-            SELECT 1 FROM expense_splits s2
-            WHERE s2.expenseId = e.id AND s2.userId = :otherUserId
+          AND (
+            (
+              EXISTS (
+                SELECT 1 FROM expense_splits s1
+                WHERE s1.expenseId = e.id AND s1.userId = :userId
+              )
+              AND EXISTS (
+                SELECT 1 FROM expense_splits s2
+                WHERE s2.expenseId = e.id AND s2.userId = :otherUserId
+              )
+            )
+            OR (
+              e.paidByUserId = :userId
+              AND EXISTS (
+                SELECT 1 FROM expense_splits s
+                WHERE s.expenseId = e.id AND s.userId = :otherUserId
+              )
+            )
+            OR (
+              e.paidByUserId = :otherUserId
+              AND EXISTS (
+                SELECT 1 FROM expense_splits s
+                WHERE s.expenseId = e.id AND s.userId = :userId
+              )
+            )
           )
         ORDER BY e.expenseDateEpochMs DESC
         """,

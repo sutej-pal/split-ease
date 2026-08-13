@@ -328,7 +328,26 @@ class ExpenseInteractor
          * Used before bulk deletes (group / friend removal) where Room cascades later.
          */
         suspend fun purgeExpenseMedia(expenseId: String) {
-            val photos = expensePhotoRepository.getForExpense(expenseId)
+            val localPhotos = expensePhotoRepository.getForExpense(expenseId)
+            val photos =
+                if (localPhotos.isNotEmpty()) {
+                    localPhotos
+                } else {
+                    // Local metadata missing — still need Storage keys from PostgREST when possible.
+                    runCatching {
+                        remote.fetchPhotos(expenseId).map { dto ->
+                            ExpensePhoto(
+                                id = dto.id,
+                                expenseId = dto.expenseId,
+                                createdByUserId = dto.createdByUserId,
+                                localPath = null,
+                                remoteUrl = dto.remoteUrl,
+                                createdAtEpochMs = dto.createdAtEpochMs,
+                                syncStatus = SyncStatus.SYNCED,
+                            )
+                        }
+                    }.getOrDefault(emptyList())
+                }
             mediaStorageCleanup.purgeExpenseAttachments(expenseId, photos)
         }
 
@@ -856,6 +875,9 @@ class ExpenseInteractor
         /**
          * Marks the parent expense as updated so group Realtime listeners refresh and
          * other members pull new comments/photos.
+         *
+         * Upserts the expense row only — does not rewrite splits (that would clobber
+         * newer remote edits made on another device).
          */
         private suspend fun touchExpenseForSideData(expenseId: String) {
             val expense = expenseRepository.getExpenseById(expenseId) ?: return
@@ -868,10 +890,24 @@ class ExpenseInteractor
                 )
             expenseRepository.upsertExpenseWithSplits(bumped, splits)
             runCatching {
-                pushExpense(bumped, splits)
+                remote.upsertExpense(
+                    ExpenseDto(
+                        id = bumped.id,
+                        description = bumped.description,
+                        amount = bumped.amount.toPlainString(),
+                        currencyCode = bumped.currencyCode,
+                        categoryId = categoryRepository.categoryIdForCloud(bumped.categoryId),
+                        paidByUserId = bumped.paidByUserId,
+                        groupId = bumped.groupId,
+                        expenseDateEpochMs = bumped.expenseDateEpochMs,
+                        splitType = bumped.splitType.name,
+                        notes = bumped.notes,
+                        updatedAtEpochMs = bumped.updatedAtEpochMs,
+                    ),
+                )
                 expenseRepository.upsertExpenseWithSplits(
                     bumped.copy(syncStatus = SyncStatus.SYNCED, remoteId = bumped.id),
-                    splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
+                    splits,
                 )
             }
         }

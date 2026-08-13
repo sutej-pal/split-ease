@@ -2,6 +2,7 @@ package com.splitease.app.domain.repository
 
 import com.splitease.app.domain.model.Invite
 import com.splitease.app.domain.model.InviteStatus
+import com.splitease.app.domain.model.SyncStatus
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -67,11 +68,12 @@ interface InviteRepository {
     suspend fun upsert(invite: Invite)
 
     /**
-     * Convenience update of status.
+     * Convenience update of status. Marks [SyncStatus.PENDING] so cancellation / acceptance
+     * is flushed to Supabase (a SYNCED CANCELLED row is never pushed and can be resurrected).
      *
      * @param invite Invite with new [InviteStatus].
      */
     suspend fun markStatus(invite: Invite, status: InviteStatus) {
-        upsert(invite.copy(status = status))
+        upsert(invite.copy(status = status, syncStatus = SyncStatus.PENDING))
     }
 }

@@ -47,13 +47,24 @@ class ExpenseReceiptStorage
             }
         }
 
-        /** Deletes all receipt objects for [expenseId] (no-op when [photoIds] is empty). */
+        /** Deletes all receipt objects for [expenseId]. Uses [photoIds] when known; otherwise lists the folder. */
         suspend fun deleteAllForExpense(
             expenseId: String,
             photoIds: Collection<String>,
         ) {
-            if (photoIds.isEmpty()) return
-            val paths = photoIds.map { objectPath(expenseId, it) }
+            val knownPaths = photoIds.map { objectPath(expenseId, it) }
+            val listedPaths =
+                runCatching {
+                    supabase.storage
+                        .from(BUCKET)
+                        .list(expenseId)
+                        .mapNotNull { item ->
+                            val name = item.name.trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+                            "$expenseId/$name"
+                        }
+                }.getOrDefault(emptyList())
+            val paths = (knownPaths + listedPaths).distinct()
+            if (paths.isEmpty()) return
             runCatching {
                 supabase.storage.from(BUCKET).delete(paths)
             }
