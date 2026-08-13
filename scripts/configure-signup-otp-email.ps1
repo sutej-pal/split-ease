@@ -34,7 +34,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $localProps = Join-Path $repoRoot 'local.properties'
-$templatePath = Join-Path $repoRoot 'docs\supabase-confirm-signup-otp.html'
+$templatePathCandidates = @(
+    (Join-Path $repoRoot '..\server\mail-templates\supabase\confirm-signup.html'),
+    (Join-Path $repoRoot 'docs\supabase-confirm-signup-otp.html')
+)
+$templatePath = $templatePathCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $templatePath) {
+    throw "Confirm-signup template not found. Expected server/mail-templates/supabase/confirm-signup.html"
+}
 
 function Read-LocalProperty([string]$name) {
     if (-not (Test-Path $localProps)) { return $null }

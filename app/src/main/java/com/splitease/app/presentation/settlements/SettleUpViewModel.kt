@@ -8,6 +8,8 @@ import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.payment.RecordPaymentInput
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
+import com.splitease.app.domain.repository.FriendRepository
+import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,9 +24,19 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 
+data class SettlePartyUi(
+    val userId: String,
+    val displayName: String,
+    val email: String?,
+    val photoUrl: String?,
+)
+
 data class SettleUpUiState(
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
+    val payer: SettlePartyUi? = null,
+    val payee: SettlePartyUi? = null,
+    val isReady: Boolean = false,
 )
 
 @HiltViewModel
@@ -34,9 +46,11 @@ class SettleUpViewModel
         authRepository: AuthRepository,
         private val paymentInteractor: PaymentInteractor,
         private val appSettingsRepository: AppSettingsRepository,
+        private val userRepository: UserRepository,
+        private val friendRepository: FriendRepository,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
-        private val userId: StateFlow<String?> =
+        val currentUserId: StateFlow<String?> =
             authRepository
                 .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
@@ -45,7 +59,31 @@ class SettleUpViewModel
         private val _uiState = MutableStateFlow(SettleUpUiState())
         val uiState: StateFlow<SettleUpUiState> = _uiState.asStateFlow()
 
-        fun currentUserId(): String? = userId.value
+        fun prepare(
+            fromUserId: String,
+            toUserId: String,
+            fromLabel: String,
+            toLabel: String,
+        ) {
+            viewModelScope.launch {
+                val youLabel = appContext.getString(R.string.you_label)
+                val payer =
+                    resolveParty(
+                        userId = fromUserId,
+                        fallbackName = fromLabel,
+                        youLabel = youLabel,
+                    )
+                val payee =
+                    resolveParty(
+                        userId = toUserId,
+                        fallbackName = toLabel,
+                        youLabel = youLabel,
+                    )
+                _uiState.update {
+                    it.copy(payer = payer, payee = payee, isReady = true, errorMessage = null)
+                }
+            }
+        }
 
         fun recordSettlement(
             fromUserId: String,
@@ -92,5 +130,34 @@ class SettleUpViewModel
                 }
                 if (result.isSuccess) onSuccess()
             }
+        }
+
+        private suspend fun resolveParty(
+            userId: String,
+            fallbackName: String,
+            youLabel: String,
+        ): SettlePartyUi {
+            val user = userRepository.getUserById(userId)
+            val friend = friendRepository.getByFriendUserId(userId)
+            val name =
+                when {
+                    !user?.displayName.isNullOrBlank() -> user!!.displayName.trim()
+                    !friend?.displayNameSnapshot.isNullOrBlank() ->
+                        friend!!.displayNameSnapshot.trim()
+                    fallbackName.isNotBlank() && !fallbackName.equals(youLabel, ignoreCase = true) ->
+                        fallbackName.trim()
+                    else -> userId.take(8)
+                }
+            val email =
+                listOfNotNull(user?.email, friend?.emailSnapshot)
+                    .map { it.trim() }
+                    .firstOrNull { it.contains("@") && !it.endsWith("@splitease.invalid", true) }
+            val photo = user?.photoUrl?.trim()?.takeIf { it.isNotEmpty() }
+            return SettlePartyUi(
+                userId = userId,
+                displayName = name,
+                email = email,
+                photoUrl = photo,
+            )
         }
     }

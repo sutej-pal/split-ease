@@ -37,4 +37,22 @@ interface MailRepository {
         groupName: String?,
         token: String,
     ): Result<Unit>
+    /**
+     * Sends a balance reminder email to one or more recipients.
+     *
+     * Used when reminding someone about a simplified debt; callers typically
+     * send to both parties so each has a copy.
+     *
+     * @param toEmails Recipient addresses (invalid / blank entries are skipped).
+     * @param subject Email subject.
+     * @param body Editable plain-text message body.
+     * @param settleUpNote Footer note / settle-up link text appended after the body.
+     * @return [Result] success when at least one send succeeds; failure otherwise.
+     */
+    suspend fun sendBalanceReminderEmail(
+        toEmails: List<String>,
+        subject: String,
+        body: String,
+        settleUpNote: String,
+    ): Result<Unit>
 }

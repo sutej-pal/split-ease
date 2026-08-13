@@ -13,9 +13,9 @@ Use before uploading a Play Console build.
 ## Supabase production
 - [ ] Confirm email **ON** in Authentication → Providers → Email
 - [ ] Email OTP length = 6 (Auth → Providers → Email, or `mailer_otp_length`)
-- [ ] Confirm signup email template includes `{{ .Token }}` (paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) or run `scripts/configure-signup-otp-email.ps1`)
+- [ ] Confirm signup email template includes `{{ .Token }}` (paste [server/mail-templates/supabase/confirm-signup.html](../../server/mail-templates/supabase/confirm-signup.html) or run `scripts/configure-signup-otp-email.ps1`)
 - [ ] Redirect URL allow-list includes `splitease://auth-callback` (legacy / other Auth redirects; **not** required for signup or password-reset OTP)
-- [ ] mail-service redeployed with recovery OTP template (or Reset password dashboard template includes `{{ .Token }}` — [supabase-reset-password-otp.html](supabase-reset-password-otp.html))
+- [ ] mail-service / SplitEase Server redeployed with recovery OTP template (or Reset password dashboard template includes `{{ .Token }}` — [server/mail-templates/supabase/reset-password.html](../../server/mail-templates/supabase/reset-password.html))
 - [ ] Site URL set to a real landing or Play listing URL
 - [ ] Fresh DB SQL applied via [migration_db.sql](sql/migration_db.sql) (profiles, groups, invites, expenses, payments, RLS, realtime, device tokens, auth RPCs) — verified
 - [ ] FCM configured when using push ([fcm-setup.md](fcm-setup.md); notify triggers are in migration_db.sql and no-op until settings are set)

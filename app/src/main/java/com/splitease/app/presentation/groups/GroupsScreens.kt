@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -937,41 +938,46 @@ internal fun GroupOverallBalanceBlock(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(enabled = canExpand) { expanded = !expanded }
-                .padding(horizontal = SeLayout.detailHorizontal, vertical = 14.dp),
+                .clickable(enabled = canExpand) { expanded = !expanded },
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+        HorizontalDivider(color = SplitEaseColors.Outline)
+        Column(
+            modifier =
+                Modifier.padding(horizontal = SeLayout.detailHorizontal, vertical = 14.dp),
         ) {
-            Box(modifier = Modifier.weight(1f)) {
-                GroupOverallHeadline(
-                    nets = nets,
-                    currencyFallback = currencyFallback.ifBlank { AppCurrencies.DEFAULT },
-                )
-            }
-            if (canExpand) {
-                Icon(
-                    imageVector =
-                        if (expanded) {
-                            Icons.Filled.KeyboardArrowUp
-                        } else {
-                            Icons.Filled.KeyboardArrowDown
-                        },
-                    contentDescription = stringResource(R.string.cd_toggle_balance_details),
-                    tint = SplitEaseColors.NavyMuted,
-                )
-            }
-        }
-        AnimatedVisibility(visible = canExpand && expanded) {
-            Column(modifier = Modifier.padding(top = 4.dp)) {
-                myDebts.forEachIndexed { index, debt ->
-                    GroupOverallDebtTreeRow(
-                        debt = debt,
-                        isLast = index == myDebts.lastIndex,
-                        currentUserId = currentUserId,
-                        youLabel = youLabel,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    GroupOverallHeadline(
+                        nets = nets,
+                        currencyFallback = currencyFallback.ifBlank { AppCurrencies.DEFAULT },
                     )
+                }
+                if (canExpand) {
+                    Icon(
+                        imageVector =
+                            if (expanded) {
+                                Icons.Filled.KeyboardArrowUp
+                            } else {
+                                Icons.Filled.KeyboardArrowDown
+                            },
+                        contentDescription = stringResource(R.string.cd_toggle_balance_details),
+                        tint = SplitEaseColors.NavyMuted,
+                    )
+                }
+            }
+            AnimatedVisibility(visible = canExpand && expanded) {
+                Column(modifier = Modifier.padding(top = 4.dp)) {
+                    myDebts.forEachIndexed { index, debt ->
+                        GroupOverallDebtTreeRow(
+                            debt = debt,
+                            isLast = index == myDebts.lastIndex,
+                            currentUserId = currentUserId,
+                            youLabel = youLabel,
+                        )
+                    }
                 }
             }
         }

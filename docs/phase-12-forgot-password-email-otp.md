@@ -40,7 +40,7 @@ None (Room / PostgREST unchanged).
 | File path                                     | Purpose                                            |
 | --------------------------------------------- | -------------------------------------------------- |
 | `mail-service/server.js`                      | Recovery OTP email template                        |
-| `docs/supabase-reset-password-otp.html`       | Dashboard fallback template                        |
+| `server/mail-templates/supabase/reset-password.html` | Dashboard fallback template |
 | `domain/repository/AuthRepository.kt`         | `verifyRecoveryOtp`, `updatePassword`              |
 | `data/repository/SupabaseAuthRepository.kt`   | Supabase RECOVERY verify + password update         |
 | `presentation/auth/AuthViewModel.kt`          | `RECOVERY` purpose + `completePasswordReset`       |
@@ -73,7 +73,7 @@ None (Room / PostgREST unchanged).
 
 - mail-service must be redeployed for recovery copy to reach users on Vercel.
 - Free-tier Auth email rate limits apply to recovery resend.
-- If Send Email hook is off and dashboard Reset password template still has a link only, in-app OTP will fail until `{{ .Token }}` is present (use [supabase-reset-password-otp.html](supabase-reset-password-otp.html)).
+- If Send Email hook is off and dashboard Reset password template still has a link only, in-app OTP will fail until `{{ .Token }}` is present (use [server/mail-templates/supabase/reset-password.html](../../server/mail-templates/supabase/reset-password.html)).
 
 ## Outcome
 
@@ -82,7 +82,7 @@ Updated 2026-08-04: forgot-password uses the same mail-service Send Email hook w
 - Forgot password → `requestPasswordReset` → always `ResetPasswordOtpScreen` (OTP + new password + confirm).
 - `AuthRepository.requestPasswordReset` + `verifyRecoveryOtp` + `updatePassword`.
 - mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup ("Reset your SplitEase password").
-- Fallback dashboard HTML: [supabase-reset-password-otp.html](supabase-reset-password-otp.html).
+- Fallback dashboard HTML: [server/mail-templates/supabase/reset-password.html](../../server/mail-templates/supabase/reset-password.html).
 - Unit tests cover gate arming, soft-success navigate, verify+update, generic invalid OTP, mismatch, and password-only retry after OTP success.
 
 Operator requirements:

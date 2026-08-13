@@ -208,6 +208,18 @@ class ExpensesViewModel
         /** Reactive signed-in user id for Compose collectors. */
         val signedInUserId: StateFlow<String?> = userId
 
+        /** Signed-in display name for share/remind copy (never the localized "You"). */
+        val currentUserDisplayName: StateFlow<String?> =
+            authRepository
+                .observeSession()
+                .map { session ->
+                    (session as? AuthSession.SignedIn)
+                        ?.user
+                        ?.displayName
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
         /** Seeds any missing built-in categories (e.g. Bus/Train added in a later release). */
         fun ensureDefaultCategories() {
             viewModelScope.launch {

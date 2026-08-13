@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -216,6 +217,7 @@ fun GroupsHomeScreen(
                     contentPadding = PaddingValues(bottom = 96.dp),
                 ) {
                     item {
+                        HorizontalDivider(color = SplitEaseColors.Outline)
                         OverallSummaryRow(
                             iOwe = balances?.totalIOweByCurrency.orEmpty(),
                             owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
@@ -225,7 +227,10 @@ fun GroupsHomeScreen(
                                 listFilter = it
                                 showSettledGroups = false
                             },
-                            modifier = Modifier.seDetailHorizontal(),
+                            modifier =
+                                Modifier
+                                    .seDetailHorizontal()
+                                    .padding(top = 12.dp),
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }

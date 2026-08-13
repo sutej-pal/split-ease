@@ -60,7 +60,7 @@ None (Room / PostgREST unchanged).
 ### Fallback: Supabase template (Custom SMTP / Pro only)
 1. Authentication > Providers > Email > **Confirm email** ON.
 2. Authentication > Providers > Email > **OTP length** = **6**.
-3. Authentication > Email Templates > **Confirm signup**: paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html)  
+3. Authentication > Email Templates > **Confirm signup**: paste [server/mail-templates/supabase/confirm-signup.html](../../server/mail-templates/supabase/confirm-signup.html)  
    Or run `.\scripts\configure-signup-otp-email.ps1 -TemplateOnly`.
 
 ### Manual
@@ -79,7 +79,7 @@ None (Room / PostgREST unchanged).
 - **Confirm signup email template must use `{{ .Token }}`** when *not* using the Send Email hook — the Android app cannot change Supabase mail content.
 - **Preferred ops path:** use mail-service Send Email Auth Hook (`/supabase/send-email-hook`) so Free-tier projects do not need template editing.
 - **Free-tier blocker (June 2026):** new Free projects using Supabase's **default** email provider **cannot edit auth templates** (API returns 400). Unlock editing by either:
-  1. **Custom SMTP** (recommended, free): Authentication > Emails > SMTP Settings (e.g. [Resend SMTP](https://resend.com/docs/send-with-supabase-smtp)), then paste [supabase-confirm-signup-otp.html](supabase-confirm-signup-otp.html) into Confirm signup, **or**
+  1. **Custom SMTP** (recommended, free): Authentication > Emails > SMTP Settings (e.g. [Resend SMTP](https://resend.com/docs/send-with-supabase-smtp)), then paste [confirm-signup.html](../../server/mail-templates/supabase/confirm-signup.html) into Confirm signup, **or**
   2. Upgrade to Pro, **or**
   3. Configure a Send Email Auth Hook (mail-service).
   Script: `.\scripts\configure-signup-otp-email.ps1`.

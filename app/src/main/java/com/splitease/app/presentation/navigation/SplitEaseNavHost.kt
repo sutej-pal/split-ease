@@ -68,6 +68,7 @@ import com.splitease.app.presentation.settings.CurrencySettingsScreen
 import com.splitease.app.presentation.settings.LanguageSettingsScreen
 import com.splitease.app.presentation.settings.SecuritySettingsScreen
 import com.splitease.app.presentation.settings.SettingsScreen
+import com.splitease.app.presentation.settlements.SendReminderScreen
 import com.splitease.app.presentation.settlements.SettleUpScreen
 import com.splitease.app.presentation.spending.SpendingTotalsScreen
 import com.splitease.app.presentation.welcome.WelcomeScreen
@@ -120,6 +121,9 @@ object Routes {
     const val GROUP_TOTALS = "group_totals/{groupId}"
     const val SETTLE_UP =
         "settle_up?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}&groupId={groupId}&label={label}"
+    const val SEND_REMINDER =
+        "send_reminder?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}" +
+            "&groupId={groupId}&groupName={groupName}&fromLabel={fromLabel}&toLabel={toLabel}"
 
     fun groupDetail(groupId: String) = "group_detail/$groupId"
 
@@ -201,6 +205,25 @@ object Routes {
     ): String {
         val encodedLabel = android.net.Uri.encode(label)
         return "settle_up?fromUserId=$fromUserId&toUserId=$toUserId&amount=$amount&currency=$currency&groupId=${groupId.orEmpty()}&label=$encodedLabel"
+    }
+
+    fun sendReminder(
+        fromUserId: String,
+        toUserId: String,
+        amount: String,
+        currency: String,
+        groupId: String? = null,
+        groupName: String? = null,
+        fromLabel: String,
+        toLabel: String,
+    ): String {
+        return "send_reminder?fromUserId=$fromUserId&toUserId=$toUserId" +
+            "&amount=${android.net.Uri.encode(amount)}" +
+            "&currency=${android.net.Uri.encode(currency)}" +
+            "&groupId=${groupId.orEmpty()}" +
+            "&groupName=${android.net.Uri.encode(groupName.orEmpty())}" +
+            "&fromLabel=${android.net.Uri.encode(fromLabel)}" +
+            "&toLabel=${android.net.Uri.encode(toLabel)}"
     }
 
     fun inviteLanding(token: String) = "invite_landing/${android.net.Uri.encode(token)}"
@@ -866,6 +889,20 @@ private fun SignedInNavHost(
                             ),
                         )
                     },
+                    onRemindViaApp = { from, to, amount, currency, fromLabel, toLabel, groupName ->
+                        navController.navigate(
+                            Routes.sendReminder(
+                                fromUserId = from,
+                                toUserId = to,
+                                amount = amount,
+                                currency = currency,
+                                groupId = groupId,
+                                groupName = groupName,
+                                fromLabel = fromLabel,
+                                toLabel = toLabel,
+                            ),
+                        )
+                    },
                 )
             }
             composable(
@@ -1063,6 +1100,57 @@ private fun SignedInNavHost(
                         .ifBlank { null },
                     onBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Routes.SEND_REMINDER,
+                arguments =
+                    listOf(
+                        navArgument("fromUserId") { type = NavType.StringType },
+                        navArgument("toUserId") { type = NavType.StringType },
+                        navArgument("amount") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("currency") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("groupName") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("fromLabel") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("toLabel") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+            ) { entry ->
+                fun decode(key: String): String =
+                    android.net.Uri.decode(entry.arguments?.getString(key).orEmpty())
+                SendReminderScreen(
+                    fromUserId = entry.arguments?.getString("fromUserId").orEmpty(),
+                    toUserId = entry.arguments?.getString("toUserId").orEmpty(),
+                    fromLabel = decode("fromLabel").ifBlank { "friend" },
+                    toLabel = decode("toLabel").ifBlank { "friend" },
+                    amount = decode("amount"),
+                    currencyCode = decode("currency"),
+                    groupId =
+                        entry.arguments
+                            ?.getString("groupId")
+                            .orEmpty()
+                            .ifBlank { null },
+                    groupName = decode("groupName").takeIf { it.isNotBlank() },
+                    onBack = { navController.popBackStack() },
+                    onSent = { navController.popBackStack() },
                 )
             }
         }
