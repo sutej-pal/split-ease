@@ -8,6 +8,7 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
+import com.splitease.app.presentation.friends.PendingFriendReviewStore
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -79,7 +80,7 @@ class AuthViewModelTest {
         coEvery { appSettings.setCurrencyCode(any()) } returns Unit
         coEvery { repository.isEmailRegistered(any()) } returns Result.success(false)
         coEvery { repository.isPhoneRegistered(any(), any()) } returns Result.success(false)
-        viewModel = AuthViewModel(repository, appSettings, context)
+        viewModel = AuthViewModel(repository, appSettings, PendingFriendReviewStore(), context)
     }
 
     @AfterEach

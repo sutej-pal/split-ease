@@ -3,7 +3,8 @@
 -- Safe to re-run for most objects (IF NOT EXISTS / CREATE OR REPLACE / DROP POLICY IF EXISTS).
 --
 -- Includes: profiles/friends/groups, invites, RLS helpers, expenses/splits,
--- payments/recurring columns, realtime publication, device_tokens, pin_boards,
+-- expense comments/photos, payments/recurring columns, realtime publication,
+-- device_tokens, pin_boards, Storage buckets (avatars, group covers, receipts, pin board),
 -- auth_email_registered / auth_phone_registered, reciprocal-friend + remap RPCs,
 -- share-link invite heal, optional FCM notify triggers (no-op until app.settings set).
 -- Ops: FCM Edge Function + webhooks — see docs/fcm-setup.md
@@ -791,6 +792,137 @@ create policy "expense_splits_delete"
     )
   );
 
+-- ============================================
+-- Expense comments + receipt photos
+-- ============================================
+create table if not exists public.expense_comments (
+  id uuid primary key,
+  expense_id uuid not null references public.expenses (id) on delete cascade,
+  author_user_id uuid not null,
+  body text not null,
+  kind text not null check (kind in ('USER', 'SYSTEM')),
+  created_at_epoch_ms bigint not null
+);
+
+create index if not exists expense_comments_expense_idx
+  on public.expense_comments (expense_id);
+create index if not exists expense_comments_created_idx
+  on public.expense_comments (created_at_epoch_ms);
+
+alter table public.expense_comments enable row level security;
+
+drop policy if exists "expense_comments_select" on public.expense_comments;
+drop policy if exists "expense_comments_insert" on public.expense_comments;
+drop policy if exists "expense_comments_delete" on public.expense_comments;
+
+create policy "expense_comments_select"
+  on public.expense_comments for select to authenticated
+  using (public.can_access_expense(expense_id));
+
+create policy "expense_comments_insert"
+  on public.expense_comments for insert to authenticated
+  with check (
+    author_user_id = auth.uid()
+    and public.can_access_expense(expense_id)
+  );
+
+create policy "expense_comments_delete"
+  on public.expense_comments for delete to authenticated
+  using (
+    author_user_id = auth.uid()
+    or public.can_access_expense(expense_id)
+  );
+
+create table if not exists public.expense_photos (
+  id uuid primary key,
+  expense_id uuid not null references public.expenses (id) on delete cascade,
+  created_by_user_id uuid not null,
+  remote_url text,
+  created_at_epoch_ms bigint not null
+);
+
+create index if not exists expense_photos_expense_idx
+  on public.expense_photos (expense_id);
+create index if not exists expense_photos_created_idx
+  on public.expense_photos (created_at_epoch_ms);
+
+alter table public.expense_photos enable row level security;
+
+drop policy if exists "expense_photos_select" on public.expense_photos;
+drop policy if exists "expense_photos_insert" on public.expense_photos;
+drop policy if exists "expense_photos_update" on public.expense_photos;
+drop policy if exists "expense_photos_delete" on public.expense_photos;
+
+create policy "expense_photos_select"
+  on public.expense_photos for select to authenticated
+  using (public.can_access_expense(expense_id));
+
+create policy "expense_photos_insert"
+  on public.expense_photos for insert to authenticated
+  with check (
+    created_by_user_id = auth.uid()
+    and public.can_access_expense(expense_id)
+  );
+
+create policy "expense_photos_update"
+  on public.expense_photos for update to authenticated
+  using (
+    created_by_user_id = auth.uid()
+    and public.can_access_expense(expense_id)
+  )
+  with check (
+    created_by_user_id = auth.uid()
+    and public.can_access_expense(expense_id)
+  );
+
+create policy "expense_photos_delete"
+  on public.expense_photos for delete to authenticated
+  using (
+    created_by_user_id = auth.uid()
+    or public.can_access_expense(expense_id)
+  );
+
+insert into storage.buckets (id, name, public)
+values ('expense-receipts', 'expense-receipts', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "expense_receipts_select" on storage.objects;
+drop policy if exists "expense_receipts_insert" on storage.objects;
+drop policy if exists "expense_receipts_update" on storage.objects;
+drop policy if exists "expense_receipts_delete" on storage.objects;
+
+-- Path: {expenseId}/{photoId}.jpg — folder name is the expense UUID.
+-- Public bucket: receipt HTTP URLs are fetched outside the Supabase client. Allow select
+-- without a user JWT when the URL is known (object keys are unguessable UUID paths).
+create policy "expense_receipts_select"
+  on storage.objects for select
+  using (bucket_id = 'expense-receipts');
+
+create policy "expense_receipts_insert"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'expense-receipts'
+    and public.can_access_expense((storage.foldername(name))[1]::uuid)
+  );
+
+create policy "expense_receipts_update"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'expense-receipts'
+    and public.can_access_expense((storage.foldername(name))[1]::uuid)
+  )
+  with check (
+    bucket_id = 'expense-receipts'
+    and public.can_access_expense((storage.foldername(name))[1]::uuid)
+  );
+
+create policy "expense_receipts_delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'expense-receipts'
+    and public.can_access_expense((storage.foldername(name))[1]::uuid)
+  );
+
 -- Replace accept RPC to also remap expense payer/splits from placeholder â†’ real user
 create or replace function public.accept_pending_invites()
 returns integer
@@ -1081,6 +1213,128 @@ create policy "pin_boards_update_member"
       where gm.group_id = pin_boards.group_id and gm.user_id = auth.uid()
     )
   );
+
+-- ============================================
+-- Storage: profile avatars, group covers/photos, pin board images
+-- ============================================
+-- profiles.photo_url + groups.cover_url / groups.photo_url columns are above.
+-- group-covers bucket holds cover.jpg and photo.jpg per group id.
+
+insert into storage.buckets (id, name, public)
+values ('user-avatars', 'user-avatars', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "user_avatars_select" on storage.objects;
+drop policy if exists "user_avatars_insert" on storage.objects;
+drop policy if exists "user_avatars_update" on storage.objects;
+drop policy if exists "user_avatars_delete" on storage.objects;
+
+-- Public bucket: avatar HTTP URLs are fetched without a user JWT (Image decode / HttpURLConnection).
+create policy "user_avatars_select"
+  on storage.objects for select
+  using (bucket_id = 'user-avatars');
+
+create policy "user_avatars_insert"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'user-avatars'
+    and (storage.foldername(name))[1]::uuid = auth.uid()
+  );
+
+create policy "user_avatars_update"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'user-avatars'
+    and (storage.foldername(name))[1]::uuid = auth.uid()
+  )
+  with check (
+    bucket_id = 'user-avatars'
+    and (storage.foldername(name))[1]::uuid = auth.uid()
+  );
+
+create policy "user_avatars_delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'user-avatars'
+    and (storage.foldername(name))[1]::uuid = auth.uid()
+  );
+
+insert into storage.buckets (id, name, public)
+values ('group-covers', 'group-covers', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "group_covers_select" on storage.objects;
+drop policy if exists "group_covers_insert" on storage.objects;
+drop policy if exists "group_covers_update" on storage.objects;
+drop policy if exists "group_covers_delete" on storage.objects;
+
+create policy "group_covers_select"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'group-covers');
+
+create policy "group_covers_insert"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'group-covers'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  );
+
+create policy "group_covers_update"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'group-covers'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  )
+  with check (
+    bucket_id = 'group-covers'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  );
+
+create policy "group_covers_delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'group-covers'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  );
+
+insert into storage.buckets (id, name, public)
+values ('pin-board-images', 'pin-board-images', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "pin_board_images_select" on storage.objects;
+drop policy if exists "pin_board_images_insert" on storage.objects;
+drop policy if exists "pin_board_images_update" on storage.objects;
+drop policy if exists "pin_board_images_delete" on storage.objects;
+
+create policy "pin_board_images_select"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'pin-board-images');
+
+create policy "pin_board_images_insert"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'pin-board-images'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  );
+
+create policy "pin_board_images_update"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'pin-board-images'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  )
+  with check (
+    bucket_id = 'pin-board-images'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  );
+
+create policy "pin_board_images_delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'pin-board-images'
+    and public.is_group_member((storage.foldername(name))[1]::uuid)
+  );
+
 -- ============================================
 -- Auth lookup RPCs (signup duplicate checks)
 -- ============================================

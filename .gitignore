@@ -17,6 +17,9 @@ captures/
 .kotlin/
 build-install.log
 *.log
+compile_out*.txt
+compile_rebuild.txt
+compile_navfix.txt
 .tmp-debug/
 
 # Secrets

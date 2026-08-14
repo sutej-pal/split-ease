@@ -15,9 +15,11 @@ import com.splitease.app.domain.settings.AppSettingsRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -147,17 +149,19 @@ class BalanceInteractor
                 expenseRepository.observeExpenses(groupId),
                 paymentRepository.observePayments(groupId),
                 appSettingsRepository.observeSimplifyGroupDebts(groupId),
-            ) { expenses, payments, simplify ->
-                Triple(expenses, payments, simplify)
-            }.flatMapLatest { (expenses, payments, simplify) ->
+                observeUserLooks(),
+            ) { expenses, payments, simplify, userLooks ->
+                GroupBalanceInputs(expenses, payments, simplify, userLooks)
+            }.flatMapLatest { inputs ->
                 flow {
                     emit(
                         buildGroupBalance(
                             groupId = groupId,
                             viewerUserId = viewerUserId,
-                            expenses = expenses,
-                            payments = payments,
-                            simplifyDebts = simplify,
+                            expenses = inputs.expenses,
+                            payments = inputs.payments,
+                            simplifyDebts = inputs.simplifyDebts,
+                            userLooks = inputs.userLooks,
                         ),
                     )
                 }
@@ -174,9 +178,14 @@ class BalanceInteractor
             combine(
                 expenseRepository.observeInvolvingUser(viewerUserId),
                 paymentRepository.observeInvolvingUser(viewerUserId),
-            ) { expenses, payments ->
-                expenses.filter { it.groupId == null } to payments.filter { it.groupId == null }
-            }.flatMapLatest { (expenses, payments) ->
+                observeUserLooks(),
+            ) { expenses, payments, userLooks ->
+                Triple(
+                    expenses.filter { it.groupId == null },
+                    payments.filter { it.groupId == null },
+                    userLooks,
+                )
+            }.flatMapLatest { (expenses, payments, userLooks) ->
                 flow {
                     emit(
                         buildGroupBalance(
@@ -186,6 +195,7 @@ class BalanceInteractor
                             knownName = "Non-group expenses",
                             payments = payments,
                             simplifyDebts = true,
+                            userLooks = userLooks,
                         ),
                     )
                 }
@@ -299,14 +309,19 @@ class BalanceInteractor
         @OptIn(ExperimentalCoroutinesApi::class)
         fun observeOverallBalances(viewerUserId: String): Flow<OverallBalancesUi> =
             combine(
-                expenseRepository.observeInvolvingUser(viewerUserId),
-                paymentRepository.observeInvolvingUser(viewerUserId),
-                friendRepository.observeFriends(viewerUserId),
-                groupRepository.observeGroupsForUser(viewerUserId),
-                appSettingsRepository.observeSimplifyGroupDebtsMap(),
-            ) { expenses, payments, friends, groups, simplifyMap ->
-                OverallInputs(expenses, payments, friends, groups, simplifyMap)
-            }.flatMapLatest { inputs ->
+                combine(
+                    expenseRepository.observeInvolvingUser(viewerUserId),
+                    paymentRepository.observeInvolvingUser(viewerUserId),
+                    friendRepository.observeFriends(viewerUserId),
+                    groupRepository.observeGroupsForUser(viewerUserId),
+                    appSettingsRepository.observeSimplifyGroupDebtsMap(),
+                ) { expenses, payments, friends, groups, simplifyMap ->
+                    OverallInputs(expenses, payments, friends, groups, simplifyMap)
+                },
+                observeUserLooks(),
+            ) { inputs, userLooks ->
+                inputs to userLooks
+            }.flatMapLatest { (inputs, userLooks) ->
                 flow {
                     val splits = loadSplits(inputs.expenses)
                     val allNets =
@@ -392,6 +407,7 @@ class BalanceInteractor
                                 knownName = group.name,
                                 payments = groupPayments,
                                 simplifyDebts = inputs.simplifyMap[group.id] ?: true,
+                                userLooks = userLooks,
                             )
                         }
 
@@ -405,6 +421,7 @@ class BalanceInteractor
                             knownName = "Non-group expenses",
                             payments = nonGroupPayments,
                             simplifyDebts = true,
+                            userLooks = userLooks,
                         )
 
                     emit(
@@ -432,6 +449,7 @@ class BalanceInteractor
             knownName: String? = null,
             payments: List<Payment> = emptyList(),
             simplifyDebts: Boolean = true,
+            userLooks: Map<String, MemberLook> = emptyMap(),
         ): GroupBalanceUi {
             val splits = loadSplits(expenses)
             val byCurrency =
@@ -449,7 +467,7 @@ class BalanceInteractor
                 knownName
                     ?: groupRepository.getGroupById(groupId)?.name
                     ?: groupId.take(8)
-            val labels = resolveLabels(viewerUserId, byCurrency, transfers)
+            val labels = resolveLabels(viewerUserId, byCurrency, transfers, userLooks)
             val myNets =
                 byCurrency
                     .mapNotNull { (currency, nets) ->
@@ -468,10 +486,20 @@ class BalanceInteractor
         private suspend fun loadSplits(expenses: List<Expense>): Map<String, List<ExpenseSplit>> =
             expenseRepository.getSplitsForExpenses(expenses.map { it.id })
 
+        private fun observeUserLooks(): Flow<Map<String, MemberLook>> =
+            userRepository
+                .observeUsers()
+                .map { users ->
+                    users.associate { user ->
+                        user.id to MemberLook(label = user.displayName, photoUrl = user.photoUrl)
+                    }
+                }.distinctUntilChanged()
+
         private suspend fun resolveLabels(
             viewerUserId: String,
             byCurrency: Map<String, Map<String, BigDecimal>>,
             transfers: List<DebtTransfer>,
+            userLooks: Map<String, MemberLook> = emptyMap(),
         ): Map<String, MemberLook> {
             val ids =
                 buildSet {
@@ -488,20 +516,29 @@ class BalanceInteractor
                     .first()
                     .associate { it.friendUserId to it.displayNameSnapshot }
             return ids.associateWith { id ->
-                val user = userRepository.getUserById(id)
+                val look = userLooks[id]
+                val user = if (look != null) null else userRepository.getUserById(id)
                 MemberLook(
                     label =
                         when (id) {
                             viewerUserId -> "You"
                             else ->
                                 friendLabels[id]
+                                    ?: look?.label
                                     ?: user?.displayName
                                     ?: id.take(8)
                         },
-                    photoUrl = user?.photoUrl,
+                    photoUrl = look?.photoUrl ?: user?.photoUrl,
                 )
             }
         }
+
+        private data class GroupBalanceInputs(
+            val expenses: List<Expense>,
+            val payments: List<Payment>,
+            val simplifyDebts: Boolean,
+            val userLooks: Map<String, MemberLook>,
+        )
 
         private fun DebtTransfer.toLabeled(labels: Map<String, MemberLook>) =
             LabeledDebt(

@@ -151,6 +151,8 @@
     <string name="label_display_name">Display name</string>
     <string name="label_group_name">Group name</string>
     <string name="settings_title">Settings</string>
+    <string name="ad_preview_placeholder">Advertisement</string>
+    <string name="settings_ad_privacy_choices">Ad privacy choices</string>
     <string name="settings_hub_subtitle">Appearance and security</string>
     <string name="settings_preferences_section">Preferences</string>
     <string name="settings_appearance">Appearance</string>
@@ -198,7 +200,6 @@
     <string name="cd_totals_prev_month">Previous month</string>
     <string name="cd_totals_next_month">Next month</string>
     <string name="group_nothing_to_settle">Nothing to settle yet. Add expenses with members first.</string>
-    <string name="group_balances_settle_hint">Record a payment to clear simplified debts in this group.</string>
     <string name="cd_group_settings">Group settings</string>
     <string name="cd_back">Back</string>
     <string name="balances_you_owe_overall">You owe %1$s overall</string>
@@ -347,15 +348,10 @@
     <string name="msg_camera_permission_denied">Camera permission is needed to take a photo.</string>
     <string name="balances_title">Balances</string>
     <string name="balances_loading">Calculating balances…</string>
-    <string name="balances_empty">No balances yet. Add expenses with friends or groups first.</string>
-    <string name="balances_summary">Your totals</string>
-    <string name="balances_friends">Friends</string>
-    <string name="balances_groups">Groups</string>
     <string name="balances_settled_up">Settled up</string>
     <string name="balances_who_owes_whom">Simplified debts</string>
     <string name="balances_debt_line">%1$s owes %2$s %3$s</string>
     <string name="action_settle_up">Settle up</string>
-    <string name="action_record_payment">Record payment</string>
     <string name="action_record_a_payment">Record a payment</string>
     <string name="settle_record_title">Record a payment</string>
     <string name="settle_paid_you">%1$s paid you</string>
@@ -363,9 +359,6 @@
     <string name="settle_paid_other">%1$s paid %2$s</string>
     <string name="settle_outside_note">You are recording a payment that happened outside SplitEase. No money will be moved.</string>
     <string name="cd_edit_amount">Edit amount</string>
-    <string name="settle_summary_you_pay">Record a payment you made to %1$s.</string>
-    <string name="settle_summary_they_pay">Record a payment from %1$s to you.</string>
-    <string name="label_payment_note">Note (optional)</string>
     <string name="friends_title">Friends</string>
     <string name="friends_empty">No friends yet. Tap + to add or invite someone by email.</string>
     <string name="cd_filter_friends">Filter friends</string>
@@ -470,7 +463,6 @@
     <string name="action_pick_time">Pick time</string>
     <string name="action_pick_category">Choose category</string>
     <string name="pick_category_body">Pick a category for this expense. Tap a chip below or change it anytime from the title icon.</string>
-    <string name="label_amount">Amount</string>
     <string name="google_sign_in_soon">Google Sign-In needs OAuth setup in Supabase (coming next).</string>
     <string name="error_generic">Something went wrong. Try again.</string>
     <string name="error_signup_email_delivery">We couldn\'t send the verification email. Please try again in a moment.</string>
@@ -508,7 +500,6 @@
     </plurals>
     <string name="settings_currency_search">Search currencies</string>
     <string name="pay_externally_section">Pay externally</string>
-    <string name="pay_externally_hint">Open a payment app, then record the settlement here.</string>
     <string name="action_pay_upi">Pay via UPI</string>
     <string name="action_pay_paypal">Pay with PayPal</string>
     <string name="action_pay_venmo">Pay with Venmo</string>
@@ -579,9 +570,7 @@
     <string name="expense_attachments_more">+%1$d</string>
     <string name="expense_comment_system_author">SplitEase</string>
     <string name="expense_comments_section">Comments</string>
-    <string name="expense_photos_section">Attachments</string>
     <string name="expense_attachments_section">Attachments</string>
-    <string name="cd_expense_photo">Expense attachment</string>
     <string name="cd_expense_attachment">Expense attachment</string>
     <string name="msg_comment_empty">Write a comment first.</string>
     <string name="msg_comment_failed">Could not add comment.</string>

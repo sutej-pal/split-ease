@@ -38,3 +38,8 @@
 
 # Enums used in Room / serialization
 -keepclassmembers enum com.splitease.app.domain.model.** { *; }
+
+# Google Mobile Ads / UMP
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.ads.** { *; }
+-keep class com.google.android.ump.** { *; }

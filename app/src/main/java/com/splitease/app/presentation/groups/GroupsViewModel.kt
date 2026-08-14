@@ -537,6 +537,15 @@ class GroupsViewModel
 
         suspend fun getGroup(groupId: String): Group? = groupRepository.getGroupById(groupId)
 
+        /**
+         * Pulls latest member profiles (names + photos) for the open group.
+         */
+        fun refreshMemberProfiles(groupId: String) {
+            viewModelScope.launch {
+                runCatching { socialInteractor.refreshGroupMemberProfiles(groupId) }
+            }
+        }
+
         fun currentUserId(): String? = userId.value
 
         private suspend fun requireUserId(): String? {

@@ -231,7 +231,8 @@ class ExpenseInteractor
                                     context = appContext,
                                     photoUri = sourceUri,
                                     destFile = dest,
-                                    maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
+                                    maxSidePx = AvatarImageIO.ATTACHMENT_STORED_MAX_SIDE_PX,
+                                    quality = AvatarImageIO.ATTACHMENT_STORED_JPEG_QUALITY,
                                 )
                             }.isSuccess
                         LocalMediaCleanup.deleteCachedCapture(appContext, sourceUri)
@@ -943,11 +944,15 @@ class ExpenseInteractor
                     remotePhotos.map { dto ->
                         ensureLocalUserExists(dto.createdByUserId)
                         val existing = localById[dto.id]
+                        val existingLocal =
+                            existing?.localPath?.trim()?.takeIf { path ->
+                                path.isNotEmpty() && File(path).isFile
+                            }
                         ExpensePhoto(
                             id = dto.id,
                             expenseId = dto.expenseId,
                             createdByUserId = dto.createdByUserId,
-                            localPath = existing?.localPath,
+                            localPath = existingLocal,
                             remoteUrl = dto.remoteUrl ?: existing?.remoteUrl,
                             createdAtEpochMs = dto.createdAtEpochMs,
                             syncStatus = SyncStatus.SYNCED,
@@ -1091,6 +1096,13 @@ class ExpenseInteractor
                     else -> null
                 }
             val withUrl = photo.copy(remoteUrl = remoteUrl ?: photo.remoteUrl)
+            withUrl.remoteUrl?.let { url ->
+                localPath?.let { path ->
+                    runCatching {
+                        AvatarImageIO.seedRemoteImageCache(appContext, url, File(path))
+                    }
+                }
+            }
             // Without a Storage URL the row is not fully pushed; keep PENDING so flush retries
             // the upload instead of treating a metadata-only upsert as done.
             if (withUrl.remoteUrl.isNullOrBlank()) {

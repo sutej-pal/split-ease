@@ -29,6 +29,12 @@ fun localProp(key: String): String =
         ?: providers.environmentVariable(key).orNull
         ?: ""
 
+val admobAppIdDebug = "ca-app-pub-3940256099942544~3347511713"
+val admobBannerUnitIdDebug = "ca-app-pub-3940256099942544/9214589741"
+val admobAppIdRelease = localProp("ADMOB_APP_ID").trim()
+val admobGroupDetailBannerUnitIdRelease = localProp("ADMOB_GROUP_DETAIL_BANNER_UNIT_ID").trim()
+val admobAddExpenseBannerUnitIdRelease = localProp("ADMOB_ADD_EXPENSE_BANNER_UNIT_ID").trim()
+
 val mailServiceBaseUrl = localProp("MAIL_SERVICE_BASE_URL").trim().trimEnd('/')
 val inviteWebHost: String =
     try {
@@ -56,6 +62,9 @@ android {
         buildConfigField("String", "MAIL_SERVICE_API_KEY", "\"${localProp("MAIL_SERVICE_API_KEY")}\"")
         // Host for https://{host}/invite/{token} browser → app redirects (mail-service).
         manifestPlaceholders["inviteWebHost"] = inviteWebHost
+        manifestPlaceholders["admobAppId"] = admobAppIdDebug
+        buildConfigField("String", "ADMOB_GROUP_DETAIL_BANNER_UNIT_ID", "\"$admobBannerUnitIdDebug\"")
+        buildConfigField("String", "ADMOB_ADD_EXPENSE_BANNER_UNIT_ID", "\"$admobBannerUnitIdDebug\"")
     }
 
     signingConfigs {
@@ -83,6 +92,26 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
+            )
+            val releaseHasAdUnits =
+                admobGroupDetailBannerUnitIdRelease.isNotEmpty() ||
+                    admobAddExpenseBannerUnitIdRelease.isNotEmpty()
+            require(!releaseHasAdUnits || admobAppIdRelease.isNotEmpty()) {
+                "Set ADMOB_APP_ID in local.properties (or env) when release AdMob unit IDs are configured."
+            }
+            // Never embed Google's public test App ID in release APKs. When ads are unconfigured,
+            // unit IDs stay empty (AdConfig.isEnabled == false) and MobileAds is never initialized.
+            manifestPlaceholders["admobAppId"] =
+                admobAppIdRelease.ifEmpty { "ca-app-pub-0000000000000000~0000000000" }
+            buildConfigField(
+                "String",
+                "ADMOB_GROUP_DETAIL_BANNER_UNIT_ID",
+                "\"$admobGroupDetailBannerUnitIdRelease\"",
+            )
+            buildConfigField(
+                "String",
+                "ADMOB_ADD_EXPENSE_BANNER_UNIT_ID",
+                "\"${admobAddExpenseBannerUnitIdRelease.ifEmpty { admobGroupDetailBannerUnitIdRelease }}\"",
             )
             val releaseSigning = signingConfigs.getByName("release")
             if (releaseSigning.storeFile?.exists() == true) {
@@ -166,6 +195,8 @@ dependencies {
     implementation(libs.supabase.storage)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.play.services.ads)
+    implementation(libs.user.messaging.platform)
     // OkHttp engine: WebSocket-capable (Realtime) and cancel-safe on Main
     // (ktor-client-android can NetworkOnMainThreadException when closing responses).
     implementation(libs.ktor.client.okhttp)

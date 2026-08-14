@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.data.expense.CreateExpenseInput
 import com.splitease.app.data.expense.ExpenseInteractor
+import com.splitease.app.data.expense.resolvedDisplayUri
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.sync.GroupLiveSync
 import com.splitease.app.data.sync.SyncInteractor
@@ -884,7 +885,7 @@ class ExpensesViewModel
                                 val friendNames =
                                     friends.associateBy({ it.friendUserId }, { it.displayNameSnapshot })
                                 photos.mapNotNull { photo ->
-                                    val uri = photo.displayUri() ?: return@mapNotNull null
+                                    val uri = photo.resolvedDisplayUri() ?: return@mapNotNull null
                                     ExpensePhotoUi(
                                         id = photo.id,
                                         displayUri = uri,

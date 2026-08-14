@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -21,6 +22,8 @@ import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
+import com.splitease.app.presentation.ads.AdConfig
+import com.splitease.app.presentation.ads.AdConsentManager
 import com.splitease.app.presentation.navigation.SplitEaseNavHost
 import com.splitease.app.presentation.security.AppLockGate
 import com.splitease.app.presentation.theme.SplitEaseTheme
@@ -80,6 +83,11 @@ class MainActivity : FragmentActivity() {
             }
 
             SplitEaseTheme(darkTheme = darkTheme, dynamicColor = false) {
+                LaunchedEffect(Unit) {
+                    if (AdConfig.isEnabled) {
+                        AdConsentManager.gatherConsent(this@MainActivity)
+                    }
+                }
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppLockGate(
                         enabled = biometricLock,

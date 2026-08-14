@@ -10,6 +10,7 @@ import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppSettingsRepository
+import com.splitease.app.presentation.friends.PendingFriendReviewStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -79,6 +80,7 @@ class AuthViewModel
     constructor(
         private val authRepository: AuthRepository,
         private val appSettingsRepository: AppSettingsRepository,
+        private val pendingFriendReviewStore: PendingFriendReviewStore,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
         private val authRateLimiter = AuthRateLimiter()
@@ -537,6 +539,11 @@ class AuthViewModel
                     }
                 if (result.isSuccess) {
                     authRateLimiter.recordSuccess(AuthRateAction.SIGNUP, trimmedEmail)
+                    if (purpose == PendingOtpPurpose.SIGNUP) {
+                        authRepository.getSignedInUserOrNull()?.userId?.takeIf { it.isNotBlank() }?.let { userId ->
+                            appSettingsRepository.setPendingWelcomeEmailUserId(userId)
+                        }
+                    }
                     _formState.update {
                         it.copy(
                             isLoading = false,
@@ -773,7 +780,7 @@ class AuthViewModel
             }
         }
 
-        /** Signs out the current user. */
+        /** Signs out the current user and clears local session data. */
         fun signOut() {
             _formState.update {
                 it.copy(
@@ -783,6 +790,7 @@ class AuthViewModel
                     recoveryOtpVerified = false,
                 )
             }
+            pendingFriendReviewStore.clear()
             submit {
                 authRepository.signOut()
             }

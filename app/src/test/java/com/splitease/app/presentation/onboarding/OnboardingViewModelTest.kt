@@ -37,8 +37,9 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `onSignedInWelcome sends mail once and marks sent`() =
+    fun `onSignedInWelcome sends mail once and marks sent when signup is pending`() =
         runTest {
+            coEvery { appSettings.getPendingWelcomeEmailUserId() } returns "user-1"
             coEvery { appSettings.getOnboardingEmailSent("user-1") } returns false
             coEvery {
                 mailRepository.sendOnboardingStartedEmail(
@@ -54,15 +55,17 @@ class OnboardingViewModelTest {
             )
             advanceUntilIdle()
 
+            coVerify(exactly = 1) { appSettings.getPendingWelcomeEmailUserId() }
             coVerify(exactly = 1) { appSettings.getOnboardingEmailSent("user-1") }
-            coVerify(exactly = 1) { mailRepository.sendOnboardingStartedEmail("a@b.com", "Ada") }
             coVerify(exactly = 1) { appSettings.setOnboardingEmailSent("user-1", true) }
+            coVerify(exactly = 1) { appSettings.setPendingWelcomeEmailUserId(null) }
+            coVerify(exactly = 1) { mailRepository.sendOnboardingStartedEmail("a@b.com", "Ada") }
         }
 
     @Test
-    fun `onSignedInWelcome skips when already sent`() =
+    fun `onSignedInWelcome skips when signup welcome is not pending`() =
         runTest {
-            coEvery { appSettings.getOnboardingEmailSent("user-1") } returns true
+            coEvery { appSettings.getPendingWelcomeEmailUserId() } returns null
 
             viewModel.onSignedInWelcome(
                 userId = "user-1",
@@ -76,8 +79,27 @@ class OnboardingViewModelTest {
         }
 
     @Test
-    fun `onSignedInWelcome does not mark sent when mail fails`() =
+    fun `onSignedInWelcome skips when already sent`() =
         runTest {
+            coEvery { appSettings.getPendingWelcomeEmailUserId() } returns "user-1"
+            coEvery { appSettings.getOnboardingEmailSent("user-1") } returns true
+
+            viewModel.onSignedInWelcome(
+                userId = "user-1",
+                email = "a@b.com",
+                displayName = "Ada",
+            )
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { mailRepository.sendOnboardingStartedEmail(any(), any()) }
+            coVerify(exactly = 1) { appSettings.setPendingWelcomeEmailUserId(null) }
+            coVerify(exactly = 0) { appSettings.setOnboardingEmailSent(any(), any()) }
+        }
+
+    @Test
+    fun `onSignedInWelcome keeps pending when mail fails`() =
+        runTest {
+            coEvery { appSettings.getPendingWelcomeEmailUserId() } returns "user-1"
             coEvery { appSettings.getOnboardingEmailSent("user-1") } returns false
             coEvery {
                 mailRepository.sendOnboardingStartedEmail(any(), any())
@@ -90,7 +112,8 @@ class OnboardingViewModelTest {
             )
             advanceUntilIdle()
 
-            coVerify(exactly = 1) { mailRepository.sendOnboardingStartedEmail("a@b.com", "Ada") }
             coVerify(exactly = 0) { appSettings.setOnboardingEmailSent(any(), any()) }
+            coVerify(exactly = 0) { appSettings.setPendingWelcomeEmailUserId(null) }
+            coVerify(exactly = 1) { mailRepository.sendOnboardingStartedEmail("a@b.com", "Ada") }
         }
 }

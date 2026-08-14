@@ -48,6 +48,7 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
+import com.splitease.app.presentation.ads.AdConsentManager
 import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
@@ -69,6 +70,8 @@ fun SettingsScreen(
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val biometricLock by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    val privacyOptionsRequired by AdConsentManager.privacyOptionsRequired
+    val context = LocalContext.current
 
     SeScreen(
         title = stringResource(R.string.settings_title),
@@ -127,8 +130,19 @@ fun SettingsScreen(
                         )
                     },
                     onClick = onOpenSecurity,
-                    showDivider = false,
+                    showDivider = privacyOptionsRequired,
                 )
+                if (privacyOptionsRequired) {
+                    SeListRow(
+                        title = stringResource(R.string.settings_ad_privacy_choices),
+                        onClick = {
+                            (context as? FragmentActivity)?.let { activity ->
+                                AdConsentManager.showPrivacyOptionsForm(activity)
+                            }
+                        },
+                        showDivider = false,
+                    )
+                }
             }
         },
     )

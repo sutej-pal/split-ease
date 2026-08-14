@@ -1,6 +1,12 @@
 package com.splitease.app.presentation.navigation
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,7 +16,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
@@ -228,6 +238,14 @@ object Routes {
 
     fun inviteLanding(token: String) = "invite_landing/${android.net.Uri.encode(token)}"
 }
+
+/**
+ * Shared duration for screen transitions and the bottom bar show/hide.
+ *
+ * The NavHost default (700ms fade) made a pushed screen land well after the bottom
+ * bar collapsed, which read as two separate steps.
+ */
+private const val NAV_TRANSITION_MS = 200
 
 private val tabRoutes =
     setOf(
@@ -449,7 +467,7 @@ fun SplitEaseNavHost(
             LaunchedEffect(current.user.userId) {
                 authViewModel.clearMessages()
             }
-            // Welcome email only — display name was already collected at signup.
+            // Welcome email once after signup OTP — not on every login.
             val onboardingViewModel: OnboardingViewModel = hiltViewModel()
             LaunchedEffect(current.user.userId) {
                 onboardingViewModel.onSignedInWelcome(
@@ -486,6 +504,12 @@ private fun SignedInNavHost(
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomBarRoutes
     val bottomBarSelectedRoute = selectedTabRoute(currentRoute)
+    // Keep the last tab highlighted while the bar animates away, otherwise the icons
+    // flash to their unselected colour on the way out.
+    var lastSelectedTabRoute by remember { mutableStateOf(Routes.TAB_GROUPS) }
+    SideEffect {
+        bottomBarSelectedRoute?.let { lastSelectedTabRoute = it }
+    }
     val pendingNotificationGroupId by
         observePendingNotificationGroupId().collectAsStateWithLifecycle(null)
 
@@ -523,8 +547,20 @@ private fun SignedInNavHost(
                     statusBarDarkIcons = darkGlyphs,
                     navigationBarDarkIcons = darkGlyphs,
                 )
+            }
+            // Collapse in step with the screen transition so the pushed screen grows into
+            // the freed space instead of the bar vanishing first.
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter =
+                    expandVertically(animationSpec = tween(NAV_TRANSITION_MS)) +
+                        fadeIn(animationSpec = tween(NAV_TRANSITION_MS)),
+                exit =
+                    shrinkVertically(animationSpec = tween(NAV_TRANSITION_MS)) +
+                        fadeOut(animationSpec = tween(NAV_TRANSITION_MS)),
+            ) {
                 SplitEaseBottomBar(
-                    currentRoute = bottomBarSelectedRoute,
+                    currentRoute = bottomBarSelectedRoute ?: lastSelectedTabRoute,
                     onTabSelected = { tab ->
                         navController.navigate(tab.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -542,6 +578,10 @@ private fun SignedInNavHost(
             navController = navController,
             startDestination = Routes.TAB_GROUPS,
             modifier = Modifier.padding(padding),
+            enterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
+            exitTransition = { fadeOut(animationSpec = tween(NAV_TRANSITION_MS)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
+            popExitTransition = { fadeOut(animationSpec = tween(NAV_TRANSITION_MS)) },
         ) {
             composable(Routes.TAB_GROUPS) {
                 GroupsHomeScreen(

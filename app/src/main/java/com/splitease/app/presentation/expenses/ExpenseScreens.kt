@@ -73,6 +73,9 @@ import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.presentation.ads.AdConfig
+import com.splitease.app.presentation.ads.SeBannerAd
+import com.splitease.app.presentation.ads.SeBannerAdSize
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
@@ -528,13 +531,15 @@ fun AddExpenseScreen(
                         .fillMaxSize()
                         .padding(padding.values),
             ) {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                    ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -676,6 +681,17 @@ fun AddExpenseScreen(
                     SeErrorText(it)
                 }
                     Spacer(modifier = Modifier.height(24.dp))
+                    }
+                    SeBannerAd(
+                        adUnitId = AdConfig.addExpenseBannerUnitId,
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        horizontalPadding = 20.dp,
+                        size = SeBannerAdSize.Inline(),
+                        showBottomDivider = false,
+                    )
                 }
                 SeLoadingOverlay(
                     visible = uiState.isSubmitting,
@@ -899,9 +915,9 @@ private fun ExpenseUnderlineField(
             modifier =
                 Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .background(SplitEaseColors.SurfaceMuted, RoundedCornerShape(12.dp))
                     .border(1.dp, SplitEaseColors.OutlineStrong, RoundedCornerShape(12.dp))
-                    .background(SplitEaseColors.SurfaceMuted)
+                    .clip(RoundedCornerShape(12.dp))
                     .then(
                         if (onIconClick != null) {
                             Modifier.clickable(enabled = enabled, onClick = onIconClick)
@@ -1127,13 +1143,15 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             .fillMaxSize()
                             .padding(padding.values),
                 ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
-                    ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f, fill = false)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                        ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1214,6 +1232,17 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             enabled = !isSubmitting,
                         )
                         Spacer(modifier = Modifier.height(24.dp))
+                        }
+                        SeBannerAd(
+                            adUnitId = AdConfig.addExpenseBannerUnitId,
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                            horizontalPadding = 20.dp,
+                            size = SeBannerAdSize.Inline(),
+                            showBottomDivider = false,
+                        )
                     }
                     SeLoadingOverlay(
                         visible = isSubmitting,

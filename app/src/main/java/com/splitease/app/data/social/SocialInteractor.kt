@@ -8,6 +8,7 @@ import com.splitease.app.data.pinboard.PinBoardInteractor
 import com.splitease.app.data.remote.GroupCoverStorage
 import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
+import com.splitease.app.data.remote.dto.GroupMemberDto
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
 import com.splitease.app.data.remote.mapper.toDomain
@@ -1591,27 +1592,47 @@ class SocialInteractor
                             val memberDtos =
                                 runCatching { remote.fetchGroupMembers(groupId) }
                                     .getOrDefault(emptyList())
-                            val profilesById =
-                                runCatching { remote.fetchProfilesByIds(memberDtos.map { it.userId }) }
-                                    .getOrDefault(emptyList())
-                                    .associateBy { it.id }
-                            memberDtos.forEach { memberDto ->
-                                ensureLocalUserExists(memberDto.userId, profilesById[memberDto.userId])
-                                groupRepository.upsertMember(
-                                    GroupMember(
-                                        id = memberDto.id,
-                                        groupId = memberDto.groupId,
-                                        userId = memberDto.userId,
-                                        role =
-                                            runCatching { MemberRole.valueOf(memberDto.role) }
-                                                .getOrDefault(MemberRole.MEMBER),
-                                        joinedAtEpochMs = memberDto.joinedAtEpochMs,
-                                        syncStatus = SyncStatus.SYNCED,
-                                    ),
-                                )
-                            }
+                            upsertMembersAndProfiles(groupId, memberDtos)
                         }
                     }.awaitAll()
+            }
+        }
+
+        /**
+         * Re-fetches memberships and `profiles` (including photo URLs) for [groupId].
+         *
+         * Used when a group detail is opened so co-member avatar updates show without
+         * waiting for a full app sync.
+         */
+        suspend fun refreshGroupMemberProfiles(groupId: String) {
+            val memberDtos =
+                runCatching { remote.fetchGroupMembers(groupId) }.getOrDefault(emptyList())
+            upsertMembersAndProfiles(groupId, memberDtos)
+        }
+
+        private suspend fun upsertMembersAndProfiles(
+            groupId: String,
+            memberDtos: List<GroupMemberDto>,
+        ) {
+            if (memberDtos.isEmpty()) return
+            val profilesById =
+                runCatching { remote.fetchProfilesByIds(memberDtos.map { it.userId }) }
+                    .getOrDefault(emptyList())
+                    .associateBy { it.id }
+            memberDtos.forEach { memberDto ->
+                ensureLocalUserExists(memberDto.userId, profilesById[memberDto.userId])
+                groupRepository.upsertMember(
+                    GroupMember(
+                        id = memberDto.id,
+                        groupId = memberDto.groupId,
+                        userId = memberDto.userId,
+                        role =
+                            runCatching { MemberRole.valueOf(memberDto.role) }
+                                .getOrDefault(MemberRole.MEMBER),
+                        joinedAtEpochMs = memberDto.joinedAtEpochMs,
+                        syncStatus = SyncStatus.SYNCED,
+                    ),
+                )
             }
         }
 

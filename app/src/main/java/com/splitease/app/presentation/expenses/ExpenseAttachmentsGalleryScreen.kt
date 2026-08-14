@@ -23,6 +23,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,10 +51,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeSystemBars
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ExpenseAttachmentsGalleryScreen(
@@ -232,36 +237,68 @@ private fun AttachmentPagerDots(
     }
 }
 
+private sealed interface AttachmentGalleryLoadState {
+    data object Loading : AttachmentGalleryLoadState
+
+    data class Ready(
+        val bitmap: ImageBitmap,
+    ) : AttachmentGalleryLoadState
+
+    data object Failed : AttachmentGalleryLoadState
+}
+
 @Composable
 private fun AttachmentGalleryPage(displayUri: String) {
     val context = LocalContext.current
-    val bitmap =
-        remember(displayUri) {
-            AvatarImageIO
-                .decodeScaled(
-                    context = context,
-                    photoUrl = displayUri,
-                    maxSidePx = 2048,
-                )?.asImageBitmap()
-        }
+    val loadState by produceState<AttachmentGalleryLoadState>(
+        AttachmentGalleryLoadState.Loading,
+        displayUri,
+    ) {
+        value = AttachmentGalleryLoadState.Loading
+        value =
+            withContext(Dispatchers.IO) {
+                val decoded =
+                    AvatarImageIO
+                        .decodeScaled(
+                            context = context,
+                            photoUrl = displayUri,
+                            maxSidePx = AvatarImageIO.ATTACHMENT_GALLERY_MAX_SIDE_PX,
+                        )?.asImageBitmap()
+                if (decoded != null) {
+                    AttachmentGalleryLoadState.Ready(decoded)
+                } else {
+                    AttachmentGalleryLoadState.Failed
+                }
+            }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = stringResource(R.string.cd_expense_attachment),
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Text(
-                text = stringResource(R.string.msg_image_load_failed),
-                color = SplitEaseColors.NavyMuted,
-                style = MaterialTheme.typography.bodyMedium,
-            )
+        when (val imageLoad = loadState) {
+            AttachmentGalleryLoadState.Loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = Color.White.copy(alpha = 0.7f),
+                    strokeWidth = 2.dp,
+                )
+            }
+            is AttachmentGalleryLoadState.Ready -> {
+                Image(
+                    bitmap = imageLoad.bitmap,
+                    contentDescription = stringResource(R.string.cd_expense_attachment),
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            AttachmentGalleryLoadState.Failed -> {
+                Text(
+                    text = stringResource(R.string.msg_image_load_failed),
+                    color = SplitEaseColors.NavyMuted,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
 }

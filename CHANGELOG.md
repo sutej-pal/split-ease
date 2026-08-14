@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-email-otp.md), [supabase-reset-password-otp.html](docs/supabase-reset-password-otp.html))
+- Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-email-otp.md), [reset-password.html](../server/mail-templates/supabase/reset-password.html))
 - Signup blocks duplicate email/phone with clear `already registered` messaging (`auth_email_registered` + `auth_phone_registered`)
 
 ### Changed
@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Account no longer shows a manual **Cloud sync** section/action; sync now runs automatically via background workers
 - Invite token is cleared only after accept-by-token succeeds (failed claims can retry)
 - Signup OTP is strictly **6 digits** (field max + validation; 8-digit codes rejected)
-- Confirm-signup email template + configure script set Supabase `mailer_otp_length=6` and OTP-first HTML ([supabase-confirm-signup-otp.html](docs/supabase-confirm-signup-otp.html))
+- Confirm-signup email template + configure script set Supabase `mailer_otp_length=6` and OTP-first HTML ([confirm-signup.html](../server/mail-templates/supabase/confirm-signup.html))
 - Invite share text includes https + custom-scheme options; after signup/OTP the app opens the invited group (or Friends tab)
 - Pending invites show **Copy** / **Share again** on Friends list and Group settings member rows
 - Restored `splitease://invite` intent-filter; https App Links need hosted `assetlinks.json` ([app-links-setup.md](docs/app-links-setup.md))

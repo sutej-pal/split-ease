@@ -2,12 +2,14 @@ package com.splitease.app.data.repository
 
 import android.content.Context
 import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.data.media.SupabaseImageAuth
 import com.splitease.app.data.media.LocalMediaCleanup
 import com.splitease.app.data.media.MediaStorageCleanup
 import com.splitease.app.data.remote.ProfilePhotoStorage
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
+import com.splitease.app.data.session.LocalUserDataCleanup
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
@@ -53,6 +55,7 @@ class SupabaseAuthRepository
         private val socialRemote: SocialRemoteDataSource,
         private val profilePhotoStorage: ProfilePhotoStorage,
         private val mediaStorageCleanup: MediaStorageCleanup,
+        private val localUserDataCleanup: LocalUserDataCleanup,
         private val syncInteractor: Provider<SyncInteractor>,
     ) : AuthRepository {
         override suspend fun getSignedInUserOrNull(): AuthUser? =
@@ -61,6 +64,12 @@ class SupabaseAuthRepository
         override fun observeSession(): Flow<AuthSession> =
             supabase.auth.sessionStatus
                 .onEach { status ->
+                    SupabaseImageAuth.update(
+                        when (status) {
+                            is SessionStatus.Authenticated -> status.session.accessToken
+                            else -> null
+                        },
+                    )
                     // Stale refresh tokens (e.g. after remote user wipe) leave RefreshFailure;
                     // clear local storage so the UI can leave the auth gate.
                     if (status is SessionStatus.RefreshFailure) {
@@ -302,9 +311,9 @@ class SupabaseAuthRepository
 
         override suspend fun signOut(): Result<Unit> =
             runCatching {
-                val userId = supabase.auth.currentUserOrNull()?.id
                 supabase.auth.signOut()
-                userId?.let { mediaStorageCleanup.purgeAllUserAvatars(it) }
+                // Drop Room + media + user prefs so the next account cannot see leftovers.
+                localUserDataCleanup.clearAll()
             }
 
         override suspend fun ensureLocalProfile(): Result<Unit> =

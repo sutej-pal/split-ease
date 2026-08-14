@@ -165,9 +165,26 @@ interface AppSettingsRepository {
      * Persists onboarding-start email sent state for a user.
      *
      * @param userId Signed-in user id.
-     * @param sent `true` after successful send.
+     * @param sent `true` after the welcome email send succeeds.
      */
     suspend fun setOnboardingEmailSent(userId: String, sent: Boolean)
+
+    /**
+     * Reads the user id queued for a post-signup welcome email.
+     *
+     * Set after signup OTP verification; cleared only after the welcome email send succeeds
+     * (or when already marked sent). Survives sign-out so a failed send can retry on next login.
+     *
+     * @return User id awaiting welcome mail, or null.
+     */
+    suspend fun getPendingWelcomeEmailUserId(): String?
+
+    /**
+     * Queues or clears the post-signup welcome email for [userId].
+     *
+     * @param userId Signed-in user id, or null to clear.
+     */
+    suspend fun setPendingWelcomeEmailUserId(userId: String?)
 
     /**
      * Observes a pending invite token from a deep link (awaiting signup / OTP / accept).
@@ -271,4 +288,13 @@ interface AppSettingsRepository {
      * @param locale System or pinned BCP-47 language.
      */
     suspend fun setAppLocale(locale: AppLocale)
+
+    /**
+     * Clears user-scoped preferences on sign-out.
+     *
+     * Keeps device-level choices (theme, locale, install-referrer bootstrap), any
+     * pending invite deep-link so account-switch can still claim the invite, and
+     * [getPendingWelcomeEmailUserId] so a failed welcome send can retry after re-login.
+     */
+    suspend fun clearSessionData()
 }

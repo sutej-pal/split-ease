@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,12 +43,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
@@ -86,6 +89,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val CategoryPastels =
     listOf(
@@ -389,58 +394,76 @@ private fun ExpenseAttachmentsPreviewRow(
     }
 }
 
+private sealed interface ExpenseAttachmentThumbLoadState {
+    data object Loading : ExpenseAttachmentThumbLoadState
+
+    data class Ready(
+        val bitmap: ImageBitmap,
+    ) : ExpenseAttachmentThumbLoadState
+
+    data object Failed : ExpenseAttachmentThumbLoadState
+}
+
 @Composable
 private fun ExpenseAttachmentThumbCard(
     attachment: ExpensePhotoUi,
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
-    val bitmap =
-        remember(attachment.displayUri) {
-            AvatarImageIO
-                .decodeScaled(
-                    context = context,
-                    photoUrl = attachment.displayUri,
-                    maxSidePx = 480,
-                )?.asImageBitmap()
-        }
+    val loadState by produceState<ExpenseAttachmentThumbLoadState>(
+        ExpenseAttachmentThumbLoadState.Loading,
+        attachment.displayUri,
+    ) {
+        value = ExpenseAttachmentThumbLoadState.Loading
+        value =
+            withContext(Dispatchers.IO) {
+                val decoded =
+                    AvatarImageIO
+                        .decodeScaled(
+                            context = context,
+                            photoUrl = attachment.displayUri,
+                            maxSidePx = AvatarImageIO.ATTACHMENT_PREVIEW_MAX_SIDE_PX,
+                        )?.asImageBitmap()
+                if (decoded != null) {
+                    ExpenseAttachmentThumbLoadState.Ready(decoded)
+                } else {
+                    ExpenseAttachmentThumbLoadState.Failed
+                }
+            }
+    }
 
-    Column(
+    Box(
         modifier =
             Modifier
-                .width(ExpenseAttachmentThumbSize)
+                .size(ExpenseAttachmentThumbSize)
+                .clip(RoundedCornerShape(12.dp))
+                .background(SplitEaseColors.Outline.copy(alpha = 0.35f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(bounded = true),
                     role = Role.Button,
                     onClick = onClick,
                 ),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(ExpenseAttachmentThumbSize)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SplitEaseColors.Outline.copy(alpha = 0.35f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (bitmap != null) {
+        when (val imageLoad = loadState) {
+            is ExpenseAttachmentThumbLoadState.Ready -> {
                 Image(
-                    bitmap = bitmap,
+                    bitmap = imageLoad.bitmap,
                     contentDescription = stringResource(R.string.cd_expense_attachment),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+            ExpenseAttachmentThumbLoadState.Loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = SplitEaseColors.NavyMuted,
+                )
+            }
+            ExpenseAttachmentThumbLoadState.Failed -> Unit
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = attachment.authorLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = SplitEaseColors.NavyMuted,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
@@ -449,36 +472,25 @@ private fun ExpenseAttachmentOverflowCard(
     overflowCount: Int,
     onClick: () -> Unit,
 ) {
-    Column(
+    Box(
         modifier =
             Modifier
-                .width(ExpenseAttachmentThumbSize)
+                .size(ExpenseAttachmentThumbSize)
+                .clip(RoundedCornerShape(12.dp))
+                .background(SplitEaseColors.PrimarySoft)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(bounded = true),
                     role = Role.Button,
                     onClick = onClick,
                 ),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(ExpenseAttachmentThumbSize)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SplitEaseColors.PrimarySoft),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(R.string.expense_attachments_more, overflowCount),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = SplitEaseColors.PrimaryDark,
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "",
-            style = MaterialTheme.typography.labelSmall,
+            text = stringResource(R.string.expense_attachments_more, overflowCount),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = SplitEaseColors.PrimaryDark,
         )
     }
 }

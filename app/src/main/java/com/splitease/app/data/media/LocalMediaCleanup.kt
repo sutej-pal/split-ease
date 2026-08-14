@@ -64,6 +64,39 @@ object LocalMediaCleanup {
         prunePrefixedMediaFiles(File(context.filesDir, "avatars"), userId, keepNewest)
     }
 
+    /**
+     * Deletes all app-private media and image-cache folders for a full sign-out wipe.
+     *
+     * Covers persisted files under [Context.getFilesDir] and capture/crop temps under
+     * [Context.getCacheDir]. Does not touch Supabase Storage.
+     */
+    fun deleteAllUserMedia(context: Context) {
+        val filesRoots =
+            listOf(
+                "avatars",
+                "expense_photos",
+                "group_covers",
+                "group_photos",
+                "pinboard",
+                "remote_image_cache",
+            )
+        filesRoots.forEach { name ->
+            runCatching { File(context.filesDir, name).deleteRecursively() }
+        }
+        val cacheRoots =
+            listOf(
+                ATTACHMENT_CAPTURE_DIR,
+                "avatars",
+                "group_photos",
+                "group_covers",
+                "image_capture",
+                "expense_receipts",
+            )
+        cacheRoots.forEach { name ->
+            runCatching { File(context.cacheDir, name).deleteRecursively() }
+        }
+    }
+
     fun deleteLocalFile(
         context: Context,
         path: String?,

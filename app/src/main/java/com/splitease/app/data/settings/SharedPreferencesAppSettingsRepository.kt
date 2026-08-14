@@ -147,6 +147,23 @@ class SharedPreferencesAppSettingsRepository
             }
         }
 
+        override suspend fun getPendingWelcomeEmailUserId(): String? =
+            withContext(Dispatchers.IO) {
+                prefs.getString(KEY_PENDING_WELCOME_EMAIL_USER_ID, null)?.takeIf { it.isNotBlank() }
+            }
+
+        override suspend fun setPendingWelcomeEmailUserId(userId: String?) {
+            withContext(Dispatchers.IO) {
+                prefs.edit {
+                    if (userId.isNullOrBlank()) {
+                        remove(KEY_PENDING_WELCOME_EMAIL_USER_ID)
+                    } else {
+                        putString(KEY_PENDING_WELCOME_EMAIL_USER_ID, userId)
+                    }
+                }
+            }
+        }
+
         override fun observePendingInviteToken(): Flow<String?> = pendingInviteTokenFlow.asStateFlow()
 
         override suspend fun getPendingInviteToken(): String? {
@@ -254,6 +271,48 @@ class SharedPreferencesAppSettingsRepository
             applyAppLocale(locale)
         }
 
+        override suspend fun clearSessionData() {
+            val keepTheme = themeModeFlow.value
+            val keepLocale = appLocaleFlow.value
+            val keepInviteToken = pendingInviteTokenFlow.value
+            val keepInviteOpenTarget = pendingInviteOpenTargetFlow.value
+            val keepPendingWelcomeUserId =
+                withContext(Dispatchers.IO) {
+                    prefs.getString(KEY_PENDING_WELCOME_EMAIL_USER_ID, null)?.takeIf { it.isNotBlank() }
+                }
+            val keepReferrerChecked =
+                withContext(Dispatchers.IO) {
+                    prefs.getBoolean(KEY_INSTALL_REFERRER_CHECKED, false)
+                }
+            withContext(Dispatchers.IO) {
+                prefs.edit {
+                    clear()
+                    putString(KEY_THEME_MODE, keepTheme.name)
+                    putString(KEY_APP_LOCALE, keepLocale.name)
+                    putBoolean(KEY_INSTALL_REFERRER_CHECKED, keepReferrerChecked)
+                    if (!keepInviteToken.isNullOrBlank()) {
+                        putString(KEY_PENDING_INVITE_TOKEN, keepInviteToken)
+                    }
+                    if (!keepInviteOpenTarget.isNullOrBlank()) {
+                        putString(KEY_PENDING_INVITE_OPEN_TARGET, keepInviteOpenTarget)
+                    }
+                    if (!keepPendingWelcomeUserId.isNullOrBlank()) {
+                        putString(KEY_PENDING_WELCOME_EMAIL_USER_ID, keepPendingWelcomeUserId)
+                    }
+                }
+            }
+            currencyFlow.value = AppCurrencies.DEFAULT
+            simplifyMapFlow.value = emptyMap()
+            themeModeFlow.value = keepTheme
+            biometricLockFlow.value = false
+            authTimeoutFlow.value = AuthTimeout.DEFAULT
+            appLocaleFlow.value = keepLocale
+            onboardingCompleteFlow.value = true
+            pendingInviteTokenFlow.value = keepInviteToken
+            pendingInviteOpenTargetFlow.value = keepInviteOpenTarget
+            pendingNotificationGroupIdFlow.value = null
+        }
+
         /** Applies the stored locale at process start (before Compose). */
         fun applyStoredLocale() {
             applyAppLocale(readAppLocale())
@@ -315,6 +374,7 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_INSTALL_REFERRER_CHECKED = "install_referrer_checked"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
             private const val KEY_ONBOARDING_EMAIL_SENT_PREFIX = "onboarding_email_sent_"
+            private const val KEY_PENDING_WELCOME_EMAIL_USER_ID = "pending_welcome_email_user_id"
 
             private fun simplifyKey(groupId: String) = KEY_SIMPLIFY_PREFIX + groupId
 

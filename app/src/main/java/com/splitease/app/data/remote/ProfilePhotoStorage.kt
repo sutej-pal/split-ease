@@ -33,7 +33,8 @@ class ProfilePhotoStorage
                 upsert = true
                 contentType = io.ktor.http.ContentType.Image.JPEG
             }
-            return supabase.storage.from(BUCKET).publicUrl(path)
+            // Stable object key is upserted; version query busts device caches and Compose keys.
+            return "${supabase.storage.from(BUCKET).publicUrl(path)}?v=${System.currentTimeMillis()}"
         }
 
         /** Deletes the profile photo object for [userId] if present (no-op when missing). */

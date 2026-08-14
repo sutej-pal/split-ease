@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -111,6 +112,8 @@ import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.presentation.ads.AdConfig
+import com.splitease.app.presentation.ads.SeBannerAd
 import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.common.shortDisplayName
@@ -364,6 +367,7 @@ fun GroupDetailScreen(
         .collectAsStateWithLifecycle()
     val group by remember(groupId) { viewModel.observeGroup(groupId) }
         .collectAsStateWithLifecycle()
+    val userPhotoUrls by viewModel.userPhotoUrls.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val me = expensesViewModel.currentUserId()
     val isSolo = membersReady && (members.size <= 1)
@@ -379,6 +383,7 @@ fun GroupDetailScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             // Flush local writes + pull remote so other members' expense/payment edits show up.
             expensesViewModel.refreshGroupFromCloud(groupId)
+            viewModel.refreshMemberProfiles(groupId)
             // Keep Room fresh while this screen is visible (Supabase Realtime).
             expensesViewModel.observeGroupLiveUpdates(groupId)
         }
@@ -431,8 +436,9 @@ fun GroupDetailScreen(
         with(density) { (expandedBannerHeight - collapsedBannerHeight).toPx() }
             .coerceAtLeast(1f)
     var toolbarOffsetPx by remember { mutableFloatStateOf(0f) }
+    val listState = rememberLazyListState()
     val nestedScrollConnection =
-        remember(collapseRangePx) {
+        remember(collapseRangePx, listState) {
             object : NestedScrollConnection {
                 override fun onPreScroll(
                     available: Offset,
@@ -441,6 +447,7 @@ fun GroupDetailScreen(
                     // Collapse the banner before the list scrolls up.
                     if (available.y >= 0f) return Offset.Zero
                     val previous = toolbarOffsetPx
+                    if (previous <= -collapseRangePx) return Offset.Zero
                     val next = (previous + available.y).coerceIn(-collapseRangePx, 0f)
                     toolbarOffsetPx = next
                     return Offset(0f, next - previous)
@@ -451,9 +458,10 @@ fun GroupDetailScreen(
                     available: Offset,
                     _source: NestedScrollSource,
                 ): Offset {
-                    // Expand the banner after the list can no longer scroll down.
-                    if (available.y <= 0f) return Offset.Zero
+                    // Expand the banner only after the list has reached the top.
+                    if (available.y <= 0f || listState.canScrollBackward) return Offset.Zero
                     val previous = toolbarOffsetPx
+                    if (previous >= 0f) return Offset.Zero
                     val next = (previous + available.y).coerceIn(-collapseRangePx, 0f)
                     toolbarOffsetPx = next
                     return Offset(0f, next - previous)
@@ -490,8 +498,7 @@ fun GroupDetailScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding())
-                    .nestedScroll(nestedScrollConnection),
+                    .padding(bottom = padding.calculateBottomPadding()),
         ) {
             GroupDetailBanner(
                 group = group,
@@ -513,7 +520,11 @@ fun GroupDetailScreen(
                         .background(SplitEaseColors.Surface),
             ) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .nestedScroll(nestedScrollConnection),
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
                     if (!(isSolo && ledger.isEmpty())) {
@@ -522,6 +533,7 @@ fun GroupDetailScreen(
                                 balance = groupBalance,
                                 currencyFallback = group?.defaultCurrencyCode.orEmpty(),
                                 currentUserId = me,
+                                userPhotoUrls = userPhotoUrls,
                             )
                         }
                     }
@@ -597,6 +609,12 @@ fun GroupDetailScreen(
                                             .padding(horizontal = 20.dp, vertical = 12.dp),
                                 )
                             }
+                        }
+                        stickyHeader(key = "group-detail-ad") {
+                            SeBannerAd(
+                                adUnitId = AdConfig.groupDetailBannerUnitId,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
                         }
                         ledgerEntries(ledger, onExpenseClick = onOpenExpense)
                     }
@@ -917,6 +935,7 @@ internal fun GroupOverallBalanceBlock(
     balance: GroupBalanceUi?,
     currencyFallback: String,
     currentUserId: String? = null,
+    userPhotoUrls: Map<String, String?> = emptyMap(),
 ) {
     if (balance == null) return
     var expanded by rememberSaveable { mutableStateOf(value = true) }
@@ -940,7 +959,6 @@ internal fun GroupOverallBalanceBlock(
                 .fillMaxWidth()
                 .clickable(enabled = canExpand) { expanded = !expanded },
     ) {
-        HorizontalDivider(color = SplitEaseColors.Outline)
         Column(
             modifier =
                 Modifier.padding(horizontal = SeLayout.detailHorizontal, vertical = 14.dp),
@@ -976,6 +994,7 @@ internal fun GroupOverallBalanceBlock(
                             isLast = index == myDebts.lastIndex,
                             currentUserId = currentUserId,
                             youLabel = youLabel,
+                            userPhotoUrls = userPhotoUrls,
                         )
                     }
                 }
@@ -1041,6 +1060,7 @@ private fun GroupOverallDebtTreeRow(
     isLast: Boolean,
     currentUserId: String?,
     youLabel: String,
+    userPhotoUrls: Map<String, String?> = emptyMap(),
 ) {
     val youOwe =
         if (currentUserId != null) {
@@ -1098,7 +1118,9 @@ private fun GroupOverallDebtTreeRow(
         }
         SeAvatarBadge(
             name = otherLabel,
-            photoUrl = if (youOwe) debt.toPhotoUrl else debt.fromPhotoUrl,
+            photoUrl =
+                debtPhotoUrl(youOwe, debt)?.takeIf { it.isNotBlank() }
+                    ?: userPhotoUrls[if (youOwe) debt.toUserId else debt.fromUserId],
             size = avatarSize,
             borderWidth = 0.dp,
         )
@@ -1119,6 +1141,11 @@ private fun GroupOverallDebtTreeRow(
         )
     }
 }
+
+private fun debtPhotoUrl(
+    youOwe: Boolean,
+    debt: LabeledDebt,
+): String? = if (youOwe) debt.toPhotoUrl else debt.fromPhotoUrl
 
 @Composable
 private fun GroupSoloEmptyState(
@@ -1399,6 +1426,12 @@ private fun GroupExpenseListPreview() {
                                 icon = Icons.Filled.PushPin,
                             )
                         }
+                    }
+                    stickyHeader(key = "group-detail-ad-preview") {
+                        SeBannerAd(
+                            adUnitId = AdConfig.groupDetailBannerUnitId,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                     ledgerEntries(sampleLedger)
                     item { Spacer(modifier = Modifier.height(88.dp)) }

@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import androidx.exifinterface.media.ExifInterface
+import com.splitease.app.BuildConfig
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -43,6 +44,21 @@ object AvatarImageIO {
     /** Width ÷ height for profile and group avatar crops. */
     const val SQUARE_ASPECT_RATIO = 1f
 
+    /** Max edge for persisted pinboard / content image crops. */
+    const val CONTENT_STORED_MAX_SIDE_PX = 1280
+
+    /** Max edge for persisted expense receipt attachments. */
+    const val ATTACHMENT_STORED_MAX_SIDE_PX = 1280
+
+    /** Max edge when decoding expense attachment thumbnails. */
+    const val ATTACHMENT_PREVIEW_MAX_SIDE_PX = 480
+
+    /** Max edge when decoding expense attachments in the full-screen gallery. */
+    const val ATTACHMENT_GALLERY_MAX_SIDE_PX = 1600
+
+    /** JPEG quality for persisted expense receipt attachments (receipts compress well). */
+    const val ATTACHMENT_STORED_JPEG_QUALITY = 78
+
     /** Width ÷ height for pinboard / content image crops. */
     const val CONTENT_ASPECT_RATIO = 4f / 3f
 
@@ -64,8 +80,7 @@ object AvatarImageIO {
                 }
                 photoUrl.startsWith("http://", ignoreCase = true) ||
                     photoUrl.startsWith("https://", ignoreCase = true) -> {
-                    val cached = cacheRemoteImage(context, photoUrl) ?: return@runCatching null
-                    decodeFileScaled(cached, maxSidePx)
+                    decodeRemoteScaled(context, photoUrl, maxSidePx)
                 }
                 else -> decodeFileScaled(File(photoUrl), maxSidePx)
             }
@@ -91,9 +106,13 @@ object AvatarImageIO {
                     readTimeout = 30_000
                     instanceFollowRedirects = true
                     requestMethod = "GET"
+                    applySupabaseAuthHeaders(remoteUrl)
                 }
             try {
-                if (connection.responseCode !in 200..299) return@runCatching null
+                if (connection.responseCode !in 200..299) {
+                    runCatching { dest.delete() }
+                    return@runCatching null
+                }
                 val tmp = File(dest.parentFile, "${dest.name}.tmp")
                 connection.inputStream.use { input ->
                     FileOutputStream(tmp).use { output -> input.copyTo(output) }
@@ -107,6 +126,18 @@ object AvatarImageIO {
                 connection.disconnect()
             }
         }.getOrNull()
+    }
+
+    private fun decodeRemoteScaled(
+        context: Context,
+        remoteUrl: String,
+        maxSidePx: Int,
+    ): Bitmap? {
+        val cached = cacheRemoteImage(context, remoteUrl) ?: return null
+        decodeFileScaled(cached, maxSidePx)?.let { return it }
+        evictRemoteCache(context, remoteUrl)
+        val retry = cacheRemoteImage(context, remoteUrl) ?: return null
+        return decodeFileScaled(retry, maxSidePx)
     }
 
     /**
@@ -143,7 +174,8 @@ object AvatarImageIO {
         remoteUrl: String,
     ): File {
         val dir = File(context.filesDir, "remote_image_cache").apply { mkdirs() }
-        return File(dir, "${sha1Hex(remoteUrl)}.jpg")
+        val cacheKey = remoteUrl.substringBefore('?').trim()
+        return File(dir, "${sha1Hex(cacheKey)}.jpg")
     }
 
     private fun sha1Hex(value: String): String {
@@ -164,11 +196,18 @@ object AvatarImageIO {
         quality: Int = 85,
     ): String {
         destFile.parentFile?.mkdirs()
-        val uri = photoUri.trim().toUri()
+        val trimmed = photoUri.trim()
         val bitmap =
-            decodeUriScaled(context, uri, maxSidePx)
-                ?: decodeFileScaled(File(uri.path ?: photoUri), maxSidePx)
-                ?: error("Could not read the selected photo.")
+            when {
+                trimmed.startsWith("http://", ignoreCase = true) ||
+                    trimmed.startsWith("https://", ignoreCase = true) ->
+                    decodeScaled(context, trimmed, maxSidePx)
+                else -> {
+                    val uri = trimmed.toUri()
+                    decodeUriScaled(context, uri, maxSidePx)
+                        ?: decodeFileScaled(File(uri.path ?: trimmed), maxSidePx)
+                }
+            } ?: error("Could not read the selected photo.")
         try {
             FileOutputStream(destFile).use { out ->
                 require(bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)) {
@@ -333,5 +372,20 @@ object AvatarImageIO {
             sample *= 2
         }
         return sample.coerceAtLeast(1)
+    }
+
+    /**
+     * Supabase Storage objects are fetched outside the Supabase client. Always send the anon
+     * key; prefer the signed-in JWT when available so authenticated-only bucket policies still
+     * authorize the GET after public-select migrations (or for private buckets).
+     */
+    private fun HttpURLConnection.applySupabaseAuthHeaders(remoteUrl: String) {
+        val base = BuildConfig.SUPABASE_URL.trimEnd('/')
+        val key = BuildConfig.SUPABASE_ANON_KEY
+        if (base.isBlank() || key.isBlank()) return
+        if (!remoteUrl.startsWith(base, ignoreCase = true)) return
+        setRequestProperty("apikey", key)
+        val bearer = SupabaseImageAuth.accessToken?.takeIf { it.isNotBlank() } ?: key
+        setRequestProperty("Authorization", "Bearer $bearer")
     }
 }
