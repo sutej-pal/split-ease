@@ -82,20 +82,16 @@ fun AdjustSplitScreen(
         mutableStateOf(initialSelectedIds.ifEmpty { participants.map { it.userId }.toSet() })
     }
     var unequalTexts by remember(participants, initialUnequalTexts) {
-        mutableStateOf(defaultMoneyMap(participants, initialUnequalTexts))
+        mutableStateOf(defaultInputMap(participants, initialUnequalTexts))
     }
     var percentTexts by remember(participants, initialPercentTexts) {
-        mutableStateOf(defaultMoneyMap(participants, initialPercentTexts, blank = "0"))
+        mutableStateOf(defaultInputMap(participants, initialPercentTexts))
     }
     var shareTexts by remember(participants, initialShareTexts) {
-        mutableStateOf(
-            participants.associate { option ->
-                option.userId to (initialShareTexts[option.userId].orEmpty().ifBlank { "0" })
-            },
-        )
+        mutableStateOf(defaultInputMap(participants, initialShareTexts))
     }
     var adjustmentTexts by remember(participants, initialAdjustmentTexts) {
-        mutableStateOf(defaultMoneyMap(participants, initialAdjustmentTexts))
+        mutableStateOf(defaultInputMap(participants, initialAdjustmentTexts))
     }
 
     val total = totalAmount.setScale(2, RoundingMode.HALF_UP)
@@ -191,6 +187,7 @@ fun AdjustSplitScreen(
                                         unequalTexts =
                                             unequalTexts + (option.userId to filterDecimalInput(it))
                                     },
+                                    placeholder = "0.00",
                                 )
                             }
                         }
@@ -216,6 +213,7 @@ fun AdjustSplitScreen(
                                         percentTexts =
                                             percentTexts + (option.userId to filterDecimalInput(it))
                                     },
+                                    placeholder = "0",
                                     trailing = "%",
                                 )
                             }
@@ -241,6 +239,7 @@ fun AdjustSplitScreen(
                                         shareTexts =
                                             shareTexts + (option.userId to filterIntInput(it))
                                     },
+                                    placeholder = "0",
                                     trailing = stringResource(R.string.split_shares_suffix),
                                     keyboardType = KeyboardType.Number,
                                 )
@@ -268,6 +267,7 @@ fun AdjustSplitScreen(
                                         adjustmentTexts =
                                             adjustmentTexts + (option.userId to filterDecimalInput(it))
                                     },
+                                    placeholder = "0.00",
                                 )
                             }
                         }
@@ -437,6 +437,7 @@ private fun AmountInputRow(
     photoUrl: String?,
     value: String,
     onValueChange: (String) -> Unit,
+    placeholder: String,
     subtitle: String? = null,
     leading: String? = null,
     trailing: String? = null,
@@ -475,6 +476,15 @@ private fun AmountInputRow(
                 Spacer(modifier = Modifier.width(4.dp))
             }
             Box(modifier = Modifier.width(72.dp)) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SplitEaseColors.NavyMuted,
+                        textAlign = TextAlign.End,
+                    )
+                }
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
@@ -706,14 +716,21 @@ private fun FooterOfTotal(
 private val ZERO = BigDecimal.ZERO.setScale(2)
 private val HUNDRED = BigDecimal("100").setScale(2)
 
-private fun defaultMoneyMap(
+private fun defaultInputMap(
     participants: List<ParticipantOption>,
     initial: Map<String, String>,
-    blank: String = "0.00",
 ): Map<String, String> =
     participants.associate { option ->
-        option.userId to initial[option.userId].orEmpty().ifBlank { blank }
+        option.userId to zeroLikeAsEmpty(initial[option.userId])
     }
+
+/** Treat blank / 0 / 0.00 as empty so the field can show a placeholder instead. */
+private fun zeroLikeAsEmpty(text: String?): String {
+    val raw = text.orEmpty().trim()
+    if (raw.isEmpty()) return ""
+    val parsed = runCatching { BigDecimal(raw) }.getOrNull() ?: return raw
+    return if (parsed.compareTo(BigDecimal.ZERO) == 0) "" else raw
+}
 
 private fun parseDecimal(text: String?): BigDecimal =
     runCatching { BigDecimal(text?.trim().orEmpty().ifBlank { "0" }) }

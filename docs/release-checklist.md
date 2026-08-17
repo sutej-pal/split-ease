@@ -2,8 +2,11 @@
 
 Use before uploading a Play Console build.
 
+Current `versionName` / sideload APKs are **testing only**. First production Play upload is [TODO(release)](../TODO.md).
+
 ## Build & version
-- [ ] `versionName` / `versionCode` bumped in `app/build.gradle.kts`
+- [ ] Create the next build with `./gradlew newRelease` (or `.\scripts\new-release.ps1`) — increments `versionCode`, bumps `versionName`, records [RELEASES.md](../RELEASES.md), cuts [CHANGELOG.md](../CHANGELOG.md)
+- [ ] Confirm `versionName` / `versionCode` in `version.properties` (`./gradlew printVersion`)
 - [ ] `./gradlew assembleRelease` (or bundle) succeeds
 - [ ] Host Digital Asset Links: `https://splitease.app/.well-known/assetlinks.json` (and mail-service host if used) — see [app-links-setup.md](app-links-setup.md)
 - [ ] Settings → SplitEase → Open by default shows verified invite hosts (not "0 verified links")

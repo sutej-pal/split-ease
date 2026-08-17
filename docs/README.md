@@ -18,7 +18,7 @@ Use this order to stay fast and consistent.
 - Forgot-password OTP: [phase-12-forgot-password-email-otp.md](phase-12-forgot-password-email-otp.md)
 - Invite / onboarding / expense details: [phase-10-expense-details-onboarding-invite-mail.md](phase-10-expense-details-onboarding-invite-mail.md)
 - App Links: [app-links-setup.md](app-links-setup.md)
-- Release: [release-checklist.md](release-checklist.md), [store-listing.md](store-listing.md)
+- Release: [release-checklist.md](release-checklist.md), [store-listing.md](store-listing.md), [../RELEASES.md](../RELEASES.md)
 - Extras backlog: [extras-group-live-updates-notifications.md](extras-group-live-updates-notifications.md)
 - Supabase architecture TODOs (ordered): [supabase-architecture-todos.md](supabase-architecture-todos.md)
 - FCM / Realtime ops: [fcm-setup.md](fcm-setup.md)

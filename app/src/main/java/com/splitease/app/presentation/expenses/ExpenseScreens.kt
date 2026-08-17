@@ -741,6 +741,9 @@ fun AddExpenseScreen(
                     placeholder = stringResource(R.string.label_notes_optional),
                     icon = Icons.AutoMirrored.Filled.Notes,
                     enabled = !uiState.isSubmitting,
+                    singleLine = false,
+                    minLines = 3,
+                    maxLines = 6,
                     textStyle =
                         MaterialTheme.typography.bodyLarge.copy(
                             color = SplitEaseColors.Navy,
@@ -987,6 +990,9 @@ private fun ExpenseUnderlineField(
     errorText: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = 1,
 ) {
     Row(
         modifier =
@@ -999,7 +1005,12 @@ private fun ExpenseUnderlineField(
                         Modifier
                     },
                 ),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment =
+            if (singleLine) {
+                Alignment.CenterVertically
+            } else {
+                Alignment.Top
+            },
     ) {
         Box(
             modifier =
@@ -1048,7 +1059,9 @@ private fun ExpenseUnderlineField(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = enabled && !readOnly,
                     readOnly = readOnly,
-                    singleLine = true,
+                    singleLine = singleLine,
+                    minLines = if (singleLine) 1 else minLines,
+                    maxLines = if (singleLine) 1 else maxLines,
                     textStyle = textStyle,
                     keyboardOptions = keyboardOptions,
                     cursorBrush = SolidColor(SplitEaseColors.Primary),
@@ -1316,6 +1329,9 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             placeholder = stringResource(R.string.label_notes_optional),
                             icon = Icons.AutoMirrored.Filled.Notes,
                             enabled = !isSubmitting,
+                            singleLine = false,
+                            minLines = 3,
+                            maxLines = 6,
                             textStyle =
                                 MaterialTheme.typography.bodyLarge.copy(
                                     color = SplitEaseColors.Navy,

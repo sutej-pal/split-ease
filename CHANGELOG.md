@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Release history + SemVer/`versionCode` counter: `version.properties`, [RELEASES.md](RELEASES.md), `./gradlew newRelease` (or `scripts/new-release.ps1`). Current builds are testing-only; production Play ship is [TODO(release)](TODO.md)
 - Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-email-otp.md), [reset-password.html](../server/mail-templates/supabase/reset-password.html))
 - Signup blocks duplicate email/phone with clear `already registered` messaging (`auth_email_registered` + `auth_phone_registered`)
 

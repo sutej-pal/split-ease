@@ -1,7 +1,6 @@
 package com.splitease.app.presentation.groups
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -55,6 +54,7 @@ import com.splitease.app.presentation.theme.IndigoLight
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.TextPrimaryLight
 import com.splitease.app.presentation.ui.SeActionChip
+import com.splitease.app.presentation.ui.SeActionChipRow
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeEmptyState
@@ -168,14 +168,7 @@ fun NonGroupExpensesScreen(
                 currentUserId = me,
             )
 
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            SeActionChipRow {
                 SeActionChip(
                     label = stringResource(R.string.action_settle_up),
                     onClick = { openSettle() },

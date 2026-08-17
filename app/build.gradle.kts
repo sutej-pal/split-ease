@@ -29,6 +29,22 @@ fun localProp(key: String): String =
         ?: providers.environmentVariable(key).orNull
         ?: ""
 
+val appVersionProperties =
+    Properties().apply {
+        val file = rootProject.file("version.properties")
+        require(file.exists()) {
+            "Missing version.properties at ${file.path}. Create it or restore from git."
+        }
+        file.inputStream().use { load(it) }
+    }
+val appVersionCode =
+    appVersionProperties.getProperty("versionCode")?.toIntOrNull()
+        ?: error("version.properties is missing integer versionCode")
+val appVersionName =
+    appVersionProperties.getProperty("versionName")?.trim().orEmpty().ifBlank {
+        error("version.properties is missing versionName")
+    }
+
 val admobAppIdDebug = "ca-app-pub-3940256099942544~3347511713"
 val admobBannerUnitIdDebug = "ca-app-pub-3940256099942544/9214589741"
 val admobAppIdRelease = localProp("ADMOB_APP_ID").trim()
@@ -51,8 +67,8 @@ android {
         applicationId = "com.splitease.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

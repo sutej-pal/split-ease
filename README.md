@@ -29,6 +29,15 @@ On Windows: `gradlew.bat :app:assembleDebug`
 
 Release builds enable **R8 minify + resource shrinking**.
 
+Number a testing or store build (increments `versionCode`, bumps SemVer, records history). Current APKs are **testing only** — production Play release is still [TODO(release)](TODO.md):
+
+```bash
+./gradlew newRelease
+./gradlew newRelease -Pbump=minor -Pnotes="Short summary"
+```
+
+See [RELEASES.md](RELEASES.md).
+
 ## Docs
 
 Start here: [docs/README.md](docs/README.md)
@@ -39,5 +48,6 @@ Start here: [docs/README.md](docs/README.md)
 | [docs/ROADMAP.md](docs/ROADMAP.md)                     | Feature → phase map          |
 | [ARCHITECTURE.md](ARCHITECTURE.md)                     | Living architecture          |
 | [CHANGELOG.md](CHANGELOG.md)                           | Keep a Changelog             |
+| [RELEASES.md](RELEASES.md)                             | Build counter + version log  |
 | [docs/data-dictionary.md](docs/data-dictionary.md)     | Schema / entities            |
 | [docs/release-checklist.md](docs/release-checklist.md) | Ship checklist               |

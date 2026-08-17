@@ -56,11 +56,12 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 
 ## Store / release
 
-- [ ] **Feature graphic** — 1024Ã—500 (`docs/store-listing.md`).
+- [ ] **TODO(release) — First production / Play release** — Current `versionCode` / sideload APKs are **testing only** (including `1.0.0` build 2). Do not treat them as shipped. When actually cutting a store build: `./gradlew newRelease` (or `scripts/new-release.ps1`), then complete [docs/release-checklist.md](docs/release-checklist.md). History: [RELEASES.md](RELEASES.md).
+- [ ] **Feature graphic** — 1024×500 (`docs/store-listing.md`).
 - [ ] **Phone screenshots** — >=2 in `docs/screenshots/`.
 - [x] **Privacy policy URL** — https://splitease-server-eight.vercel.app/privacy (HTML in SplitEase Server `legal/`).
 - [x] **Support contact** — `support@splitease.app` / https://splitease.app
-- [ ] Release checklist items in [docs/release-checklist.md](docs/release-checklist.md).
+- [ ] Remaining checklist items in [docs/release-checklist.md](docs/release-checklist.md).
 
 ## Ops / SQL (existing projects)
 
