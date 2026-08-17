@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatBold
@@ -74,8 +75,8 @@ import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeSystemBars
-import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 import com.splitease.app.presentation.ui.seScreenSubtitleStyle
 import java.io.File
 import java.util.UUID
@@ -279,12 +280,29 @@ fun PinBoardScreen(
                 title = stringResource(R.string.pin_board_title),
                 onBack = onBack,
                 actions = {
-                    SeTextButton(
-                        text = stringResource(R.string.action_save),
+                    SeTopBarActionButton(
                         onClick = { viewModel.save() },
                         enabled = state.isDirty && !state.isSaving && !state.isLoading,
-                        emphasized = true,
-                    )
+                    ) {
+                        if (state.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = SplitEaseColors.Primary,
+                            )
+                        } else {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = stringResource(R.string.cd_save_pin_board),
+                                tint =
+                                    if (state.isDirty && !state.isSaving && !state.isLoading) {
+                                        SplitEaseColors.Primary
+                                    } else {
+                                        SplitEaseColors.OutlineStrong
+                                    },
+                            )
+                        }
+                    }
                 },
             )
         },

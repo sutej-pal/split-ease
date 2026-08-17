@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.activity
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,19 +14,29 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,31 +51,74 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
+import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeIconTileWithAvatar
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.seDetailHorizontal
+
+private enum class ActivityListFilter {
+    ALL,
+    EXPENSE,
+    SETTLEMENTS,
+    GROUPS,
+}
 
 @Composable
 fun ActivityScreen(
-    onOpenSearch: () -> Unit = {},
     onOpenExpense: (expenseId: String) -> Unit = {},
+    onAddExpense: () -> Unit = {},
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
+    var listFilter by rememberSaveable { mutableStateOf(ActivityListFilter.ALL) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var searchVisible by rememberSaveable { mutableStateOf(false) }
+    val showSearch = searchVisible || query.isNotBlank()
+    val visibleItems =
+        remember(items, listFilter, query) {
+            items.filter { it.matches(listFilter) && it.matchesQuery(query) }
+        }
+    val emptyMessage =
+        if (items.isEmpty() && listFilter == ActivityListFilter.ALL && query.isBlank()) {
+            stringResource(R.string.activity_empty)
+        } else {
+            stringResource(R.string.activity_empty_filtered)
+        }
 
     SeScreen(
         title = stringResource(R.string.nav_activity),
         actions = {
-            IconButton(onClick = onOpenSearch) {
+            ActivityFilterButton(
+                selectedFilter = listFilter,
+                onFilterSelected = { listFilter = it },
+            )
+            IconButton(
+                onClick = {
+                    if (showSearch) {
+                        searchVisible = false
+                        query = ""
+                    } else {
+                        searchVisible = true
+                    }
+                },
+            ) {
                 Icon(
-                    Icons.Filled.Search,
+                    imageVector = if (showSearch) Icons.Filled.Close else Icons.Filled.Search,
                     contentDescription = stringResource(R.string.cd_search),
                     tint = SplitEaseColors.Navy,
                 )
             }
+        },
+        floatingActionButton = {
+            SeExtendedFab(
+                text = stringResource(R.string.action_add_expense),
+                onClick = onAddExpense,
+                icon = Icons.Filled.Receipt,
+            )
         },
         content = { padding ->
             Column(
@@ -73,16 +127,27 @@ fun ActivityScreen(
                         .fillMaxSize()
                         .padding(padding.values),
             ) {
-                if (items.isEmpty()) {
+                if (showSearch) {
+                    SeTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = stringResource(R.string.activity_search_hint),
+                        modifier =
+                            Modifier
+                                .seDetailHorizontal()
+                                .padding(top = 8.dp, bottom = 4.dp),
+                    )
+                }
+                if (visibleItems.isEmpty()) {
                     SeEmptyState(
-                        message = stringResource(R.string.activity_empty),
+                        message = emptyMessage,
                         modifier = Modifier.seDetailHorizontal(),
                     )
                 } else {
                     LazyColumn(
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
                     ) {
-                        items(items, key = { it.id }) { item ->
+                        items(visibleItems, key = { it.id }) { item ->
                             ActivityRow(
                                 item = item,
                                 onClick =
@@ -96,6 +161,86 @@ fun ActivityScreen(
             }
         },
     )
+}
+
+@Composable
+private fun ActivityFilterButton(
+    selectedFilter: ActivityListFilter,
+    onFilterSelected: (ActivityListFilter) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { menuExpanded = true }) {
+            Icon(
+                imageVector = Icons.Filled.Tune,
+                contentDescription = stringResource(R.string.cd_filter_activity),
+                tint =
+                    if (selectedFilter == ActivityListFilter.ALL) {
+                        SplitEaseColors.Navy
+                    } else {
+                        SplitEaseColors.Primary
+                    },
+            )
+        }
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            ActivityListFilter.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(text = stringResource(option.labelRes)) },
+                    onClick = {
+                        onFilterSelected(option)
+                        menuExpanded = false
+                    },
+                    leadingIcon = {
+                        RadioButton(
+                            selected = selectedFilter == option,
+                            onClick = {
+                                onFilterSelected(option)
+                                menuExpanded = false
+                            },
+                            colors =
+                                RadioButtonDefaults.colors(
+                                    selectedColor = SplitEaseColors.Primary,
+                                ),
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+private val ActivityListFilter.labelRes: Int
+    get() =
+        when (this) {
+            ActivityListFilter.ALL -> R.string.activity_filter_all
+            ActivityListFilter.EXPENSE -> R.string.activity_filter_expense
+            ActivityListFilter.SETTLEMENTS -> R.string.activity_filter_settlements
+            ActivityListFilter.GROUPS -> R.string.activity_filter_groups
+        }
+
+private fun ActivityUiItem.matches(filter: ActivityListFilter): Boolean =
+    when (filter) {
+        ActivityListFilter.ALL -> true
+        ActivityListFilter.EXPENSE ->
+            kind == ActivityKind.EXPENSE ||
+                kind == ActivityKind.EXPENSE_UPDATED ||
+                kind == ActivityKind.EXPENSE_DELETED
+        ActivityListFilter.SETTLEMENTS -> kind == ActivityKind.PAYMENT
+        ActivityListFilter.GROUPS -> kind == ActivityKind.GROUP_CREATED
+    }
+
+private fun ActivityUiItem.matchesQuery(query: String): Boolean {
+    val needle = query.trim()
+    if (needle.isEmpty()) return true
+    return title.contains(needle, ignoreCase = true) ||
+        subtitle.contains(needle, ignoreCase = true) ||
+        amountLabel.contains(needle, ignoreCase = true) ||
+        (balanceLabel?.contains(needle, ignoreCase = true) == true) ||
+        (expenseTitle?.contains(needle, ignoreCase = true) == true) ||
+        (actorDisplayName?.contains(needle, ignoreCase = true) == true)
 }
 
 @Composable

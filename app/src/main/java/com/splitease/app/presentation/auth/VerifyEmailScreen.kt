@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.components.SegmentedOtpInput
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTextButton
@@ -35,7 +36,9 @@ fun VerifyEmailScreen(
     modifier: Modifier = Modifier,
 ) {
     var code by rememberSaveable { mutableStateOf("") }
-    val otpIsError = formState.errorMessage != null
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val otpIncomplete = code.length != AuthViewModel.SIGNUP_OTP_LENGTH
+    val otpIsError = formState.errorMessage != null || (showValidation && otpIncomplete)
     val displayEmail = remember(email) { truncateEmailForSubtitle(email) }
     val navy = SplitEaseColors.Navy
     val subtitleTemplate = stringResource(R.string.verify_email_subtitle, displayEmail)
@@ -88,11 +91,19 @@ fun VerifyEmailScreen(
             length = AuthViewModel.SIGNUP_OTP_LENGTH,
             horizontalAlignment = Alignment.Start,
         )
+        if (showValidation && otpIncomplete) {
+            Spacer(modifier = Modifier.height(8.dp))
+            SeErrorText(stringResource(R.string.msg_otp_required))
+        }
         Spacer(modifier = Modifier.height(16.dp))
         SePrimaryButton(
             text = stringResource(R.string.action_verify_code),
-            onClick = { onVerify(code) },
-            enabled = !formState.isLoading && code.length == AuthViewModel.SIGNUP_OTP_LENGTH,
+            onClick = {
+                showValidation = true
+                if (otpIncomplete) return@SePrimaryButton
+                onVerify(code)
+            },
+            enabled = !formState.isLoading,
             isLoading = formState.isLoading,
         )
         Spacer(modifier = Modifier.height(8.dp))

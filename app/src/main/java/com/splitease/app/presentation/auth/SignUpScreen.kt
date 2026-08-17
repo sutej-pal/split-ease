@@ -123,6 +123,11 @@ fun SignUpScreen(
     var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
     var showCurrencyPicker by rememberSaveable { mutableStateOf(false) }
     var showDialPicker by rememberSaveable { mutableStateOf(false) }
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val nameError = showValidation && displayName.isBlank()
+    val emailError = showValidation && email.isBlank()
+    val passwordError =
+        showValidation && password.length < AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH
 
     val photoPicker =
         rememberImagePicker(
@@ -157,6 +162,13 @@ fun SignUpScreen(
                     onValueChange = { displayName = it },
                     label = stringResource(R.string.label_full_name),
                     enabled = !formState.isLoading,
+                    isError = nameError,
+                    supportingText =
+                        if (nameError) {
+                            stringResource(R.string.signup_error_name_required)
+                        } else {
+                            null
+                        },
                     modifier = Modifier.weight(1f),
                     trailingIcon =
                         if (displayName.isNotEmpty()) {
@@ -190,19 +202,31 @@ fun SignUpScreen(
                 label = stringResource(R.string.label_email_address),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 enabled = !formState.isLoading,
+                isError = emailError,
+                supportingText =
+                    if (emailError) stringResource(R.string.msg_email_required) else null,
             )
             Column(modifier = Modifier.fillMaxWidth()) {
                 PasswordSeTextField(
                     value = password,
                     onValueChange = { password = it },
                     enabled = !formState.isLoading,
+                    isError = passwordError,
+                    supportingText =
+                        if (passwordError) {
+                            stringResource(R.string.signup_error_password_short)
+                        } else {
+                            null
+                        },
                 )
-                Text(
-                    text = stringResource(R.string.signup_password_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, top = 6.dp),
-                )
+                if (!passwordError) {
+                    Text(
+                        text = stringResource(R.string.signup_password_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, top = 6.dp),
+                    )
+                }
             }
             PhoneNumberRow(
                 dialFlag = dialFlag,
@@ -225,6 +249,13 @@ fun SignUpScreen(
         SePrimaryButton(
             text = stringResource(R.string.action_signup),
             onClick = {
+                showValidation = true
+                if (displayName.isBlank() ||
+                    email.isBlank() ||
+                    password.length < AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH
+                ) {
+                    return@SePrimaryButton
+                }
                 onSignUp(
                     email.trim(),
                     password,

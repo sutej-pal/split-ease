@@ -1,7 +1,6 @@
 package com.splitease.app.presentation.groups
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,12 +22,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,7 +51,6 @@ import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.balances.GroupBalanceHeader
 import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.ledgerEntries
-import com.splitease.app.presentation.friends.FriendsViewModel
 import com.splitease.app.presentation.theme.IndigoLight
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.TextPrimaryLight
@@ -79,11 +74,10 @@ private enum class NonGroupDetailPane {
 /**
  * Group-detail-style hub for all 1:1 (non-group) expenses.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NonGroupExpensesScreen(
     onBack: () -> Unit,
-    onAddExpenseForFriend: (friendUserId: String) -> Unit,
+    onAddExpense: () -> Unit,
     onOpenExpense: (expenseId: String) -> Unit,
     onOpenSpending: () -> Unit,
     onSettleDebt: (
@@ -93,24 +87,19 @@ fun NonGroupExpensesScreen(
         currency: String,
         counterpartyLabel: String,
     ) -> Unit,
-    onAddFriend: () -> Unit,
     expensesViewModel: ExpensesViewModel = hiltViewModel(),
     balancesViewModel: BalancesViewModel = hiltViewModel(),
-    friendsViewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val expensesUi by expensesViewModel.uiState.collectAsStateWithLifecycle()
     val ledger by remember { expensesViewModel.observeNonGroupLedger() }
         .collectAsStateWithLifecycle()
     val balance by balancesViewModel.nonGroupBalance.collectAsStateWithLifecycle()
-    val friends by friendsViewModel.friends.collectAsStateWithLifecycle()
     var paneName by rememberSaveable { mutableStateOf(NonGroupDetailPane.Expenses.name) }
     val pane =
         runCatching { NonGroupDetailPane.valueOf(paneName) }
             .getOrDefault(NonGroupDetailPane.Expenses)
     var settleHint by remember { mutableStateOf<String?>(null) }
     var showInfo by remember { mutableStateOf(false) }
-    var showFriendPicker by remember { mutableStateOf(false) }
-    val friendSheetState = rememberModalBottomSheetState()
     val me = expensesViewModel.currentUserId()
     val nothingToSettle = stringResource(R.string.group_nothing_to_settle)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -149,12 +138,7 @@ fun NonGroupExpensesScreen(
         floatingActionButton = {
             SeExtendedFab(
                 text = stringResource(R.string.action_add_expense),
-                onClick = {
-                    when {
-                        friends.size == 1 -> onAddExpenseForFriend(friends.first().friendUserId)
-                        else -> showFriendPicker = true
-                    }
-                },
+                onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
             )
         },
@@ -333,51 +317,6 @@ fun NonGroupExpensesScreen(
             icon = Icons.Filled.Info,
             tone = SeConfirmTone.Primary,
         )
-    }
-
-    if (showFriendPicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showFriendPicker = false },
-            sheetState = friendSheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
-            Text(
-                text = stringResource(R.string.pick_friend_for_expense),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-            if (friends.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.friends_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
-                SeOutlinedButton(
-                    text = stringResource(R.string.action_add_friend),
-                    onClick = {
-                        showFriendPicker = false
-                        onAddFriend()
-                    },
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
-            } else {
-                friends.forEach { friend ->
-                    Text(
-                        text = friend.displayNameSnapshot,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    showFriendPicker = false
-                                    onAddExpenseForFriend(friend.friendUserId)
-                                }.padding(horizontal = 24.dp, vertical = 14.dp),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
     }
 }
 

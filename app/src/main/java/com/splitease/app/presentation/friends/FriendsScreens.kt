@@ -27,16 +27,13 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,6 +81,7 @@ import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBar
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
 
 /** How the friends list is filtered. */
@@ -94,13 +92,12 @@ private enum class FriendsListFilter {
     OWED_TO_YOU,
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsListScreen(
     onAddFriend: () -> Unit,
     onOpenFriend: (String) -> Unit,
     onOpenSearch: () -> Unit,
-    onAddExpenseForFriend: (String) -> Unit,
+    onAddExpense: () -> Unit,
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val friends by viewModel.friends.collectAsStateWithLifecycle()
@@ -115,8 +112,6 @@ fun FriendsListScreen(
 
     var listFilter by remember { mutableStateOf(FriendsListFilter.OUTSTANDING) }
     var showSettledFriends by remember { mutableStateOf(false) }
-    var showExpensePicker by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
 
     val balanceByFriendId =
         remember(balances) {
@@ -151,8 +146,6 @@ fun FriendsListScreen(
         if (outstandingWithSettledHidden && !showSettledFriends) settledFriends.size else 0
     val canHideSettled =
         outstandingWithSettledHidden && showSettledFriends && settledFriends.isNotEmpty()
-    val expenseFriends =
-        remember(friends, inviteFlags) { friends.filter { !it.isPendingInvite(inviteFlags) } }
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -194,13 +187,7 @@ fun FriendsListScreen(
         floatingActionButton = {
             SeExtendedFab(
                 text = stringResource(R.string.action_add_expense),
-                onClick = {
-                    when {
-                        expenseFriends.size == 1 ->
-                            onAddExpenseForFriend(expenseFriends.first().friendUserId)
-                        else -> showExpensePicker = true
-                    }
-                },
+                onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
             )
         },
@@ -302,51 +289,6 @@ fun FriendsListScreen(
                     }
                 }
             }
-        }
-    }
-
-    if (showExpensePicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showExpensePicker = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
-            Text(
-                text = stringResource(R.string.pick_friend_for_expense),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-            if (expenseFriends.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.friends_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
-                SeOutlinedButton(
-                    text = stringResource(R.string.action_add_friend),
-                    onClick = {
-                        showExpensePicker = false
-                        onAddFriend()
-                    },
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
-            } else {
-                expenseFriends.forEach { friend ->
-                    Text(
-                        text = friend.displayNameSnapshot,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    showExpensePicker = false
-                                    onAddExpenseForFriend(friend.friendUserId)
-                                }.padding(horizontal = 24.dp, vertical = 14.dp),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -725,9 +667,11 @@ fun AddFriendScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var name by rememberSaveable(prefillName) { mutableStateOf(prefillName) }
     var contact by rememberSaveable(prefillContact) { mutableStateOf(prefillContact) }
+    var showValidation by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val canSubmit =
-        name.isNotBlank() && contact.isNotBlank() && !uiState.isSubmitting
+    val fieldsValid = name.isNotBlank() && contact.isNotBlank()
+    val nameError = showValidation && name.isBlank()
+    val contactError = showValidation && contact.isBlank()
 
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
@@ -755,25 +699,22 @@ fun AddFriendScreen(
         title = stringResource(R.string.action_add_friend),
         onBack = onBack,
         actions = {
-            IconButton(
+            SeTopBarActionButton(
                 onClick = {
+                    showValidation = true
+                    if (!fieldsValid) return@SeTopBarActionButton
                     viewModel.addFriend(
                         name = name,
                         contact = contact,
                         groupId = groupId,
                     ) { onDone() }
                 },
-                enabled = canSubmit,
+                enabled = !uiState.isSubmitting,
             ) {
                 Icon(
                     Icons.Filled.Check,
                     contentDescription = stringResource(R.string.action_done),
-                    tint =
-                        if (canSubmit) {
-                            SplitEaseColors.Primary
-                        } else {
-                            SplitEaseColors.OutlineStrong
-                        },
+                    tint = SplitEaseColors.Primary,
                 )
             }
         },
@@ -790,6 +731,9 @@ fun AddFriendScreen(
                     onValueChange = { name = it },
                     label = stringResource(R.string.label_name),
                     enabled = !uiState.isSubmitting,
+                    isError = nameError,
+                    supportingText =
+                        if (nameError) stringResource(R.string.msg_name_required) else null,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 SeTextField(
@@ -798,6 +742,9 @@ fun AddFriendScreen(
                     label = stringResource(R.string.label_phone_or_email),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     enabled = !uiState.isSubmitting,
+                    isError = contactError,
+                    supportingText =
+                        if (contactError) stringResource(R.string.msg_contact_required) else null,
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
@@ -811,13 +758,15 @@ fun AddFriendScreen(
                 SePrimaryButton(
                     text = stringResource(R.string.action_next),
                     onClick = {
+                        showValidation = true
+                        if (!fieldsValid) return@SePrimaryButton
                         viewModel.addFriend(
                             name = name,
                             contact = contact,
                             groupId = groupId,
                         ) { onDone() }
                     },
-                    enabled = canSubmit,
+                    enabled = !uiState.isSubmitting,
                 )
                 uiState.errorMessage?.let {
                     Spacer(modifier = Modifier.height(12.dp))

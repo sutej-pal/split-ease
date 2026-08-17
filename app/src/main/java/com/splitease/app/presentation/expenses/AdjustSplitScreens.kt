@@ -23,7 +23,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +46,7 @@ import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -102,14 +102,29 @@ fun AdjustSplitScreen(
     val symbol = currencySymbolForCode(currencyCode)
     val selectedOrdered = participants.filter { it.userId in selectedIds }
     val canConfirm = canConfirmSplit(tab, selectedIds, total, unequalTexts, percentTexts, shareTexts, adjustmentTexts)
+    var showValidation by remember { mutableStateOf(false) }
+    val splitError =
+        if (showValidation && !canConfirm) {
+            when {
+                selectedIds.isEmpty() -> stringResource(R.string.msg_expense_participants_required)
+                tab == SplitType.UNEQUAL -> stringResource(R.string.msg_expense_split_unequal)
+                tab == SplitType.PERCENTAGE -> stringResource(R.string.msg_expense_split_percent)
+                tab == SplitType.SHARES -> stringResource(R.string.msg_expense_split_shares)
+                tab == SplitType.ADJUSTMENT -> stringResource(R.string.msg_expense_split_adjustment)
+                else -> stringResource(R.string.msg_expense_participants_required)
+            }
+        } else {
+            null
+        }
 
     SeScreen(
         title = stringResource(R.string.expense_adjust_split),
         onBack = onBack,
         actions = {
-            IconButton(
+            SeTopBarActionButton(
                 onClick = {
-                    if (!canConfirm) return@IconButton
+                    showValidation = true
+                    if (!canConfirm) return@SeTopBarActionButton
                     onConfirm(
                         AdjustSplitResult(
                             splitType = tab,
@@ -121,17 +136,12 @@ fun AdjustSplitScreen(
                         ),
                     )
                 },
-                enabled = canConfirm,
+                enabled = true,
             ) {
                 Icon(
                     Icons.Filled.Check,
                     contentDescription = stringResource(R.string.cd_confirm_split),
-                    tint =
-                        if (canConfirm) {
-                            SplitEaseColors.Primary
-                        } else {
-                            SplitEaseColors.OutlineStrong
-                        },
+                    tint = SplitEaseColors.Primary,
                 )
             }
         },
@@ -283,6 +293,18 @@ fun AdjustSplitScreen(
                             }
                     },
                 )
+                if (splitError != null) {
+                    Text(
+                        text = splitError,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         },
     )

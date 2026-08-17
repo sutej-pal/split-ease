@@ -24,17 +24,14 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,7 +53,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
-import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
@@ -72,7 +68,6 @@ import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeOverallSummary
 import com.splitease.app.presentation.ui.SePreview
-import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -87,22 +82,19 @@ private enum class GroupsHomeFilter {
     OWED_TO_YOU,
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupsHomeScreen(
     onOpenGroup: (String) -> Unit,
     onOpenNonGroup: () -> Unit,
     onCreateGroup: () -> Unit,
-    onAddExpenseForGroup: (String) -> Unit,
+    onAddExpense: () -> Unit,
     onOpenSearch: () -> Unit,
     viewModel: GroupsHomeViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
     var showSettledGroups by remember { mutableStateOf(false) }
-    var showExpensePicker by remember { mutableStateOf(false) }
     var photoTargetGroupId by remember { mutableStateOf<String?>(null) }
-    val sheetState = rememberModalBottomSheetState()
     val changePhotoCd = stringResource(R.string.cd_change_group_photo)
     val groupPhotoPicker =
         rememberImagePicker(
@@ -179,13 +171,7 @@ fun GroupsHomeScreen(
             if (!ui.isLoading) {
                 SeExtendedFab(
                     text = stringResource(R.string.action_add_expense),
-                    onClick = {
-                        val groups = ui.allGroups
-                        when {
-                            groups.size == 1 -> onAddExpenseForGroup(groups.first().id)
-                            else -> showExpensePicker = true
-                        }
-                    },
+                    onClick = onAddExpense,
                     icon = Icons.Filled.Receipt,
                 )
             }
@@ -308,51 +294,6 @@ fun GroupsHomeScreen(
                     }
                 }
             }
-        }
-    }
-
-    if (showExpensePicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showExpensePicker = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
-            Text(
-                text = stringResource(R.string.pick_group_for_expense),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-            if (ui.allGroups.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.groups_empty_home),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
-                SePrimaryButton(
-                    text = stringResource(R.string.action_create_group),
-                    onClick = {
-                        showExpensePicker = false
-                        onCreateGroup()
-                    },
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
-            } else {
-                ui.allGroups.forEach { group: Group ->
-                    Text(
-                        text = group.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    showExpensePicker = false
-                                    onAddExpenseForGroup(group.id)
-                                }.padding(horizontal = 24.dp, vertical = 14.dp),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

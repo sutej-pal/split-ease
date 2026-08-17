@@ -293,12 +293,54 @@ data class PaddingValuesAware(
     val values: PaddingValues,
 )
 
+/**
+ * Trailing top-bar action with the same 40.dp bounded ripple as [SeTopBarBackButton].
+ * Prefer this over a raw [IconButton] in [SeTopBar] `actions` (confirm/check, etc.).
+ */
+@Composable
+fun SeTopBarActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    SeTopBarChromeButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        content = content,
+    )
+}
+
 @Composable
 private fun SeTopBarBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     contentDescription: String = stringResource(R.string.cd_navigate_back),
+) {
+    SeTopBarChromeButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.ChevronLeft,
+            contentDescription = contentDescription,
+            // Muted vs title so the chevron stays secondary chrome.
+            tint = SplitEaseColors.NavyMuted,
+            // ChevronLeft’s glyph sits slightly right in the 24dp viewport; nudge left.
+            modifier = Modifier.size(22.dp).offset(x = (-1).dp),
+        )
+    }
+}
+
+@Composable
+private fun SeTopBarChromeButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Box(
@@ -315,14 +357,7 @@ private fun SeTopBarBackButton(
                 ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.Filled.ChevronLeft,
-            contentDescription = contentDescription,
-            // Muted vs title so the chevron stays secondary chrome.
-            tint = SplitEaseColors.NavyMuted,
-            // ChevronLeft’s glyph sits slightly right in the 24dp viewport; nudge left.
-            modifier = Modifier.size(22.dp).offset(x = (-1).dp),
-        )
+        content()
     }
 }
 

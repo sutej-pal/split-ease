@@ -29,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +49,7 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 
 @Composable
 fun EditContactScreen(
@@ -63,6 +67,9 @@ fun EditContactScreen(
             !uiState.isLoading &&
             uiState.name.isNotBlank() &&
             selectedContactReady(uiState)
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val nameError = showValidation && uiState.name.isBlank()
+    val contactError = showValidation && !selectedContactReady(uiState)
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -86,24 +93,21 @@ fun EditContactScreen(
         onBack = onBack,
         centeredTitle = true,
         actions = {
-            IconButton(
+            SeTopBarActionButton(
                 onClick = {
+                    showValidation = true
+                    if (!canSubmit) return@SeTopBarActionButton
                     viewModel.submit(
                         onLinked = onDone,
                         onConfirmedForReview = onConfirmedForReview,
                     )
                 },
-                enabled = canSubmit,
+                enabled = !uiState.isSubmitting && !uiState.isLoading,
             ) {
                 Icon(
                     Icons.Filled.Check,
                     contentDescription = stringResource(R.string.action_done),
-                    tint =
-                        if (canSubmit) {
-                            SplitEaseColors.Primary
-                        } else {
-                            SplitEaseColors.OutlineStrong
-                        },
+                    tint = SplitEaseColors.Primary,
                 )
             }
         },
@@ -135,6 +139,9 @@ fun EditContactScreen(
                     onValueChange = viewModel::setName,
                     label = stringResource(R.string.label_name),
                     enabled = !uiState.isSubmitting,
+                    isError = nameError,
+                    supportingText =
+                        if (nameError) stringResource(R.string.msg_name_required) else null,
                     trailingIcon =
                         if (uiState.name.isNotEmpty()) {
                             {
@@ -167,10 +174,15 @@ fun EditContactScreen(
                         newPhone = uiState.newPhone,
                         newEmail = uiState.newEmail,
                         enabled = !uiState.isSubmitting,
+                        showContactError = contactError,
                         onSelect = { viewModel.selectOption(option.id) },
                         onNewPhoneChange = viewModel::setNewPhone,
                         onNewEmailChange = viewModel::setNewEmail,
                     )
+                }
+                if (contactError) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SeErrorText(stringResource(R.string.msg_contact_required))
                 }
 
                 if (uiState.confirmOnly) {
@@ -204,6 +216,7 @@ private fun ContactMethodRow(
     newPhone: String,
     newEmail: String,
     enabled: Boolean,
+    showContactError: Boolean,
     onSelect: () -> Unit,
     onNewPhoneChange: (String) -> Unit,
     onNewEmailChange: (String) -> Unit,
@@ -264,6 +277,7 @@ private fun ContactMethodRow(
                             onValueChange = onNewPhoneChange,
                             label = stringResource(R.string.label_phone_number),
                             enabled = enabled,
+                            isError = showContactError && newPhone.isBlank(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             modifier = Modifier.weight(1f),
                         )
@@ -282,6 +296,7 @@ private fun ContactMethodRow(
                             onValueChange = onNewEmailChange,
                             label = stringResource(R.string.label_email),
                             enabled = enabled,
+                            isError = showContactError && newEmail.isBlank(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             modifier = Modifier.weight(1f),
                         )

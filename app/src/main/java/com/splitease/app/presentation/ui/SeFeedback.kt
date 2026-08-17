@@ -63,19 +63,23 @@ fun SeInfoText(
 /**
  * Scaffold snackbar host that shows [errorMessage] or [infoMessage] when either changes.
  * Place in `Scaffold(snackbarHost = { SeMessageHost(...) })`.
+ *
+ * Bump [replayKey] to show the same message again (e.g. a second invalid confirm tap).
  */
 @Composable
 fun SeMessageHost(
     errorMessage: String?,
     infoMessage: String?,
     modifier: Modifier = Modifier,
+    replayKey: Int = 0,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarIsError by remember { mutableStateOf(false) }
 
-    LaunchedEffect(errorMessage, infoMessage) {
+    LaunchedEffect(errorMessage, infoMessage, replayKey) {
         val message = errorMessage ?: infoMessage ?: return@LaunchedEffect
         snackbarIsError = errorMessage != null
+        snackbarHostState.currentSnackbarData?.dismiss()
         snackbarHostState.showSnackbar(message = message)
     }
 

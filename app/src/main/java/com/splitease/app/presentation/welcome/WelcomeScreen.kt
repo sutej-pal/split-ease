@@ -125,12 +125,12 @@ fun WelcomeScreen(
             dismissLabel = stringResource(R.string.action_cancel),
             confirmLabel = stringResource(R.string.invite_paste_continue),
             onConfirm = {
-                if (onOpenInviteLink(pasteValue)) {
+                if (pasteValue.isBlank() || !onOpenInviteLink(pasteValue)) {
+                    pasteError = true
+                } else {
                     showPasteInvite = false
                     pasteValue = ""
                     pasteError = false
-                } else {
-                    pasteError = true
                 }
             },
         ) {
@@ -142,15 +142,10 @@ fun WelcomeScreen(
                 },
                 label = stringResource(R.string.invite_paste_label),
                 singleLine = false,
+                isError = pasteError,
+                supportingText =
+                    if (pasteError) stringResource(R.string.invite_paste_invalid) else null,
             )
-            if (pasteError) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.invite_paste_invalid),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
         }
     }
 }

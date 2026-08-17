@@ -71,6 +71,21 @@ fun ResetPasswordOtpScreen(
             confirmPassword.isNotEmpty() &&
             newPassword == confirmPassword &&
             (otpReady || code.length == AuthViewModel.SIGNUP_OTP_LENGTH)
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val otpIncomplete = !otpReady && code.length != AuthViewModel.SIGNUP_OTP_LENGTH
+    val otpFieldError = otpIsError || (showValidation && otpIncomplete)
+    val newPasswordFieldError =
+        newPasswordError ?:
+            if (showValidation && !passwordRules) passwordRequirements else null
+    val confirmPasswordFieldError =
+        confirmPasswordError ?:
+            when {
+                !showValidation -> null
+                confirmPassword.isEmpty() ->
+                    stringResource(R.string.msg_confirm_password_required)
+                newPassword != confirmPassword -> passwordMismatch
+                else -> null
+            }
     val subtitleBefore = stringResource(R.string.reset_password_subtitle_before)
     val subtitleAfter = stringResource(R.string.reset_password_subtitle_after)
     val wrongEmailLabel = stringResource(R.string.action_wrong_email)
@@ -127,10 +142,19 @@ fun ResetPasswordOtpScreen(
             },
             onComplete = { completed -> code = completed },
             enabled = !formState.isLoading && !otpReady,
-            isError = otpIsError,
+            isError = otpFieldError,
             length = AuthViewModel.SIGNUP_OTP_LENGTH,
             horizontalAlignment = Alignment.Start,
         )
+        if (showValidation && otpIncomplete) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.msg_otp_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.reset_otp_hint),
@@ -153,8 +177,8 @@ fun ResetPasswordOtpScreen(
             onValueChange = { newPassword = it },
             enabled = !formState.isLoading,
             placeholder = stringResource(R.string.reset_password_placeholder),
-            supportingText = newPasswordError,
-            isError = newPasswordError != null,
+            supportingText = newPasswordFieldError,
+            isError = newPasswordFieldError != null,
         )
         Spacer(modifier = Modifier.height(10.dp))
         PasswordRequirementsChecklist(password = newPassword)
@@ -172,14 +196,18 @@ fun ResetPasswordOtpScreen(
             onValueChange = { confirmPassword = it },
             enabled = !formState.isLoading,
             placeholder = stringResource(R.string.reset_confirm_password_placeholder),
-            supportingText = confirmPasswordError,
-            isError = confirmPasswordError != null,
+            supportingText = confirmPasswordFieldError,
+            isError = confirmPasswordFieldError != null,
         )
         Spacer(modifier = Modifier.height(16.dp))
         SePrimaryButton(
             text = stringResource(R.string.action_set_new_password),
-            onClick = { onSubmit(code, newPassword, confirmPassword) },
-            enabled = canSubmit,
+            onClick = {
+                showValidation = true
+                if (!canSubmit) return@SePrimaryButton
+                onSubmit(code, newPassword, confirmPassword)
+            },
+            enabled = !formState.isLoading,
             isLoading = formState.isLoading,
         )
         Spacer(modifier = Modifier.height(8.dp))

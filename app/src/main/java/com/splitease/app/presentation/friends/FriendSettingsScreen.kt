@@ -57,6 +57,7 @@ import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.seEntityHeaderStyle
 
 private val PendingInviteCardBg = Color(0xFFFFF3E0)
 
@@ -295,9 +296,7 @@ private fun FriendSettingsHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name.ifBlank { stringResource(R.string.friends_title) },
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = SplitEaseColors.Navy,
+                style = seEntityHeaderStyle(),
             )
             if (contact.isNotBlank()) {
                 Text(

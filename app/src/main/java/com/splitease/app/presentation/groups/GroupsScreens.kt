@@ -160,7 +160,8 @@ fun CreateGroupScreen(
     var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedType = runCatching { GroupType.valueOf(groupType) }.getOrDefault(GroupType.OTHER)
     val isSubmitting = uiState.isSubmitting
-    val canCreate = name.isNotBlank() && !isSubmitting
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val nameError = showValidation && name.isBlank()
     val photoPicker =
         rememberImagePicker(
             sourceTitle = stringResource(R.string.group_photo_source_title),
@@ -238,6 +239,9 @@ fun CreateGroupScreen(
                         .weight(1f)
                         .width(0.dp),
                     enabled = !isSubmitting,
+                    isError = nameError,
+                    supportingText =
+                        if (nameError) stringResource(R.string.msg_group_name_required) else null,
                 )
             }
 
@@ -298,6 +302,8 @@ fun CreateGroupScreen(
                         stringResource(R.string.action_create_group)
                     },
                 onClick = {
+                    showValidation = true
+                    if (name.isBlank()) return@SePrimaryButton
                     focusManager.clearFocus()
                     viewModel.createGroup(
                         name = name,
@@ -306,7 +312,7 @@ fun CreateGroupScreen(
                         onSuccess = onCreated,
                     )
                 },
-                enabled = canCreate,
+                enabled = !isSubmitting,
                 isLoading = isSubmitting,
             )
         }

@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.expenses
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -34,7 +37,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -84,13 +86,14 @@ import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AddExpenseScreen(
     groupId: String?,
@@ -137,6 +140,7 @@ fun AddExpenseScreen(
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var paidByStep by rememberSaveable { mutableStateOf(PaidByStep.None.name) }
     var showAdjustSplit by rememberSaveable { mutableStateOf(false) }
+    var showValidation by rememberSaveable { mutableStateOf(false) }
     var prefilled by rememberSaveable(expenseId) { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val me by viewModel.signedInUserId.collectAsStateWithLifecycle()
@@ -290,11 +294,16 @@ fun AddExpenseScreen(
             SplitType.ADJUSTMENT -> stringResource(R.string.split_adjustment)
         }
     var groupName by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(groupId) {
-        groupName = groupId?.let { viewModel.getGroupName(it) }
+    val expenseGroupId = groupId ?: editingExpense?.expense?.groupId
+    LaunchedEffect(expenseGroupId) {
+        groupName = expenseGroupId?.let { viewModel.getGroupName(it) }
     }
     val others = participants.filter { it.userId != me }
     val allOthersSelected = others.isNotEmpty() && others.all { it.userId in selected }
+    val allGroupMembersInExpense =
+        expenseGroupId != null &&
+            participants.isNotEmpty() &&
+            participants.all { it.userId in selected }
     val dateTimeLabel =
         remember(expenseDateMs) {
             DateFormat
@@ -320,8 +329,67 @@ fun AddExpenseScreen(
             defaults + customs
         }
 
+    val expenseTotal =
+        runCatching { BigDecimal(amount.trim().ifBlank { "0" }) }
+            .getOrDefault(BigDecimal.ZERO)
+            .setScale(2, java.math.RoundingMode.HALF_UP)
+    val multiPayerValid =
+        !isMultiPayer ||
+            run {
+                val sum =
+                    paidAmountTexts.keys
+                        .fold(BigDecimal.ZERO) { acc, id ->
+                            acc.add(
+                                runCatching {
+                                    BigDecimal(paidAmountTexts[id]?.trim().orEmpty().ifBlank { "0" })
+                                }.getOrDefault(BigDecimal.ZERO),
+                            )
+                        }.setScale(2, java.math.RoundingMode.HALF_UP)
+                sum.compareTo(expenseTotal) == 0 &&
+                    paidAmountTexts.keys.any {
+                        runCatching {
+                            BigDecimal(paidAmountTexts[it]?.trim().orEmpty().ifBlank { "0" })
+                        }.getOrDefault(BigDecimal.ZERO) > BigDecimal.ZERO
+                    }
+            }
+    val amountValid = isValidExpenseAmount(amount)
+    val canSaveExpense =
+        title.isNotBlank() &&
+            amountValid &&
+            selected.isNotEmpty() &&
+            paidBy.isNotBlank() &&
+            multiPayerValid
+    val titleError = showValidation && title.isBlank()
+    val amountError = showValidation && !amountValid
+    val participantsError = showValidation && selected.isEmpty()
+    val paidByError = showValidation && paidBy.isBlank()
+    val paidAmountsError = showValidation && isMultiPayer && !multiPayerValid
+    val participantsFocus = remember { BringIntoViewRequester() }
+    val titleFocus = remember { BringIntoViewRequester() }
+    val amountFocus = remember { BringIntoViewRequester() }
+    val paidByFocus = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(
+        showValidation,
+        titleError,
+        amountError,
+        participantsError,
+        paidByError,
+        paidAmountsError,
+    ) {
+        if (!showValidation) return@LaunchedEffect
+        when {
+            participantsError -> participantsFocus.bringIntoView()
+            titleError -> titleFocus.bringIntoView()
+            amountError -> amountFocus.bringIntoView()
+            paidByError || paidAmountsError -> paidByFocus.bringIntoView()
+        }
+    }
+
     fun saveExpense() {
         if (uiState.isSubmitting) return
+        showValidation = true
+        if (!canSaveExpense) return
         val multiPaidAmounts =
             if (isMultiPayer) {
                 paidAmountTexts.keys.associateWith { id ->
@@ -404,30 +472,6 @@ fun AddExpenseScreen(
         }
     }
 
-    val expenseTotal =
-        runCatching { BigDecimal(amount.trim().ifBlank { "0" }) }
-            .getOrDefault(BigDecimal.ZERO)
-            .setScale(2, java.math.RoundingMode.HALF_UP)
-    val multiPayerValid =
-        !isMultiPayer ||
-            run {
-                val sum =
-                    paidAmountTexts.keys
-                        .fold(BigDecimal.ZERO) { acc, id ->
-                            acc.add(
-                                runCatching {
-                                    BigDecimal(paidAmountTexts[id]?.trim().orEmpty().ifBlank { "0" })
-                                }.getOrDefault(BigDecimal.ZERO),
-                            )
-                        }.setScale(2, java.math.RoundingMode.HALF_UP)
-                sum.compareTo(expenseTotal) == 0 &&
-                    paidAmountTexts.keys.any {
-                        runCatching {
-                            BigDecimal(paidAmountTexts[it]?.trim().orEmpty().ifBlank { "0" })
-                        }.getOrDefault(BigDecimal.ZERO) > BigDecimal.ZERO
-                    }
-            }
-
     when (currentPaidByStep) {
         PaidByStep.WhoPaid -> {
             WhoPaidScreen(
@@ -504,14 +548,9 @@ fun AddExpenseScreen(
             ),
         onBack = onBack,
         actions = {
-            IconButton(
+            SeTopBarActionButton(
                 onClick = { saveExpense() },
-                enabled =
-                    title.isNotBlank() &&
-                        amount.isNotBlank() &&
-                        selected.isNotEmpty() &&
-                        paidBy.isNotBlank() &&
-                        multiPayerValid,
+                enabled = !uiState.isSubmitting,
             ) {
                 if (uiState.isSubmitting) {
                     SeInlineLoader()
@@ -541,7 +580,10 @@ fun AddExpenseScreen(
                                 .padding(horizontal = 20.dp, vertical = 12.dp),
                     ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .bringIntoViewRequester(participantsFocus),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -550,7 +592,7 @@ fun AddExpenseScreen(
                         color = SplitEaseColors.Navy,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    if (groupId != null && groupName != null) {
+                    if (groupId != null && groupName != null && !isEdit) {
                         ParticipantChip(
                             label = stringResource(R.string.expense_all_of_group, groupName!!),
                             selected = true,
@@ -561,42 +603,64 @@ fun AddExpenseScreen(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            if (others.isNotEmpty()) {
+                            if (isEdit && allGroupMembersInExpense) {
                                 ParticipantChip(
                                     label = stringResource(R.string.expense_everyone),
-                                    selected = allOthersSelected && me in selected,
-                                    onClick = {
-                                        selected =
-                                            if (allOthersSelected) {
-                                                setOfNotNull(me)
-                                            } else {
-                                                participants.map { it.userId }.toSet()
-                                            }
-                                        if (paidBy.isBlank()) {
-                                            paidBy = me.orEmpty()
-                                        }
-                                    },
+                                    selected = true,
+                                    onClick = {},
                                 )
-                            }
-                            others.forEach { option ->
-                                ParticipantChip(
-                                    label = option.label,
-                                    selected = option.userId in selected,
-                                    onClick = {
-                                        selected =
-                                            if (option.userId in selected) {
-                                                (selected - option.userId).ifEmpty { setOfNotNull(me) }
-                                            } else {
-                                                selected + option.userId
+                            } else {
+                                // Select-all only when there are multiple other people.
+                                // A 1:1 friend expense would otherwise show a redundant "Everyone".
+                                if (!isEdit && others.size > 1) {
+                                    ParticipantChip(
+                                        label = stringResource(R.string.expense_everyone),
+                                        selected = allOthersSelected && me in selected,
+                                        onClick = {
+                                            selected =
+                                                if (allOthersSelected) {
+                                                    setOfNotNull(me)
+                                                } else {
+                                                    participants.map { it.userId }.toSet()
+                                                }
+                                            if (paidBy.isBlank()) {
+                                                paidBy = me.orEmpty()
                                             }
-                                        if (paidBy.isBlank()) {
-                                            paidBy = me.orEmpty()
-                                        }
-                                    },
-                                )
+                                        },
+                                    )
+                                }
+                                val membersToShow =
+                                    if (isEdit) {
+                                        others.filter { it.userId in selected }
+                                    } else {
+                                        others
+                                    }
+                                membersToShow.forEach { option ->
+                                    ParticipantChip(
+                                        label = option.label,
+                                        selected = option.userId in selected,
+                                        onClick = {
+                                            selected =
+                                                if (option.userId in selected) {
+                                                    (selected - option.userId).ifEmpty {
+                                                        setOfNotNull(me)
+                                                    }
+                                                } else {
+                                                    selected + option.userId
+                                                }
+                                            if (paidBy.isBlank()) {
+                                                paidBy = me.orEmpty()
+                                            }
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
+                }
+                if (participantsError) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SeErrorText(stringResource(R.string.msg_expense_participants_required))
                 }
 
                 Spacer(modifier = Modifier.height(28.dp))
@@ -613,6 +677,14 @@ fun AddExpenseScreen(
                     onIconClick = { showCategoryPicker = true },
                     iconContentDescription = stringResource(R.string.cd_expense_category),
                     enabled = !uiState.isSubmitting,
+                    isError = titleError,
+                    errorText =
+                        if (titleError) {
+                            stringResource(R.string.msg_expense_title_required)
+                        } else {
+                            null
+                        },
+                    modifier = Modifier.bringIntoViewRequester(titleFocus),
                     textStyle =
                         MaterialTheme.typography.titleLarge.copy(
                             color = SplitEaseColors.Navy,
@@ -634,6 +706,14 @@ fun AddExpenseScreen(
                     leadingLabel = currencySymbol(currencyCode),
                     enabled = !uiState.isSubmitting,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = amountError,
+                    errorText =
+                        if (amountError) {
+                            stringResource(R.string.msg_enter_valid_amount)
+                        } else {
+                            null
+                        },
+                    modifier = Modifier.bringIntoViewRequester(amountFocus),
                     textStyle =
                         MaterialTheme.typography.headlineMedium.copy(
                             color = SplitEaseColors.Navy,
@@ -674,7 +754,15 @@ fun AddExpenseScreen(
                     onPaidByClick = { paidByStep = PaidByStep.WhoPaid.name },
                     onSplitClick = { showAdjustSplit = true },
                     enabled = !uiState.isSubmitting,
+                    modifier = Modifier.bringIntoViewRequester(paidByFocus),
                 )
+                if (paidByError) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SeErrorText(stringResource(R.string.msg_expense_paid_by_required))
+                } else if (paidAmountsError) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SeErrorText(stringResource(R.string.msg_expense_paid_amounts_mismatch))
+                }
 
                 uiState.errorMessage?.let {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -895,6 +983,8 @@ private fun ExpenseUnderlineField(
     enabled: Boolean = true,
     readOnly: Boolean = false,
     onClick: (() -> Unit)? = null,
+    isError: Boolean = false,
+    errorText: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
@@ -965,7 +1055,22 @@ private fun ExpenseUnderlineField(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = SplitEaseColors.OutlineStrong)
+            HorizontalDivider(
+                color =
+                    if (isError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        SplitEaseColors.OutlineStrong
+                    },
+            )
+            if (errorText != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = errorText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 }
@@ -1021,6 +1126,11 @@ private fun CategoryPickerDialog(
             }
         }
     }
+}
+
+private fun isValidExpenseAmount(amount: String): Boolean {
+    val parsed = runCatching { BigDecimal(amount.trim()) }.getOrNull() ?: return false
+    return parsed > BigDecimal.ZERO
 }
 
 private fun currencySymbol(code: String): String =
@@ -1095,17 +1205,9 @@ private fun AddExpenseScreenSavingPreview() {
 @Composable
 private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
     SePreview {
-        val me = "me"
-        val participants =
-            listOf(
-                ParticipantOption(me, "You"),
-                ParticipantOption("u2", "Sutej Pal"),
-                ParticipantOption("u3", "Alex"),
-            )
         var title by remember { mutableStateOf("Dinner") }
         var amount by remember { mutableStateOf("1240.00") }
         var notes by remember { mutableStateOf("") }
-        var selected by remember { mutableStateOf(participants.map { it.userId }.toSet()) }
         val currencyCode = AppCurrencies.INR
         val dateTimeLabel =
             remember {
@@ -1118,12 +1220,9 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
             title = stringResource(R.string.action_add_expense),
             onBack = {},
             actions = {
-                IconButton(
+                SeTopBarActionButton(
                     onClick = {},
-                    enabled =
-                        title.isNotBlank() &&
-                            amount.isNotBlank() &&
-                            selected.isNotEmpty(),
+                    enabled = !isSubmitting,
                 ) {
                     if (isSubmitting) {
                         SeInlineLoader()

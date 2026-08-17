@@ -70,6 +70,11 @@ fun InviteJoinSignUpScreen(
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val nameError = showValidation && displayName.isBlank()
+    val emailError = showValidation && email.isBlank()
+    val passwordError =
+        showValidation && password.length < AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH
 
     LaunchedEffect(prefillEmail) {
         if (email.trim().endsWith("@splitease.invalid", ignoreCase = true)) {
@@ -114,6 +119,9 @@ fun InviteJoinSignUpScreen(
                 onValueChange = { displayName = it },
                 label = stringResource(R.string.label_display_name),
                 enabled = !formState.isLoading,
+                isError = nameError,
+                supportingText =
+                    if (nameError) stringResource(R.string.msg_display_name_required) else null,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -129,6 +137,9 @@ fun InviteJoinSignUpScreen(
                 label = stringResource(R.string.label_email),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 enabled = !formState.isLoading,
+                isError = emailError,
+                supportingText =
+                    if (emailError) stringResource(R.string.msg_email_required) else null,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -143,7 +154,13 @@ fun InviteJoinSignUpScreen(
                 onValueChange = { password = it },
                 label = stringResource(R.string.label_password),
                 enabled = !formState.isLoading,
-                supportingText = stringResource(R.string.signup_password_hint),
+                isError = passwordError,
+                supportingText =
+                    if (passwordError) {
+                        stringResource(R.string.signup_error_password_short)
+                    } else {
+                        stringResource(R.string.signup_password_hint)
+                    },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 visualTransformation =
                     if (passwordVisible) {
@@ -171,12 +188,17 @@ fun InviteJoinSignUpScreen(
             Spacer(modifier = Modifier.height(24.dp))
             SePrimaryButton(
                 text = stringResource(R.string.invite_signup_cta),
-                onClick = { onSignUp(email.trim(), password, displayName.trim()) },
-                enabled =
-                    !formState.isLoading &&
-                        displayName.isNotBlank() &&
-                        email.isNotBlank() &&
-                        password.length >= AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH,
+                onClick = {
+                    showValidation = true
+                    if (displayName.isBlank() ||
+                        email.isBlank() ||
+                        password.length < AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH
+                    ) {
+                        return@SePrimaryButton
+                    }
+                    onSignUp(email.trim(), password, displayName.trim())
+                },
+                enabled = !formState.isLoading,
                 isLoading = formState.isLoading,
             )
             Spacer(modifier = Modifier.height(8.dp))

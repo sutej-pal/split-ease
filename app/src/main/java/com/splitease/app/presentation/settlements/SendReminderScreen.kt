@@ -15,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -51,6 +54,8 @@ fun SendReminderScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val sentToast = stringResource(R.string.msg_reminder_sent)
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val bodyError = showValidation && uiState.body.isBlank()
 
     LaunchedEffect(fromUserId, toUserId, amount, currencyCode, groupName) {
         viewModel.prepare(
@@ -77,10 +82,13 @@ fun SendReminderScreen(
         actions = {
             SeTextButton(
                 text = stringResource(R.string.action_send),
-                onClick = viewModel::send,
+                onClick = {
+                    showValidation = true
+                    if (uiState.body.isBlank()) return@SeTextButton
+                    viewModel.send()
+                },
                 enabled =
                     uiState.isReady &&
-                        uiState.body.isNotBlank() &&
                         !uiState.isSending &&
                         !uiState.sent,
                 isLoading = uiState.isSending,
@@ -112,6 +120,12 @@ fun SendReminderScreen(
                     cursorBrush = SolidColor(SplitEaseColors.Primary),
                     enabled = uiState.isReady && !uiState.isSending,
                 )
+                if (bodyError) {
+                    SeErrorText(
+                        text = stringResource(R.string.msg_reminder_body_required),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
 
                 uiState.errorMessage?.let { msg ->
                     SeErrorText(

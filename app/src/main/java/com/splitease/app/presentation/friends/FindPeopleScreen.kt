@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -57,6 +56,7 @@ import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTopBar
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 
 /**
  * Search friends and device contacts; optionally add them to a group.
@@ -132,7 +132,7 @@ fun FindPeopleScreen(
                 onBack = onBack,
                 actions = {
                     if (hasSelection) {
-                        IconButton(
+                        SeTopBarActionButton(
                             onClick = {
                                 if (viewModel.prepareReview()) {
                                     onReviewSelected()

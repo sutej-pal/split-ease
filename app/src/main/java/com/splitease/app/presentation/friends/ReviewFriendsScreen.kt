@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,6 +47,7 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTopBar
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 
 /**
  * Confirms selected contacts before inviting. Edit is optional per row.
@@ -93,7 +93,7 @@ fun ReviewFriendsScreen(
                 onBack = onBack,
                 centered = true,
                 actions = {
-                    IconButton(
+                    SeTopBarActionButton(
                         onClick = { viewModel.addFriends(onAllDone = onDone) },
                         enabled = !uiState.isSubmitting && entries.isNotEmpty(),
                     ) {

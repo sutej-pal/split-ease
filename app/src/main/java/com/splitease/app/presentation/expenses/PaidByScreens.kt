@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +41,7 @@ import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -138,14 +138,16 @@ fun EnterPaidAmountsScreen(
     val total = totalAmount.setScale(2, RoundingMode.HALF_UP)
     val remaining = total.subtract(enteredSum).setScale(2, RoundingMode.HALF_UP)
     val canConfirm = enteredSum.compareTo(total) == 0 && total >= BigDecimal.ZERO
+    var showValidation by remember { mutableStateOf(false) }
 
     SeScreen(
         title = stringResource(R.string.expense_enter_paid_amounts),
         onBack = onBack,
         actions = {
-            IconButton(
+            SeTopBarActionButton(
                 onClick = {
-                    if (!canConfirm) return@IconButton
+                    showValidation = true
+                    if (!canConfirm) return@SeTopBarActionButton
                     val parsed =
                         drafts.mapValues { (_, text) ->
                             runCatching { BigDecimal(text.trim().ifBlank { "0" }) }
@@ -154,17 +156,12 @@ fun EnterPaidAmountsScreen(
                         }
                     onConfirm(parsed)
                 },
-                enabled = canConfirm,
+                enabled = true,
             ) {
                 Icon(
                     Icons.Filled.Check,
                     contentDescription = stringResource(R.string.cd_confirm_paid_amounts),
-                    tint =
-                        if (canConfirm) {
-                            SplitEaseColors.Primary
-                        } else {
-                            SplitEaseColors.OutlineStrong
-                        },
+                    tint = SplitEaseColors.Primary,
                 )
             }
         },
@@ -242,6 +239,14 @@ fun EnterPaidAmountsScreen(
                                 SplitEaseColors.YouOwe
                             },
                     )
+                    if (showValidation && !canConfirm) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.msg_expense_paid_amounts_mismatch),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
         },

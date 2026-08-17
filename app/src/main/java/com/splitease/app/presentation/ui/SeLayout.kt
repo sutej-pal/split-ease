@@ -83,6 +83,26 @@ fun seScreenTitleStyle(): TextStyle =
     )
 
 /**
+ * Canonical text style for an entity name heading on a detail screen
+ * (friend, group, expense) — the large name beside/under an avatar or icon,
+ * or the equivalent primary name below the top bar.
+ *
+ * Uses Material [Typography.headlineSmall] with [FontWeight.SemiBold] and
+ * [SplitEaseColors.Navy], matching Friend settings / Group settings. Prefer
+ * this over a raw `headline*` / `titleLarge` pick so those headings stay the
+ * same size and weight. Do not use this for [SeTopBar] titles
+ * ([seScreenTitleStyle]), section headers, dialog titles, list-item titles,
+ * amounts, or white-on-cover detail banners.
+ */
+@Composable
+@ReadOnlyComposable
+fun seEntityHeaderStyle(): TextStyle =
+    MaterialTheme.typography.headlineSmall.copy(
+        fontWeight = FontWeight.SemiBold,
+        color = SplitEaseColors.Navy,
+    )
+
+/**
  * Canonical subtitle style under a screen title.
  */
 @Composable

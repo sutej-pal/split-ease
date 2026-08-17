@@ -27,7 +27,9 @@ fun ForgotPasswordScreen(
     modifier: Modifier = Modifier,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
-    val emailError = formState.errorMessage
+    var showValidation by rememberSaveable { mutableStateOf(false) }
+    val localEmailError = showValidation && email.isBlank()
+    val emailError = formState.errorMessage.takeUnless { localEmailError }
 
     AuthScaffold(
         title = stringResource(R.string.forgot_title),
@@ -40,17 +42,29 @@ fun ForgotPasswordScreen(
     ) {
         SeTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                if (showValidation && it.isNotBlank()) showValidation = false
+            },
             label = stringResource(R.string.label_email),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             enabled = !formState.isLoading,
-            isError = emailError != null,
-            supportingText = emailError,
+            isError = localEmailError || emailError != null,
+            supportingText =
+                if (localEmailError) {
+                    stringResource(R.string.msg_email_required)
+                } else {
+                    emailError
+                },
         )
         Spacer(modifier = Modifier.height(8.dp))
         SePrimaryButton(
             text = stringResource(R.string.action_send_reset),
-            onClick = { onSendReset(email.trim()) },
+            onClick = {
+                showValidation = true
+                if (email.isBlank()) return@SePrimaryButton
+                onSendReset(email.trim())
+            },
             enabled = !formState.isLoading,
             isLoading = formState.isLoading,
         )

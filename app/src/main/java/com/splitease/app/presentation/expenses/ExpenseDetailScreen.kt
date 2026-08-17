@@ -80,6 +80,7 @@ import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeLoadingOverlay
+import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -235,9 +236,7 @@ fun ExpenseDetailScreen(
         ) {
             Text(
                 text = snapshot.expense.description,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = SplitEaseColors.Navy,
+                style = seEntityHeaderStyle(),
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(

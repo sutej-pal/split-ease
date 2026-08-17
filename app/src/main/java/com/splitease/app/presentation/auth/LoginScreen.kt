@@ -40,8 +40,11 @@ fun LoginScreen(
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var showValidation by rememberSaveable { mutableStateOf(false) }
     val isBusy = formState.isLoading
     val focusManager = LocalFocusManager.current
+    val emailError = showValidation && email.isBlank()
+    val passwordError = showValidation && password.isBlank()
 
     LaunchedEffect(isBusy) {
         if (isBusy) focusManager.clearFocus()
@@ -72,12 +75,18 @@ fun LoginScreen(
                 label = stringResource(R.string.label_email),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 enabled = !isBusy,
+                isError = emailError,
+                supportingText =
+                    if (emailError) stringResource(R.string.msg_email_required) else null,
             )
             Spacer(modifier = Modifier.height(12.dp))
             PasswordSeTextField(
                 value = password,
                 onValueChange = { value -> onCredentialChange { password = value } },
                 enabled = !isBusy,
+                isError = passwordError,
+                supportingText =
+                    if (passwordError) stringResource(R.string.msg_password_required) else null,
             )
             SeTextButton(
                 text = stringResource(R.string.action_forgot_password),
@@ -94,7 +103,11 @@ fun LoginScreen(
         }
         SePrimaryButton(
             text = stringResource(R.string.action_log_in),
-            onClick = { onSignIn(email.trim(), password) },
+            onClick = {
+                showValidation = true
+                if (email.isBlank() || password.isBlank()) return@SePrimaryButton
+                onSignIn(email.trim(), password)
+            },
             enabled = !isBusy,
             isLoading = isBusy,
         )

@@ -49,6 +49,7 @@ import com.splitease.app.presentation.auth.PendingOtpPurpose
 import com.splitease.app.presentation.auth.ResetPasswordOtpScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
+import com.splitease.app.presentation.expenses.AddExpensePickerScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.expenses.ExpenseAttachmentsGalleryScreen
@@ -123,6 +124,7 @@ object Routes {
     const val GROUP_INVITE_LINK = "group_invite_link/{groupId}"
     const val ADD_EXPENSE =
         "add_expense?groupId={groupId}&friendUserId={friendUserId}&expenseId={expenseId}"
+    const val ADD_EXPENSE_PICKER = "add_expense_picker"
     const val EXPENSE_DETAIL = "expense_detail/{expenseId}"
     const val EXPENSE_ATTACHMENTS =
         "expense_attachments/{expenseId}?startIndex={startIndex}"
@@ -588,9 +590,7 @@ private fun SignedInNavHost(
                     onOpenGroup = { id -> navController.navigate(Routes.groupDetail(id)) },
                     onOpenNonGroup = { navController.navigate(Routes.NON_GROUP_EXPENSES) },
                     onCreateGroup = { navController.navigate(Routes.CREATE_GROUP) },
-                    onAddExpenseForGroup = { id ->
-                        navController.navigate(Routes.addExpenseForGroup(id))
-                    },
+                    onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 )
             }
@@ -601,15 +601,13 @@ private fun SignedInNavHost(
                         navController.navigate(Routes.friendDetail(friendUserId))
                     },
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
-                    onAddExpenseForFriend = { friendUserId ->
-                        navController.navigate(Routes.addExpenseForFriend(friendUserId))
-                    },
+                    onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                 )
             }
             composable(Routes.TAB_ACTIVITY) {
                 ActivityScreen(
-                    onOpenSearch = { navController.navigate(Routes.SEARCH) },
                     onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
+                    onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                 )
             }
             composable(Routes.TAB_ACCOUNT) {
@@ -958,9 +956,7 @@ private fun SignedInNavHost(
             composable(Routes.NON_GROUP_EXPENSES) {
                 NonGroupExpensesScreen(
                     onBack = { navController.popBackStack() },
-                    onAddExpenseForFriend = { friendUserId ->
-                        navController.navigate(Routes.addExpenseForFriend(friendUserId))
-                    },
+                    onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                     onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
                     onSettleDebt = { from, to, amount, currency, label ->
@@ -974,7 +970,6 @@ private fun SignedInNavHost(
                             ),
                         )
                     },
-                    onAddFriend = { navController.navigate(Routes.findPeople()) },
                 )
             }
             composable(
@@ -1011,6 +1006,20 @@ private fun SignedInNavHost(
                 PinBoardScreen(
                     groupId = groupId,
                     onBack = { navController.popBackStack() },
+                )
+            }
+            composable(Routes.ADD_EXPENSE_PICKER) {
+                AddExpensePickerScreen(
+                    onBack = { navController.popBackStack() },
+                    onPickGroup = { groupId ->
+                        navController.navigate(Routes.addExpenseForGroup(groupId))
+                    },
+                    onPickFriend = { friendUserId ->
+                        navController.navigate(Routes.addExpenseForFriend(friendUserId))
+                    },
+                    onCreateGroup = { navController.navigate(Routes.CREATE_GROUP) },
+                    onInviteFriend = { navController.navigate(Routes.editContact()) },
+                    onSearchContacts = { navController.navigate(Routes.findPeople()) },
                 )
             }
             composable(
@@ -1053,7 +1062,13 @@ private fun SignedInNavHost(
                     friendUserId = friendUserId,
                     expenseId = expenseId,
                     onBack = { navController.popBackStack() },
-                    onDone = { navController.popBackStack() },
+                    onDone = {
+                        if (expenseId == null) {
+                            navController.navigateAfterExpenseAdded()
+                        } else {
+                            navController.popBackStack()
+                        }
+                    },
                     onEditGroupMembers =
                         groupId?.let { id ->
                             {
@@ -1214,6 +1229,13 @@ private suspend fun claimInviteOpenTargetWithRetry(
         delay(1_200L * (attempt + 1))
     }
     return null
+}
+
+/** After creating an expense, drop the form and picker (if any); otherwise return one screen. */
+private fun NavHostController.navigateAfterExpenseAdded() {
+    if (!popBackStack(Routes.ADD_EXPENSE_PICKER, inclusive = true)) {
+        popBackStack()
+    }
 }
 
 /** Navigates to friends or a group detail from a claimed invite open target. */

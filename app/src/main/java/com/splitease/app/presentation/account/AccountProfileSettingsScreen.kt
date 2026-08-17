@@ -54,6 +54,8 @@ fun AccountProfileSettingsScreen(
     val context = LocalContext.current
     val currencyLabel = AppCurrencies.labelOf(currency)
     var draftHydrated by remember { mutableStateOf(false) }
+    var showValidation by remember { mutableStateOf(false) }
+    val nameError = showValidation && settings.displayNameDraft.isBlank()
 
     LaunchedEffect(profile.displayName, profile.email) {
         if (!draftHydrated && (profile.displayName.isNotBlank() || profile.email.isNotBlank())) {
@@ -89,11 +91,18 @@ fun AccountProfileSettingsScreen(
                 onValueChange = viewModel::onDisplayNameDraftChange,
                 label = stringResource(R.string.label_display_name),
                 enabled = !settings.isSaving,
+                isError = nameError,
+                supportingText =
+                    if (nameError) stringResource(R.string.msg_display_name_required) else null,
             )
             Spacer(modifier = Modifier.height(12.dp))
             SePrimaryButton(
                 text = stringResource(R.string.action_save_name),
-                onClick = viewModel::saveDisplayName,
+                onClick = {
+                    showValidation = true
+                    if (settings.displayNameDraft.isBlank()) return@SePrimaryButton
+                    viewModel.saveDisplayName()
+                },
                 enabled = !settings.isSaving,
             )
 

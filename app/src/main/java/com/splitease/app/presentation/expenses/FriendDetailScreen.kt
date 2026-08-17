@@ -71,6 +71,7 @@ import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeSystemBars
+import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import java.math.BigDecimal
 
 @Composable
@@ -245,9 +246,7 @@ private fun FriendDetailHeader(
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = SplitEaseColors.Navy,
+            style = seEntityHeaderStyle(),
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))

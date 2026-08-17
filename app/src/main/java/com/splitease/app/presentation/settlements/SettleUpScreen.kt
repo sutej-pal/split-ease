@@ -81,12 +81,16 @@ fun SettleUpScreen(
     var amount by rememberSaveable { mutableStateOf(amountPrefill) }
     var editingAmount by rememberSaveable { mutableStateOf(false) }
     var note by rememberSaveable { mutableStateOf("") }
+    var showValidation by rememberSaveable { mutableStateOf(false) }
     val iAmPaying = me != null && me == fromUserId
     val context = LocalContext.current
     val payActions = PaymentDeepLinks.actionsForCurrency(currencyCode)
     val youLabel = stringResource(R.string.you_label)
 
     val invalidAmountMsg = stringResource(R.string.pay_invalid_amount)
+    val amountValid =
+        runCatching { BigDecimal(amount.trim()) }.getOrNull()?.let { it > BigDecimal.ZERO } == true
+    val amountError = showValidation && !amountValid
     val sharePaymentMsg = stringResource(R.string.action_share_payment)
     val appMissingMsg = stringResource(R.string.pay_app_missing)
 
@@ -203,6 +207,8 @@ fun SettleUpScreen(
                         currencyCode = currencyCode,
                         editing = editingAmount,
                         enabled = !uiState.isSubmitting,
+                        isError = amountError,
+                        errorText = if (amountError) invalidAmountMsg else null,
                         onEditingChange = { editingAmount = it },
                         onAmountChange = { amount = it },
                     )
@@ -232,15 +238,10 @@ fun SettleUpScreen(
                                             stringResource(R.string.action_share_payment)
                                     },
                                 onClick = {
+                                    showValidation = true
                                     val parsed =
                                         runCatching { BigDecimal(amount.trim()) }.getOrNull()
                                     if (parsed == null || parsed <= BigDecimal.ZERO) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                invalidAmountMsg,
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
                                         return@SeOutlinedButton
                                     }
                                     launchPayAction(
@@ -254,7 +255,7 @@ fun SettleUpScreen(
                                         appMissingMsg = appMissingMsg,
                                     )
                                 },
-                                enabled = !uiState.isSubmitting && amount.isNotBlank(),
+                                enabled = !uiState.isSubmitting,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -270,6 +271,8 @@ fun SettleUpScreen(
                 SePrimaryButton(
                     text = stringResource(R.string.action_record_a_payment),
                     onClick = {
+                        showValidation = true
+                        if (!amountValid) return@SePrimaryButton
                         editingAmount = false
                         viewModel.recordSettlement(
                             fromUserId = fromUserId,
@@ -281,7 +284,7 @@ fun SettleUpScreen(
                             onSuccess = onDone,
                         )
                     },
-                    enabled = !uiState.isSubmitting && amount.isNotBlank(),
+                    enabled = !uiState.isSubmitting,
                     isLoading = uiState.isSubmitting,
                     modifier =
                         Modifier
@@ -301,6 +304,8 @@ private fun SettleAmountEditor(
     enabled: Boolean,
     onEditingChange: (Boolean) -> Unit,
     onAmountChange: (String) -> Unit,
+    isError: Boolean = false,
+    errorText: String? = null,
 ) {
     val symbol =
         runCatching {
@@ -347,7 +352,7 @@ private fun SettleAmountEditor(
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold,
                     ),
-                color = SplitEaseColors.Navy,
+                color = if (isError) MaterialTheme.colorScheme.error else SplitEaseColors.Navy,
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
@@ -357,6 +362,10 @@ private fun SettleAmountEditor(
             tint = SplitEaseColors.NavyMuted,
             modifier = Modifier.size(20.dp),
         )
+    }
+    if (errorText != null) {
+        Spacer(modifier = Modifier.height(8.dp))
+        SeErrorText(errorText)
     }
 }
 

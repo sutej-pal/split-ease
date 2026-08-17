@@ -71,6 +71,7 @@ import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.seDetailHorizontal
+import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import java.text.DateFormatSymbols
 import java.util.Locale
 
@@ -161,9 +162,7 @@ fun GroupTotalsScreen(
             ) {
                 Text(
                     text = ui.groupName.ifBlank { stringResource(R.string.group_chip_totals) },
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = SplitEaseColors.Navy,
+                    style = seEntityHeaderStyle(),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(

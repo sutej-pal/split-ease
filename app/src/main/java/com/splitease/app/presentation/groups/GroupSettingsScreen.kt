@@ -87,6 +87,7 @@ import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTypeChip
+import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import java.math.BigDecimal
 
 private data class SelectedGroupMember(
@@ -728,9 +729,7 @@ private fun GroupSettingsHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = group?.name.orEmpty(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = SplitEaseColors.Navy,
+                style = seEntityHeaderStyle(),
             )
             Text(
                 text = stringResource(type.settingsLabelRes()),
@@ -856,7 +855,9 @@ private fun EditGroupDialog(
 ) {
     var name by rememberSaveable(group.id) { mutableStateOf(group.name) }
     var type by rememberSaveable(group.id) { mutableStateOf(group.groupType.name) }
+    var showValidation by rememberSaveable(group.id) { mutableStateOf(false) }
     val selected = runCatching { GroupType.valueOf(type) }.getOrDefault(GroupType.OTHER)
+    val nameError = showValidation && name.isBlank()
 
     SeModal(
         onDismissRequest = onDismiss,
@@ -866,15 +867,19 @@ private fun EditGroupDialog(
         dismissLabel = stringResource(R.string.action_close),
         confirmLabel = stringResource(R.string.action_save),
         onConfirm = {
+            showValidation = true
             val trimmed = name.trim()
             if (trimmed.isNotEmpty()) onSave(trimmed, selected)
         },
-        confirmEnabled = !isSubmitting && name.isNotBlank(),
+        confirmEnabled = !isSubmitting,
     ) {
         SeTextField(
             value = name,
             onValueChange = { name = it },
             label = stringResource(R.string.label_group_name),
+            isError = nameError,
+            supportingText =
+                if (nameError) stringResource(R.string.msg_group_name_required) else null,
         )
         Spacer(modifier = Modifier.height(12.dp))
         SeSectionHeader(text = stringResource(R.string.label_group_type))
