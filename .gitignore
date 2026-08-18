@@ -22,6 +22,7 @@ compile_out*.txt
 compile_rebuild.txt
 compile_navfix.txt
 .tmp-debug/
+.tmp-ui-*.xml
 
 # assembleRelease / bundle outputs (not source)
 /release/

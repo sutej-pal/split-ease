@@ -23,7 +23,7 @@
 
 Run in order:
 
-1. [`docs/sql/migration_db.sql`](sql/migration_db.sql) if not already applied (includes `device_tokens` + RLS + optional pg_net notify triggers that no-op until `app.settings` are set).
+1. [`docs/sql/migration_db.sql`](sql/migration_db.sql) if not already applied (includes `device_tokens`, `notification_prefs` + RLS + optional pg_net notify triggers that no-op until `app.settings` are set).
 2. Prefer Dashboard Database Webhooks for FCM (keeps the service role out of DB settings).
 
 ### Edge Function
@@ -46,9 +46,10 @@ with header `Authorization: Bearer <SERVICE_ROLE_KEY>` and body including `type`
 
 ### Android behavior
 
-- On sign-in, the app registers the FCM token into `device_tokens`.
-- Incoming pushes show a notification; tap stores `pending_notification_group_id` and opens that group (sync-on-open + Realtime take over).
-- Grant **Notifications** permission on Android 13+.
+- Grant **Notifications** permission on Android 13+ (prompted once after sign-in; also Settings → Notifications).
+- On sign-in, the app registers the FCM token into `device_tokens` and hydrates mute prefs from `notification_prefs`.
+- Incoming pushes are **data-only** FCM messages. The app posts the tray notification so tap always includes the group id (`open_group_id` / `groupId`) and opens that group (sync-on-open + Realtime take over).
+- Settings → Notifications mutes all groups. Group settings can mute one group. The Edge Function skips muted recipients.
 
 ### Verify
 

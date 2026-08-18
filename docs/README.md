@@ -6,6 +6,7 @@ Use this order to stay fast and consistent.
 
 | Doc                                      | Why it matters                                       |
 | ---------------------------------------- | ---------------------------------------------------- |
+| [product-manual.md](product-manual.md)   | Full product + technical manual (paste into Google Docs) |
 | [../PROGRESS.md](../PROGRESS.md)         | Single source for current phase/state                |
 | [../ARCHITECTURE.md](../ARCHITECTURE.md) | Current implementation truth (layers + sync + theme) |
 | [data-dictionary.md](data-dictionary.md) | Data/schema truth (Room + remote)                    |

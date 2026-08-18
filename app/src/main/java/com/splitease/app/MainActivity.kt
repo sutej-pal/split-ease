@@ -106,19 +106,14 @@ class MainActivity : FragmentActivity() {
         handleIncomingIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        handleNotificationExtras(intent)
+    }
+
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
-        val openGroupId =
-            intent
-                .getStringExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-        if (openGroupId != null) {
-            lifecycleScope.launch {
-                appSettingsRepository.setPendingNotificationGroupId(openGroupId)
-            }
-            intent.removeExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
-        }
+        handleNotificationExtras(intent)
         if (intent.data == null) return
         val inviteToken = InviteLinks.tokenFromUri(intent.data)
         if (!inviteToken.isNullOrBlank()) {
@@ -132,5 +127,24 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch {
             runCatching { supabase.handleDeeplinks(intent) }
         }
+    }
+
+    private fun handleNotificationExtras(intent: Intent?) {
+        if (intent == null) return
+        val openGroupId =
+            intent
+                .getStringExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: intent
+                    .getStringExtra(SplitEaseMessagingService.DATA_GROUP_ID)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+        if (openGroupId == null) return
+        lifecycleScope.launch {
+            appSettingsRepository.setPendingNotificationGroupId(openGroupId)
+        }
+        intent.removeExtra(SplitEaseMessagingService.EXTRA_OPEN_GROUP_ID)
+        intent.removeExtra(SplitEaseMessagingService.DATA_GROUP_ID)
     }
 }

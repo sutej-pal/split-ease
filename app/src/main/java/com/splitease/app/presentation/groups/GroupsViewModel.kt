@@ -7,6 +7,7 @@ import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.data.push.NotificationPrefsCoordinator
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
@@ -56,6 +57,7 @@ class GroupsViewModel
         private val socialInteractor: SocialInteractor,
         private val syncInteractor: SyncInteractor,
         private val appSettingsRepository: AppSettingsRepository,
+        private val notificationPrefsCoordinator: NotificationPrefsCoordinator,
     ) : ViewModel() {
         /** Eager so Create Group (which only collects [uiState]) still has a signed-in user id. */
         private val userId: StateFlow<String?> =
@@ -98,6 +100,7 @@ class GroupsViewModel
         private val membersFlows = ConcurrentHashMap<String, StateFlow<List<GroupMember>?>>()
         private val groupFlows = ConcurrentHashMap<String, StateFlow<Group?>>()
         private val simplifyFlows = ConcurrentHashMap<String, StateFlow<Boolean>>()
+        private val muteGroupFlows = ConcurrentHashMap<String, StateFlow<Boolean>>()
 
         init {
             refresh()
@@ -405,6 +408,19 @@ class GroupsViewModel
         fun setSimplifyDebts(groupId: String, enabled: Boolean) {
             viewModelScope.launch {
                 appSettingsRepository.setSimplifyGroupDebts(groupId, enabled)
+            }
+        }
+
+        fun observeGroupNotificationsMuted(groupId: String): StateFlow<Boolean> =
+            muteGroupFlows.getOrPut(groupId) {
+                appSettingsRepository
+                    .observeGroupNotificationsMuted(groupId)
+                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+            }
+
+        fun setGroupNotificationsMuted(groupId: String, muted: Boolean) {
+            viewModelScope.launch {
+                notificationPrefsCoordinator.setGroupMuted(groupId, muted)
             }
         }
 

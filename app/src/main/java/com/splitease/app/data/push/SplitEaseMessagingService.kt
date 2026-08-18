@@ -1,8 +1,6 @@
 package com.splitease.app.data.push
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -16,14 +14,15 @@ import com.splitease.app.MainActivity
 import com.splitease.app.R
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
  * Receives FCM messages and opens the related group on tap.
+ *
+ * Does not navigate on receive — only the notification tap sets
+ * [AppSettingsRepository.setPendingNotificationGroupId] via [MainActivity].
  */
 @AndroidEntryPoint
 class SplitEaseMessagingService : FirebaseMessagingService() {
@@ -33,14 +32,15 @@ class SplitEaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var appSettingsRepository: AppSettingsRepository
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Inject
+    lateinit var notificationPrefsCoordinator: NotificationPrefsCoordinator
 
     override fun onNewToken(token: String) {
         pushTokenRegistrar.onNewToken(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        val groupId = message.data["groupId"]?.trim().orEmpty()
+        val groupId = message.data[DATA_GROUP_ID]?.trim().orEmpty()
         val title =
             message.notification?.title
                 ?: message.data["title"]
@@ -50,18 +50,39 @@ class SplitEaseMessagingService : FirebaseMessagingService() {
                 ?: message.data["body"]
                 ?: getString(R.string.notification_group_update_body)
 
-        if (groupId.isNotBlank()) {
-            scope.launch {
-                appSettingsRepository.setPendingNotificationGroupId(groupId)
+        // onMessageReceived already runs off the main thread. Block until the
+        // tray notification is posted so FCM does not tear down this service.
+        runBlocking {
+            runCatching {
+                withTimeoutOrNull(PREFS_REFRESH_TIMEOUT_MS) {
+                    notificationPrefsCoordinator.refreshFromRemote()
+                }
             }
+            if (appSettingsRepository.getNotificationsMutedAll()) return@runBlocking
+            if (groupId.isNotBlank() &&
+                appSettingsRepository.getGroupNotificationsMuted(groupId)
+            ) {
+                return@runBlocking
+            }
+            showNotification(groupId, title, body)
         }
+    }
 
-        ensureChannel()
+    private fun showNotification(
+        groupId: String,
+        title: String,
+        body: String,
+    ) {
+        SplitEaseNotificationChannels.ensure(this)
         val intent =
             Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                flags =
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP
                 if (groupId.isNotBlank()) {
                     putExtra(EXTRA_OPEN_GROUP_ID, groupId)
+                    putExtra(DATA_GROUP_ID, groupId)
                 }
             }
         val pending =
@@ -73,7 +94,7 @@ class SplitEaseMessagingService : FirebaseMessagingService() {
             )
         val notification =
             NotificationCompat
-                .Builder(this, CHANNEL_ID)
+                .Builder(this, SplitEaseNotificationChannels.GROUP_UPDATES)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -90,26 +111,21 @@ class SplitEaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun canPostNotifications(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return NotificationManagerCompat.from(this).areNotificationsEnabled()
+        }
         return ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun ensureChannel() {
-        val manager = getSystemService(NotificationManager::class.java) ?: return
-        val channel =
-            NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.notification_channel_group_updates),
-                NotificationManager.IMPORTANCE_HIGH,
-            )
-        manager.createNotificationChannel(channel)
-    }
-
     companion object {
         const val EXTRA_OPEN_GROUP_ID = "open_group_id"
-        private const val CHANNEL_ID = "group_updates"
+
+        /** FCM data key used when the system tray (not this service) displays the push. */
+        const val DATA_GROUP_ID = "groupId"
+
+        private const val PREFS_REFRESH_TIMEOUT_MS = 5_000L
     }
 }

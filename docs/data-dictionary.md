@@ -193,6 +193,10 @@ Unique index: `(expenseId, userId)`.
 | device_tokens                 | token                 | TEXT      | no       | FCM registration token                                                                     |
 | device_tokens                 | platform              | TEXT      | no       | e.g. `android`                                                                             |
 | device_tokens                 | updated_at_epoch_ms   | BIGINT    | no       | Last upsert                                                                                |
+| notification_prefs            | user_id               | UUID (PK) | no       | Owner auth user                                                                            |
+| notification_prefs            | mute_all              | BOOLEAN   | no       | When true, skip all group FCM                                                              |
+| notification_prefs            | muted_group_ids       | UUID[]    | no       | Groups this user has muted                                                                 |
+| notification_prefs            | updated_at_epoch_ms   | BIGINT    | no       | Last write (LWW with the app)                                                              |
 | invites                       | id                    | UUID (PK) | no       | Invite id                                                                                  |
 | invites                       | token                 | TEXT      | no       | Unique invite token                                                                        |
 | invites                       | inviter_user_id       | UUID      | no       | Sender                                                                                     |

@@ -26,6 +26,11 @@ Deno.serve(async (req) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  const saJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
+  if (!saJson) {
+    return json({ ok: false, error: "missing_firebase_sa" }, 500);
+  }
+
   const payload = (await req.json()) as NotifyBody;
   const record = payload.record ?? null;
   const oldRecord = payload.old_record ?? null;
@@ -67,10 +72,29 @@ Deno.serve(async (req) => {
     return json({ ok: true, sent: 0 });
   }
 
+  const { data: prefsRows } = await supabase
+    .from("notification_prefs")
+    .select("user_id, mute_all, muted_group_ids")
+    .in("user_id", recipientIds);
+  const mutedIds = new Set<string>();
+  for (const row of prefsRows ?? []) {
+    const userId = row.user_id as string;
+    if (row.mute_all) {
+      mutedIds.add(userId);
+      continue;
+    }
+    const mutedGroups = (row.muted_group_ids as string[] | null) ?? [];
+    if (mutedGroups.includes(groupId)) mutedIds.add(userId);
+  }
+  const notifyIds = recipientIds.filter((id) => !mutedIds.has(id));
+  if (notifyIds.length === 0) {
+    return json({ ok: true, sent: 0, reason: "all_muted" });
+  }
+
   const { data: tokens, error: tokensError } = await supabase
     .from("device_tokens")
     .select("token,user_id")
-    .in("user_id", recipientIds);
+    .in("user_id", notifyIds);
   if (tokensError) {
     return json({ ok: false, error: tokensError.message }, 500);
   }
@@ -131,10 +155,15 @@ Deno.serve(async (req) => {
       .filter(Boolean)
       .join(" ");
 
-  const accessToken = await getFcmAccessToken();
-  const projectId = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON")!).project_id as string;
+  const accessToken = await getFcmAccessToken(saJson);
+  const projectId = JSON.parse(saJson).project_id as string;
+  const expenseId = String(payload.expense_id ?? record?.id ?? oldRecord?.id ?? "");
+  const paymentId = String(
+    payload.payment_id ?? (isPayment ? record?.id ?? oldRecord?.id ?? "" : ""),
+  );
 
   let sent = 0;
+  const staleTokens: string[] = [];
   for (const row of tokens) {
     const token = row.token as string;
     const res = await fetch(
@@ -148,26 +177,42 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           message: {
             token,
-            notification: { title, body },
+            // Data-only so Android always delivers to SplitEaseMessagingService,
+            // which posts the tray item with a PendingIntent that opens the group.
             data: {
               groupId,
+              title,
+              body,
               type: isPayment ? "payment" : "expense",
-              expenseId: String(
-                payload.expense_id ?? record?.id ?? oldRecord?.id ?? "",
-              ),
-              paymentId: String(
-                payload.payment_id ?? (isPayment ? record?.id ?? oldRecord?.id ?? "" : ""),
-              ),
+              expenseId,
+              paymentId,
             },
-            android: { priority: "HIGH" },
+            android: {
+              priority: "HIGH",
+            },
           },
         }),
       },
     );
-    if (res.ok) sent += 1;
+    if (res.ok) {
+      sent += 1;
+      continue;
+    }
+    const errJson = await res.json().catch(() => ({})) as {
+      error?: { status?: string; details?: Array<{ errorCode?: string }> };
+    };
+    const unregistered =
+      res.status === 404 ||
+      errJson.error?.status === "NOT_FOUND" ||
+      errJson.error?.details?.some((d) => d.errorCode === "UNREGISTERED");
+    if (unregistered) staleTokens.push(token);
   }
 
-  return json({ ok: true, sent });
+  if (staleTokens.length > 0) {
+    await supabase.from("device_tokens").delete().in("token", staleTokens);
+  }
+
+  return json({ ok: true, sent, pruned: staleTokens.length });
 });
 
 function json(data: unknown, status = 200) {
@@ -177,8 +222,8 @@ function json(data: unknown, status = 200) {
   });
 }
 
-async function getFcmAccessToken(): Promise<string> {
-  const sa = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON")!);
+async function getFcmAccessToken(saJson: string): Promise<string> {
+  const sa = JSON.parse(saJson);
   const now = Math.floor(Date.now() / 1000);
   const header = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" }))
     .replace(/\+/g, "-")

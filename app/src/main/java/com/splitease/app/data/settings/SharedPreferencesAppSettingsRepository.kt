@@ -42,6 +42,8 @@ class SharedPreferencesAppSettingsRepository
         private val pendingInviteOpenTargetFlow = MutableStateFlow(readPendingInviteOpenTarget())
         private val pendingNotificationGroupIdFlow =
             MutableStateFlow(readPendingNotificationGroupId())
+        private val muteAllFlow = MutableStateFlow(readMuteAll())
+        private val mutedGroupIdsFlow = MutableStateFlow(readMutedGroupIds())
 
         override fun observeCurrencyCode(): Flow<String> = currencyFlow.asStateFlow()
 
@@ -271,6 +273,86 @@ class SharedPreferencesAppSettingsRepository
             applyAppLocale(locale)
         }
 
+        override fun observeNotificationsMutedAll(): Flow<Boolean> = muteAllFlow.asStateFlow()
+
+        override suspend fun getNotificationsMutedAll(): Boolean =
+            withContext(Dispatchers.IO) {
+                readMuteAll()
+            }
+
+        override suspend fun setNotificationsMutedAll(muted: Boolean) {
+            withContext(Dispatchers.IO) {
+                prefs.edit {
+                    putBoolean(KEY_MUTE_ALL, muted)
+                    putLong(KEY_NOTIFICATION_PREFS_UPDATED_AT, System.currentTimeMillis())
+                }
+            }
+            muteAllFlow.value = muted
+        }
+
+        override fun observeGroupNotificationsMuted(groupId: String): Flow<Boolean> =
+            mutedGroupIdsFlow.map { ids -> groupId in ids }
+
+        override suspend fun getGroupNotificationsMuted(groupId: String): Boolean =
+            withContext(Dispatchers.IO) {
+                groupId in readMutedGroupIds()
+            }
+
+        override suspend fun setGroupNotificationsMuted(groupId: String, muted: Boolean) {
+            val normalized = groupId.trim().takeIf { it.isNotEmpty() } ?: return
+            val next =
+                withContext(Dispatchers.IO) {
+                    val updated =
+                        readMutedGroupIds().toMutableSet().apply {
+                            if (muted) add(normalized) else remove(normalized)
+                        }
+                    prefs.edit {
+                        putStringSet(KEY_MUTED_GROUP_IDS, HashSet(updated))
+                        putLong(KEY_NOTIFICATION_PREFS_UPDATED_AT, System.currentTimeMillis())
+                    }
+                    updated
+                }
+            mutedGroupIdsFlow.value = next
+        }
+
+        override suspend fun getMutedGroupIds(): Set<String> =
+            withContext(Dispatchers.IO) {
+                readMutedGroupIds()
+            }
+
+        override suspend fun getNotificationPrefsUpdatedAtEpochMs(): Long =
+            withContext(Dispatchers.IO) {
+                prefs.getLong(KEY_NOTIFICATION_PREFS_UPDATED_AT, 0L)
+            }
+
+        override suspend fun applyRemoteNotificationPrefs(
+            muteAll: Boolean,
+            mutedGroupIds: Set<String>,
+            updatedAtEpochMs: Long,
+        ) {
+            val ids = mutedGroupIds.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+            withContext(Dispatchers.IO) {
+                prefs.edit {
+                    putBoolean(KEY_MUTE_ALL, muteAll)
+                    putStringSet(KEY_MUTED_GROUP_IDS, HashSet(ids))
+                    putLong(KEY_NOTIFICATION_PREFS_UPDATED_AT, updatedAtEpochMs)
+                }
+            }
+            muteAllFlow.value = muteAll
+            mutedGroupIdsFlow.value = ids
+        }
+
+        override suspend fun getNotificationPermissionPrompted(): Boolean =
+            withContext(Dispatchers.IO) {
+                prefs.getBoolean(KEY_NOTIFICATION_PERMISSION_PROMPTED, false)
+            }
+
+        override suspend fun setNotificationPermissionPrompted(prompted: Boolean) {
+            withContext(Dispatchers.IO) {
+                prefs.edit { putBoolean(KEY_NOTIFICATION_PERMISSION_PROMPTED, prompted) }
+            }
+        }
+
         override suspend fun clearSessionData() {
             val keepTheme = themeModeFlow.value
             val keepLocale = appLocaleFlow.value
@@ -284,12 +366,17 @@ class SharedPreferencesAppSettingsRepository
                 withContext(Dispatchers.IO) {
                     prefs.getBoolean(KEY_INSTALL_REFERRER_CHECKED, false)
                 }
+            val keepPermissionPrompted =
+                withContext(Dispatchers.IO) {
+                    prefs.getBoolean(KEY_NOTIFICATION_PERMISSION_PROMPTED, false)
+                }
             withContext(Dispatchers.IO) {
                 prefs.edit {
                     clear()
                     putString(KEY_THEME_MODE, keepTheme.name)
                     putString(KEY_APP_LOCALE, keepLocale.name)
                     putBoolean(KEY_INSTALL_REFERRER_CHECKED, keepReferrerChecked)
+                    putBoolean(KEY_NOTIFICATION_PERMISSION_PROMPTED, keepPermissionPrompted)
                     if (!keepInviteToken.isNullOrBlank()) {
                         putString(KEY_PENDING_INVITE_TOKEN, keepInviteToken)
                     }
@@ -311,6 +398,8 @@ class SharedPreferencesAppSettingsRepository
             pendingInviteTokenFlow.value = keepInviteToken
             pendingInviteOpenTargetFlow.value = keepInviteOpenTarget
             pendingNotificationGroupIdFlow.value = null
+            muteAllFlow.value = false
+            mutedGroupIdsFlow.value = emptySet()
         }
 
         /** Applies the stored locale at process start (before Compose). */
@@ -360,6 +449,15 @@ class SharedPreferencesAppSettingsRepository
                     key.removePrefix(KEY_SIMPLIFY_PREFIX) to value
                 }.toMap()
 
+        private fun readMuteAll(): Boolean = prefs.getBoolean(KEY_MUTE_ALL, false)
+
+        private fun readMutedGroupIds(): Set<String> =
+            prefs.getStringSet(KEY_MUTED_GROUP_IDS, emptySet())
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.toSet()
+                ?: emptySet()
+
         companion object {
             private const val PREFS_NAME = "splitease_settings"
             private const val KEY_CURRENCY = "currency_code"
@@ -371,6 +469,10 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_PENDING_INVITE_TOKEN = "pending_invite_token"
             private const val KEY_PENDING_INVITE_OPEN_TARGET = "pending_invite_open_target"
             private const val KEY_PENDING_NOTIFICATION_GROUP_ID = "pending_notification_group_id"
+            private const val KEY_MUTE_ALL = "notifications_mute_all"
+            private const val KEY_MUTED_GROUP_IDS = "notifications_muted_group_ids"
+            private const val KEY_NOTIFICATION_PREFS_UPDATED_AT = "notifications_prefs_updated_at"
+            private const val KEY_NOTIFICATION_PERMISSION_PROMPTED = "notifications_permission_prompted"
             private const val KEY_INSTALL_REFERRER_CHECKED = "install_referrer_checked"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
             private const val KEY_ONBOARDING_EMAIL_SENT_PREFIX = "onboarding_email_sent_"

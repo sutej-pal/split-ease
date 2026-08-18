@@ -4,7 +4,7 @@
 --
 -- Includes: profiles/friends/groups, invites, RLS helpers, expenses/splits,
 -- expense comments/photos, payments/recurring columns, realtime publication,
--- device_tokens, pin_boards, Storage buckets (avatars, group covers, receipts, pin board),
+-- device_tokens, notification_prefs, pin_boards, Storage buckets (avatars, group covers, receipts, pin board),
 -- auth_email_registered / auth_phone_registered, reciprocal-friend + remap RPCs,
 -- share-link invite heal, optional FCM notify triggers (no-op until app.settings set).
 -- Ops: FCM Edge Function + webhooks — see docs/fcm-setup.md
@@ -1163,6 +1163,38 @@ create policy "device_tokens_delete_own"
   using (auth.uid() = user_id);
 
 -- Service role / Edge Function reads all tokens; no extra policy needed for service_role.
+
+
+-- ============================================
+-- Notification preferences (mute all / mute group)
+-- ============================================
+
+create table if not exists public.notification_prefs (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  mute_all boolean not null default false,
+  muted_group_ids uuid[] not null default '{}'::uuid[],
+  updated_at_epoch_ms bigint not null default 0
+);
+
+alter table public.notification_prefs enable row level security;
+
+drop policy if exists "notification_prefs_select_own" on public.notification_prefs;
+drop policy if exists "notification_prefs_insert_own" on public.notification_prefs;
+drop policy if exists "notification_prefs_update_own" on public.notification_prefs;
+
+create policy "notification_prefs_select_own"
+  on public.notification_prefs for select to authenticated
+  using (auth.uid() = user_id);
+
+create policy "notification_prefs_insert_own"
+  on public.notification_prefs for insert to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "notification_prefs_update_own"
+  on public.notification_prefs for update to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Service role / Edge Function reads all prefs; no extra policy needed for service_role.
 
 
 -- ============================================

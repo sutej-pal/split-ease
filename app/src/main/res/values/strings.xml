@@ -3,6 +3,15 @@
     <string name="app_name">SplitEase</string>
     <string name="notification_channel_group_updates">Group updates</string>
     <string name="notification_group_update_body">Something changed in your group.</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_item">Device and push notification settings</string>
+    <string name="settings_notifications_on">On</string>
+    <string name="settings_notifications_off">Off</string>
+    <string name="settings_notifications_section">Push notifications</string>
+    <string name="settings_notifications_group_updates">Group updates</string>
+    <string name="settings_notifications_group_updates_body">Get notified when someone adds, changes, or deletes an expense or payment in your groups.</string>
+    <string name="settings_notifications_permission_needed">Notifications are turned off for SplitEase in system settings.</string>
+    <string name="settings_notifications_open_system">Open system settings</string>
     <string name="welcome_title">SplitEase</string>
     <string name="welcome_tagline">Share expenses. Settle fairly. Stay in sync.</string>
     <string name="action_get_started">Get started</string>
@@ -155,7 +164,7 @@
     <string name="settings_title">Settings</string>
     <string name="ad_preview_placeholder">Advertisement</string>
     <string name="settings_ad_privacy_choices">Ad privacy choices</string>
-    <string name="settings_hub_subtitle">Appearance and security</string>
+    <string name="settings_hub_subtitle">Appearance, notifications, and security</string>
     <string name="settings_preferences_section">Preferences</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_appearance_section">Theme</string>
@@ -240,6 +249,8 @@
     <string name="group_settings_simplify_title">Simplify group debts</string>
     <string name="group_settings_simplify_body">Automatically combines debts to reduce the total number of repayments between group members.</string>
     <string name="group_settings_simplify_learn_more">When on, SplitEase nets balances across the group so fewer payments settle everyone up. When off, debts stay closer to how each expense was recorded.</string>
+    <string name="group_settings_mute_title">Mute notifications</string>
+    <string name="group_settings_mute_body">Stop push notifications for this group. You will still see updates when you open the group.</string>
     <string name="action_learn_more">Learn more</string>
     <string name="group_settings_default_split">Default split</string>
     <string name="group_settings_default_split_subtitle">Paid by you and split equally</string>

@@ -1,6 +1,6 @@
 # Extras — Group live updates & member notifications
 
-**Status:** Realtime (B7) + FCM push path (B1–B5) + remote delete prune (A5) implemented. Mute prefs / Activity badges still TODO.  
+**Status:** Realtime (B7) + FCM push (B1–B5, B8) + remote delete prune (A5) implemented. Activity badges still TODO.  
 **Added:** 2026-07-23 (post Phase 9 — out of original roadmap)  
 **Updated:** 2026-08-12 — A5 missing-id prune on expense/payment pull  
 **Why this doc exists:** Capture product extras that are **not** part of Phases 0–9, so we can implement and regress them later without losing intent.
@@ -46,7 +46,7 @@ Use this list as the implementation backlog. Mark items when done.
 | B5  | Tap notification > open `group_detail/{groupId}` (App Links / intent extras)                | **Done** | Intent extra + `pending_notification_group_id`                                 |
 | B6  | In-app Activity feed already lists own activity — extend or badge when remote events arrive | TODO     | Optional if push is delayed                                                    |
 | B7  | Supabase Realtime channel while group detail is open (live list without leaving screen)     | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/migration_db.sql](sql/migration_db.sql)  |
-| B8  | Notification preferences (mute group / mute all)                                            | TODO     | Settings later                                                                 |
+| B8  | Notification preferences (mute group / mute all)                                            | **Done** | Settings → Notifications; Group settings mute; `notification_prefs` |
 
 ### C. Docs / ops
 
@@ -98,7 +98,7 @@ GroupDetail RESUMED / Realtime event > sync pull > UI Flow updates
 - Supabase Realtime concurrent connections and FCM/Edge Function invocations count toward free-tier quotas — monitor before wide rollout.
 - Without `app/google-services.json`, FCM registration no-ops at runtime (Realtime still works).
 - Notify triggers no-op until `app.settings.notify_function_url` + `service_role_key` are set (or use Dashboard webhooks instead).
-- Mute prefs (B8) are still TODO.
+- Mute prefs (B8) are implemented (Settings + per-group mute; Edge Function skips muted recipients).
 
 ---
 
@@ -112,7 +112,7 @@ Approved for this extras work:
 Still deferred:
 
 - Third-party push (OneSignal, etc.)
-- Mute preferences (B8)
+- Firebase-only notify (Firestore tokens + Cloud Functions instead of Edge Function / webhooks) — considered for Supabase free-tier limits; keep current FCM + `notify-group-members` path for now
 
 ---
 
@@ -123,7 +123,7 @@ Still deferred:
 3. Device B opens (or returns to) that group > expense and balances appear without reinstall.
 4. Repeat for settle-up payment.
 5. Device A deletes an expense; Device B opens/resumes the group (or stays on detail with Realtime) > the expense disappears from B's ledger.
-6. (Later) B receives a push when A saves; tap opens the group.
+6. Background device B; add expense on A → B receives a push; tap opens the group.
 
 ---
 
@@ -144,4 +144,4 @@ Still deferred:
 | 2026-07-23 | Created this extras doc; fixed `syncForUser` pull; group open runs full sync + group expense refresh                  |
 | 2026-07-23 | Find people + Add friend contact UI (device contacts, search) — related social UX extra                               |
 | 2026-07-29 | Slice 1 Realtime (`GroupLiveSync` + publication SQL) and Slice 2 FCM (device_tokens, Edge Function, MessagingService) |
-| 2026-08-12 | A5: prune local `SYNCED` expenses/payments missing after group / 1:1 pull (hard-delete remote deletes)               |
+| 2026-08-18 | Ops: `notification_prefs` applied; Edge Function `notify-group-members` deployed with `FIREBASE_SERVICE_ACCOUNT_JSON`; expenses/payments Database Webhooks wired |

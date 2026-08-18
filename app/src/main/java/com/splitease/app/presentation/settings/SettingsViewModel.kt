@@ -2,6 +2,7 @@ package com.splitease.app.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.data.push.NotificationPrefsCoordinator
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
@@ -21,6 +22,7 @@ class SettingsViewModel
     constructor(
         private val appSettingsRepository: AppSettingsRepository,
         private val authRepository: AuthRepository,
+        private val notificationPrefsCoordinator: NotificationPrefsCoordinator,
     ) : ViewModel() {
         val currencyCode: StateFlow<String> =
             appSettingsRepository
@@ -46,6 +48,11 @@ class SettingsViewModel
             appSettingsRepository
                 .observeAppLocale()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppLocale.DEFAULT)
+
+        val notificationsMutedAll: StateFlow<Boolean> =
+            appSettingsRepository
+                .observeNotificationsMutedAll()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
         fun setCurrency(code: String) {
             viewModelScope.launch {
@@ -75,6 +82,12 @@ class SettingsViewModel
         fun setAppLocale(locale: AppLocale) {
             viewModelScope.launch {
                 appSettingsRepository.setAppLocale(locale)
+            }
+        }
+
+        fun setNotificationsMutedAll(muted: Boolean) {
+            viewModelScope.launch {
+                notificationPrefsCoordinator.setMuteAll(muted)
             }
         }
     }

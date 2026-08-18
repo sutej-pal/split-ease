@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -118,6 +119,8 @@ fun GroupSettingsScreen(
         .collectAsStateWithLifecycle()
     val members = membersState.orEmpty()
     val simplifyDebts by remember(groupId) { viewModel.observeSimplifyDebts(groupId) }
+        .collectAsStateWithLifecycle()
+    val groupMuted by remember(groupId) { viewModel.observeGroupNotificationsMuted(groupId) }
         .collectAsStateWithLifecycle()
     val group by remember(groupId) { viewModel.observeGroup(groupId) }
         .collectAsStateWithLifecycle()
@@ -363,6 +366,20 @@ fun GroupSettingsScreen(
                     onClick = { showSimplifyInfo = true },
                     emphasized = true,
                     modifier = Modifier.padding(start = 40.dp),
+                )
+                HorizontalDivider(color = SplitEaseColors.Outline)
+
+                SettingsToggleRow(
+                    icon = Icons.Filled.NotificationsOff,
+                    title = stringResource(R.string.group_settings_mute_title),
+                    checked = groupMuted,
+                    onCheckedChange = { viewModel.setGroupNotificationsMuted(groupId, it) },
+                )
+                Text(
+                    text = stringResource(R.string.group_settings_mute_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SplitEaseColors.NavyMuted,
+                    modifier = Modifier.padding(start = 54.dp, end = 8.dp, bottom = 12.dp),
                 )
                 HorizontalDivider(color = SplitEaseColors.Outline)
 

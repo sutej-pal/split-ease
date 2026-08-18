@@ -5,7 +5,9 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.google.android.gms.ads.MobileAds
 import com.splitease.app.data.media.SupabaseImageAuth
+import com.splitease.app.data.push.NotificationPrefsCoordinator
 import com.splitease.app.data.push.PushTokenRegistrar
+import com.splitease.app.data.push.SplitEaseNotificationChannels
 import com.splitease.app.data.recurring.RecurringExpenseWorker
 import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
 import com.splitease.app.data.social.InstallReferrerInviteBootstrap
@@ -42,6 +44,9 @@ class SplitEaseApplication :
     lateinit var pushTokenRegistrar: PushTokenRegistrar
 
     @Inject
+    lateinit var notificationPrefsCoordinator: NotificationPrefsCoordinator
+
+    @Inject
     lateinit var supabaseClient: SupabaseClient
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -58,7 +63,9 @@ class SplitEaseApplication :
         SupabaseImageAuth.update(supabaseClient.auth.currentSessionOrNull()?.accessToken)
         (appSettingsRepository as? SharedPreferencesAppSettingsRepository)?.applyStoredLocale()
         installReferrerInviteBootstrap.start()
+        SplitEaseNotificationChannels.ensure(this)
         pushTokenRegistrar.start()
+        notificationPrefsCoordinator.start()
         RecurringExpenseWorker.enqueue(this)
         SyncWorker.enqueuePeriodic(this)
         SyncWorker.enqueueOnce(this)

@@ -23,12 +23,12 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 
 Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board boundary → Edge Functions → ops): [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md).
 
-- [ ] **Group live updates & push** — Finish Firebase/`google-services.json` + Edge Function deploy per [docs/fcm-setup.md](docs/fcm-setup.md).
+- [x] **Group live updates & push** — FCM + Edge Function `notify-group-members` deployed with `FIREBASE_SERVICE_ACCOUNT_JSON`; `notification_prefs` SQL applied; expenses/payments Database Webhooks wired. App: mute prefs, Android 13 permission, tap-to-open. See [docs/fcm-setup.md](docs/fcm-setup.md).
 - [x] **A5 — Remote delete tombstones** — Pull prunes local `SYNCED` expenses/payments missing from the remote group (or 1:1) set. See architecture TODO **1**.
 - [x] **Conflict policy** — Pull LWW on `updatedAtEpochMs`; never overwrite local `PENDING` / `LOCAL_ONLY` with equal-or-older remote (`SyncConflictPolicy`). See architecture TODO **2**.
 - [ ] **A6 — Pull-to-refresh** — Optional pull-to-refresh gesture on group ledger.
 - [ ] **B6 — Activity badges** — Extend Activity feed / badge when remote events arrive.
-- [ ] **B8 — Notification preferences** — Mute group / mute all.
+- [x] **B8 — Notification preferences** — Mute all (Settings → Notifications) and mute group (Group settings); synced via `notification_prefs`.
 - [x] **Category sync** — Stable default ids (`cat_*`) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
 - [ ] **FX rates** — Multi-currency remains per-bucket; live FX is deferred.
 - [ ] **Social PENDING flush** — Groups/members flush in `SyncInteractor` before expenses (still verify Supabase SQL is applied).

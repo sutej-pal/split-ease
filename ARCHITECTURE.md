@@ -45,7 +45,7 @@ Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_B
 
 Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) (single canonical file). Optional FCM notify triggers are included and no-op until `app.settings` are set — see [docs/fcm-setup.md](docs/fcm-setup.md).
 
-Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured.
+Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured. Mute-all / mute-group live in `notification_prefs` (Settings + Group settings).
 
 ## Feature map (packages)
 

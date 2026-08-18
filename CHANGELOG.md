@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release history + SemVer/`versionCode` counter: `version.properties`, [RELEASES.md](RELEASES.md), `./gradlew newRelease` (or `scripts/new-release.ps1`). Current builds are testing-only; production Play ship is [TODO(release)](TODO.md)
 - Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-email-otp.md), [reset-password.html](../server/mail-templates/supabase/reset-password.html))
 - Signup blocks duplicate email/phone with clear `already registered` messaging (`auth_email_registered` + `auth_phone_registered`)
+- Push notifications for group ledger changes: Android 13 permission prompt, Settings → Notifications (mute all), Group settings mute, tap opens the group; Edge Function honors `notification_prefs` and drops stale FCM tokens ([fcm-setup.md](docs/fcm-setup.md))
 
 ### Changed
 - Forgot-password copy asks for a reset **code** (not a link); mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup OTP
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Co-member expense categories were lost on pull when devices used different default UUIDs: stable `cat_*` ids on the wire, Room v12 remaps legacy defaults, pull auto-seeds missing builtins ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #3)
+- Tapping an FCM notification while the app was in the background did not open the group (system tray extras use `groupId`, not `open_group_id`); receiving a push in the foreground no longer auto-navigates
 - Flush no longer inflates local `updatedAtEpochMs` after push (keeps cloud LWW aligned with PostgREST); remote-delete prune skips when fetch may hit PostgREST row cap
 - Pull could overwrite a newer local `PENDING` expense/payment with a stale remote row: `SyncConflictPolicy` enforces LWW on `updatedAtEpochMs` and protects equal-or-older remote from clobbering unflushed local edits ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #2)
 - Remote deletes lingered in Room (pull was upsert-only): after group / 1:1 pull, prune local `SYNCED` expenses and payments missing from the remote set; Realtime DELETE uses the same refresh path ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #1 / extras A5)

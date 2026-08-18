@@ -290,6 +290,92 @@ interface AppSettingsRepository {
     suspend fun setAppLocale(locale: AppLocale)
 
     /**
+     * Observes whether all group push notifications are muted.
+     *
+     * @return Cold [Flow]; defaults to `false`.
+     */
+    fun observeNotificationsMutedAll(): Flow<Boolean>
+
+    /**
+     * Reads the mute-all preference once.
+     *
+     * @return `true` when every group push is suppressed.
+     */
+    suspend fun getNotificationsMutedAll(): Boolean
+
+    /**
+     * Persists mute-all. Also bumps [getNotificationPrefsUpdatedAtEpochMs].
+     *
+     * @param muted When true, no group pushes are shown or delivered.
+     */
+    suspend fun setNotificationsMutedAll(muted: Boolean)
+
+    /**
+     * Observes whether pushes are muted for [groupId].
+     *
+     * @param groupId Local group id.
+     * @return Cold [Flow]; defaults to `false`.
+     */
+    fun observeGroupNotificationsMuted(groupId: String): Flow<Boolean>
+
+    /**
+     * Reads whether pushes are muted for [groupId].
+     *
+     * @param groupId Local group id.
+     * @return `true` when that group is muted.
+     */
+    suspend fun getGroupNotificationsMuted(groupId: String): Boolean
+
+    /**
+     * Mutes or unmutes pushes for one group. Also bumps the prefs timestamp.
+     *
+     * @param groupId Local group id.
+     * @param muted When true, this group is muted.
+     */
+    suspend fun setGroupNotificationsMuted(groupId: String, muted: Boolean)
+
+    /**
+     * Reads the set of muted group ids.
+     *
+     * @return Group ids currently muted.
+     */
+    suspend fun getMutedGroupIds(): Set<String>
+
+    /**
+     * Last local write time for mute prefs (LWW with the cloud row).
+     *
+     * @return Epoch millis, or 0 if never written.
+     */
+    suspend fun getNotificationPrefsUpdatedAtEpochMs(): Long
+
+    /**
+     * Replaces local mute prefs from a newer cloud row.
+     *
+     * @param muteAll Cloud mute-all flag.
+     * @param mutedGroupIds Cloud muted group ids.
+     * @param updatedAtEpochMs Cloud row timestamp.
+     */
+    suspend fun applyRemoteNotificationPrefs(
+        muteAll: Boolean,
+        mutedGroupIds: Set<String>,
+        updatedAtEpochMs: Long,
+    )
+
+    /**
+     * Whether the Android 13+ notification permission dialog was already shown.
+     *
+     * @return `true` after the first prompt (granted or denied).
+     */
+    suspend fun getNotificationPermissionPrompted(): Boolean
+
+    /**
+     * Marks the OS notification permission prompt as consumed for this install.
+     *
+     * @param prompted `true` after the runtime request is launched.
+     */
+    suspend fun setNotificationPermissionPrompted(prompted: Boolean)
+
+    /**
      * Clears user-scoped preferences on sign-out.
      *
      * Keeps device-level choices (theme, locale, install-referrer bootstrap), any

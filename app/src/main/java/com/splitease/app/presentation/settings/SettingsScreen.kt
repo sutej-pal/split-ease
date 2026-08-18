@@ -1,5 +1,11 @@
 package com.splitease.app.presentation.settings
 
+import android.Manifest
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.HorizontalDivider
@@ -37,6 +44,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,19 +69,29 @@ import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAppearance: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onOpenSecurity: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val biometricLock by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    val muteAll by viewModel.notificationsMutedAll.collectAsStateWithLifecycle()
     val privacyOptionsRequired by AdConsentManager.privacyOptionsRequired
     val context = LocalContext.current
+    var osNotificationsEnabled by remember {
+        mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+    val notificationsOn = osNotificationsEnabled && !muteAll
 
     SeScreen(
         title = stringResource(R.string.settings_title),
@@ -108,6 +128,31 @@ fun SettingsScreen(
                     showDivider = true,
                 )
                 SeListRow(
+                    title = stringResource(R.string.settings_notifications_item),
+                    subtitle =
+                        if (notificationsOn) {
+                            stringResource(R.string.settings_notifications_on)
+                        } else {
+                            stringResource(R.string.settings_notifications_off)
+                        },
+                    leading = {
+                        SeIconTile(
+                            icon = Icons.Filled.Notifications,
+                            tint = SplitEaseColors.IconFriends,
+                            size = 40,
+                        )
+                    },
+                    trailing = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = SplitEaseColors.NavyMuted,
+                        )
+                    },
+                    onClick = onOpenNotifications,
+                    showDivider = true,
+                )
+                SeListRow(
                     title = stringResource(R.string.settings_security),
                     subtitle =
                         if (biometricLock) {
@@ -141,6 +186,108 @@ fun SettingsScreen(
                             }
                         },
                         showDivider = false,
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+fun NotificationsSettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val context = LocalContext.current
+    val muteAll by viewModel.notificationsMutedAll.collectAsStateWithLifecycle()
+    var osNotificationsEnabled by remember {
+        mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        }
+    val enabled = osNotificationsEnabled && !muteAll
+
+    fun openSystemNotificationSettings() {
+        val intent =
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            }
+        context.startActivity(intent)
+    }
+
+    SeScreen(
+        title = stringResource(R.string.settings_notifications),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 24.dp),
+            ) {
+                SeSectionHeader(text = stringResource(R.string.settings_notifications_section))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_notifications_group_updates),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SplitEaseColors.Navy,
+                    )
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                if (!osNotificationsEnabled) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        openSystemNotificationSettings()
+                                    }
+                                }
+                                viewModel.setNotificationsMutedAll(false)
+                            } else {
+                                viewModel.setNotificationsMutedAll(true)
+                            }
+                        },
+                        colors =
+                            SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = SplitEaseColors.Primary,
+                            ),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_notifications_group_updates_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SplitEaseColors.NavyMuted,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                if (!osNotificationsEnabled) {
+                    Text(
+                        text = stringResource(R.string.settings_notifications_permission_needed),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SplitEaseColors.NavyMuted,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    SeTextButton(
+                        text = stringResource(R.string.settings_notifications_open_system),
+                        onClick = { openSystemNotificationSettings() },
+                        emphasized = true,
                     )
                 }
             }

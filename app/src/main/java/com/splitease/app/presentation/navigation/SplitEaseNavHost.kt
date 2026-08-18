@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
@@ -73,10 +74,12 @@ import com.splitease.app.presentation.invite.InviteJoinSignUpScreen
 import com.splitease.app.presentation.invite.InviteLandingScreen
 import com.splitease.app.presentation.onboarding.OnboardingViewModel
 import com.splitease.app.presentation.pinboard.PinBoardScreen
+import com.splitease.app.presentation.push.NotificationPermissionEffect
 import com.splitease.app.presentation.search.SearchScreen
 import com.splitease.app.presentation.settings.AppearanceSettingsScreen
 import com.splitease.app.presentation.settings.CurrencySettingsScreen
 import com.splitease.app.presentation.settings.LanguageSettingsScreen
+import com.splitease.app.presentation.settings.NotificationsSettingsScreen
 import com.splitease.app.presentation.settings.SecuritySettingsScreen
 import com.splitease.app.presentation.settings.SettingsScreen
 import com.splitease.app.presentation.settlements.SendReminderScreen
@@ -84,6 +87,7 @@ import com.splitease.app.presentation.settlements.SettleUpScreen
 import com.splitease.app.presentation.spending.SpendingTotalsScreen
 import com.splitease.app.presentation.welcome.WelcomeScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 /** Navigation route constants. */
 object Routes {
@@ -103,6 +107,7 @@ object Routes {
     const val ACCOUNT_PROFILE_SETTINGS = "account_profile_settings"
     const val APPEARANCE_SETTINGS = "appearance_settings"
     const val SECURITY_SETTINGS = "security_settings"
+    const val NOTIFICATIONS_SETTINGS = "notifications_settings"
     const val LANGUAGE_SETTINGS = "language_settings"
     const val CURRENCY_SETTINGS = "currency_settings"
     const val SEARCH = "search"
@@ -512,8 +517,7 @@ private fun SignedInNavHost(
     SideEffect {
         bottomBarSelectedRoute?.let { lastSelectedTabRoute = it }
     }
-    val pendingNotificationGroupId by
-        observePendingNotificationGroupId().collectAsStateWithLifecycle(null)
+    NotificationPermissionEffect()
 
     // Claim on sign-in (post-OTP open target) and again when a deep-link token arrives
     // while already signed in. Key on non-blank token only so clearing the token after
@@ -528,10 +532,15 @@ private fun SignedInNavHost(
         navController.navigateInviteOpenTarget(target)
     }
 
-    LaunchedEffect(userId, pendingNotificationGroupId) {
-        val groupId = pendingNotificationGroupId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        val consumed = consumePendingNotificationGroupId() ?: groupId
-        navController.navigateInviteOpenTarget(consumed)
+    // Collect the pending group id instead of keying LaunchedEffect on it: consuming
+    // the id used to cancel the effect before navigate() ran, so taps landed on home.
+    LaunchedEffect(userId) {
+        snapshotFlow { navController.currentDestination }.first { it != null }
+        observePendingNotificationGroupId().collect { pending ->
+            val groupId = pending?.takeIf { it.isNotBlank() } ?: return@collect
+            navController.navigateInviteOpenTarget(groupId)
+            consumePendingNotificationGroupId()
+        }
     }
 
     Scaffold(
@@ -630,11 +639,15 @@ private fun SignedInNavHost(
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
                     onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
+                    onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS_SETTINGS) },
                     onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
                 )
             }
             composable(Routes.APPEARANCE_SETTINGS) {
                 AppearanceSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.NOTIFICATIONS_SETTINGS) {
+                NotificationsSettingsScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.SECURITY_SETTINGS) {
                 SecuritySettingsScreen(onBack = { navController.popBackStack() })
