@@ -133,27 +133,6 @@ interface AppSettingsRepository {
     suspend fun setAuthTimeout(timeout: AuthTimeout)
 
     /**
-     * Observes whether the signed-in user has completed post-signup onboarding.
-     *
-     * @return Cold [Flow]; defaults to `false`.
-     */
-    fun observeOnboardingComplete(): Flow<Boolean>
-
-    /**
-     * Reads the onboarding-complete flag once.
-     *
-     * @return `true` when the user finished the setup wizard.
-     */
-    suspend fun getOnboardingComplete(): Boolean
-
-    /**
-     * Persists the onboarding-complete flag.
-     *
-     * @param complete `true` after the user finishes setup.
-     */
-    suspend fun setOnboardingComplete(complete: Boolean)
-
-    /**
      * Reads whether onboarding-start email has already been sent for a user.
      *
      * @param userId Signed-in user id.

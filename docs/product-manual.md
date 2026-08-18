@@ -62,7 +62,7 @@ Supabase Auth Send Email hook  ──►  same server
 | **SplitEase Server** (`C:\splitease\server`) | OTP / welcome / recovery mail, `/invite/{token}` App Links bridge, privacy/terms |
 | **Firebase Cloud Messaging** | Background notifications after cloud sync |
 
-The Android app never holds the database **service role** key. It uses `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.properties`. Mail uses `MAIL_SERVICE_BASE_URL` + `MAIL_SERVICE_API_KEY`. Firebase client config is `app/google-services.json` (also gitignored).
+The Android app never holds the database **service role** key. It uses `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.properties`. Mail uses `MAIL_SERVICE_BASE_URL` + `MAIL_SERVICE_API_KEY`. Optional `GOOGLE_WEB_CLIENT_ID` (Google Cloud Web OAuth client ID) for native Google Sign-In. Firebase client config is `app/google-services.json` (also gitignored).
 
 ---
 
@@ -93,11 +93,11 @@ The Android app never holds the database **service role** key. It uses `SUPABASE
 ### 5.1 Create an account and sign in
 
 1. Open SplitEase → **Get started** → **Sign up**.  
-2. Enter email, password, and display name.  
+2. Enter email, password, display name, and optionally a profile photo.  
 3. Enter the 6-digit code from email. Resend if needed.  
 4. After verify, the app hydrates a local profile and you land on **Groups**. A welcome email is sent once after signup OTP (not on every login).
 
-**Log in** uses email + password.
+**Log in** uses email + password, or **Continue with Google** (same button on Sign up and invite-join). Google skips the email OTP step. First-time Google users still get the one-time welcome email.
 
 **Forgot password?**
 
@@ -290,7 +290,7 @@ Living detail: [ARCHITECTURE.md](../ARCHITECTURE.md). Schema: [data-dictionary.m
 
 | Area | Where to look |
 | ---- | ------------- |
-| Auth / OTP | `AuthRepository`, `presentation/auth`, `presentation/onboarding` |
+| Auth / OTP | `AuthRepository`, `presentation/auth` (email OTP + Google ID token), `presentation/onboarding` |
 | Invites | `InviteLinks`, `InstallReferrerInviteBootstrap`, `get_invite_preview` / `accept_invite_by_token` |
 | Friends & groups | `SocialInteractor`, `presentation/friends`, `presentation/groups` |
 | Expenses | `ExpenseInteractor`, `SplitCalculator`, `presentation/expenses` |
@@ -311,7 +311,7 @@ Canonical columns: [data-dictionary.md](data-dictionary.md). Cloud schema: `migr
 
 **Supabase (high level):** `profiles`, `groups`, `group_members`, `expenses`, `expense_splits`, `payments`, `invites`, `device_tokens`, `notification_prefs`, `pin_boards`, Auth users. RLS is membership- and own-row-based. Realtime publication covers `expenses` / `payments`.
 
-**Local preferences (SharedPreferences):** theme, locale, currency, biometric lock, auth timeout, mute-all, muted group ids, pending invite token, pending notification group id, simplify-debts per group, onboarding/welcome-mail flags.
+**Local preferences (SharedPreferences):** theme, locale, currency, biometric lock, auth timeout, mute-all, muted group ids, pending invite token, pending notification group id, simplify-debts per group, welcome-mail flags.
 
 ---
 
@@ -347,7 +347,7 @@ Host `/.well-known/assetlinks.json` (see [app-links-setup.md](app-links-setup.md
 
 ## 10. Building the app
 
-**Requires:** JDK 17+, Android SDK (compile SDK 37 / target 36), `local.properties` with at least `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+**Requires:** JDK 17+, Android SDK (compile SDK 37 / target 36), `local.properties` with at least `SUPABASE_URL` and `SUPABASE_ANON_KEY`. `GOOGLE_WEB_CLIENT_ID` is required for Continue with Google.
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -391,7 +391,6 @@ Treat these as honest product caveats, not bugs unless noted:
 | Invite email automation | Share sheet only |
 | Pin Board offline / live co-edit | Out of scope by design |
 | Activity badges for remote events | TODO |
-| Pull-to-refresh on group ledger | TODO (resume + Realtime cover most cases) |
 | Play feature graphic / screenshots | TODO |
 | Realtime + Edge Function cost | Watch Supabase free-tier connection and invocation limits |
 

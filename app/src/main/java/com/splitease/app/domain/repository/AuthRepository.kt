@@ -3,6 +3,7 @@ package com.splitease.app.domain.repository
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SignUpResult
+import com.splitease.app.domain.model.SocialSignInResult
 import com.splitease.app.domain.settings.AppCurrencies
 import kotlinx.coroutines.flow.Flow
 
@@ -33,7 +34,8 @@ interface AuthRepository {
      * @param phoneCountryCode Optional dialing code (e.g. `+91`).
      * @param phoneNumber Optional national phone number.
      * @param currencyCode Preferred ISO 4217 currency stored in metadata + profile.
-     * @param photoUri Optional local avatar URI (content:// or file path).
+     * @param photoUri Optional local avatar URI (content:// or file path). Copied into
+     * app-private storage as a compressed JPEG at signup; uploaded after email verify.
      * @return [Result] of [SignUpResult] (session created vs pending email confirmation).
      */
     suspend fun signUp(
@@ -55,6 +57,19 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun signIn(email: String, password: String): Result<Unit>
+
+    /**
+     * Signs in (or signs up) with a Google ID token from Credential Manager.
+     * Email is already verified by Google — no OTP gate.
+     *
+     * @param idToken Google ID token (JWT).
+     * @param rawNonce Unhashed nonce that was SHA-256'd for the Google request.
+     * @return [Result] of [SocialSignInResult].
+     */
+    suspend fun signInWithGoogle(
+        idToken: String,
+        rawNonce: String,
+    ): Result<SocialSignInResult>
 
     /**
      * Returns whether [email] already has an Auth account (for login/signup messaging).

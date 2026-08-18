@@ -3,10 +3,13 @@ package com.splitease.app.presentation.groups
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.data.exports.GroupExportInteractor
 import com.splitease.app.data.push.NotificationPrefsCoordinator
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.data.sync.SyncInteractor
@@ -22,6 +25,7 @@ import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,15 +38,26 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
+
+/** One-shot file for the system share sheet (CSV export). */
+data class PendingFileShare(
+    val uri: Uri,
+    val mimeType: String,
+    val fileName: String,
+)
 
 data class GroupsUiState(
     val isRefreshing: Boolean = false,
     val isSubmitting: Boolean = false,
+    val isExporting: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingShareText: String? = null,
+    val pendingFileShare: PendingFileShare? = null,
 )
 
 @HiltViewModel
@@ -58,6 +73,7 @@ class GroupsViewModel
         private val syncInteractor: SyncInteractor,
         private val appSettingsRepository: AppSettingsRepository,
         private val notificationPrefsCoordinator: NotificationPrefsCoordinator,
+        private val groupExportInteractor: GroupExportInteractor,
     ) : ViewModel() {
         /** Eager so Create Group (which only collects [uiState]) still has a signed-in user id. */
         private val userId: StateFlow<String?> =
@@ -112,6 +128,87 @@ class GroupsViewModel
 
         fun consumeShareText() {
             _uiState.update { it.copy(pendingShareText = null) }
+        }
+
+        fun consumeFileShare() {
+            _uiState.update { it.copy(pendingFileShare = null) }
+        }
+
+        /**
+         * Builds a CSV of this group's expenses, settlements, and balances,
+         * then queues it for the system share sheet.
+         *
+         * @param groupId Group to export.
+         */
+        fun exportGroupCsv(groupId: String) {
+            var shouldRun = false
+            _uiState.update { current ->
+                if (current.isExporting) {
+                    current
+                } else {
+                    shouldRun = true
+                    current.copy(
+                        isExporting = true,
+                        errorMessage = null,
+                        infoMessage = null,
+                        pendingFileShare = null,
+                    )
+                }
+            }
+            if (!shouldRun) return
+            viewModelScope.launch {
+                val userId = requireUserId()
+                if (userId == null) {
+                    _uiState.update {
+                        it.copy(
+                            isExporting = false,
+                            errorMessage = appContext.getString(R.string.msg_not_signed_in),
+                        )
+                    }
+                    return@launch
+                }
+                val result =
+                    withContext(Dispatchers.IO) {
+                        groupExportInteractor.buildGroupCsv(groupId, userId).mapCatching { export ->
+                            writeCsvCacheFile(export.fileName, export.csv)
+                        }
+                    }
+                _uiState.update {
+                    it.copy(
+                        isExporting = false,
+                        errorMessage =
+                            if (result.isFailure) {
+                                appContext.getString(R.string.msg_group_export_failed)
+                            } else {
+                                null
+                            },
+                        pendingFileShare = result.getOrNull(),
+                    )
+                }
+            }
+        }
+
+        private fun writeCsvCacheFile(
+            fileName: String,
+            csv: String,
+        ): PendingFileShare {
+            val dir = File(appContext.cacheDir, "exports").apply { mkdirs() }
+            dir.listFiles()?.forEach { existing ->
+                if (existing.isFile) existing.delete()
+            }
+            val file = File(dir, fileName)
+            file.writeText("\uFEFF$csv", Charsets.UTF_8)
+            val uri =
+                FileProvider.getUriForFile(
+                    appContext,
+                    "${appContext.packageName}.fileprovider",
+                    file,
+                )
+            return PendingFileShare(
+                uri = uri,
+                mimeType = "text/csv",
+                fileName = fileName,
+            )
         }
 
         /**

@@ -256,6 +256,11 @@
     <string name="group_settings_default_split_subtitle">Paid by you and split equally</string>
     <string name="group_settings_default_split_body">New expenses you add to this group will default to this setting, which is personal, not group-wide.</string>
     <string name="group_settings_default_split_pro_body">Custom default splits are a Pro feature and are not available yet. New expenses still start as paid by you and split equally.</string>
+    <string name="group_settings_export_csv">Export as CSV</string>
+    <string name="group_settings_export_csv_subtitle">Expenses, settlements, and current balances</string>
+    <string name="group_settings_export_csv_working">Preparing CSV…</string>
+    <string name="action_share_csv">Share CSV</string>
+    <string name="msg_group_export_failed">Couldn\'t export this group.</string>
     <string name="badge_pro">PRO</string>
     <string name="action_view_settings">View settings</string>
     <string name="action_remove_from_group">Remove from group</string>
@@ -497,7 +502,9 @@
     <string name="action_pick_time">Pick time</string>
     <string name="action_pick_category">Choose category</string>
     <string name="pick_category_body">Pick a category for this expense. Tap a chip below or change it anytime from the title icon.</string>
-    <string name="google_sign_in_soon">Google Sign-In needs OAuth setup in Supabase (coming next).</string>
+    <string name="error_google_not_configured">Google Sign-In isn\'t configured on this build. Add GOOGLE_WEB_CLIENT_ID in local.properties.</string>
+    <string name="error_google_no_account">No Google account found on this device.</string>
+    <string name="error_google_sign_in_failed">Google Sign-In didn\'t complete. Try again.</string>
     <string name="error_generic">Something went wrong. Try again.</string>
     <string name="error_signup_email_delivery">We couldn\'t send the verification email. Please try again in a moment.</string>
     <string name="error_signup_email_rate_limit">Too many verification emails were sent. Wait a few minutes and try again.</string>

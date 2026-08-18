@@ -92,7 +92,7 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 ## Known Issues / TODOs
 
 - Activity events do not sync across devices; remote delete offline may leave cloud rows until extras sync work
-- Onboarding-complete is per-device
+- Post-signup name/currency wizard was later removed (display name + currency collected at signup); no onboarding-complete gate
 - App Links need hosted [assetlinks.json](assetlinks.json) ([app-links-setup.md](app-links-setup.md))
 - Invite email still share-sheet MVP; Install Referrer E2E needs a Play install
 - Mail provider must be healthy (Brevo HTTPS on Vercel, or local SMTP for dev)

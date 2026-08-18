@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Continue with Google** on Login, Sign up, and invite-join: Credential Manager ID token exchanged with Supabase Auth (no email OTP). Setup: [docs/google-sign-in.md](docs/google-sign-in.md)
 - Release history + SemVer/`versionCode` counter: `version.properties`, [RELEASES.md](RELEASES.md), `./gradlew newRelease` (or `scripts/new-release.ps1`). Current builds are testing-only; production Play ship is [TODO(release)](TODO.md)
 - Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-email-otp.md), [reset-password.html](../server/mail-templates/supabase/reset-password.html))
 - Signup blocks duplicate email/phone with clear `already registered` messaging (`auth_email_registered` + `auth_phone_registered`)
@@ -20,9 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secondary-screen chrome unified: `SeScreen` / `SeTopBar` share one title style (`SeScreenTitleStyle` = titleLarge); spacing via `SeLayout` ([design-tokens](docs/design-tokens.md))
 
 ### Removed
+- Unused local `onboarding_complete` preference (setup wizard no longer exists; OTP lands on Groups)
+- Pull-to-refresh on the group ledger (open/resume + Realtime already keep the list current)
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs
 
 ### Fixed
+- Signup profile photo now survives OTP: cropped image is compressed to a 512px JPEG in app storage at sign-up (not a cache URI in Auth metadata) and uploaded after verify; Google avatars are compressed into `user-avatars` on first hydrate
 - Co-member expense categories were lost on pull when devices used different default UUIDs: stable `cat_*` ids on the wire, Room v12 remaps legacy defaults, pull auto-seeds missing builtins ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #3)
 - Tapping an FCM notification while the app was in the background did not open the group (system tray extras use `groupId`, not `open_group_id`); receiving a push in the foreground no longer auto-navigates
 - Flush no longer inflates local `updatedAtEpochMs` after push (keeps cloud LWW aligned with PostgREST); remote-delete prune skips when fetch may hit PostgREST row cap

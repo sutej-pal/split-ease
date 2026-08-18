@@ -17,7 +17,8 @@ Current `versionName` / sideload APKs are **testing only**. First production Pla
 - [ ] Confirm email **ON** in Authentication → Providers → Email
 - [ ] Email OTP length = 6 (Auth → Providers → Email, or `mailer_otp_length`)
 - [ ] Confirm signup email template includes `{{ .Token }}` (paste [server/mail-templates/supabase/confirm-signup.html](../../server/mail-templates/supabase/confirm-signup.html) or run `scripts/configure-signup-otp-email.ps1`)
-- [ ] Redirect URL allow-list includes `splitease://auth-callback` (legacy / other Auth redirects; **not** required for signup or password-reset OTP)
+- [ ] Redirect URL allow-list includes `splitease://auth-callback` (legacy / other Auth redirects; **not** required for signup, password-reset OTP, or Google ID-token sign-in)
+- [ ] Google provider enabled with Web client ID + secret; Android OAuth client SHA-1s added; `GOOGLE_WEB_CLIENT_ID` in `local.properties` ([google-sign-in.md](google-sign-in.md))
 - [ ] mail-service / SplitEase Server redeployed with recovery OTP template (or Reset password dashboard template includes `{{ .Token }}` — [server/mail-templates/supabase/reset-password.html](../../server/mail-templates/supabase/reset-password.html))
 - [ ] Site URL set to a real landing or Play listing URL
 - [ ] Fresh DB SQL applied via [migration_db.sql](sql/migration_db.sql) (profiles, groups, invites, expenses, payments, RLS, realtime, device tokens, auth RPCs) — verified
@@ -27,6 +28,7 @@ Current `versionName` / sideload APKs are **testing only**. First production Pla
 
 ## App QA
 - [ ] Sign up → verify-email OTP screen when confirmation required → enter 6-digit code → signed in on Home
+- [ ] Continue with Google (new + returning) lands on Groups without OTP; first-time Google user gets welcome mail
 - [ ] Resend code works
 - [ ] Password reset: Forgot password → OTP email (recovery copy) → enter code + new password → signed in / can log in with new password
 - [ ] Language switch (Settings → Language) updates UI for at least 2 locales

@@ -1,8 +1,8 @@
 # Extras — Group live updates & member notifications
 
-**Status:** Realtime (B7) + FCM push (B1–B5, B8) + remote delete prune (A5) implemented. Activity badges still TODO.  
+**Status:** Realtime (B7) + FCM push (B1–B5, B8) + remote delete prune (A5) implemented. A6 pull-to-refresh cancelled (resume + Realtime). Activity badges still TODO.  
 **Added:** 2026-07-23 (post Phase 9 — out of original roadmap)  
-**Updated:** 2026-08-12 — A5 missing-id prune on expense/payment pull  
+**Updated:** 2026-08-19 — A6 pull-to-refresh won't-do; gesture removed from group detail  
 **Why this doc exists:** Capture product extras that are **not** part of Phases 0–9, so we can implement and regress them later without losing intent.
 
 ---
@@ -33,7 +33,7 @@ Use this list as the implementation backlog. Mark items when done.
 | A3  | Fix `syncForUser` so remote **pull always runs** (not only when invite-accept fails)                    | **Done**       | Was a bug blocking multi-device visibility                               |
 | A4  | Pull payments scoped to group (or involving current user) on open                                       | **Done (MVP)** | Via `syncForUser` > `refreshPaymentsForUser`                             |
 | A5  | Propagate **deletes** from cloud (tombstones or missing-id cleanup) so remote deletes disappear locally | **Done**       | Missing-id prune of `SYNCED` rows after group / 1:1 pull; PENDING kept   |
-| A6  | Optional: pull-to-refresh gesture on group ledger                                                       | TODO           | UX nicety                                                                |
+| A6  | Optional: pull-to-refresh gesture on group ledger                                                       | **Won't do**   | Resume + Realtime cover it; gesture removed from group detail            |
 
 ### B. Notifications to other members
 
@@ -68,6 +68,7 @@ Use this list as the implementation backlog. Mark items when done.
 - Opening / resuming a group runs full `syncForUser` (flush + pull) and a targeted group expense refresh so ledger/balances update from Supabase.
 - While group detail is **RESUMED**, Realtime postgres changes on `expenses` / `payments` debounce-refresh Room (`GroupLiveSync`).
 - Background members get FCM via Edge Function `notify-group-members` when Firebase + webhooks are configured ([fcm-setup.md](fcm-setup.md)).
+- Group ledger has **no pull-to-refresh** (A6 cancelled): resume + Realtime cover it.
 
 ---
 
@@ -145,3 +146,4 @@ Still deferred:
 | 2026-07-23 | Find people + Add friend contact UI (device contacts, search) — related social UX extra                               |
 | 2026-07-29 | Slice 1 Realtime (`GroupLiveSync` + publication SQL) and Slice 2 FCM (device_tokens, Edge Function, MessagingService) |
 | 2026-08-18 | Ops: `notification_prefs` applied; Edge Function `notify-group-members` deployed with `FIREBASE_SERVICE_ACCOUNT_JSON`; expenses/payments Database Webhooks wired |
+| 2026-08-19 | A6 cancelled: group ledger has no pull-to-refresh; open/resume + `GroupLiveSync` keep Room current     |

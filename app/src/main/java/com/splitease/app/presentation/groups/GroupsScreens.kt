@@ -133,7 +133,6 @@ import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
-import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
@@ -514,121 +513,113 @@ fun GroupDetailScreen(
                 onStatusBarDarkIconsChange = { statusBarDarkIcons = it },
             )
 
-            SePullRefreshBox(
-                isRefreshing = expensesUi.isRefreshing,
-                onRefresh = { expensesViewModel.refreshGroupFromCloud(groupId) },
+            LazyColumn(
+                state = listState,
                 modifier =
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .background(SplitEaseColors.Surface),
+                        .background(SplitEaseColors.Surface)
+                        .nestedScroll(nestedScrollConnection),
+                contentPadding = PaddingValues(vertical = 8.dp),
             ) {
-                LazyColumn(
-                    state = listState,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .nestedScroll(nestedScrollConnection),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                ) {
-                    if (!(isSolo && ledger.isEmpty())) {
-                        item {
-                            GroupOverallBalanceBlock(
-                                balance = groupBalance,
-                                currencyFallback = group?.defaultCurrencyCode.orEmpty(),
-                                currentUserId = me,
-                                userPhotoUrls = userPhotoUrls,
-                            )
-                        }
-                    }
-
+                if (!(isSolo && ledger.isEmpty())) {
                     item {
-                        SeActionChipRow {
-                            SeActionChip(
-                                label = stringResource(R.string.action_settle_up),
-                                onClick = { openSettle() },
-                                icon = Icons.Filled.Payments,
-                            )
-                            SeActionChip(
-                                label = stringResource(R.string.group_chip_balances),
-                                onClick = onOpenBalances,
-                                icon = Icons.Filled.AccountBalance,
-                            )
-                            SeActionChip(
-                                label = stringResource(R.string.group_chip_totals),
-                                onClick = onOpenTotals,
-                                icon = Icons.AutoMirrored.Filled.ShowChart,
-                            )
-                            SeActionChip(
-                                label = stringResource(R.string.action_open_pin_board),
-                                onClick = onOpenPinBoard,
-                                icon = Icons.Filled.PushPin,
-                            )
-                        }
+                        GroupOverallBalanceBlock(
+                            balance = groupBalance,
+                            currencyFallback = group?.defaultCurrencyCode.orEmpty(),
+                            currentUserId = me,
+                            userPhotoUrls = userPhotoUrls,
+                        )
                     }
-
-                    if (isSolo && ledger.isEmpty()) {
-                        item {
-                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                                GroupSoloEmptyState(
-                                    onAddMembers = onOpenSettings,
-                                    onShareLink = {
-                                        viewModel.shareGroupLink(groupId)
-                                    },
-                                )
-                            }
-                        }
-                    } else if (ledger.isEmpty()) {
-                        item {
-                            SeEmptyState(
-                                message = stringResource(R.string.ledger_empty),
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                            )
-                        }
-                    } else if (iAmSettled && !showSettledExpenses) {
-                        item {
-                            GroupSettledUpState(
-                                onClick = { showSettledExpenses = true },
-                            )
-                        }
-                    } else {
-                        if (iAmSettled) {
-                            item {
-                                Text(
-                                    text = stringResource(R.string.group_all_settled_hide),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = SplitEaseColors.NavyMuted,
-                                    textAlign = TextAlign.Center,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .clickable { showSettledExpenses = false }
-                                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                                )
-                            }
-                        }
-                        stickyHeader(key = "group-detail-ad") {
-                            SeBannerAd(
-                                adUnitId = AdConfig.groupDetailBannerUnitId,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        ledgerEntries(ledger, onExpenseClick = onOpenExpense)
-                    }
-                    (expensesUi.errorMessage ?: uiState.errorMessage)?.let { msg ->
-                        item {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp))
-                        }
-                    }
-                    (expensesUi.infoMessage ?: uiState.infoMessage)?.let { msg ->
-                        item {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp))
-                        }
-                    }
-                    item { Spacer(modifier = Modifier.height(88.dp)) }
                 }
+
+                item {
+                    SeActionChipRow {
+                        SeActionChip(
+                            label = stringResource(R.string.action_settle_up),
+                            onClick = { openSettle() },
+                            icon = Icons.Filled.Payments,
+                        )
+                        SeActionChip(
+                            label = stringResource(R.string.group_chip_balances),
+                            onClick = onOpenBalances,
+                            icon = Icons.Filled.AccountBalance,
+                        )
+                        SeActionChip(
+                            label = stringResource(R.string.group_chip_totals),
+                            onClick = onOpenTotals,
+                            icon = Icons.AutoMirrored.Filled.ShowChart,
+                        )
+                        SeActionChip(
+                            label = stringResource(R.string.action_open_pin_board),
+                            onClick = onOpenPinBoard,
+                            icon = Icons.Filled.PushPin,
+                        )
+                    }
+                }
+
+                if (isSolo && ledger.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                            GroupSoloEmptyState(
+                                onAddMembers = onOpenSettings,
+                                onShareLink = {
+                                    viewModel.shareGroupLink(groupId)
+                                },
+                            )
+                        }
+                    }
+                } else if (ledger.isEmpty()) {
+                    item {
+                        SeEmptyState(
+                            message = stringResource(R.string.ledger_empty),
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                        )
+                    }
+                } else if (iAmSettled && !showSettledExpenses) {
+                    item {
+                        GroupSettledUpState(
+                            onClick = { showSettledExpenses = true },
+                        )
+                    }
+                } else {
+                    if (iAmSettled) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.group_all_settled_hide),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = SplitEaseColors.NavyMuted,
+                                textAlign = TextAlign.Center,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showSettledExpenses = false }
+                                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                            )
+                        }
+                    }
+                    stickyHeader(key = "group-detail-ad") {
+                        SeBannerAd(
+                            adUnitId = AdConfig.groupDetailBannerUnitId,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    ledgerEntries(ledger, onExpenseClick = onOpenExpense)
+                }
+                (expensesUi.errorMessage ?: uiState.errorMessage)?.let { msg ->
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp))
+                    }
+                }
+                (expensesUi.infoMessage ?: uiState.infoMessage)?.let { msg ->
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp))
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(88.dp)) }
             }
         }
     }

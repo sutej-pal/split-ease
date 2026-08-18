@@ -333,6 +333,7 @@ fun ImageCropDialog(
                                 cropRect = crop,
                                 destFile = dest,
                                 maxSidePx = cropSpec.maxSidePx,
+                                quality = cropSpec.jpegQuality,
                             )
                             onCropped(uriFile(dest))
                         }

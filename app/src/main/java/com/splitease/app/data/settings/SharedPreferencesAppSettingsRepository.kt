@@ -37,7 +37,6 @@ class SharedPreferencesAppSettingsRepository
         private val biometricLockFlow = MutableStateFlow(readBiometricLock())
         private val authTimeoutFlow = MutableStateFlow(readAuthTimeout())
         private val appLocaleFlow = MutableStateFlow(readAppLocale())
-        private val onboardingCompleteFlow = MutableStateFlow(readOnboardingComplete())
         private val pendingInviteTokenFlow = MutableStateFlow(readPendingInviteToken())
         private val pendingInviteOpenTargetFlow = MutableStateFlow(readPendingInviteOpenTarget())
         private val pendingNotificationGroupIdFlow =
@@ -122,20 +121,6 @@ class SharedPreferencesAppSettingsRepository
                 prefs.edit { putString(KEY_AUTH_TIMEOUT, timeout.name) }
             }
             authTimeoutFlow.value = timeout
-        }
-
-        override fun observeOnboardingComplete(): Flow<Boolean> = onboardingCompleteFlow.asStateFlow()
-
-        override suspend fun getOnboardingComplete(): Boolean =
-            withContext(Dispatchers.IO) {
-                readOnboardingComplete()
-            }
-
-        override suspend fun setOnboardingComplete(complete: Boolean) {
-            withContext(Dispatchers.IO) {
-                prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, complete) }
-            }
-            onboardingCompleteFlow.value = complete
         }
 
         override suspend fun getOnboardingEmailSent(userId: String): Boolean =
@@ -394,7 +379,6 @@ class SharedPreferencesAppSettingsRepository
             biometricLockFlow.value = false
             authTimeoutFlow.value = AuthTimeout.DEFAULT
             appLocaleFlow.value = keepLocale
-            onboardingCompleteFlow.value = true
             pendingInviteTokenFlow.value = keepInviteToken
             pendingInviteOpenTargetFlow.value = keepInviteOpenTarget
             pendingNotificationGroupIdFlow.value = null
@@ -431,8 +415,6 @@ class SharedPreferencesAppSettingsRepository
         private fun readAppLocale(): AppLocale =
             AppLocale.fromStorage(prefs.getString(KEY_APP_LOCALE, AppLocale.DEFAULT.name))
 
-        private fun readOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, true)
-
         private fun readPendingInviteToken(): String? =
             prefs.getString(KEY_PENDING_INVITE_TOKEN, null)?.trim()?.takeIf { it.isNotEmpty() }
 
@@ -465,7 +447,6 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_BIOMETRIC_LOCK = "biometric_lock_enabled"
             private const val KEY_AUTH_TIMEOUT = "auth_timeout"
             private const val KEY_APP_LOCALE = "app_locale"
-            private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
             private const val KEY_PENDING_INVITE_TOKEN = "pending_invite_token"
             private const val KEY_PENDING_INVITE_OPEN_TARGET = "pending_invite_open_target"
             private const val KEY_PENDING_NOTIFICATION_GROUP_ID = "pending_notification_group_id"

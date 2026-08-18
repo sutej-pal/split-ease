@@ -12,7 +12,7 @@ Docs: [phase-0-project-setup-and-brand-theme.md](phase-0-project-setup-and-brand
 
 ## Bundle B — Identity & Social Graph (`2`, `3`, `10` invite/onboarding)
 
-- Supabase auth/session gating (signup, login, reset, sign-out).
+- Supabase auth/session gating (signup, login, Google ID token, reset, sign-out).
 - Email OTP for signup and recovery; post-signup onboarding / welcome mail.
 - Friends/groups + invite deep-link join (`accept_invite_by_token`).
 

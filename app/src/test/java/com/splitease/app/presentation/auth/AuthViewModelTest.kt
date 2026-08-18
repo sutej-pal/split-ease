@@ -5,7 +5,9 @@ import android.content.res.Resources
 import androidx.annotation.StringRes
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
+import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SignUpResult
+import com.splitease.app.domain.model.SocialSignInResult
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.friends.PendingFriendReviewStore
@@ -187,7 +189,8 @@ class AuthViewModelTest {
                 advanceUntilIdle()
             }
             assertTrue(
-                viewModel.formState.value.errorMessage?.startsWith("Too many login attempts") == true,
+                viewModel.formState.value.errorMessage
+                    ?.startsWith("Too many login attempts") == true,
             )
             coVerify(exactly = AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
                 repository.signIn("a@b.com", "bad")
@@ -199,8 +202,97 @@ class AuthViewModelTest {
                 repository.signIn("a@b.com", "bad")
             }
             assertTrue(
-                viewModel.formState.value.errorMessage?.startsWith("Too many login attempts") == true,
+                viewModel.formState.value.errorMessage
+                    ?.startsWith("Too many login attempts") == true,
             )
+        }
+
+    @Test
+    fun `signInWithGoogle success opens app without OTP`() =
+        runTest {
+            coEvery { repository.signInWithGoogle(any(), any()) } returns
+                Result.success(SocialSignInResult(isNewUser = false))
+            coEvery { repository.ensureLocalProfile() } returns Result.success(Unit)
+            viewModel.signInWithGoogle("id-token", "raw-nonce")
+            advanceUntilIdle()
+            assertFalse(viewModel.formState.value.isLoading)
+            assertFalse(viewModel.formState.value.holdSignedInForOtp)
+            assertNull(viewModel.formState.value.errorMessage)
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+            assertNull(viewModel.formState.value.pendingOtpPurpose)
+            coVerify(exactly = 1) { repository.signInWithGoogle("id-token", "raw-nonce") }
+            coVerify(exactly = 1) { repository.ensureLocalProfile() }
+            coVerify(exactly = 0) { repository.signOut() }
+            coVerify(exactly = 0) { repository.sendLoginOtp(any()) }
+            coVerify(exactly = 0) { appSettings.setPendingWelcomeEmailUserId(any()) }
+        }
+
+    @Test
+    fun `signInWithGoogle new user queues welcome email`() =
+        runTest {
+            coEvery { repository.signInWithGoogle(any(), any()) } returns
+                Result.success(SocialSignInResult(isNewUser = true))
+            coEvery { repository.getSignedInUserOrNull() } returns
+                AuthUser(userId = "user-1", email = "a@b.com", displayName = "Ada")
+            coEvery { repository.ensureLocalProfile() } returns Result.success(Unit)
+            viewModel.signInWithGoogle("id-token", "raw-nonce")
+            advanceUntilIdle()
+            coVerify(exactly = 1) { appSettings.setPendingWelcomeEmailUserId("user-1") }
+            assertNull(viewModel.formState.value.errorMessage)
+            assertNull(viewModel.formState.value.pendingConfirmationEmail)
+        }
+
+    @Test
+    fun `signInWithGoogle failure does not open app`() =
+        runTest {
+            coEvery { repository.signInWithGoogle(any(), any()) } returns
+                Result.failure(IllegalStateException("identity_already_exists"))
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            viewModel.signInWithGoogle("id-token", "raw-nonce")
+            advanceUntilIdle()
+            assertEquals(
+                msg(AuthMessages.EMAIL_ALREADY_REGISTERED),
+                viewModel.formState.value.errorMessage,
+            )
+            assertFalse(viewModel.formState.value.isLoading)
+            coVerify(exactly = 1) { repository.signOut() }
+            coVerify(exactly = 0) { repository.ensureLocalProfile() }
+        }
+
+    @Test
+    fun `signInWithGoogle blank token skips api`() =
+        runTest {
+            viewModel.signInWithGoogle("  ", "nonce")
+            advanceUntilIdle()
+            assertEquals(
+                msg(AuthMessages.GOOGLE_FAILED),
+                viewModel.formState.value.errorMessage,
+            )
+            coVerify(exactly = 0) { repository.signInWithGoogle(any(), any()) }
+        }
+
+    @Test
+    fun `onGoogleSignInCancelled clears loading without error`() =
+        runTest {
+            viewModel.onGoogleSignInStarted()
+            advanceUntilIdle()
+            assertTrue(viewModel.formState.value.isLoading)
+            viewModel.onGoogleSignInCancelled()
+            advanceUntilIdle()
+            assertFalse(viewModel.formState.value.isLoading)
+            assertNull(viewModel.formState.value.errorMessage)
+        }
+
+    @Test
+    fun `onGoogleSignInFailed not configured shows setup message`() =
+        runTest {
+            viewModel.onGoogleSignInFailed(GoogleIdTokenOutcome.NotConfigured)
+            advanceUntilIdle()
+            assertEquals(
+                msg(AuthMessages.GOOGLE_NOT_CONFIGURED),
+                viewModel.formState.value.errorMessage,
+            )
+            assertFalse(viewModel.formState.value.isLoading)
         }
 
     @Test
@@ -216,7 +308,8 @@ class AuthViewModelTest {
                 advanceUntilIdle()
             }
             assertTrue(
-                viewModel.formState.value.errorMessage?.startsWith("Too many sign-up attempts") == true,
+                viewModel.formState.value.errorMessage
+                    ?.startsWith("Too many sign-up attempts") == true,
             )
             viewModel.signUp(
                 email = "a@b.com",
@@ -612,6 +705,9 @@ class AuthViewModelTest {
                 R.string.error_login_fields_required to "Enter your email and password.",
                 R.string.error_invalid_credentials to "Invalid email or password. Try again.",
                 R.string.error_not_registered to "You're not registered with us. Please sign up.",
+                R.string.error_google_not_configured to "Google Sign-In isn't configured on this build. Add GOOGLE_WEB_CLIENT_ID in local.properties.",
+                R.string.error_google_no_account to "No Google account found on this device.",
+                R.string.error_google_sign_in_failed to "Google Sign-In didn't complete. Try again.",
                 R.string.signup_error_name_required to "Enter your full name.",
                 R.string.signup_error_password_short to "Password must be at least 8 characters.",
                 R.string.error_email_already_registered to "This email is already registered. Please log in.",

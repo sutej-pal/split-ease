@@ -5,12 +5,12 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 ## Auth & onboarding
 
 - [ ] **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
-- [ ] **OTP ops checklist** — Keep Supabase signup OTP operational (Confirm email ON, `{{ .Token }}` in Confirm signup template, SMTP/provider health). See [docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md).
-- [ ] **Resend domain** — Verify a sending domain and set `MAIL_FROM` before production OTP; Resend testing mode only delivers to the account email.
-- [ ] **Google Sign-In** — Wire Google provider in Supabase + Android OAuth redirect / deep link.
-- [ ] **Password reset UX** — In-app new-password screen (today email link opens browser/Supabase page).
-- [ ] **Onboarding-complete cloud flag** — Currently per-device/local only; reinstall or new device re-triggers onboarding.
-- [ ] **Profile photo in onboarding** — Not included yet (future enhancement).
+- [x] **OTP ops checklist** — App + mail-service hook + `{{ .Token }}` templates are in place. Live Confirm email / OTP length 6 / SMTP (Brevo) remain a pre-ship check in [docs/release-checklist.md](docs/release-checklist.md). How-to: [docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md).
+- [x] **Resend domain** — Superseded. Production OTP uses SplitEase Server + Brevo HTTPS (`BREVO_API_KEY` / `MAIL_FROM`), not Resend SMTP.
+- [x] **Google Sign-In** — Credential Manager ID token → Supabase (`signInWith(IDToken)`). Ops: [docs/google-sign-in.md](docs/google-sign-in.md).
+- [x] **Password reset UX** — In-app 6-digit recovery OTP + set-new-password screen ([phase-12](docs/phase-12-forgot-password-email-otp.md)). Email links are not the primary path.
+- [x] **Onboarding-complete cloud flag** — Not needed. The post-signup setup wizard was removed; users go straight to the app after OTP. The unused local `onboarding_complete` preference was dropped.
+- [x] **Profile photo in onboarding** — Optional avatar on Sign up (crop + 512px JPEG). Compressed into app storage at signup, uploaded after OTP. Google photos are compressed into `user-avatars` on first hydrate.
 
 ## Invites & App Links
 
@@ -26,11 +26,15 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 - [x] **Group live updates & push** — FCM + Edge Function `notify-group-members` deployed with `FIREBASE_SERVICE_ACCOUNT_JSON`; `notification_prefs` SQL applied; expenses/payments Database Webhooks wired. App: mute prefs, Android 13 permission, tap-to-open. See [docs/fcm-setup.md](docs/fcm-setup.md).
 - [x] **A5 — Remote delete tombstones** — Pull prunes local `SYNCED` expenses/payments missing from the remote group (or 1:1) set. See architecture TODO **1**.
 - [x] **Conflict policy** — Pull LWW on `updatedAtEpochMs`; never overwrite local `PENDING` / `LOCAL_ONLY` with equal-or-older remote (`SyncConflictPolicy`). See architecture TODO **2**.
-- [ ] **A6 — Pull-to-refresh** — Optional pull-to-refresh gesture on group ledger.
+- [x] **A6 — Pull-to-refresh** — Won't do. Group ledger stays current via open/resume pull + Realtime (`GroupLiveSync`); gesture removed from group detail.
 - [ ] **B6 — Activity badges** — Extend Activity feed / badge when remote events arrive.
 - [x] **B8 — Notification preferences** — Mute all (Settings → Notifications) and mute group (Group settings); synced via `notification_prefs`.
 - [x] **Category sync** — Stable default ids (`cat_*`) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
-- [ ] **FX rates** — Multi-currency remains per-bucket; live FX is deferred.
+- [ ] **TODO(mixed-currency-ux)** — Track and display mixed currencies (no FX). Domain already buckets per `Expense.currencyCode` via `BalanceCalculator.netBalancesByCurrency` / `pairwiseNetByCurrency` — do not change that, and do not add conversion. Spec:
+  1. **Add Expense currency picker** — `ExpensesViewModel.currencyCode` is app-wide only; `ExpenseScreens.kt` shows a static symbol. Add a tappable selector next to amount (reuse `AppCurrencies.OPTIONS`, e.g. SignUp / settings picker or a bottom sheet). Default to the group's `defaultCurrencyCode` (app setting only for non-group / friend expenses); write the chosen code onto `Expense.currencyCode`.
+  2. **Group totals per currency** — `GroupTotalsViewModel` / `GroupSpendingCalculator.periodTotals` skip non-default currencies. Compute totals for each distinct `currencyCode` in the group; change `GroupTotalsUi` from a single `currencyCode`/`totalSpent` to a list of per-currency totals; render labeled rows or a currency tab like `GroupBalancesScreen` does for `memberNetsByCurrency`.
+  3. **Expand `AppCurrencies.OPTIONS`** to a common ~20–30 ISO 4217 set (USD, EUR, GBP, INR, JPY, AUD, CAD, SGD, AED, …). Keep `isSupported` / `normalizeOrDefault` / `labelOf` / `filter` working on the expanded list.
+- [ ] **FX rates** — Multi-currency remains per-bucket; live FX / “convert to one currency” is still deferred (Splitwise Pro-style; out of scope for mixed-currency UX above).
 - [ ] **Social PENDING flush** — Groups/members flush in `SyncInteractor` before expenses (still verify Supabase SQL is applied).
 - [ ] **Activity events cross-device** — Activity events do not sync to other devices.
 - [ ] **Pin board offline / realtime** — No offline cache by design; second device sees updates on (re-)open only. Boundary documented (architecture TODO **4** — done).

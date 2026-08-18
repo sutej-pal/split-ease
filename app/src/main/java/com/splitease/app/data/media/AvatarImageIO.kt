@@ -29,6 +29,9 @@ object AvatarImageIO {
     /** Max edge length for persisted avatars (enough for UI badges / profile header). */
     const val STORED_MAX_SIDE_PX = 512
 
+    /** JPEG quality for persisted profile / group avatars (512px compresses well). */
+    const val AVATAR_STORED_JPEG_QUALITY = 75
+
     /** Max edge length when decoding only for on-screen preview. */
     const val PREVIEW_MAX_SIDE_PX = 256
 
@@ -197,7 +200,7 @@ object AvatarImageIO {
     ): String {
         destFile.parentFile?.mkdirs()
         val trimmed = photoUri.trim()
-        val bitmap =
+        val decoded =
             when {
                 trimmed.startsWith("http://", ignoreCase = true) ||
                     trimmed.startsWith("https://", ignoreCase = true) ->
@@ -208,6 +211,7 @@ object AvatarImageIO {
                         ?: decodeFileScaled(File(uri.path ?: trimmed), maxSidePx)
                 }
             } ?: error("Could not read the selected photo.")
+        val bitmap = scaleToMaxSide(decoded, maxSidePx)
         try {
             FileOutputStream(destFile).use { out ->
                 require(bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)) {
@@ -239,17 +243,7 @@ object AvatarImageIO {
         val safeWidth = cropRect.width().coerceAtLeast(1).coerceAtMost(sourceBitmap.width - safeLeft)
         val safeHeight = cropRect.height().coerceAtLeast(1).coerceAtMost(sourceBitmap.height - safeTop)
         val cropped = Bitmap.createBitmap(sourceBitmap, safeLeft, safeTop, safeWidth, safeHeight)
-        val scaled =
-            if (max(cropped.width, cropped.height) <= maxSidePx) {
-                cropped
-            } else {
-                val scale = maxSidePx.toFloat() / max(cropped.width, cropped.height).toFloat()
-                val w = (cropped.width * scale).toInt().coerceAtLeast(1)
-                val h = (cropped.height * scale).toInt().coerceAtLeast(1)
-                cropped.scale(w, h).also {
-                    if (it !== cropped && !cropped.isRecycled) cropped.recycle()
-                }
-            }
+        val scaled = scaleToMaxSide(cropped, maxSidePx)
         try {
             FileOutputStream(destFile).use { out ->
                 require(scaled.compress(Bitmap.CompressFormat.JPEG, quality, out)) {
@@ -359,6 +353,24 @@ object AvatarImageIO {
             if (corrected !== bitmap && !bitmap.isRecycled) bitmap.recycle()
             corrected
         }.getOrDefault(bitmap)
+    }
+
+    /**
+     * Scales [bitmap] so the longer edge is ≤ [maxSidePx]. Recycles [bitmap] when a new
+     * bitmap is created. [inSampleSize] decoding can still leave an image almost 2× the cap.
+     */
+    private fun scaleToMaxSide(
+        bitmap: Bitmap,
+        maxSidePx: Int,
+    ): Bitmap {
+        val longest = max(bitmap.width, bitmap.height)
+        if (longest <= maxSidePx) return bitmap
+        val scale = maxSidePx.toFloat() / longest.toFloat()
+        val w = (bitmap.width * scale).toInt().coerceAtLeast(1)
+        val h = (bitmap.height * scale).toInt().coerceAtLeast(1)
+        return bitmap.scale(w, h).also {
+            if (it !== bitmap && !bitmap.isRecycled) bitmap.recycle()
+        }
     }
 
     private fun sampleSizeFor(

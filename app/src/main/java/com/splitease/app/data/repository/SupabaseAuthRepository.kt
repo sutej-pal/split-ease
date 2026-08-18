@@ -7,6 +7,7 @@ import com.splitease.app.data.media.LocalMediaCleanup
 import com.splitease.app.data.media.MediaStorageCleanup
 import com.splitease.app.data.remote.ProfilePhotoStorage
 import com.splitease.app.data.remote.SocialRemoteDataSource
+import com.splitease.app.data.remote.StorageObjectPaths
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
 import com.splitease.app.data.session.LocalUserDataCleanup
@@ -14,6 +15,7 @@ import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SignUpResult
+import com.splitease.app.domain.model.SocialSignInResult
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.AuthRepository
@@ -24,7 +26,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
@@ -40,6 +44,8 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
+
+private const val PENDING_SIGNUP_PHOTO_NAME = "pending_signup.jpg"
 
 /**
  * Supabase-backed [AuthRepository] that upserts local Room [User] and remote `profiles`.
@@ -106,6 +112,9 @@ class SupabaseAuthRepository
                 val dialCode = phoneCountryCode.trim().ifBlank { "+91" }
                 val nationalNumber = phoneNumber.trim()
                 val currency = AppCurrencies.normalizeOrDefault(currencyCode)
+                // Compress into filesDir now. Cache crop URIs do not survive until OTP,
+                // and local paths must not be written to Auth metadata.
+                withContext(Dispatchers.IO) { persistPendingSignupPhoto(photoUri) }
                 supabase.auth.signUpWith(Email) {
                     this.email = trimmedEmail
                     this.password = password
@@ -115,9 +124,6 @@ class SupabaseAuthRepository
                             put("phone_country_code", dialCode)
                             put("phone_number", nationalNumber)
                             put("preferred_currency", currency)
-                            if (!photoUri.isNullOrBlank()) {
-                                put("photo_url", photoUri.trim())
-                            }
                         }
                 }
                 val session = supabase.auth.currentSessionOrNull()
@@ -135,6 +141,24 @@ class SupabaseAuthRepository
                     this.email = email.trim()
                     this.password = password
                 }
+            }
+
+        override suspend fun signInWithGoogle(
+            idToken: String,
+            rawNonce: String,
+        ): Result<SocialSignInResult> =
+            runCatching {
+                val token = idToken.trim()
+                require(token.isNotEmpty()) { "Google sign-in token is missing." }
+                supabase.auth.signInWith(IDToken) {
+                    this.idToken = token
+                    provider = Google
+                    nonce = rawNonce.trim().takeIf { it.isNotEmpty() }
+                }
+                val info =
+                    supabase.auth.currentUserOrNull()
+                        ?: error("Google sign-in succeeded but session is missing.")
+                SocialSignInResult(isNewUser = info.isNewlyCreatedAccount())
             }
 
         override suspend fun isEmailRegistered(email: String): Result<Boolean> =
@@ -341,12 +365,32 @@ class SupabaseAuthRepository
             val phoneNumber = meta.stringMeta("phone_number") ?: existing?.phoneNumber
             val preferredCurrency =
                 meta.stringMeta("preferred_currency") ?: existing?.preferredCurrency
-            val rawPhotoUrl = meta.stringMeta("photo_url") ?: existing?.photoUrl
-            val photoUrl = persistPhotoForCloud(authUser.userId, rawPhotoUrl)
+            val metaPhotoUrl =
+                meta.stringMeta("photo_url")
+                    ?: meta.stringMeta("avatar_url")
+                    ?: meta.stringMeta("picture")
+            val pendingPath = pendingSignupPhotoFile().takeIf { it.isFile }?.absolutePath
+            val sourcePhotoUrl =
+                resolveSignupPhotoSource(
+                    metaPhotoUrl = metaPhotoUrl,
+                    pendingPath = pendingPath,
+                    existingPhotoUrl = existing?.photoUrl,
+                    isOurAvatarUrl = ::isOurAvatarUrl,
+                )
+            val photoUrl = persistPhotoForCloud(authUser.userId, sourcePhotoUrl)
+            if (
+                pendingPath != null &&
+                (
+                    sourcePhotoUrl != pendingPath ||
+                        (photoUrl != null && photoUrl != pendingPath)
+                )
+            ) {
+                clearPendingSignupPhoto()
+            }
             if (
                 photoUrl != null &&
                 photoUrl.isRemoteMediaUrl() &&
-                photoUrl != rawPhotoUrl
+                photoUrl != metaPhotoUrl
             ) {
                 runCatching {
                     supabase.auth.updateUser {
@@ -412,13 +456,16 @@ class SupabaseAuthRepository
         /**
          * Returns an https Storage URL when upload succeeds, otherwise a device-local path
          * that this install can still decode.
+         *
+         * External https avatars (Google) are downloaded, compressed, and re-uploaded to
+         * `user-avatars` so we do not keep full-size third-party files on disk.
          */
         private suspend fun persistPhotoForCloud(
             userId: String,
             raw: String?,
         ): String? {
             val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-            if (value.isRemoteMediaUrl()) {
+            if (value.isRemoteMediaUrl() && isOurAvatarUrl(value)) {
                 runCatching { AvatarImageIO.cacheRemoteImage(appContext, value) }
                 return value
             }
@@ -427,12 +474,46 @@ class SupabaseAuthRepository
                     value
                 } else {
                     runCatching { copyAvatarToInternalStorage(userId, value) }.getOrNull()
-                } ?: return null
+                } ?: return value.takeIf { it.isRemoteMediaUrl() }
             val uploaded =
                 runCatching { profilePhotoStorage.uploadPhoto(userId, localPath) }.getOrNull()
                     ?: return localPath
             AvatarImageIO.seedRemoteImageCache(appContext, uploaded, File(localPath))
             return uploaded
+        }
+
+        private fun isOurAvatarUrl(url: String): Boolean =
+            StorageObjectPaths.objectPathFromPublicUrl(url, ProfilePhotoStorage.BUCKET) != null
+
+        private fun pendingSignupPhotoFile(): File =
+            File(File(appContext.filesDir, "avatars").apply { mkdirs() }, PENDING_SIGNUP_PHOTO_NAME)
+
+        /**
+         * Writes a 512px JPEG into [pendingSignupPhotoFile], or deletes a leftover pending
+         * file when [photoUri] is blank.
+         */
+        private fun persistPendingSignupPhoto(photoUri: String?) {
+            val dest = pendingSignupPhotoFile()
+            val uri = photoUri?.trim()?.takeIf { it.isNotEmpty() }
+            if (uri == null) {
+                runCatching { dest.delete() }
+                return
+            }
+            runCatching {
+                AvatarImageIO.copyScaledJpeg(
+                    context = appContext,
+                    photoUri = uri,
+                    destFile = dest,
+                    maxSidePx = AvatarImageIO.STORED_MAX_SIDE_PX,
+                    quality = AvatarImageIO.AVATAR_STORED_JPEG_QUALITY,
+                )
+            }.onFailure {
+                runCatching { dest.delete() }
+            }
+        }
+
+        private fun clearPendingSignupPhoto() {
+            runCatching { pendingSignupPhotoFile().delete() }
         }
 
         private fun isExistingLocalJpeg(path: String): Boolean {
@@ -458,6 +539,8 @@ class SupabaseAuthRepository
                     context = appContext,
                     photoUri = photoUri,
                     destFile = dest,
+                    maxSidePx = AvatarImageIO.STORED_MAX_SIDE_PX,
+                    quality = AvatarImageIO.AVATAR_STORED_JPEG_QUALITY,
                 )
             LocalMediaCleanup.deleteUserAvatars(appContext, userId, keepNewest = 2)
             return path
@@ -474,11 +557,9 @@ private fun kotlinx.serialization.json.JsonObject?.stringMeta(key: String): Stri
 private fun UserInfo.toAuthUser(): AuthUser {
     val emailValue = email.orEmpty()
     val metaName =
-        userMetadata
-            ?.get("display_name")
-            ?.toString()
-            ?.trim('"')
-            ?.takeIf { it.isNotBlank() }
+        userMetadata.stringMeta("display_name")
+            ?: userMetadata.stringMeta("full_name")
+            ?: userMetadata.stringMeta("name")
     val fallback = emailValue.substringBefore("@").ifBlank { "Friend" }
     return AuthUser(
         userId = id,
@@ -486,4 +567,38 @@ private fun UserInfo.toAuthUser(): AuthUser {
         displayName = metaName ?: fallback,
         emailConfirmed = emailConfirmedAt != null,
     )
+}
+
+/**
+ * True when this session looks like the account's first sign-in (welcome mail).
+ */
+private fun UserInfo.isNewlyCreatedAccount(): Boolean {
+    val created = createdAt ?: return false
+    val lastSignIn = lastSignInAt ?: created
+    return kotlin.math.abs(created.epochSeconds - lastSignIn.epochSeconds) < 120
+}
+
+/**
+ * Chooses which photo to persist after signup OTP / Google sign-in.
+ *
+ * Our Storage URL always wins so we do not re-upload on every hydrate. A leftover
+ * pending JPEG must not replace Google's `picture` URL. Local pending files beat
+ * cache `file://` metadata leftovers from older builds.
+ */
+internal fun resolveSignupPhotoSource(
+    metaPhotoUrl: String?,
+    pendingPath: String?,
+    existingPhotoUrl: String?,
+    isOurAvatarUrl: (String) -> Boolean,
+): String? {
+    val meta = metaPhotoUrl?.trim()?.takeIf { it.isNotEmpty() }
+    val pending = pendingPath?.trim()?.takeIf { it.isNotEmpty() }
+    val existing = existingPhotoUrl?.trim()?.takeIf { it.isNotEmpty() }
+    return when {
+        meta != null && isOurAvatarUrl(meta) -> meta
+        pending != null && (meta == null || !meta.isRemoteMediaUrl()) -> pending
+        meta != null -> meta
+        pending != null -> pending
+        else -> existing
+    }
 }

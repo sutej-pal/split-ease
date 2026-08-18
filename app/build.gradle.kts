@@ -76,6 +76,8 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProp("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "MAIL_SERVICE_BASE_URL", "\"${localProp("MAIL_SERVICE_BASE_URL")}\"")
         buildConfigField("String", "MAIL_SERVICE_API_KEY", "\"${localProp("MAIL_SERVICE_API_KEY")}\"")
+        // Web OAuth client ID from Google Cloud (used by Credential Manager; not a secret).
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProp("GOOGLE_WEB_CLIENT_ID")}\"")
         // Host for https://{host}/invite/{token} browser → app redirects (mail-service).
         manifestPlaceholders["inviteWebHost"] = inviteWebHost
         manifestPlaceholders["admobAppId"] = admobAppIdDebug
@@ -213,6 +215,9 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation(libs.play.services.ads)
     implementation(libs.user.messaging.platform)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
     // OkHttp engine: WebSocket-capable (Realtime) and cancel-safe on Main
     // (ktor-client-android can NetworkOnMainThreadException when closing responses).
     implementation(libs.ktor.client.okhttp)

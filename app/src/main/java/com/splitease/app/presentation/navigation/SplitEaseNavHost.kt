@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.navigation
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -25,8 +24,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -37,7 +34,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
@@ -50,6 +46,7 @@ import com.splitease.app.presentation.auth.PendingOtpPurpose
 import com.splitease.app.presentation.auth.ResetPasswordOtpScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
+import com.splitease.app.presentation.auth.rememberContinueWithGoogle
 import com.splitease.app.presentation.expenses.AddExpensePickerScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.ui.SeSystemBars
@@ -296,8 +293,7 @@ fun SplitEaseNavHost(
     val session by authViewModel.session.collectAsStateWithLifecycle()
     val formState by authViewModel.formState.collectAsStateWithLifecycle()
     val pendingInviteToken by authViewModel.pendingInviteToken.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val googleSoon = stringResource(R.string.google_sign_in_soon)
+    val onContinueWithGoogle = rememberContinueWithGoogle(authViewModel)
 
     val pendingEmail = formState.pendingConfirmationEmail
     // OTP gate after signup / password-reset — blocks Home until the flow completes.
@@ -395,9 +391,7 @@ fun SplitEaseNavHost(
                             authViewModel.clearMessages()
                             navController.navigate(Routes.FORGOT_PASSWORD)
                         },
-                        onGoogleStub = {
-                            Toast.makeText(context, googleSoon, Toast.LENGTH_SHORT).show()
-                        },
+                        onContinueWithGoogle = onContinueWithGoogle,
                         onClearError = authViewModel::clearMessages,
                     )
                 }
@@ -419,6 +413,7 @@ fun SplitEaseNavHost(
                             authViewModel.clearMessages()
                             navController.popBackStack()
                         },
+                        onContinueWithGoogle = onContinueWithGoogle,
                     )
                 }
                 composable(Routes.FORGOT_PASSWORD) {
@@ -466,6 +461,7 @@ fun SplitEaseNavHost(
                             authViewModel.clearMessages()
                             navController.popBackStack()
                         },
+                        onContinueWithGoogle = onContinueWithGoogle,
                     )
                 }
             }

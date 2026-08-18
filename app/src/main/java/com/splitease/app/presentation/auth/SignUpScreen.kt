@@ -67,6 +67,7 @@ import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTextField
@@ -111,6 +112,7 @@ fun SignUpScreen(
         photoUri: String?,
     ) -> Unit,
     onBack: () -> Unit,
+    onContinueWithGoogle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var displayName by rememberSaveable { mutableStateOf("") }
@@ -268,6 +270,12 @@ fun SignUpScreen(
             },
             enabled = !formState.isLoading,
             isLoading = formState.isLoading,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        SeOutlinedButton(
+            text = stringResource(R.string.action_continue_google),
+            onClick = onContinueWithGoogle,
+            enabled = !formState.isLoading,
         )
     }
 
@@ -590,6 +598,7 @@ private fun SignUpScreenPreview() {
             formState = AuthFormState(),
             onSignUp = { _, _, _, _, _, _, _ -> },
             onBack = {},
+            onContinueWithGoogle = {},
         )
     }
 }

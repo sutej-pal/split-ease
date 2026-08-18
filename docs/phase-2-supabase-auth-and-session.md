@@ -96,7 +96,7 @@ No Room schema version bump. On auth success, upsert into existing `users` with:
 ## Known Issues / TODOs carried forward
 
 - **TODO — Re-enable email confirmation before production:** Signup confirmation mails are **intentionally skipped** for MVP. Keep Supabase **Confirm email** disabled until we add a proper verify-email UX (deep link / in-app "check your inbox" state). Track this before Phase 9 release prep.
-- **Google Sign-In** not wired — configure Google provider in Supabase + Android OAuth redirect / deep link in a later pass.
+- **Google Sign-In** — wired later via Credential Manager + Supabase ID token ([google-sign-in.md](google-sign-in.md)).
 - Password reset deep-link / in-app new-password screen not built (email link opens browser/Supabase page).
 - Supabase free-tier Auth limits (MAUs / email rate limits) can throttle abuse testing — flag for prod.
 - **Security:** Database password was shared in chat — rotate it in Supabase if this chat is retained; it is **not** stored in the app.

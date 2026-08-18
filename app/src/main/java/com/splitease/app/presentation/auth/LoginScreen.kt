@@ -34,7 +34,7 @@ fun LoginScreen(
     onSignIn: (email: String, password: String) -> Unit,
     onNavigateSignUp: () -> Unit,
     onNavigateForgot: () -> Unit,
-    onGoogleStub: () -> Unit,
+    onContinueWithGoogle: () -> Unit,
     modifier: Modifier = Modifier,
     onClearError: () -> Unit = {},
 ) {
@@ -114,7 +114,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
         SeOutlinedButton(
             text = stringResource(R.string.action_continue_google),
-            onClick = onGoogleStub,
+            onClick = onContinueWithGoogle,
             enabled = !isBusy,
             modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
         )
@@ -145,7 +145,7 @@ private fun LoginScreenPreview() {
             onSignIn = { _, _ -> },
             onNavigateSignUp = {},
             onNavigateForgot = {},
-            onGoogleStub = {},
+            onContinueWithGoogle = {},
         )
     }
 }
@@ -159,7 +159,7 @@ private fun LoginScreenLoadingPreview() {
             onSignIn = { _, _ -> },
             onNavigateSignUp = {},
             onNavigateForgot = {},
-            onGoogleStub = {},
+            onContinueWithGoogle = {},
         )
     }
 }

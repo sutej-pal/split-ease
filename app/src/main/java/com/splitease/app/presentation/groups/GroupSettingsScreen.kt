@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.groups
 
+import android.content.ClipData
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.HideImage
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -161,6 +164,7 @@ fun GroupSettingsScreen(
 
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
+    val shareCsv = stringResource(R.string.action_share_csv)
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -176,6 +180,25 @@ fun GroupSettingsScreen(
             }
         context.startActivity(Intent.createChooser(intent, shareInvite))
         viewModel.consumeShareText()
+    }
+
+    LaunchedEffect(uiState.pendingFileShare) {
+        val share = uiState.pendingFileShare ?: return@LaunchedEffect
+        val intent =
+            Intent(Intent.ACTION_SEND).apply {
+                type = share.mimeType
+                putExtra(Intent.EXTRA_STREAM, share.uri)
+                putExtra(Intent.EXTRA_SUBJECT, share.fileName)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                clipData = ClipData.newRawUri(share.fileName, share.uri)
+            }
+        val chooser =
+            Intent.createChooser(intent, shareCsv).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                clipData = ClipData.newRawUri(share.fileName, share.uri)
+            }
+        runCatching { context.startActivity(chooser) }
+        viewModel.consumeFileShare()
     }
 
     SeScreen(
@@ -345,6 +368,22 @@ fun GroupSettingsScreen(
                         showDivider = true,
                     )
                 }
+
+                SettingsActionRow(
+                    icon = Icons.Filled.Download,
+                    title = stringResource(R.string.group_settings_export_csv),
+                    subtitle =
+                        stringResource(
+                            if (uiState.isExporting) {
+                                R.string.group_settings_export_csv_working
+                            } else {
+                                R.string.group_settings_export_csv_subtitle
+                            },
+                        ),
+                    enabled = !uiState.isExporting,
+                    showProgress = uiState.isExporting,
+                    onClick = { viewModel.exportGroupCsv(groupId) },
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
                 SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
@@ -773,27 +812,41 @@ private fun SettingsActionRow(
     titleColor: Color? = null,
     iconTint: Color? = null,
     trailingBadge: String? = null,
+    enabled: Boolean = true,
+    showProgress: Boolean = false,
     showDivider: Boolean = true,
 ) {
     val resolvedTitleColor = titleColor ?: SplitEaseColors.Navy
     val resolvedIconTint = iconTint ?: SplitEaseColors.NavyMuted
+    val alpha = if (enabled) 1f else 0.55f
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onClick)
+                    .then(
+                        if (enabled) {
+                            Modifier.clickable(onClick = onClick)
+                        } else {
+                            Modifier
+                        },
+                    )
                     .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = resolvedIconTint, modifier = Modifier.size(24.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = resolvedIconTint.copy(alpha = alpha),
+                modifier = Modifier.size(24.dp),
+            )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = resolvedTitleColor,
+                    color = resolvedTitleColor.copy(alpha = alpha),
                 )
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
@@ -804,7 +857,14 @@ private fun SettingsActionRow(
                     )
                 }
             }
-            if (trailingBadge != null) {
+            if (showProgress) {
+                Spacer(modifier = Modifier.width(8.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = SplitEaseColors.Primary,
+                    strokeWidth = 2.dp,
+                )
+            } else if (trailingBadge != null) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier =

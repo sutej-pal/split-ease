@@ -24,6 +24,7 @@ Contact for privacy requests: **support@splitease.app**
 ### 2.1 Account and profile
 
 - Email address and password (passwords are handled by our authentication provider and stored hashed, not in plain text)
+- If you choose **Continue with Google**, your Google account email, name, and profile photo as provided by Google Sign-In
 - Display name, profile photo/avatar, phone country code and phone number (if you add them)
 - Preferred currency and language/locale preferences
 - Email verification and password-reset codes we send to confirm your identity

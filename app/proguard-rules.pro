@@ -43,3 +43,9 @@
 -keep class com.google.android.gms.ads.** { *; }
 -keep class com.google.ads.** { *; }
 -keep class com.google.android.ump.** { *; }
+
+# Credential Manager (Google Sign-In on API 33 and below)
+-if class androidx.credentials.CredentialManager
+-keep class androidx.credentials.playservices.** {
+  *;
+}

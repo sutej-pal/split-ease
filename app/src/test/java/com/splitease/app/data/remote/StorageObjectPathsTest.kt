@@ -25,4 +25,21 @@ class StorageObjectPathsTest {
             "https://abc.supabase.co/storage/v1/object/public/pin-board-images/g1/img42.jpg?v=1"
         assertEquals("img42", StorageObjectPaths.pinBoardImageIdFromPublicUrl(url, "g1"))
     }
+
+    @Test
+    fun objectPathFromPublicUrl_extractsUserAvatarKey() {
+        val url =
+            "https://abc.supabase.co/storage/v1/object/public/user-avatars/u1/photo.jpg?v=9"
+        assertEquals("u1/photo.jpg", StorageObjectPaths.objectPathFromPublicUrl(url, "user-avatars"))
+    }
+
+    @Test
+    fun objectPathFromPublicUrl_ignoresGooglePicture() {
+        assertNull(
+            StorageObjectPaths.objectPathFromPublicUrl(
+                "https://lh3.googleusercontent.com/a/photo=s96-c",
+                "user-avatars",
+            ),
+        )
+    }
 }

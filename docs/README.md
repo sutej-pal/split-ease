@@ -16,6 +16,7 @@ Use this order to stay fast and consistent.
 
 - Product mapping: [ROADMAP.md](ROADMAP.md)
 - OTP operations (signup + recovery): [maintenance-email-otp-verification.md](maintenance-email-otp-verification.md)
+- Google Sign-In: [google-sign-in.md](google-sign-in.md)
 - Forgot-password OTP: [phase-12-forgot-password-email-otp.md](phase-12-forgot-password-email-otp.md)
 - Invite / onboarding / expense details: [phase-10-expense-details-onboarding-invite-mail.md](phase-10-expense-details-onboarding-invite-mail.md)
 - App Links: [app-links-setup.md](app-links-setup.md)

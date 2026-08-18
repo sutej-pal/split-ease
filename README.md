@@ -14,6 +14,7 @@ Carried-forward work (not a numbered phase) is listed under **Carried-forward TO
 - Android SDK (compile SDK 37 / target SDK 36)
 - Android Studio recent stable recommended
 - Supabase credentials in gitignored `local.properties` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
+- Optional `GOOGLE_WEB_CLIENT_ID` in `local.properties` for **Continue with Google** ([docs/google-sign-in.md](docs/google-sign-in.md))
 - Optional AdMob IDs in `local.properties` for release ads (`ADMOB_APP_ID`, `ADMOB_GROUP_DETAIL_BANNER_UNIT_ID`, `ADMOB_ADD_EXPENSE_BANNER_UNIT_ID`). Debug builds use Google test ad units automatically.
 
 ## Build

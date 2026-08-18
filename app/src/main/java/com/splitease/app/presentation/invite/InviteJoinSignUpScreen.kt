@@ -39,6 +39,7 @@ import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
@@ -53,6 +54,7 @@ fun InviteJoinSignUpScreen(
     formState: AuthFormState,
     onSignUp: (email: String, password: String, displayName: String) -> Unit,
     onBack: () -> Unit,
+    onContinueWithGoogle: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: InviteJoinViewModel = hiltViewModel(),
 ) {
@@ -202,6 +204,12 @@ fun InviteJoinSignUpScreen(
                 isLoading = formState.isLoading,
             )
             Spacer(modifier = Modifier.height(8.dp))
+            SeOutlinedButton(
+                text = stringResource(R.string.action_continue_google),
+                onClick = onContinueWithGoogle,
+                enabled = !formState.isLoading,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             SeTextButton(
                 text = stringResource(R.string.action_back),
                 onClick = onBack,
@@ -228,6 +236,7 @@ private fun InviteJoinSignUpPreview() {
             formState = AuthFormState(),
             onSignUp = { _, _, _ -> },
             onBack = {},
+            onContinueWithGoogle = {},
         )
     }
 }

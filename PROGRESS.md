@@ -33,7 +33,7 @@ Track development phases. Always check this file at the start of a session to de
 
 ### Carried-forward TODOs
 - **Supabase architecture TODOs (ordered)** — ~~Remote delete tombstones~~ → ~~conflict policy~~ → ~~category sync (defaults)~~ → ~~pin-board boundary~~ → Edge Functions non-CRUD → ops hygiene ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md)).
-- **OTP ops checklist** — Keep Supabase signup + recovery OTP operational (Confirm email ON, `{{ .Token }}` in templates / mail-service Send Email hook, SMTP/provider health) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
+- **OTP ops** — App OTP flows shipped; live Confirm email / templates / SMTP stay on [release-checklist.md](docs/release-checklist.md) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
 - **Redeploy mail-service** — Recovery password-reset template lives in the mail-service; redeploy Vercel so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-email-otp.md)).
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
 - **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0](docs/phase-0-project-setup-and-brand-theme.md)).
@@ -44,6 +44,7 @@ Track development phases. Always check this file at the start of a session to de
 - **App Links / invite https** — share links use `MAIL_SERVICE_BASE_URL/invite/{token}` when set, else `splitease.app`. Host [docs/assetlinks.json](docs/assetlinks.json) for verified Open-by-default links ([app-links-setup.md](docs/app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification.
 - **Group live updates & push notifications (extra)** — Realtime + FCM path live: Edge Function deployed, `notification_prefs` applied, expenses/payments webhooks wired ([docs/fcm-setup.md](docs/fcm-setup.md), [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)).
 - **Category sync** — stable default ids (`cat_*`) on the wire; Room v12 remaps legacy random defaults; custom categories remain device-local ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md) #3).
+- **TODO(mixed-currency-ux)** — Per-expense currency picker, group totals per currency, expand `AppCurrencies` (~20–30 codes). No FX conversion. See [TODO.md](TODO.md).
 - **FX rates** — multi-currency remains per-bucket; live FX is still deferred.
 - **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
 - **Social PENDING flush** — groups/members are now flushed in `SyncInteractor` before expenses (still verify Supabase SQL is applied).

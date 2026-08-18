@@ -278,6 +278,100 @@ class AuthViewModel
         }
 
         /**
+         * Completes Google Sign-In after Credential Manager returns an ID token.
+         * Skips email OTP (Google already verified the address).
+         *
+         * @param idToken Google ID token.
+         * @param rawNonce Unhashed nonce paired with the Google request.
+         */
+        fun signInWithGoogle(
+            idToken: String,
+            rawNonce: String,
+        ) {
+            if (idToken.isBlank()) {
+                _formState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = msg(AuthMessages.GOOGLE_FAILED),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            viewModelScope.launch {
+                _formState.update {
+                    it.copy(
+                        isLoading = true,
+                        errorMessage = null,
+                        infoMessage = null,
+                        pendingConfirmationEmail = null,
+                        pendingOtpPurpose = null,
+                        holdSignedInForOtp = false,
+                    )
+                }
+                val result = authRepository.signInWithGoogle(idToken, rawNonce)
+                if (result.isFailure) {
+                    runCatching { authRepository.signOut() }
+                    _formState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
+                            holdSignedInForOtp = false,
+                            pendingConfirmationEmail = null,
+                            pendingOtpPurpose = null,
+                        )
+                    }
+                    return@launch
+                }
+                if (result.getOrNull()?.isNewUser == true) {
+                    authRepository.getSignedInUserOrNull()?.userId?.takeIf { it.isNotBlank() }?.let { userId ->
+                        appSettingsRepository.setPendingWelcomeEmailUserId(userId)
+                    }
+                }
+                _formState.update { AuthFormState(isLoading = false) }
+                launch {
+                    runCatching { authRepository.ensureLocalProfile() }
+                }
+            }
+        }
+
+        /** Clears loading after the Google account picker is dismissed. */
+        fun onGoogleSignInCancelled() {
+            _formState.update { it.copy(isLoading = false) }
+        }
+
+        /**
+         * Surfaces a Google picker / configuration failure on the auth form.
+         *
+         * @param outcome Non-success picker outcome.
+         */
+        fun onGoogleSignInFailed(outcome: GoogleIdTokenOutcome) {
+            val message =
+                when (outcome) {
+                    GoogleIdTokenOutcome.NotConfigured -> msg(AuthMessages.GOOGLE_NOT_CONFIGURED)
+                    GoogleIdTokenOutcome.NoAccount -> msg(AuthMessages.GOOGLE_NO_ACCOUNT)
+                    GoogleIdTokenOutcome.Failed,
+                    GoogleIdTokenOutcome.Cancelled,
+                    is GoogleIdTokenOutcome.Success,
+                    -> msg(AuthMessages.GOOGLE_FAILED)
+                }
+            _formState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = message,
+                    infoMessage = null,
+                )
+            }
+        }
+
+        /** Greys the auth form while the Google account picker is visible. */
+        fun onGoogleSignInStarted() {
+            _formState.update {
+                it.copy(isLoading = true, errorMessage = null, infoMessage = null)
+            }
+        }
+
+        /**
          * Creates an account and, when required by Supabase settings, opens the OTP gate.
          *
          * @param email Account email.
@@ -855,6 +949,8 @@ class AuthViewModel
             return when {
                 isAlreadyRegistered(lower) ->
                     msg(AuthMessages.ALREADY_REGISTERED)
+                isGoogleIdentityConflict(lower) ->
+                    msg(AuthMessages.EMAIL_ALREADY_REGISTERED)
                 isSamePassword(lower) ->
                     msg(AuthMessages.RESET_PASSWORD_SAME_AS_OLD)
                 isRecoverySessionMissing(throwable) ->
@@ -875,6 +971,8 @@ class AuthViewModel
                     when {
                         isAlreadyRegistered(lower) ->
                             msg(AuthMessages.ALREADY_REGISTERED)
+                        isGoogleIdentityConflict(lower) ->
+                            msg(AuthMessages.EMAIL_ALREADY_REGISTERED)
                         isSamePassword(lower) ->
                             msg(AuthMessages.RESET_PASSWORD_SAME_AS_OLD)
                         isRecoverySessionMissing(throwable) ->
@@ -952,6 +1050,11 @@ class AuthViewModel
                 "email_exists" in lower ||
                 "user_already_exists" in lower ||
                 ("already exists" in lower && ("user" in lower || "email" in lower))
+
+        private fun isGoogleIdentityConflict(lower: String): Boolean =
+            "identity_already_exists" in lower ||
+                "multiple accounts with the same email" in lower ||
+                ("provider" in lower && "already" in lower && "linked" in lower)
 
         private fun isEmailRateLimited(lower: String): Boolean =
             "over_email_send_rate_limit" in lower ||

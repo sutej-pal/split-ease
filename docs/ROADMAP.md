@@ -109,6 +109,7 @@ Features shipped or requested after Phase 9. Track in:
 - [phase-12-forgot-password-email-otp.md](./phase-12-forgot-password-email-otp.md) — recovery OTP
 - [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify group members on expense/payment changes; open group > latest cloud entries
 - **TODO(auth-mobile-onboarding)** — onboard with mobile phone number (SMS OTP / phone auth) in addition to email ([PROGRESS.md](../PROGRESS.md))
+- **TODO(mixed-currency-ux)** — per-expense currency picker, group totals per currency, expand `AppCurrencies`; no FX ([TODO.md](../TODO.md))
 - **OTP operations** — keep signup/recovery OTP delivery healthy (SMTP/provider + templates with `{{ .Token }}`)
 
 ## Dependency order

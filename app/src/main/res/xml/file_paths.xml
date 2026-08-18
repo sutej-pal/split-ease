@@ -24,4 +24,7 @@
     <cache-path
         name="expense_attachment_cache"
         path="expense_attachments/" />
+    <cache-path
+        name="group_export_cache"
+        path="exports/" />
 </paths>

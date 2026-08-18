@@ -28,7 +28,7 @@ Single Gradle module `:app`. Money uses `java.math.BigDecimal` only (never `Floa
 | Work       | WorkManager (+ HiltWorker)  |
 | Money math | `BigDecimal`                |
 
-Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Never ship database/service-role secrets in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
+Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Optional `GOOGLE_WEB_CLIENT_ID` (Google Cloud **Web** OAuth client ID; not a secret) for native Google Sign-In. Never ship database/service-role secrets or the Google client secret in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
 
 ## Data & sync
 
@@ -51,7 +51,7 @@ Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the 
 
 | Area                     | Key packages / types                                                                                                                                                                     |           |          |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
-| Auth                     | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup + password-reset OTP), `presentation/onboarding` (welcome-email side effect; no setup UI)                        |           |          |
+| Auth                     | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup + password-reset OTP + Google ID token), `presentation/onboarding` (welcome-email side effect; no setup UI)      |           |          |
 | Invites                  | `InviteLinks`, `InstallReferrerInviteBootstrap` (Play deferred deep link), `presentation/invite` (deep-link landing + join signup), `get_invite_preview` / `accept_invite_by_token` RPCs |           |          |
 | Friends & groups         | `SocialInteractor`, `SocialRemoteDataSource`, `presentation/friends\                                                                                                                     | groups\   | home`    |
 | Expenses                 | `SplitCalculator`, `ExpenseInteractor`, `presentation/expenses`                                                                                                                          |           |          |
@@ -60,7 +60,7 @@ Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the 
 | Search / spending / sync | `SyncInteractor`, `SpendingTotalsCalculator`, `presentation/search\                                                                                                                      | spending\ | account` |
 | Stretch                  | `PaymentDeepLinks`, `CsvTransactionParser`, `SpendingCategoryChart`                                                                                                                      |           |          |
 | Pin Board                | `PinBoardInteractor`, `PinBoardRemoteDataSource`, `presentation/pinboard`                                                                                                                |           |          |
-| Settings                 | `AppSettingsRepository` (currency, theme, locale, biometric lock, pending invite token, onboarding flags)                                                                                |           |          |
+| Settings                 | `AppSettingsRepository` (currency, theme, locale, biometric lock, pending invite token, welcome-mail flags)                                                                                |           |          |
 
 Phase write-ups (historical Plan + Outcome): [docs/README.md](docs/README.md).
 

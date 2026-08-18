@@ -16,6 +16,9 @@ object AuthMessages {
     @StringRes val LOGIN_FIELDS_REQUIRED = R.string.error_login_fields_required
     @StringRes val INVALID_CREDENTIALS = R.string.error_invalid_credentials
     @StringRes val NOT_REGISTERED = R.string.error_not_registered
+    @StringRes val GOOGLE_NOT_CONFIGURED = R.string.error_google_not_configured
+    @StringRes val GOOGLE_NO_ACCOUNT = R.string.error_google_no_account
+    @StringRes val GOOGLE_FAILED = R.string.error_google_sign_in_failed
 
     // Sign up
     @StringRes val NAME_REQUIRED = R.string.signup_error_name_required
