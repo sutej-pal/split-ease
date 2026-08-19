@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="action_open_csv">CSV खोलें</string>
-    <string name="msg_group_export_share_failed">यह CSV नहीं खुल सका.</string>
+    <string name="msg_group_export_share_failed">यह CSV शेयर नहीं हो सका.</string>
     <string name="ledger_not_synced">अभी सिंक नहीं हुआ</string>
 </resources>

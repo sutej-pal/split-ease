@@ -69,10 +69,20 @@ class GroupLedgerCsvExporterTest {
         val lines = csv.trimEnd().lines()
         val header = CsvTransactionParser.splitCsvLine(lines.first())
         assertEquals(
-            listOf("Date", "Description", "Category", "Cost", "Currency", "Alice", "Bob"),
+            listOf(
+                "Date",
+                "Description",
+                "Category",
+                "Cost",
+                "Currency",
+                "Paid by",
+                "Alice",
+                "Bob",
+                "Notes",
+            ),
             header,
         )
-        assertEquals(",,,,,,", lines[1])
+        assertEquals(csvRow(List(header.size) { "" }), lines[1])
         assertTrue(lines.drop(2).none { it.isBlank() })
 
         fun col(
@@ -84,18 +94,33 @@ class GroupLedgerCsvExporterTest {
         assertEquals("2026-01-15", col(expenseRow, "Date"))
         assertEquals("Dinner, cafe", col(expenseRow, "Description"))
         assertEquals("Food", col(expenseRow, "Category"))
-        assertEquals("100", col(expenseRow, "Cost"))
+        assertEquals("100.00", col(expenseRow, "Cost"))
         assertEquals("INR", col(expenseRow, "Currency"))
-        assertEquals("50", col(expenseRow, "Alice"))
-        assertEquals("-50", col(expenseRow, "Bob"))
+        assertEquals("Alice", col(expenseRow, "Paid by"))
+        assertEquals("50.00", col(expenseRow, "Alice"))
+        assertEquals("-50.00", col(expenseRow, "Bob"))
+        assertEquals("", col(expenseRow, "Notes"))
 
         val paymentRow = CsvTransactionParser.splitCsvLine(lines[3])
         assertEquals("2026-01-20", col(paymentRow, "Date"))
-        assertEquals("UPI", col(paymentRow, "Description"))
+        assertEquals("Settlement", col(paymentRow, "Description"))
         assertEquals("", col(paymentRow, "Category"))
-        assertEquals("50", col(paymentRow, "Cost"))
-        assertEquals("-50", col(paymentRow, "Alice"))
-        assertEquals("50", col(paymentRow, "Bob"))
+        assertEquals("50.00", col(paymentRow, "Cost"))
+        assertEquals("Bob", col(paymentRow, "Paid by"))
+        assertEquals("-50.00", col(paymentRow, "Alice"))
+        assertEquals("50.00", col(paymentRow, "Bob"))
+        assertEquals("UPI", col(paymentRow, "Notes"))
+
+        val totalRow = CsvTransactionParser.splitCsvLine(lines[4])
+        assertEquals("2026-01-20", col(totalRow, "Date"))
+        assertEquals("Total balance", col(totalRow, "Description"))
+        assertEquals("", col(totalRow, "Category"))
+        assertEquals("", col(totalRow, "Cost"))
+        assertEquals("INR", col(totalRow, "Currency"))
+        assertEquals("", col(totalRow, "Paid by"))
+        assertEquals("0.00", col(totalRow, "Alice"))
+        assertEquals("0.00", col(totalRow, "Bob"))
+        assertEquals("", col(totalRow, "Notes"))
     }
 
     @Test
@@ -141,7 +166,10 @@ class GroupLedgerCsvExporterTest {
         val expenseRow = CsvTransactionParser.splitCsvLine(csv.trimEnd().lines()[2])
         assertEquals("'=1+1", expenseRow[header.indexOf("Description")])
         assertEquals("10.50", expenseRow[header.indexOf("Cost")])
-        assertEquals("0", expenseRow[header.indexOf("Alice")])
+        assertEquals("0.00", expenseRow[header.indexOf("Alice")])
+        val totalRow = CsvTransactionParser.splitCsvLine(csv.trimEnd().lines().last())
+        assertEquals("Total balance", totalRow[header.indexOf("Description")])
+        assertEquals("0.00", totalRow[header.indexOf("Alice")])
     }
 
     @Test
@@ -180,9 +208,86 @@ class GroupLedgerCsvExporterTest {
         val header = CsvTransactionParser.splitCsvLine(csv.trimEnd().lines().first())
         val expenseRow = CsvTransactionParser.splitCsvLine(csv.trimEnd().lines()[2])
         assertEquals("Taxi", expenseRow[header.indexOf("Description")])
-        assertEquals("100", expenseRow[header.indexOf("Cost")])
-        assertEquals("10", expenseRow[header.indexOf("Alice")])
-        assertEquals("-10", expenseRow[header.indexOf("Bob")])
+        assertEquals("100.00", expenseRow[header.indexOf("Cost")])
+        assertEquals("Alice:60.00; Bob:40.00", expenseRow[header.indexOf("Paid by")])
+        assertEquals("10.00", expenseRow[header.indexOf("Alice")])
+        assertEquals("-10.00", expenseRow[header.indexOf("Bob")])
+        val totalRow = CsvTransactionParser.splitCsvLine(csv.trimEnd().lines().last())
+        assertEquals("Total balance", totalRow[header.indexOf("Description")])
+        assertEquals("2026-01-15", totalRow[header.indexOf("Date")])
+        assertEquals("10.00", totalRow[header.indexOf("Alice")])
+        assertEquals("-10.00", totalRow[header.indexOf("Bob")])
+    }
+
+    @Test
+    fun total_balance_rows_are_per_currency() {
+        val usdDate =
+            LocalDate.of(2026, 2, 1).atTime(12, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
+        val inrDate =
+            LocalDate.of(2026, 2, 5).atTime(12, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
+        val csv =
+            GroupLedgerCsvExporter.export(
+                input =
+                    GroupLedgerExportInput(
+                        groupName = "Trip",
+                        exportedAtEpochMs = exportedAt,
+                        memberIdsInOrder = listOf("a", "b"),
+                        memberLabels = mapOf("a" to "Alice", "b" to "Bob"),
+                        expenses =
+                            listOf(
+                                expense(
+                                    id = "e1",
+                                    description = "Hotel",
+                                    amount = "100.00",
+                                    paidBy = "a",
+                                    date = usdDate,
+                                    currency = "USD",
+                                ),
+                                expense(
+                                    id = "e2",
+                                    description = "Taxi",
+                                    amount = "200.00",
+                                    paidBy = "a",
+                                    date = inrDate,
+                                    currency = "INR",
+                                ),
+                            ),
+                        payments = emptyList(),
+                        splitsByExpenseId =
+                            mapOf(
+                                "e1" to
+                                    listOf(
+                                        split("e1", "a", "50.00"),
+                                        split("e1", "b", "50.00"),
+                                    ),
+                                "e2" to
+                                    listOf(
+                                        split("e2", "a", "100.00"),
+                                        split("e2", "b", "100.00"),
+                                    ),
+                            ),
+                        categoryNamesById = emptyMap(),
+                    ),
+                zoneId = ZoneOffset.UTC,
+            )
+
+        val lines = csv.trimEnd().lines()
+        val header = CsvTransactionParser.splitCsvLine(lines.first())
+        fun col(row: List<String>, name: String): String = row[header.indexOf(name)]
+
+        val totalRows = lines.drop(2).filter { col(CsvTransactionParser.splitCsvLine(it), "Description").startsWith("Total balance") }
+        assertEquals(2, totalRows.size)
+
+        val inrTotal = CsvTransactionParser.splitCsvLine(totalRows.first { col(CsvTransactionParser.splitCsvLine(it), "Currency") == "INR" })
+        val usdTotal = CsvTransactionParser.splitCsvLine(totalRows.first { col(CsvTransactionParser.splitCsvLine(it), "Currency") == "USD" })
+        assertEquals("Total balance (INR)", col(inrTotal, "Description"))
+        assertEquals("Total balance (USD)", col(usdTotal, "Description"))
+        assertEquals("2026-02-05", col(inrTotal, "Date"))
+        assertEquals("2026-02-05", col(usdTotal, "Date"))
+        assertEquals("100.00", col(inrTotal, "Alice"))
+        assertEquals("-100.00", col(inrTotal, "Bob"))
+        assertEquals("50.00", col(usdTotal, "Alice"))
+        assertEquals("-50.00", col(usdTotal, "Bob"))
     }
 
     private fun expense(
@@ -191,11 +296,12 @@ class GroupLedgerCsvExporterTest {
         amount: String,
         paidBy: String,
         date: Long,
+        currency: String = "INR",
     ) = Expense(
         id = id,
         description = description,
         amount = BigDecimal(amount),
-        currencyCode = "INR",
+        currencyCode = currency,
         categoryId = "cat_food",
         paidByUserId = paidBy,
         groupId = "g1",

@@ -141,7 +141,7 @@ class GroupsViewModel
         }
 
         /**
-         * Builds a CSV of this group's expenses, settlements, and balances,
+         * Builds a CSV of this group's expenses and payments,
          * then queues it for the system open/share sheet.
          *
          * @param groupId Group to export.
@@ -201,12 +201,12 @@ class GroupsViewModel
             fileName: String,
             csv: String,
         ): PendingFileShare {
-            val dir = File(appContext.filesDir, "exports").apply { mkdirs() }
+            val dir = File(appContext.cacheDir, "exports").apply { mkdirs() }
             dir.listFiles()?.forEach { existing ->
                 if (existing.isFile) existing.delete()
             }
             val file = File(dir, fileName)
-            file.writeText("\uFEFF$csv", Charsets.UTF_8)
+            file.writeText(csv, Charsets.UTF_8)
             val uri =
                 FileProvider.getUriForFile(
                     appContext,

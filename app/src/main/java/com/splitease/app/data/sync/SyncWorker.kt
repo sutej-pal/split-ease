@@ -46,12 +46,23 @@ class SyncWorker
             }
 
             fun enqueueOnce(context: Context) {
+                enqueue(context, ExistingWorkPolicy.KEEP)
+            }
+
+            /**
+             * Runs after any in-flight unique sync instead of cancelling it.
+             * Used when a local expense is still PENDING after a background push.
+             */
+            fun enqueueFollowUp(context: Context) {
+                enqueue(context, ExistingWorkPolicy.APPEND_OR_REPLACE)
+            }
+
+            private fun enqueue(
+                context: Context,
+                policy: ExistingWorkPolicy,
+            ) {
                 val request = OneTimeWorkRequestBuilder<SyncWorker>().build()
-                WorkManager.getInstance(context).enqueueUniqueWork(
-                    ONCE_NAME,
-                    ExistingWorkPolicy.REPLACE,
-                    request,
-                )
+                WorkManager.getInstance(context).enqueueUniqueWork(ONCE_NAME, policy, request)
             }
         }
     }

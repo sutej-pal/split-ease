@@ -163,7 +163,6 @@ fun GroupSettingsScreen(
 
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
-    val openCsv = stringResource(R.string.action_open_csv)
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -183,7 +182,7 @@ fun GroupSettingsScreen(
 
     LaunchedEffect(uiState.pendingFileShare) {
         val share = uiState.pendingFileShare ?: return@LaunchedEffect
-        val launched = CsvFileShare.openOrShare(context, share, openCsv)
+        val launched = CsvFileShare.share(context, share)
         if (!launched) {
             viewModel.onFileShareLaunchFailed()
         }

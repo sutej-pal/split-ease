@@ -257,12 +257,10 @@
     <string name="group_settings_default_split_body">New expenses you add to this group will default to this setting, which is personal, not group-wide.</string>
     <string name="group_settings_default_split_pro_body">Custom default splits are a Pro feature and are not available yet. New expenses still start as paid by you and split equally.</string>
     <string name="group_settings_export_csv">Export as CSV</string>
-    <string name="group_settings_export_csv_subtitle">Date, description, category, cost, and per-person amounts</string>
+    <string name="group_settings_export_csv_subtitle">Expenses and payments with who paid and per-person amounts</string>
     <string name="group_settings_export_csv_working">Preparing CSV…</string>
-    <string name="action_share_csv">Share CSV</string>
-    <string name="action_open_csv">Open CSV</string>
     <string name="msg_group_export_failed">Couldn\'t export this group.</string>
-    <string name="msg_group_export_share_failed">Couldn\'t open this CSV.</string>
+    <string name="msg_group_export_share_failed">Couldn\'t share this CSV.</string>
     <string name="badge_pro">PRO</string>
     <string name="action_view_settings">View settings</string>
     <string name="action_remove_from_group">Remove from group</string>
@@ -590,10 +588,8 @@
     <string name="msg_group_updated">Group updated.</string>
     <string name="msg_member_added">Member added.</string>
     <string name="msg_expense_added">Expense added.</string>
-    <string name="expense_saving">Saving expense…</string>
     <string name="msg_expense_updated">Expense updated.</string>
     <string name="msg_expense_deleted">Expense deleted.</string>
-    <string name="msg_expense_saved_not_synced">Expense saved on this device, but cloud sync failed — other members won\'t see it yet. Connect to the internet and pull to refresh the group to retry.</string>
     <string name="msg_expense_cloud_rls">Could not save to cloud due to Supabase permissions (RLS). Verify you are a member of this group and run docs/sql/phase-4c-fix-expense-select-rls-returning.sql in Supabase SQL Editor.</string>
     <string name="msg_expense_cloud_schema">Could not sync expense splits — the cloud database is missing a column (paid_amount / adjustment_amount). Run the expense_splits ALTER statements in docs/sql/migration_db.sql, then retry.</string>
     <string name="expense_not_found">Expense not found.</string>

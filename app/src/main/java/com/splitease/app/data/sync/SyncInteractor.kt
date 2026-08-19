@@ -2,21 +2,15 @@ package com.splitease.app.data.sync
 
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.data.payment.PaymentInteractor
-import com.splitease.app.data.remote.ExpenseRemoteDataSource
 import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
-import com.splitease.app.data.remote.dto.ExpenseDto
-import com.splitease.app.data.remote.dto.ExpenseSplitDto
 import com.splitease.app.data.remote.dto.PaymentDto
 import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.data.pinboard.PinBoardPolicy
 import com.splitease.app.data.social.SocialInteractor
-import com.splitease.app.domain.model.Expense
-import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.pendingOpenTarget
-import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.InviteRepository
@@ -65,9 +59,7 @@ class SyncInteractor
         private val inviteRepository: InviteRepository,
         private val expenseRepository: ExpenseRepository,
         private val paymentRepository: PaymentRepository,
-        private val categoryRepository: CategoryRepository,
         private val socialRemote: SocialRemoteDataSource,
-        private val expenseRemote: ExpenseRemoteDataSource,
         private val paymentRemote: PaymentRemoteDataSource,
         private val socialInteractor: Provider<SocialInteractor>,
         private val expenseInteractor: Provider<ExpenseInteractor>,
@@ -155,30 +147,15 @@ class SyncInteractor
                 }
             }
 
-            expenseRepository.getPendingSync()
-                .filter { !expenseInteractor.get().isPushingExpense(it.id) }
-                .forEach { expense ->
-                    runCatching {
-                        val splits = expenseRepository.getSplits(expense.id)
-                        pushExpense(expense, splits)
-                        val current = expenseRepository.getExpenseById(expense.id)
-                        if (current != null && current.updatedAtEpochMs > expense.updatedAtEpochMs) {
-                            return@runCatching
-                        }
-                        val synced =
-                            expense.copy(
-                                remoteId = expense.remoteId ?: expense.id,
-                                syncStatus = SyncStatus.SYNCED,
-                            )
-                        expenseRepository.upsertExpenseWithSplits(
-                            synced,
-                            splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
-                        )
+            expenseRepository.getPendingSync().forEach { expense ->
+                runCatching {
+                    if (expenseInteractor.get().flushPendingExpense(expense.id)) {
                         expensesSynced++
-                    }.onFailure { err ->
-                        failures += "Expense ${expense.description}: ${err.message ?: "failed"}"
                     }
+                }.onFailure { err ->
+                    failures += "Expense ${expense.description}: ${err.message ?: "failed"}"
                 }
+            }
 
             paymentRepository.getPendingSync().forEach { payment ->
                 runCatching {
@@ -268,39 +245,6 @@ class SyncInteractor
 
         private companion object {
             const val MIN_SYNC_GAP_MS = 8_000L
-        }
-
-        private suspend fun pushExpense(expense: Expense, splits: List<ExpenseSplit>) {
-            expenseRemote.upsertExpense(
-                ExpenseDto(
-                    id = expense.id,
-                    description = expense.description,
-                    amount = expense.amount.toPlainString(),
-                    currencyCode = expense.currencyCode,
-                    categoryId = categoryRepository.categoryIdForCloud(expense.categoryId),
-                    paidByUserId = expense.paidByUserId,
-                    groupId = expense.groupId,
-                    expenseDateEpochMs = expense.expenseDateEpochMs,
-                    splitType = expense.splitType.name,
-                    notes = expense.notes,
-                    updatedAtEpochMs = expense.updatedAtEpochMs,
-                ),
-            )
-            expenseRemote.deleteSplitsForExpense(expense.id)
-            expenseRemote.upsertSplits(
-                splits.map { split ->
-                    ExpenseSplitDto(
-                        id = split.id,
-                        expenseId = split.expenseId,
-                        userId = split.userId,
-                        owedAmount = split.owedAmount.toPlainString(),
-                        percentage = split.percentage?.toPlainString(),
-                        shares = split.shares,
-                        paidAmount = split.paidAmount?.toPlainString(),
-                        adjustmentAmount = split.adjustmentAmount?.toPlainString(),
-                    )
-                },
-            )
         }
 
         private fun Payment.toDto() =
