@@ -135,6 +135,7 @@ fun AddExpenseScreen(
         mutableLongStateOf(System.currentTimeMillis())
     }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var closingAfterSave by remember { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var paidByStep by rememberSaveable { mutableStateOf(PaidByStep.None.name) }
     var showAdjustSplit by rememberSaveable { mutableStateOf(false) }
@@ -385,7 +386,7 @@ fun AddExpenseScreen(
     }
 
     fun saveExpense() {
-        if (uiState.isSubmitting) return
+        if (uiState.isSubmitting || closingAfterSave) return
         showValidation = true
         if (!canSaveExpense) return
         val multiPaidAmounts =
@@ -448,7 +449,9 @@ fun AddExpenseScreen(
                 onSuccess = onDone,
             )
         } else {
-            viewModel.createExpense(
+            closingAfterSave = true
+            onDone()
+            viewModel.createExpenseInBackground(
                 description = title,
                 amountText = amount,
                 currencyCode = currencyCode,
@@ -465,7 +468,6 @@ fun AddExpenseScreen(
                 categoryId = selectedCategoryId,
                 notes = notes.trim().ifBlank { null },
                 expenseDateEpochMs = expenseDateMs,
-                onSuccess = onDone,
             )
         }
     }

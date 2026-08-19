@@ -180,6 +180,19 @@ class ExpenseInteractor
             }
 
         /**
+         * Creates an expense on a background scope so the call survives navigation pop.
+         */
+        fun enqueueCreateExpense(
+            input: CreateExpenseInput,
+            actorUserId: String? = null,
+        ) {
+            cloudScope.launch {
+                runCatching { categoryRepository.ensureDefaults() }
+                createExpense(input, actorUserId)
+            }
+        }
+
+        /**
          * Updates an existing expense locally (Room `PENDING`) and schedules a background cloud push.
          *
          * @param expenseId Existing expense id.

@@ -83,7 +83,7 @@ class GroupLedgerCsvExporterTest {
             header,
         )
         assertEquals(csvRow(List(header.size) { "" }), lines[1])
-        assertTrue(lines.drop(2).none { it.isBlank() })
+        assertEquals(csvRow(List(header.size) { "" }), lines[4])
 
         fun col(
             row: List<String>,
@@ -111,7 +111,7 @@ class GroupLedgerCsvExporterTest {
         assertEquals("50.00", col(paymentRow, "Bob"))
         assertEquals("UPI", col(paymentRow, "Notes"))
 
-        val totalRow = CsvTransactionParser.splitCsvLine(lines[4])
+        val totalRow = CsvTransactionParser.splitCsvLine(lines[5])
         assertEquals("2026-01-20", col(totalRow, "Date"))
         assertEquals("Total balance", col(totalRow, "Description"))
         assertEquals("", col(totalRow, "Category"))

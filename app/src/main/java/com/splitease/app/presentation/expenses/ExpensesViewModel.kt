@@ -674,6 +674,53 @@ class ExpensesViewModel
         }
 
         /**
+         * Saves a new expense without blocking navigation (local write runs in the background).
+         */
+        fun createExpenseInBackground(
+            description: String,
+            amountText: String,
+            currencyCode: String,
+            paidByUserId: String,
+            participantIds: List<String>,
+            splitType: SplitType,
+            groupId: String?,
+            unequalAmounts: Map<String, BigDecimal> = emptyMap(),
+            percentages: Map<String, BigDecimal> = emptyMap(),
+            shares: Map<String, Int> = emptyMap(),
+            adjustments: Map<String, BigDecimal> = emptyMap(),
+            paidAmounts: Map<String, BigDecimal> = emptyMap(),
+            recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
+            categoryId: String? = null,
+            notes: String? = null,
+            expenseDateEpochMs: Long? = null,
+        ) {
+            if (paidByUserId.isBlank() || participantIds.isEmpty()) return
+            val amount = runCatching { BigDecimal(amountText.trim()) }.getOrNull() ?: return
+            expenseInteractor.enqueueCreateExpense(
+                input =
+                    CreateExpenseInput(
+                        description = description,
+                        amount = amount,
+                        currencyCode = currencyCode,
+                        paidByUserId = paidByUserId,
+                        participantIds = participantIds,
+                        splitType = splitType,
+                        groupId = groupId,
+                        unequalAmounts = unequalAmounts,
+                        percentages = percentages,
+                        shares = shares,
+                        adjustments = adjustments,
+                        paidAmounts = paidAmounts,
+                        recurrenceFrequency = recurrenceFrequency,
+                        categoryId = categoryId,
+                        notes = notes,
+                        expenseDateEpochMs = expenseDateEpochMs,
+                    ),
+                actorUserId = userId.value,
+            )
+        }
+
+        /**
          * Observes a single expense with labeled splits for the detail screen.
          */
         @OptIn(ExperimentalCoroutinesApi::class)

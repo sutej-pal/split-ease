@@ -39,8 +39,8 @@ data class GroupLedgerExportInput(
  * Header: `Date,Description,Category,Cost,Currency,Paid by`, then one column per
  * group member, then `Notes`.
  * Row 2 is blank. Following rows are expenses and payments mixed, oldest-first.
- * A final row per currency repeats the last ledger date and each member's net
- * in that currency (positive = gets back).
+ * A blank row, then one total row per currency with the last ledger date and
+ * each member's net in that currency (positive = gets back).
  * Member cells use the signed net from [BalanceCalculator] (positive = gets back).
  */
 object GroupLedgerCsvExporter {
@@ -94,6 +94,7 @@ object GroupLedgerCsvExporter {
                 )
         }
         lastActivityEpochMs(activities)?.let { lastActivityAt ->
+            lines += csvRow(List(header.size) { "" })
             totalBalanceRows(
                 activities = activities,
                 memberIds = input.memberIdsInOrder,

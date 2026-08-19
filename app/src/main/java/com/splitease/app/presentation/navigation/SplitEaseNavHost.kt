@@ -1051,6 +1051,23 @@ private fun SignedInNavHost(
                             nullable = false
                         },
                     ),
+                enterTransition = {
+                    val fromPicker = initialState.destination.route == Routes.ADD_EXPENSE_PICKER
+                    if (isCreatingExpense(targetState) && !fromPicker) {
+                        addExpenseEnterTransition()
+                    } else {
+                        fadeIn(animationSpec = tween(NAV_TRANSITION_MS))
+                    }
+                },
+                exitTransition = { fadeOut(animationSpec = tween(NAV_TRANSITION_MS)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
+                popExitTransition = {
+                    if (isCreatingExpense(initialState)) {
+                        addExpensePopExitTransition()
+                    } else {
+                        fadeOut(animationSpec = tween(NAV_TRANSITION_MS))
+                    }
+                },
             ) { entry ->
                 val groupId = entry.arguments
                     ?.getString("groupId")
