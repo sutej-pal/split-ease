@@ -134,9 +134,15 @@ class GroupsViewModel
             _uiState.update { it.copy(pendingFileShare = null) }
         }
 
+        fun onFileShareLaunchFailed() {
+            _uiState.update {
+                it.copy(errorMessage = appContext.getString(R.string.msg_group_export_share_failed))
+            }
+        }
+
         /**
          * Builds a CSV of this group's expenses, settlements, and balances,
-         * then queues it for the system share sheet.
+         * then queues it for the system open/share sheet.
          *
          * @param groupId Group to export.
          */
@@ -170,9 +176,12 @@ class GroupsViewModel
                 val result =
                     withContext(Dispatchers.IO) {
                         groupExportInteractor.buildGroupCsv(groupId, userId).mapCatching { export ->
-                            writeCsvCacheFile(export.fileName, export.csv)
+                            writeCsvFile(export.fileName, export.csv)
                         }
                     }
+                result.exceptionOrNull()?.let { err ->
+                    android.util.Log.e("GroupExport", "CSV export failed", err)
+                }
                 _uiState.update {
                     it.copy(
                         isExporting = false,
@@ -188,11 +197,11 @@ class GroupsViewModel
             }
         }
 
-        private fun writeCsvCacheFile(
+        private fun writeCsvFile(
             fileName: String,
             csv: String,
         ): PendingFileShare {
-            val dir = File(appContext.cacheDir, "exports").apply { mkdirs() }
+            val dir = File(appContext.filesDir, "exports").apply { mkdirs() }
             dir.listFiles()?.forEach { existing ->
                 if (existing.isFile) existing.delete()
             }
@@ -206,7 +215,7 @@ class GroupsViewModel
                 )
             return PendingFileShare(
                 uri = uri,
-                mimeType = "text/csv",
+                mimeType = CsvFileShare.MIME,
                 fileName = fileName,
             )
         }

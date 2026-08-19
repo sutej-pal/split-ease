@@ -155,24 +155,30 @@ class SyncInteractor
                 }
             }
 
-            expenseRepository.getPendingSync().forEach { expense ->
-                runCatching {
-                    val splits = expenseRepository.getSplits(expense.id)
-                    pushExpense(expense, splits)
-                    val synced =
-                        expense.copy(
-                            remoteId = expense.remoteId ?: expense.id,
-                            syncStatus = SyncStatus.SYNCED,
+            expenseRepository.getPendingSync()
+                .filter { !expenseInteractor.get().isPushingExpense(it.id) }
+                .forEach { expense ->
+                    runCatching {
+                        val splits = expenseRepository.getSplits(expense.id)
+                        pushExpense(expense, splits)
+                        val current = expenseRepository.getExpenseById(expense.id)
+                        if (current != null && current.updatedAtEpochMs > expense.updatedAtEpochMs) {
+                            return@runCatching
+                        }
+                        val synced =
+                            expense.copy(
+                                remoteId = expense.remoteId ?: expense.id,
+                                syncStatus = SyncStatus.SYNCED,
+                            )
+                        expenseRepository.upsertExpenseWithSplits(
+                            synced,
+                            splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
                         )
-                    expenseRepository.upsertExpenseWithSplits(
-                        synced,
-                        splits.map { it.copy(syncStatus = SyncStatus.SYNCED) },
-                    )
-                    expensesSynced++
-                }.onFailure { err ->
-                    failures += "Expense ${expense.description}: ${err.message ?: "failed"}"
+                        expensesSynced++
+                    }.onFailure { err ->
+                        failures += "Expense ${expense.description}: ${err.message ?: "failed"}"
+                    }
                 }
-            }
 
             paymentRepository.getPendingSync().forEach { payment ->
                 runCatching {

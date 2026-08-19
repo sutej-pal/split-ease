@@ -66,8 +66,12 @@ class RoomExpenseRepository
 
         override suspend fun getSplitsForExpenses(expenseIds: List<String>): Map<String, List<ExpenseSplit>> {
             if (expenseIds.isEmpty()) return emptyMap()
-            val rows = expenseDao.getSplitsForExpenses(expenseIds)
-            val grouped = rows.groupBy { it.expenseId }.mapValues { (_, list) -> list.map { it.toDomain() } }
+            val grouped = linkedMapOf<String, MutableList<ExpenseSplit>>()
+            expenseIds.chunked(SQLITE_BIND_CHUNK).forEach { chunk ->
+                expenseDao.getSplitsForExpenses(chunk).forEach { row ->
+                    grouped.getOrPut(row.expenseId) { mutableListOf() }.add(row.toDomain())
+                }
+            }
             return expenseIds.associateWith { id -> grouped[id].orEmpty() }
         }
 
@@ -109,3 +113,6 @@ class RoomExpenseRepository
         override suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String> =
             expenseDao.getSyncedNonGroupIdsInvolvingUser(userId)
     }
+
+/** SQLite bind limit is 999 on many Android builds; stay well under it. */
+private const val SQLITE_BIND_CHUNK = 400

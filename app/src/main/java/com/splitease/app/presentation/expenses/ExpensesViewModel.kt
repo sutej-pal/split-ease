@@ -104,6 +104,8 @@ data class LedgerListItem(
     val currencyCode: String = AppCurrencies.DEFAULT,
     val balanceSide: LedgerBalanceSide? = null,
     val balanceAmount: BigDecimal? = null,
+    /** True when the row is still waiting on a cloud push. */
+    val pendingSync: Boolean = false,
 )
 
 data class ParticipantOption(
@@ -461,6 +463,7 @@ class ExpensesViewModel
                         currencyCode = expense.currencyCode,
                         balanceSide = balanceSide,
                         balanceAmount = balanceAmount,
+                        pendingSync = expense.syncStatus == SyncStatus.PENDING,
                     )
                 }
             val paymentItems =
@@ -658,7 +661,12 @@ class ExpensesViewModel
                     it.copy(
                         isSubmitting = false,
                         errorMessage = mapExpenseSaveError(result.exceptionOrNull()),
-                        infoMessage = expenseSaveInfoMessage(result),
+                        infoMessage =
+                            if (result.isSuccess) {
+                                appContext.getString(R.string.msg_expense_added)
+                            } else {
+                                null
+                            },
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -1085,11 +1093,10 @@ class ExpensesViewModel
                         isSubmitting = false,
                         errorMessage = mapExpenseSaveError(result.exceptionOrNull()),
                         infoMessage =
-                            when {
-                                result.isFailure -> null
-                                result.getOrNull()?.syncStatus != SyncStatus.SYNCED ->
-                                    appContext.getString(R.string.msg_expense_saved_not_synced)
-                                else -> appContext.getString(R.string.msg_expense_updated)
+                            if (result.isSuccess) {
+                                appContext.getString(R.string.msg_expense_updated)
+                            } else {
+                                null
                             },
                     )
                 }
@@ -1185,15 +1192,6 @@ class ExpensesViewModel
                 ?.displayNameSnapshot
                 ?: userRepository.getUserById(friendUserId)?.displayName
                 ?: friendUserId.take(8)
-        }
-
-        private fun expenseSaveInfoMessage(result: Result<Expense>): String? {
-            if (result.isFailure) return null
-            return if (result.getOrNull()?.syncStatus != SyncStatus.SYNCED) {
-                appContext.getString(R.string.msg_expense_saved_not_synced)
-            } else {
-                appContext.getString(R.string.msg_expense_added)
-            }
         }
 
         private fun mapExpenseSaveError(throwable: Throwable?): String? {

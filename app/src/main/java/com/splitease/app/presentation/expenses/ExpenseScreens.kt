@@ -80,8 +80,6 @@ import com.splitease.app.presentation.ads.SeBannerAd
 import com.splitease.app.presentation.ads.SeBannerAdSize
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeInlineLoader
-import com.splitease.app.presentation.ui.SeLoadingOverlay
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
@@ -552,33 +550,28 @@ fun AddExpenseScreen(
                 onClick = { saveExpense() },
                 enabled = !uiState.isSubmitting,
             ) {
-                if (uiState.isSubmitting) {
-                    SeInlineLoader()
-                } else {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = stringResource(R.string.cd_save_expense),
-                        tint = SplitEaseColors.Primary,
-                    )
-                }
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = stringResource(R.string.cd_save_expense),
+                    tint = SplitEaseColors.Primary,
+                )
             }
         },
         content = { padding ->
-            Box(
+            Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values),
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f, fill = false)
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
-                    ) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                ) {
                 Row(
                     modifier =
                         Modifier
@@ -784,11 +777,6 @@ fun AddExpenseScreen(
                         showBottomDivider = false,
                     )
                 }
-                SeLoadingOverlay(
-                    visible = uiState.isSubmitting,
-                    text = stringResource(R.string.expense_saving),
-                )
-            }
         },
     )
 
@@ -1206,17 +1194,6 @@ private enum class PaidByStep {
 @Preview(name = "Add expense", showBackground = true, heightDp = 780)
 @Composable
 private fun AddExpenseScreenPreview() {
-    AddExpensePreviewScaffold(isSubmitting = false)
-}
-
-@Preview(name = "Add expense · saving", showBackground = true, heightDp = 780)
-@Composable
-private fun AddExpenseScreenSavingPreview() {
-    AddExpensePreviewScaffold(isSubmitting = true)
-}
-
-@Composable
-private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
     SePreview {
         var title by remember { mutableStateOf("Dinner") }
         var amount by remember { mutableStateOf("1240.00") }
@@ -1233,37 +1210,29 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
             title = stringResource(R.string.action_add_expense),
             onBack = {},
             actions = {
-                SeTopBarActionButton(
-                    onClick = {},
-                    enabled = !isSubmitting,
-                ) {
-                    if (isSubmitting) {
-                        SeInlineLoader()
-                    } else {
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = stringResource(R.string.cd_save_expense),
-                            tint = SplitEaseColors.Primary,
-                        )
-                    }
+                SeTopBarActionButton(onClick = {}) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = stringResource(R.string.cd_save_expense),
+                        tint = SplitEaseColors.Primary,
+                    )
                 }
             },
             content = { padding ->
-                Box(
+                Column(
                     modifier =
                         Modifier
                             .fillMaxSize()
                             .padding(padding.values),
                 ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f, fill = false)
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                        ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1287,7 +1256,6 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             onValueChange = { title = it },
                             placeholder = stringResource(R.string.label_expense_title),
                             icon = categoryIcon("category_food"),
-                            enabled = !isSubmitting,
                             textStyle =
                                 MaterialTheme.typography.titleLarge.copy(
                                     color = SplitEaseColors.Navy,
@@ -1300,7 +1268,6 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             onValueChange = { amount = it },
                             placeholder = "0.00",
                             leadingLabel = currencySymbol(currencyCode),
-                            enabled = !isSubmitting,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             textStyle =
                                 MaterialTheme.typography.headlineMedium.copy(
@@ -1314,7 +1281,6 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             onValueChange = {},
                             placeholder = stringResource(R.string.label_date_time),
                             icon = Icons.Filled.DateRange,
-                            enabled = !isSubmitting,
                             readOnly = true,
                             onClick = {},
                             textStyle =
@@ -1328,7 +1294,6 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             onValueChange = { notes = it },
                             placeholder = stringResource(R.string.label_notes_optional),
                             icon = Icons.AutoMirrored.Filled.Notes,
-                            enabled = !isSubmitting,
                             singleLine = false,
                             minLines = 3,
                             maxLines = 6,
@@ -1344,24 +1309,19 @@ private fun AddExpensePreviewScaffold(isSubmitting: Boolean) {
                             splitLabel = stringResource(R.string.split_equally),
                             onPaidByClick = {},
                             onSplitClick = {},
-                            enabled = !isSubmitting,
+                            enabled = true,
                         )
                         Spacer(modifier = Modifier.height(24.dp))
-                        }
-                        SeBannerAd(
-                            adUnitId = AdConfig.addExpenseBannerUnitId,
-                            modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth(),
-                            horizontalPadding = 20.dp,
-                            size = SeBannerAdSize.Inline(),
-                            showBottomDivider = false,
-                        )
                     }
-                    SeLoadingOverlay(
-                        visible = isSubmitting,
-                        text = stringResource(R.string.expense_saving),
+                    SeBannerAd(
+                        adUnitId = AdConfig.addExpenseBannerUnitId,
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        horizontalPadding = 20.dp,
+                        size = SeBannerAdSize.Inline(),
+                        showBottomDivider = false,
                     )
                 }
             },

@@ -257,10 +257,12 @@
     <string name="group_settings_default_split_body">New expenses you add to this group will default to this setting, which is personal, not group-wide.</string>
     <string name="group_settings_default_split_pro_body">Custom default splits are a Pro feature and are not available yet. New expenses still start as paid by you and split equally.</string>
     <string name="group_settings_export_csv">Export as CSV</string>
-    <string name="group_settings_export_csv_subtitle">Expenses, settlements, and current balances</string>
+    <string name="group_settings_export_csv_subtitle">Date, description, category, cost, and per-person amounts</string>
     <string name="group_settings_export_csv_working">Preparing CSV…</string>
     <string name="action_share_csv">Share CSV</string>
+    <string name="action_open_csv">Open CSV</string>
     <string name="msg_group_export_failed">Couldn\'t export this group.</string>
+    <string name="msg_group_export_share_failed">Couldn\'t open this CSV.</string>
     <string name="badge_pro">PRO</string>
     <string name="action_view_settings">View settings</string>
     <string name="action_remove_from_group">Remove from group</string>
@@ -664,6 +666,7 @@
     <string name="ledger_you_received">you received</string>
     <string name="ledger_you_paid">you paid</string>
     <string name="ledger_paid_by">%1$s paid %2$s</string>
+    <string name="ledger_not_synced">Not synced yet</string>
     <string name="payment_to_person">Payment to %1$s</string>
     <string name="payment_from_person">Payment from %1$s</string>
     <string name="pin_board_title">Pin Board</string>

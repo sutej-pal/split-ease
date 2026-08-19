@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="action_open_csv">CSVを開く</string>
+    <string name="msg_group_export_share_failed">このCSVを開けませんでした。</string>
+    <string name="ledger_not_synced">未同期</string>
 </resources>

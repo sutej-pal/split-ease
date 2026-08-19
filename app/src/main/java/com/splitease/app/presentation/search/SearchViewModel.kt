@@ -8,6 +8,7 @@ import com.splitease.app.domain.balance.BalanceCalculator
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
+import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
@@ -112,6 +113,7 @@ class SearchViewModel
                 currencyCode = currencyCode,
                 balanceSide = balanceSide,
                 balanceAmount = balanceAmount,
+                pendingSync = syncStatus == SyncStatus.PENDING,
             )
         }
 

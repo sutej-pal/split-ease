@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.groups
 
-import android.content.ClipData
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -164,7 +163,7 @@ fun GroupSettingsScreen(
 
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
-    val shareCsv = stringResource(R.string.action_share_csv)
+    val openCsv = stringResource(R.string.action_open_csv)
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -184,20 +183,10 @@ fun GroupSettingsScreen(
 
     LaunchedEffect(uiState.pendingFileShare) {
         val share = uiState.pendingFileShare ?: return@LaunchedEffect
-        val intent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = share.mimeType
-                putExtra(Intent.EXTRA_STREAM, share.uri)
-                putExtra(Intent.EXTRA_SUBJECT, share.fileName)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                clipData = ClipData.newRawUri(share.fileName, share.uri)
-            }
-        val chooser =
-            Intent.createChooser(intent, shareCsv).apply {
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                clipData = ClipData.newRawUri(share.fileName, share.uri)
-            }
-        runCatching { context.startActivity(chooser) }
+        val launched = CsvFileShare.openOrShare(context, share, openCsv)
+        if (!launched) {
+            viewModel.onFileShareLaunchFailed()
+        }
         viewModel.consumeFileShare()
     }
 
@@ -1006,3 +995,4 @@ private fun GroupType.settingsLabelRes(): Int =
         GroupType.HOME -> R.string.group_type_home
         GroupType.OTHER -> R.string.group_type_other
     }
+

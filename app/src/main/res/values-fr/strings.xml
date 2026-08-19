@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="action_open_csv">Ouvrir le CSV</string>
+    <string name="msg_group_export_share_failed">Impossible d\'ouvrir ce CSV.</string>
+    <string name="ledger_not_synced">Pas encore synchronisé</string>
 </resources>

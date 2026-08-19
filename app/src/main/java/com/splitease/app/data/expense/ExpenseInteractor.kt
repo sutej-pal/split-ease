@@ -16,6 +16,7 @@ import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.data.sync.REMOTE_FETCH_ROW_CAP
 import com.splitease.app.data.sync.SyncConflictPolicy
 import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.data.sync.SyncWorker
 import com.splitease.app.data.sync.isCompleteRemoteFetch
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
@@ -39,12 +40,19 @@ import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.split.SplitCalculator
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.util.Date
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -118,12 +126,19 @@ class ExpenseInteractor
         private val socialRemote: SocialRemoteDataSource,
         private val syncInteractor: Provider<SyncInteractor>,
     ) {
+        private val cloudScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val cloudPushMutex = Mutex()
+        private val pushingExpenseIds = ConcurrentHashMap.newKeySet<String>()
+
+        /** True while [scheduleCloudPush] is pushing [expenseId] (Worker must skip it). */
+        fun isPushingExpense(expenseId: String): Boolean = expenseId in pushingExpenseIds
+
         /**
-         * Creates an expense with calculated splits and best-effort cloud sync.
+         * Creates an expense locally (Room `PENDING`) and schedules a background cloud push.
          *
          * @param input Creation payload.
          * @param actorUserId User who added the expense (activity feed); defaults to payer.
-         * @return Persisted [Expense].
+         * @return Locally persisted [Expense] (does not wait for Supabase).
          */
         suspend fun createExpense(
             input: CreateExpenseInput,
@@ -131,24 +146,25 @@ class ExpenseInteractor
         ): Result<Expense> =
             runCatching {
                 val built = buildExpenseAndSplits(input = input, existing = null)
-                val synced = pushAndPersistSynced(expense = built.expense, splits = built.splits)
-                val actor = actorUserId?.takeIf { it.isNotBlank() } ?: synced.paidByUserId
+                expenseRepository.upsertExpenseWithSplits(built.expense, built.splits)
+                val actor = actorUserId?.takeIf { it.isNotBlank() } ?: built.expense.paidByUserId
                 recordExpenseActivity(
                     kind = ActivityEventKind.EXPENSE_ADDED,
-                    expense = synced,
+                    expense = built.expense,
                     participantIds = built.splits.map { it.userId },
                     actorUserId = actor,
                 )
-                synced
+                scheduleCloudPush(built.expense.id)
+                built.expense
             }
 
         /**
-         * Updates an existing expense (stable id) and best-effort cloud sync.
+         * Updates an existing expense locally (Room `PENDING`) and schedules a background cloud push.
          *
          * @param expenseId Existing expense id.
          * @param input Updated fields (same shape as create).
          * @param actorUserId User who performed the update (activity feed); defaults to payer.
-         * @return Persisted [Expense].
+         * @return Locally persisted [Expense] (does not wait for Supabase).
          */
         suspend fun updateExpense(
             expenseId: String,
@@ -161,22 +177,23 @@ class ExpenseInteractor
                         ?: error("Expense not found.")
                 val existingSplits = expenseRepository.getSplits(expenseId)
                 val built = buildExpenseAndSplits(input = input, existing = existing)
-                val synced = pushAndPersistSynced(expense = built.expense, splits = built.splits)
-                val actor = actorUserId?.takeIf { it.isNotBlank() } ?: synced.paidByUserId
+                expenseRepository.upsertExpenseWithSplits(built.expense, built.splits)
+                val actor = actorUserId?.takeIf { it.isNotBlank() } ?: built.expense.paidByUserId
                 recordExpenseActivity(
                     kind = ActivityEventKind.EXPENSE_UPDATED,
-                    expense = synced,
+                    expense = built.expense,
                     participantIds = built.splits.map { it.userId },
                     actorUserId = actor,
                 )
                 recordExpenseUpdateComment(
                     before = existing,
                     beforeSplits = existingSplits,
-                    after = synced,
+                    after = built.expense,
                     afterSplits = built.splits,
                     actorUserId = actor,
                 )
-                synced
+                scheduleCloudPush(built.expense.id)
+                built.expense
             }
 
         /**
@@ -692,6 +709,32 @@ class ExpenseInteractor
             return BuiltExpense(expense, splits)
         }
 
+        /**
+         * Pushes [expenseId] to Supabase without blocking the UI.
+         * Survives Add-expense screen teardown. [SyncWorker] is enqueued only if
+         * the row is still PENDING after this attempt (process-death net).
+         */
+        private fun scheduleCloudPush(expenseId: String) {
+            cloudScope.launch {
+                if (!pushingExpenseIds.add(expenseId)) return@launch
+                try {
+                    cloudPushMutex.withLock {
+                        val expense = expenseRepository.getExpenseById(expenseId) ?: return@withLock
+                        if (expense.syncStatus == SyncStatus.SYNCED) return@withLock
+                        val splits = expenseRepository.getSplits(expenseId)
+                        runCatching { pushAndPersistSynced(expense, splits) }
+                    }
+                } finally {
+                    pushingExpenseIds.remove(expenseId)
+                }
+                val stillPending =
+                    expenseRepository.getExpenseById(expenseId)?.syncStatus == SyncStatus.PENDING
+                if (stillPending) {
+                    SyncWorker.enqueueOnce(appContext)
+                }
+            }
+        }
+
         private suspend fun pushAndPersistSynced(
             expense: Expense,
             splits: List<ExpenseSplit>,
@@ -700,22 +743,27 @@ class ExpenseInteractor
             runCatching { syncInteractor.get().flushPending() }
             runCatching { ensureGroupOnCloud(expense.groupId) }
 
+            val latest = latestLocalExpense(expense.id, expense, splits)
+            if (latest.expense.syncStatus == SyncStatus.SYNCED) {
+                return latest.expense
+            }
             val pushError =
                 runCatching {
-                    pushExpense(expense, splits)
+                    pushExpense(latest.expense, latest.splits)
                 }.exceptionOrNull()
 
             if (pushError == null) {
-                return persistSyncedExpense(expense, splits)
+                return persistSyncedIfUnchanged(latest.expense, latest.splits)
             }
 
             // Retry once after another social flush (group may have been PENDING / stale SYNCED).
             runCatching { syncInteractor.get().flushPending() }
             runCatching { ensureGroupOnCloud(expense.groupId) }
+            val retried = latestLocalExpense(expense.id, latest.expense, latest.splits)
             val retryError =
                 runCatching {
-                    pushExpense(expense, splits)
-                    persistSyncedExpense(expense, splits)
+                    pushExpense(retried.expense, retried.splits)
+                    persistSyncedIfUnchanged(retried.expense, retried.splits)
                 }.exceptionOrNull()
 
             if (retryError == null) {
@@ -723,14 +771,41 @@ class ExpenseInteractor
                     ?: error("Cloud save succeeded but local read failed.")
             }
 
-            // Cloud push failed — persist locally so the expense is not lost.
+            // Cloud push failed — keep the local PENDING row so the expense is not lost.
             android.util.Log.w(
                 "ExpenseSync",
-                "Cloud save failed for expense: ${expense.description}; saving locally",
+                "Cloud save failed for expense: ${expense.description}; keeping local PENDING",
                 retryError,
             )
-            expenseRepository.upsertExpenseWithSplits(expense, splits)
-            return expense
+            return expenseRepository.getExpenseById(expense.id) ?: expense
+        }
+
+        private suspend fun latestLocalExpense(
+            expenseId: String,
+            fallbackExpense: Expense,
+            fallbackSplits: List<ExpenseSplit>,
+        ): BuiltExpense {
+            val current = expenseRepository.getExpenseById(expenseId) ?: fallbackExpense
+            val currentSplits = expenseRepository.getSplits(expenseId)
+            return BuiltExpense(
+                expense = current,
+                splits = currentSplits.ifEmpty { fallbackSplits },
+            )
+        }
+
+        /**
+         * Marks SYNCED only when Room still has the snapshot we just pushed.
+         * A newer local edit stays PENDING for the next flush.
+         */
+        private suspend fun persistSyncedIfUnchanged(
+            pushed: Expense,
+            splits: List<ExpenseSplit>,
+        ): Expense {
+            val current = expenseRepository.getExpenseById(pushed.id)
+            if (current != null && current.updatedAtEpochMs > pushed.updatedAtEpochMs) {
+                return current
+            }
+            return persistSyncedExpense(pushed, splits)
         }
 
         /**

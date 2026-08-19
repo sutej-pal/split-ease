@@ -27,4 +27,7 @@
     <cache-path
         name="group_export_cache"
         path="exports/" />
+    <files-path
+        name="group_export_files"
+        path="exports/" />
 </paths>

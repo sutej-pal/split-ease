@@ -190,6 +190,15 @@ fun LedgerEntryRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            if (item.pendingSync) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.ledger_not_synced),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = SplitEaseColors.NavyMuted,
+                    maxLines = 1,
+                )
+            }
         }
         if (balanceLabel != null && item.balanceAmount != null) {
             Spacer(modifier = Modifier.width(10.dp))
