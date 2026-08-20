@@ -32,7 +32,7 @@ Contact for privacy requests: **support@splitease.app**
 ### 2.2 Friends, groups, and invites
 
 - Friend relationships and display-name/email snapshots you associate with friends
-- Group names, membership, roles, group icons, and cover images
+- Group names, membership, roles, and group icons
 - Invite tokens, invite recipient emails or phone contacts you choose to invite, and invite status
 - Optional device contacts you select when inviting people (only after you grant contacts permission)
 
@@ -86,7 +86,7 @@ SplitEase stores data on your device (including an offline database) so the app 
 ## 6. Permissions
 
 - **Contacts:** optional; used to help you find and invite people. We do not upload your full address book unless you select contacts to invite.
-- **Photos / media:** optional; used for profile photos, group icons/covers, and pin-board images you choose.
+- **Photos / media:** optional; used for profile photos, group icons, and pin-board images you choose.
 - **Notifications:** optional; used for group activity alerts.
 - **Biometric / device credential:** optional app lock; biometric templates stay on your device and are not sent to SplitEase servers.
 

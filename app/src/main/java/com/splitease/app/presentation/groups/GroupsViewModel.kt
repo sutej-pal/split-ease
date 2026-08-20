@@ -434,48 +434,6 @@ class GroupsViewModel
             }
         }
 
-        fun updateGroupCover(
-            groupId: String,
-            coverUri: String,
-        ) {
-            if (coverUri.isBlank()) return
-            viewModelScope.launch {
-                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
-                val result = socialInteractor.updateGroupCover(groupId, coverUri)
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage =
-                            if (result.isSuccess) {
-                                appContext.getString(R.string.msg_group_cover_saved)
-                            } else {
-                                null
-                            },
-                    )
-                }
-            }
-        }
-
-        fun removeGroupCover(groupId: String) {
-            viewModelScope.launch {
-                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
-                val result = socialInteractor.removeGroupCover(groupId)
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
-                        infoMessage =
-                            if (result.isSuccess) {
-                                appContext.getString(R.string.msg_group_cover_removed)
-                            } else {
-                                null
-                            },
-                    )
-                }
-            }
-        }
-
         /**
          * Observes a group by id. Seeds from the in-memory groups list when available,
          * otherwise loads once from Room so the detail header does not flash empty.

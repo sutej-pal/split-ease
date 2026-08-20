@@ -1,6 +1,8 @@
 package com.splitease.app.presentation.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -586,8 +588,20 @@ private fun SignedInNavHost(
             startDestination = Routes.TAB_GROUPS,
             modifier = Modifier.padding(padding),
             enterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
-            exitTransition = { fadeOut(animationSpec = tween(NAV_TRANSITION_MS)) },
-            popEnterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
+            exitTransition = {
+                if (shouldExpandAddExpenseFromFab(initialState, targetState)) {
+                    ExitTransition.None
+                } else {
+                    fadeOut(animationSpec = tween(NAV_TRANSITION_MS))
+                }
+            },
+            popEnterTransition = {
+                if (shouldFoldAddExpenseIntoFab(initialState, targetState)) {
+                    EnterTransition.None
+                } else {
+                    fadeIn(animationSpec = tween(NAV_TRANSITION_MS))
+                }
+            },
             popExitTransition = { fadeOut(animationSpec = tween(NAV_TRANSITION_MS)) },
         ) {
             composable(Routes.TAB_GROUPS) {
@@ -1052,8 +1066,7 @@ private fun SignedInNavHost(
                         },
                     ),
                 enterTransition = {
-                    val fromPicker = initialState.destination.route == Routes.ADD_EXPENSE_PICKER
-                    if (isCreatingExpense(targetState) && !fromPicker) {
+                    if (shouldExpandAddExpenseFromFab(initialState, targetState)) {
                         addExpenseEnterTransition()
                     } else {
                         fadeIn(animationSpec = tween(NAV_TRANSITION_MS))
@@ -1062,7 +1075,7 @@ private fun SignedInNavHost(
                 exitTransition = { fadeOut(animationSpec = tween(NAV_TRANSITION_MS)) },
                 popEnterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
                 popExitTransition = {
-                    if (isCreatingExpense(initialState)) {
+                    if (shouldFoldAddExpenseIntoFab(initialState, targetState)) {
                         addExpensePopExitTransition()
                     } else {
                         fadeOut(animationSpec = tween(NAV_TRANSITION_MS))

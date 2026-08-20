@@ -1500,7 +1500,6 @@ class SocialInteractor
                                         existing?.groupType
                                             ?: com.splitease.app.domain.model.GroupType.OTHER,
                                     photoUrl = resolvePhotoUrlForRefresh(existing?.photoUrl, dto.photoUrl),
-                                    coverUrl = resolveCoverUrlForRefresh(existing?.coverUrl, dto.coverUrl),
                                     createdByUserId = dto.createdByUserId,
                                     remoteId = dto.id,
                                     createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
@@ -1581,7 +1580,6 @@ class SocialInteractor
                                         existing?.groupType
                                             ?: com.splitease.app.domain.model.GroupType.OTHER,
                                     photoUrl = resolvePhotoUrlForRefresh(existing?.photoUrl, dto.photoUrl),
-                                    coverUrl = resolveCoverUrlForRefresh(existing?.coverUrl, dto.coverUrl),
                                     createdByUserId = dto.createdByUserId,
                                     remoteId = dto.id,
                                     createdAtEpochMs = existing?.createdAtEpochMs ?: dto.updatedAtEpochMs,
@@ -2117,76 +2115,6 @@ class SocialInteractor
             }
 
         /**
-         * Copies a cropped cover [coverUri] into app-private storage, uploads to Supabase
-         * Storage, and stores the public URL on the group so all members see the same banner.
-         */
-        suspend fun updateGroupCover(
-            groupId: String,
-            coverUri: String,
-        ): Result<Unit> =
-            runCatching {
-                val group =
-                    groupRepository.getGroupById(groupId)
-                        ?: error("Group not found.")
-                val localPath = persistGroupCover(groupId, coverUri)
-                val remoteUrl =
-                    runCatching { groupCoverStorage.uploadCover(groupId, localPath) }
-                        .getOrElse { err ->
-                            // Keep the local cover for this device; retry upload on next sync.
-                            updateGroup(group.copy(coverUrl = localPath)).getOrThrow()
-                            throw err
-                        }
-                // Seed disk cache so the banner paints immediately without a network round-trip.
-                runCatching {
-                    AvatarImageIO.seedRemoteImageCache(appContext, remoteUrl, File(localPath))
-                }
-                val now = System.currentTimeMillis()
-                val updated = group.copy(coverUrl = remoteUrl, updatedAtEpochMs = now)
-                groupRepository.upsertGroup(updated.copy(syncStatus = SyncStatus.PENDING))
-                runCatching {
-                    remote.patchGroupCoverUrl(groupId, remoteUrl, now)
-                    remote.upsertGroup(updated.toDto(updatedAtEpochMs = now))
-                    groupRepository.upsertGroup(
-                        updated.copy(remoteId = updated.id, syncStatus = SyncStatus.SYNCED),
-                    )
-                }.getOrElse {
-                    // Cover bytes are in Storage; Room keeps the public URL for display/retry.
-                    groupRepository.upsertGroup(updated.copy(syncStatus = SyncStatus.PENDING))
-                }
-            }
-
-        /**
-         * Clears [Group.coverUrl], deletes Storage + local cover files, and patches PostgREST.
-         */
-        suspend fun removeGroupCover(groupId: String): Result<Unit> =
-            runCatching {
-                val group =
-                    groupRepository.getGroupById(groupId)
-                        ?: error("Group not found.")
-                mediaStorageCleanup.evictRemoteMediaCache(group.coverUrl)
-                deleteGroupCoverFiles(groupId)
-                runCatching { groupCoverStorage.deleteCover(groupId) }
-                val now = System.currentTimeMillis()
-                val updated = group.copy(coverUrl = null, updatedAtEpochMs = now)
-                groupRepository.upsertGroup(updated.copy(syncStatus = SyncStatus.PENDING))
-                runCatching {
-                    remote.patchGroupCoverUrl(groupId, coverUrl = null, updatedAtEpochMs = now)
-                    groupRepository.upsertGroup(
-                        updated.copy(remoteId = updated.id, syncStatus = SyncStatus.SYNCED),
-                    )
-                }
-            }
-
-        /**
-         * Picks the cover URL after a cloud pull.
-         * Prefers remote https; keeps a pending local-only cover when cloud has none.
-         */
-        private fun resolveCoverUrlForRefresh(
-            existingCoverUrl: String?,
-            remoteCoverUrl: String?,
-        ): String? = resolveMediaUrlForRefresh(existingCoverUrl, remoteCoverUrl)
-
-        /**
          * Picks the list photo URL after a cloud pull.
          * Prefers remote https; keeps a pending local-only photo when cloud has none.
          */
@@ -2243,22 +2171,6 @@ class SocialInteractor
         }
 
         /**
-         * If [group] still has a local-only cover path, uploads it and returns the group with
-         * the public URL. Used by sync flush so PENDING groups do not wipe cloud covers.
-         */
-        suspend fun ensureCoverUploaded(group: Group): Group {
-            val cover = group.coverUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return group
-            if (cover.isRemoteMediaUrl()) return group
-            val local = File(cover)
-            if (!local.exists()) return group.copy(coverUrl = null)
-            val remoteUrl = groupCoverStorage.uploadCover(group.id, local.absolutePath)
-            AvatarImageIO.seedRemoteImageCache(appContext, remoteUrl, local)
-            val now = System.currentTimeMillis()
-            runCatching { remote.patchGroupCoverUrl(group.id, remoteUrl, now) }
-            return group.copy(coverUrl = remoteUrl, updatedAtEpochMs = now)
-        }
-
-        /**
          * If [group] still has a local-only list photo path, uploads it and returns the group
          * with the public URL. Used by sync flush / create so photos reach other devices.
          */
@@ -2290,36 +2202,12 @@ class SocialInteractor
             return path
         }
 
-        private fun persistGroupCover(
-            groupId: String,
-            coverUri: String,
-        ): String {
-            val dir = File(appContext.filesDir, "group_covers").apply { mkdirs() }
-            val dest = File(dir, "${groupId}_${System.currentTimeMillis()}.jpg")
-            val path =
-                AvatarImageIO.copyScaledJpeg(
-                    context = appContext,
-                    photoUri = coverUri,
-                    destFile = dest,
-                    maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
-                    quality = 82,
-                )
-            pruneGroupMediaFiles(dir, groupId, keep = 2)
-            return path
-        }
-
-        private fun deleteGroupCoverFiles(groupId: String) {
-            LocalMediaCleanup.deleteGroupCoverFiles(appContext, groupId)
-        }
-
         private fun pruneGroupMediaFiles(
             dir: File,
             groupId: String,
             keep: Int,
         ) {
             when (dir.name) {
-                "group_covers" ->
-                    LocalMediaCleanup.pruneGroupCoverFiles(appContext, groupId, keepNewest = keep)
                 "group_photos" ->
                     LocalMediaCleanup.pruneGroupPhotoFiles(appContext, groupId, keepNewest = keep)
                 else -> {

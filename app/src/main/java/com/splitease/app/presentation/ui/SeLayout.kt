@@ -92,7 +92,7 @@ fun seScreenTitleStyle(): TextStyle =
  * this over a raw `headline*` / `titleLarge` pick so those headings stay the
  * same size and weight. Do not use this for [SeTopBar] titles
  * ([seScreenTitleStyle]), section headers, dialog titles, list-item titles,
- * amounts, or white-on-cover detail banners.
+ * amounts, or white-on-banner group detail titles.
  */
 @Composable
 @ReadOnlyComposable

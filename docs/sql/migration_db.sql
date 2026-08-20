@@ -4,7 +4,7 @@
 --
 -- Includes: profiles/friends/groups, invites, RLS helpers, expenses/splits,
 -- expense comments/photos, payments/recurring columns, realtime publication,
--- device_tokens, notification_prefs, pin_boards, Storage buckets (avatars, group covers, receipts, pin board),
+-- device_tokens, notification_prefs, pin_boards, Storage buckets (avatars, group photos, receipts, pin board),
 -- auth_email_registered / auth_phone_registered, reciprocal-friend + remap RPCs,
 -- share-link invite heal, optional FCM notify triggers (no-op until app.settings set).
 -- Ops: FCM Edge Function + webhooks — see docs/fcm-setup.md
@@ -97,9 +97,16 @@ create table if not exists public.groups (
   default_currency_code text not null,
   created_by_user_id uuid not null references auth.users (id) on delete cascade,
   updated_at_epoch_ms bigint not null default 0,
-  cover_url text,
   photo_url text
 );
+
+-- Drop leftover header-cover column from earlier schema versions.
+alter table public.groups drop column if exists cover_url;
+
+-- Leftover header-cover files. List/settings photos (`{groupId}/photo.jpg`) stay.
+delete from storage.objects
+where bucket_id = 'group-covers'
+  and name like '%/cover.jpg';
 
 alter table public.groups enable row level security;
 
@@ -1247,10 +1254,11 @@ create policy "pin_boards_update_member"
   );
 
 -- ============================================
--- Storage: profile avatars, group covers/photos, pin board images
+-- Storage: profile avatars, group photos, pin board images
 -- ============================================
--- profiles.photo_url + groups.cover_url / groups.photo_url columns are above.
--- group-covers bucket holds cover.jpg and photo.jpg per group id.
+-- profiles.photo_url + groups.photo_url columns are above.
+-- group-covers bucket holds photo.jpg per group id.
+-- Leftover `{groupId}/cover.jpg` objects are deleted above with groups.cover_url.
 
 insert into storage.buckets (id, name, public)
 values ('user-avatars', 'user-avatars', true)

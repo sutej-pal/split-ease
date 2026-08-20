@@ -15,7 +15,7 @@ class StorageObjectPathsTest {
     @Test
     fun objectPathFromPublicUrl_ignoresOtherBuckets() {
         val url =
-            "https://abc.supabase.co/storage/v1/object/public/group-covers/g1/cover.jpg"
+            "https://abc.supabase.co/storage/v1/object/public/group-covers/g1/photo.jpg"
         assertNull(StorageObjectPaths.objectPathFromPublicUrl(url, "expense-receipts"))
     }
 

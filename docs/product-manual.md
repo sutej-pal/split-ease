@@ -72,7 +72,7 @@ The Android app never holds the database **service role** key. It uses `SUPABASE
 
 **Friend.** A person you track 1:1 costs with. You can invite someone who does not have an account yet; they inherit history when they sign up with the **same email**.
 
-**Group.** A named shared ledger (for example a flat or a trip) with members, a default currency, optional photo/cover, and its own expenses and payments.
+**Group.** A named shared ledger (for example a flat or a trip) with members, a default currency, optional photo, and its own expenses and payments.
 
 **Expense.** A cost: description, amount, currency, date, category, who paid, who participates, and a split method. Unlimited count. Attachments (photos) can be added on the expense detail screen.
 
@@ -122,17 +122,17 @@ Search, spending totals, CSV import, and settings are reached from Account / too
 
 ### 5.3 Groups
 
-**Create a group** from Groups (create-group action). Set a name, type (friends / home / other), and default currency (from Settings currency unless you change it). Optional group photo and cover.
+**Create a group** from Groups (create-group action). Set a name, type (friends / home / other), and default currency (from Settings currency unless you change it). Optional group photo.
 
 **Open a group** to see:
 
-- Header and cover  
+- Header  
 - Who you owe / who owes you in this group  
 - **Settle up**, **Balances**, **Totals**, **Pin Board**  
 - Chronological expenses  
 - **Add expense**
 
-**Group settings** (gear): rename, photos, default split hint, **mute notifications** for this group, add people, invite via link, leave/delete as allowed by role.
+**Group settings** (gear): rename, group photo, default split hint, **mute notifications** for this group, add people, invite via link, leave/delete as allowed by role.
 
 **Add people:** find existing users, add from contacts (permission required), or share an invite link.
 

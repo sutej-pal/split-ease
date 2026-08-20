@@ -27,14 +27,12 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.HideImage
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -150,16 +148,6 @@ fun GroupSettingsScreen(
         ) { uri ->
             viewModel.updateGroupPhoto(groupId, uri)
         }
-    val coverPicker =
-        rememberImagePicker(
-            sourceTitle = stringResource(R.string.group_cover_source_title),
-            sourceBody = stringResource(R.string.group_cover_source_body),
-            cropTitle = stringResource(R.string.group_cover_crop_title),
-            cropBody = stringResource(R.string.group_cover_crop_body),
-            cropSpec = ImagePickPresets.GroupCover,
-        ) { uri ->
-            viewModel.updateGroupCover(groupId, uri)
-        }
 
     val inviteSubject = stringResource(R.string.invite_email_subject)
     val shareInvite = stringResource(R.string.action_share_invite)
@@ -212,19 +200,6 @@ fun GroupSettingsScreen(
                     title = stringResource(R.string.action_edit_group_photo),
                     onClick = { photoPicker.launch() },
                 )
-                SettingsActionRow(
-                    icon = Icons.Filled.Image,
-                    title = stringResource(R.string.action_edit_cover_photo),
-                    onClick = { coverPicker.launch() },
-                    showDivider = group?.coverUrl == null,
-                )
-                if (!group?.coverUrl.isNullOrBlank()) {
-                    SettingsActionRow(
-                        icon = Icons.Filled.HideImage,
-                        title = stringResource(R.string.action_remove_cover_photo),
-                        onClick = { viewModel.removeGroupCover(groupId) },
-                    )
-                }
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(8.dp))
 

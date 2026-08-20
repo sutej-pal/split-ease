@@ -7,11 +7,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Uploads / deletes group media in the `group-covers` Storage bucket.
+ * Uploads / deletes group photos in the `group-covers` Storage bucket.
  *
  * Object keys:
- * - `{groupId}/cover.jpg` — detail banner (`groups.cover_url`)
  * - `{groupId}/photo.jpg` — list/settings avatar (`groups.photo_url`)
+ *
+ * Leftover `{groupId}/cover.jpg` objects from the removed header-cover feature
+ * are deleted with [deleteAllForGroup].
  */
 @Singleton
 class GroupCoverStorage
@@ -20,27 +22,12 @@ class GroupCoverStorage
         private val supabase: SupabaseClient,
     ) {
         /**
-         * Uploads [localJpegPath] cover for [groupId] (upsert) and returns the public object URL.
-         */
-        suspend fun uploadCover(
-            groupId: String,
-            localJpegPath: String,
-        ): String = uploadJpeg(objectPathCover(groupId), localJpegPath, missingLabel = "Cover")
-
-        /**
          * Uploads [localJpegPath] list photo for [groupId] (upsert) and returns the public URL.
          */
         suspend fun uploadPhoto(
             groupId: String,
             localJpegPath: String,
         ): String = uploadJpeg(objectPathPhoto(groupId), localJpegPath, missingLabel = "Photo")
-
-        /** Deletes the cover object for [groupId] if present (no-op when missing). */
-        suspend fun deleteCover(groupId: String) {
-            runCatching {
-                supabase.storage.from(BUCKET).delete(objectPathCover(groupId))
-            }
-        }
 
         /** Deletes the list photo object for [groupId] if present (no-op when missing). */
         suspend fun deletePhoto(groupId: String) {
@@ -49,10 +36,12 @@ class GroupCoverStorage
             }
         }
 
-        /** Deletes both cover and list photo objects for [groupId]. */
+        /** Deletes list photo and leftover cover objects for [groupId]. */
         suspend fun deleteAllForGroup(groupId: String) {
-            deleteCover(groupId)
             deletePhoto(groupId)
+            runCatching {
+                supabase.storage.from(BUCKET).delete(objectPathLegacyCover(groupId))
+            }
         }
 
         private suspend fun uploadJpeg(
@@ -74,11 +63,8 @@ class GroupCoverStorage
         companion object {
             const val BUCKET = "group-covers"
 
-            fun objectPathCover(groupId: String): String = "$groupId/cover.jpg"
-
             fun objectPathPhoto(groupId: String): String = "$groupId/photo.jpg"
 
-            /** @deprecated Use [objectPathCover]. */
-            fun objectPath(groupId: String): String = objectPathCover(groupId)
+            private fun objectPathLegacyCover(groupId: String): String = "$groupId/cover.jpg"
         }
     }

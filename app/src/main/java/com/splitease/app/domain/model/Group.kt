@@ -9,8 +9,6 @@ package com.splitease.app.domain.model
  * @property groupType Friends / Home / Other category for UI.
  * @property photoUrl Optional square list/settings image — synced https Storage URL,
  *   or a local path while upload is pending.
- * @property coverUrl Optional banner image — synced https Storage URL, or a local path
- *   while upload is pending.
  * @property createdByUserId User who created the group.
  * @property remoteId Cloud id when synced.
  * @property createdAtEpochMs Creation timestamp.
@@ -23,7 +21,6 @@ data class Group(
     val defaultCurrencyCode: String,
     val groupType: GroupType = GroupType.OTHER,
     val photoUrl: String? = null,
-    val coverUrl: String? = null,
     val createdByUserId: String,
     val remoteId: String? = null,
     val createdAtEpochMs: Long,

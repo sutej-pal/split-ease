@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secondary-screen chrome unified: `SeScreen` / `SeTopBar` share one title style (`SeScreenTitleStyle` = titleLarge); spacing via `SeLayout` ([design-tokens](docs/design-tokens.md))
 
 ### Removed
+- Group cover / header photo (banner image on group detail, `groups.cover_url`, and `cover.jpg` uploads)
 - Unused local `onboarding_complete` preference (setup wizard no longer exists; OTP lands on Groups)
 - Pull-to-refresh on the group ledger (open/resume + Realtime already keep the list current)
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs

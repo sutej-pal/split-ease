@@ -35,15 +35,6 @@ object AvatarImageIO {
     /** Max edge length when decoding only for on-screen preview. */
     const val PREVIEW_MAX_SIDE_PX = 256
 
-    /** Max edge for persisted group detail cover images (banner-sized, not full camera res). */
-    const val COVER_STORED_MAX_SIDE_PX = 1280
-
-    /** Max edge when decoding a cover for on-screen display. */
-    const val COVER_PREVIEW_MAX_SIDE_PX = 1280
-
-    /** Width ÷ height for the group detail header cover crop frame. */
-    const val COVER_ASPECT_RATIO = 2.4f
-
     /** Width ÷ height for profile and group avatar crops. */
     const val SQUARE_ASPECT_RATIO = 1f
 
@@ -234,7 +225,7 @@ object AvatarImageIO {
         sourceBitmap: Bitmap,
         cropRect: android.graphics.Rect,
         destFile: File,
-        maxSidePx: Int = COVER_STORED_MAX_SIDE_PX,
+        maxSidePx: Int = CONTENT_STORED_MAX_SIDE_PX,
         quality: Int = 82,
     ): String {
         destFile.parentFile?.mkdirs()

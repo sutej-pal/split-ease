@@ -14,7 +14,7 @@ data class ImageCropSpec(
     val jpegQuality: Int = 82,
 )
 
-/** Shared presets for profile, group, cover, and content images. */
+/** Shared presets for profile, group, and content images. */
 object ImagePickPresets {
     val Avatar =
         ImageCropSpec(
@@ -32,24 +32,17 @@ object ImagePickPresets {
             jpegQuality = AvatarImageIO.AVATAR_STORED_JPEG_QUALITY,
         )
 
-    val GroupCover =
-        ImageCropSpec(
-            aspectRatio = AvatarImageIO.COVER_ASPECT_RATIO,
-            maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
-            cacheSubdir = "group_covers",
-        )
-
     val Content =
         ImageCropSpec(
             aspectRatio = AvatarImageIO.CONTENT_ASPECT_RATIO,
-            maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
+            maxSidePx = AvatarImageIO.CONTENT_STORED_MAX_SIDE_PX,
             cacheSubdir = "image_capture",
         )
 
     val ExpenseReceipt =
         ImageCropSpec(
             aspectRatio = AvatarImageIO.CONTENT_ASPECT_RATIO,
-            maxSidePx = AvatarImageIO.COVER_STORED_MAX_SIDE_PX,
+            maxSidePx = AvatarImageIO.CONTENT_STORED_MAX_SIDE_PX,
             cacheSubdir = "expense_receipts",
             jpegQuality = AvatarImageIO.ATTACHMENT_STORED_JPEG_QUALITY,
         )

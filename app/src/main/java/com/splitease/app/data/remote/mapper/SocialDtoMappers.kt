@@ -21,7 +21,6 @@ fun Group.toDto(updatedAtEpochMs: Long = this.updatedAtEpochMs): GroupDto =
         createdByUserId = createdByUserId,
         updatedAtEpochMs = updatedAtEpochMs,
         // Only sync cloud URLs — local file paths must not overwrite media columns remotely.
-        coverUrl = coverUrl?.takeIf { it.isRemoteMediaUrl() },
         photoUrl = photoUrl?.takeIf { it.isRemoteMediaUrl() },
     )
 

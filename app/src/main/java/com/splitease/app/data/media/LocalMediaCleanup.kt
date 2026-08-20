@@ -31,14 +31,6 @@ object LocalMediaCleanup {
         prunePrefixedMediaFiles(File(context.filesDir, "group_photos"), groupId, keepNewest = 0)
     }
 
-    fun pruneGroupCoverFiles(
-        context: Context,
-        groupId: String,
-        keepNewest: Int,
-    ) {
-        prunePrefixedMediaFiles(File(context.filesDir, "group_covers"), groupId, keepNewest)
-    }
-
     fun pruneGroupPhotoFiles(
         context: Context,
         groupId: String,

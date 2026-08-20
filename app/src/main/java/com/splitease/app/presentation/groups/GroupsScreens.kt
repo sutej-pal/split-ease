@@ -3,7 +3,6 @@ package com.splitease.app.presentation.groups
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,23 +56,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
@@ -81,7 +72,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -104,7 +94,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
-import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
@@ -138,12 +127,7 @@ import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.SeTypeChip
-import java.io.File
 import java.math.BigDecimal
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import androidx.core.graphics.get
-import androidx.core.net.toUri
 
 @Composable
 fun CreateGroupScreen(
@@ -474,9 +458,7 @@ fun GroupDetailScreen(
     val collapseFraction = (-toolbarOffsetPx / collapseRangePx).coerceIn(0f, 1f)
     val bannerHeight =
         lerpDp(expandedBannerHeight, collapsedBannerHeight, collapseFraction)
-    var statusBarDarkIcons by remember(bannerColor) {
-        mutableStateOf(bannerColor.luminance() > 0.5f)
-    }
+    val statusBarDarkIcons = bannerColor.luminance() > 0.5f
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -510,7 +492,6 @@ fun GroupDetailScreen(
                 collapseFraction = collapseFraction,
                 onBack = onBack,
                 onOpenSettings = onOpenSettings,
-                onStatusBarDarkIconsChange = { statusBarDarkIcons = it },
             )
 
             LazyColumn(
@@ -633,132 +614,21 @@ private fun GroupDetailBanner(
     onOpenSettings: () -> Unit,
     bannerHeight: Dp = GroupDetailBannerHeight,
     collapseFraction: Float = 0f,
-    onStatusBarDarkIconsChange: (Boolean) -> Unit = {},
 ) {
-    val context = LocalContext.current
-    val coverUrl = group?.coverUrl
-    val coverStamp = remember(coverUrl) { localMediaContentStamp(coverUrl) }
-    var coverBitmap by remember(coverUrl, coverStamp) { mutableStateOf<ImageBitmap?>(null) }
-    var statusBarDarkIcons by remember(bannerColor) {
-        mutableStateOf(bannerColor.luminance() > 0.5f)
-    }
-    val onStatusBarDarkIconsChangeUpdated by rememberUpdatedState(onStatusBarDarkIconsChange)
-    LaunchedEffect(coverUrl, coverStamp, bannerColor) {
-        val (bitmap, darkIcons) =
-            withContext(Dispatchers.IO) {
-                val decoded =
-                    AvatarImageIO.decodeScaled(
-                        context = context,
-                        photoUrl = coverUrl,
-                        maxSidePx = AvatarImageIO.COVER_PREVIEW_MAX_SIDE_PX,
-                    )
-                if (decoded != null) {
-                    // Status strip is dimmed by [GroupDetailStatusBarDimAlpha]; use effective luminance.
-                    val effective =
-                        decoded.averageTopLuminance() * (1f - GroupDetailStatusBarDimAlpha)
-                    decoded.asImageBitmap() to (effective > 0.5f)
-                } else {
-                    null to (bannerColor.luminance() > 0.5f)
-                }
-            }
-        coverBitmap = bitmap
-        statusBarDarkIcons = darkIcons
-        onStatusBarDarkIconsChangeUpdated(darkIcons)
-    }
-    val statusBarHeight =
-        WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    // Extra room below the status bar so the blur can dissolve (no hard clip line).
-    val statusBlurHeight = (statusBarHeight + 36.dp).coerceAtLeast(48.dp)
-    val statusBlurFade =
-        Brush.verticalGradient(
-            colorStops =
-                arrayOf(
-                    0.0f to Color.White,
-                    0.45f to Color.White.copy(alpha = 0.85f),
-                    0.75f to Color.White.copy(alpha = 0.35f),
-                    1.0f to Color.Transparent,
-                ),
-        )
     val title = group?.name ?: stringResource(R.string.groups_title)
     // Sequential crossfade: large title fully gone before compact title appears.
     val expandedTitleAlpha = (1f - collapseFraction * 2f).coerceIn(0f, 1f)
     val collapsedTitleAlpha = ((collapseFraction - 0.5f) / 0.5f).coerceIn(0f, 1f)
     val expandedTitleBottomPad = lerpDp(28.dp, 8.dp, collapseFraction)
-    // Solid white chips (dark glyphs) on bright regions; translucent light chips on dark covers.
-    val solidChrome = coverBitmap == null || statusBarDarkIcons
 
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .height(bannerHeight)
-                .clipToBounds(),
+                .clipToBounds()
+                .background(bannerColor),
     ) {
-        coverBitmap?.let { bitmap ->
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            )
-            // Bottom-weighted gradient so the white title stays readable.
-            Box(
-                modifier =
-                    Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colorStops =
-                                    arrayOf(
-                                        0.0f to Color.Transparent,
-                                        0.55f to Color.Black.copy(alpha = 0.12f),
-                                        1.0f to Color.Black.copy(alpha = 0.45f),
-                                    ),
-                            ),
-                        ),
-            )
-        } ?: run {
-            Box(
-                modifier =
-                    Modifier
-                        .matchParentSize()
-                        .background(bannerColor),
-            )
-        }
-
-        // Status-bar blur that fades out (masked) — only when a cover photo is showing.
-        coverBitmap?.let { bitmap ->
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(statusBlurHeight)
-                        .align(Alignment.TopCenter)
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(brush = statusBlurFade, blendMode = BlendMode.DstIn)
-                        },
-            ) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
-                    modifier =
-                        Modifier
-                            .matchParentSize()
-                            .blur(radius = 24.dp),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .matchParentSize()
-                            .background(Color.Black.copy(alpha = GroupDetailStatusBarDimAlpha)),
-                )
-            }
-        }
-
         Row(
             modifier =
                 Modifier
@@ -772,7 +642,6 @@ private fun GroupDetailBanner(
                 onClick = onBack,
                 imageVector = Icons.Filled.ChevronLeft,
                 contentDescription = stringResource(R.string.cd_back),
-                solid = solidChrome,
             )
             Text(
                 text = title,
@@ -794,7 +663,6 @@ private fun GroupDetailBanner(
                 onClick = onOpenSettings,
                 imageVector = Icons.Filled.Settings,
                 contentDescription = stringResource(R.string.cd_group_settings),
-                solid = solidChrome,
             )
         }
 
@@ -818,16 +686,13 @@ private fun GroupDetailBanner(
     }
 }
 
-/** Soft drop shadow so the white group title stays readable on busy covers. */
+/** Soft drop shadow so the white group title stays readable on colored banners. */
 private val GroupDetailTitleShadow =
     Shadow(
         color = Color.Black.copy(alpha = 0.45f),
         offset = Offset(0f, 2f),
         blurRadius = 6f,
     )
-
-/** Darkening overlay on the status-bar blur strip (must match the drawn scrim). */
-private const val GroupDetailStatusBarDimAlpha = 0.42f
 
 /** Expanded height for the group detail header banner (includes status-bar inset). */
 private val GroupDetailBannerHeight = 180.dp
@@ -838,81 +703,25 @@ private val GroupDetailBannerToolbarHeight = 56.dp
 /** Minimum shrink distance so the banner always has room to collapse. */
 private val GroupDetailBannerCollapseRange = 96.dp
 
-/**
- * Average relative luminance of the top strip of [this] (where status-bar icons sit).
- * Samples a coarse grid for speed.
- */
-private fun android.graphics.Bitmap.averageTopLuminance(topFraction: Float = 0.2f): Float {
-    val sampleHeight = (height * topFraction).toInt().coerceIn(1, height)
-    val stepX = (width / 32).coerceAtLeast(1)
-    val stepY = (sampleHeight / 8).coerceAtLeast(1)
-    var sum = 0.0
-    var count = 0
-    var y = 0
-    while (y < sampleHeight) {
-        var x = 0
-        while (x < width) {
-            val pixel = this[x, y]
-            val r = ((pixel ushr 16) and 0xFF) / 255.0
-            val g = ((pixel ushr 8) and 0xFF) / 255.0
-            val b = (pixel and 0xFF) / 255.0
-            sum += 0.2126 * r + 0.7152 * g + 0.0722 * b
-            count++
-            x += stepX
-        }
-        y += stepY
-    }
-    return if (count == 0) 0f else (sum / count).toFloat()
-}
-
-/** Local file mtime used to bust Compose bitmap cache when a cover is overwritten. */
-private fun localMediaContentStamp(path: String?): Long {
-    if (path.isNullOrBlank()) return 0L
-    if (
-        path.startsWith("http://", ignoreCase = true) ||
-        path.startsWith("https://", ignoreCase = true) ||
-        path.startsWith("content:", ignoreCase = true)
-    ) {
-        return 0L
-    }
-    val filePath =
-        if (path.startsWith("file:", ignoreCase = true)) {
-            path.toUri().path
-        } else {
-            path
-        } ?: return 0L
-    return File(filePath).takeIf { it.exists() }?.lastModified() ?: 0L
-}
-
 @Composable
 internal fun BannerCircleIconButton(
     onClick: () -> Unit,
     imageVector: ImageVector,
     contentDescription: String,
-    /** Solid white chip (no cover). Translucent when false (photo cover). */
-    solid: Boolean = true,
 ) {
-    val background = if (solid) Color.White else Color.White.copy(alpha = 0.22f)
-    val border = if (solid) Color.Transparent else Color.White.copy(alpha = 0.40f)
-    val iconTint = if (solid) SplitEaseColors.Navy else Color.White
     Box(
         modifier =
             Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(background)
-                .border(
-                    width = 1.dp,
-                    color = border,
-                    shape = CircleShape,
-                )
+                .background(Color.White)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
-            tint = iconTint,
+            tint = SplitEaseColors.Navy,
             modifier = Modifier.size(22.dp),
         )
     }

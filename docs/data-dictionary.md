@@ -56,8 +56,7 @@ Unique index: `(ownerUserId, friendUserId)`.
 | name                | TEXT      | no       | Group display name                                                              |
 | defaultCurrencyCode | TEXT      | no       | ISO 4217 default for new expenses                                               |
 | groupType           | TEXT      | no       | `FRIENDS` / `HOME` / `OTHER` (local UI category; Room v3)                       |
-| photoUrl            | TEXT      | yes      | Local path for list/settings icon (device-local)                                |
-| coverUrl            | TEXT      | yes      | Banner image: https Storage URL when synced, or local path while pending upload |
+| photoUrl            | TEXT      | yes      | List/settings icon: https Storage URL when synced, or local path while pending upload |
 | createdByUserId     | TEXT      | no       | Creator user id                                                                 |
 | remoteId            | TEXT      | yes      | Cloud id when synced                                                            |
 | createdAtEpochMs    | INTEGER   | no       | Created-at UTC millis                                                           |
@@ -183,6 +182,7 @@ Unique index: `(expenseId, userId)`.
 | groups                        | default_currency_code | TEXT      | no       | ISO currency                                                                               |
 | groups                        | created_by_user_id    | UUID      | no       | Creator                                                                                    |
 | groups                        | updated_at_epoch_ms   | BIGINT    | no       | Last update                                                                                |
+| groups                        | photo_url             | TEXT      | yes      | Square list/settings avatar Storage URL                                                    |
 | group_members                 | id                    | UUID (PK) | no       | Membership id                                                                              |
 | group_members                 | group_id              | UUID      | no       | Parent group                                                                               |
 | group_members                 | user_id               | UUID      | no       | Member                                                                                     |

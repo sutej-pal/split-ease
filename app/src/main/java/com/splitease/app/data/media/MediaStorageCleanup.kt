@@ -41,7 +41,7 @@ class MediaStorageCleanup
             LocalMediaCleanup.deleteExpensePhotoDir(context, expenseId)
         }
 
-        /** Deletes group cover/photo, pin-board images, and related local folders. */
+        /** Deletes group photo, pin-board images, leftover cover files, and related local folders. */
         suspend fun purgeGroupMedia(
             group: Group,
             pinBoardContent: String?,
@@ -58,9 +58,6 @@ class MediaStorageCleanup
                         .distinct()
                 pinBoardImageStorage.deleteImages(groupId, imageIds)
             }
-            group.coverUrl?.takeIf { it.isRemoteMediaUrl() }?.let {
-                AvatarImageIO.evictRemoteCache(context, it)
-            }
             group.photoUrl?.takeIf { it.isRemoteMediaUrl() }?.let {
                 AvatarImageIO.evictRemoteCache(context, it)
             }
@@ -69,7 +66,7 @@ class MediaStorageCleanup
             LocalMediaCleanup.deletePinBoardLocalDir(context, groupId)
         }
 
-        /** Clears a single remote URL from the decode cache (e.g. after removing a cover). */
+        /** Clears a single remote URL from the decode cache (e.g. after replacing a photo). */
         fun evictRemoteMediaCache(remoteUrl: String?) {
             val url = remoteUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return
             if (!url.isRemoteMediaUrl()) return

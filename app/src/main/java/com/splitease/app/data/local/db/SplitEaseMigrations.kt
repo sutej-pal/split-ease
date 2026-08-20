@@ -240,6 +240,51 @@ object SplitEaseMigrations {
             }
         }
 
+    /** Drops unused `groups.coverUrl` (header cover photo feature removed). */
+    val MIGRATION_12_13 =
+        object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("PRAGMA foreign_keys=OFF")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `groups_new` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `defaultCurrencyCode` TEXT NOT NULL,
+                        `groupType` TEXT NOT NULL,
+                        `photoUrl` TEXT,
+                        `createdByUserId` TEXT NOT NULL,
+                        `remoteId` TEXT,
+                        `createdAtEpochMs` INTEGER NOT NULL,
+                        `updatedAtEpochMs` INTEGER NOT NULL,
+                        `syncStatus` TEXT NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `groups_new` (
+                        `id`, `name`, `defaultCurrencyCode`, `groupType`, `photoUrl`,
+                        `createdByUserId`, `remoteId`, `createdAtEpochMs`, `updatedAtEpochMs`,
+                        `syncStatus`
+                    )
+                    SELECT
+                        `id`, `name`, `defaultCurrencyCode`, `groupType`, `photoUrl`,
+                        `createdByUserId`, `remoteId`, `createdAtEpochMs`, `updatedAtEpochMs`,
+                        `syncStatus`
+                    FROM `groups`
+                    """.trimIndent(),
+                )
+                db.execSQL("DROP TABLE `groups`")
+                db.execSQL("ALTER TABLE `groups_new` RENAME TO `groups`")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_groups_createdByUserId` ON `groups` (`createdByUserId`)",
+                )
+                db.execSQL("PRAGMA foreign_keys=ON")
+            }
+        }
+
     private val STABLE_DEFAULT_CATEGORIES =
         listOf(
             Triple("cat_general", "General", "category_general"),
@@ -250,7 +295,7 @@ object SplitEaseMigrations {
             Triple("cat_entertainment", "Entertainment", "category_entertainment"),
         )
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 12. */
+    /** All migrations from version 1 through [SplitEaseDatabase] version 13. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
@@ -264,5 +309,6 @@ object SplitEaseMigrations {
             MIGRATION_9_10,
             MIGRATION_10_11,
             MIGRATION_11_12,
+            MIGRATION_12_13,
         )
 }

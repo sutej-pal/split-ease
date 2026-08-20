@@ -1,7 +1,6 @@
 package com.splitease.app.data.remote
 
 import com.splitease.app.data.remote.dto.FriendDto
-import com.splitease.app.data.remote.dto.GroupCoverUrlPatch
 import com.splitease.app.data.remote.dto.GroupDto
 import com.splitease.app.data.remote.dto.GroupMemberDto
 import com.splitease.app.data.remote.dto.GroupPhotoUrlPatch
@@ -131,26 +130,6 @@ class SocialRemoteDataSource
          */
         suspend fun upsertGroup(group: GroupDto) {
             supabase.from("groups").upsert(group)
-        }
-
-        /**
-         * Sets or clears `groups.cover_url` without rewriting other columns via full upsert.
-         */
-        suspend fun patchGroupCoverUrl(
-            groupId: String,
-            coverUrl: String?,
-            updatedAtEpochMs: Long,
-        ) {
-            supabase.from("groups").update(
-                GroupCoverUrlPatch(
-                    coverUrl = coverUrl,
-                    updatedAtEpochMs = updatedAtEpochMs,
-                ),
-            ) {
-                filter {
-                    eq("id", groupId)
-                }
-            }
         }
 
         /**
