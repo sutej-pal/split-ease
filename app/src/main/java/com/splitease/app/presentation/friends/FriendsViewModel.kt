@@ -128,9 +128,8 @@ class FriendsViewModel
         private val _uiState = MutableStateFlow(FriendsUiState())
         val uiState: StateFlow<FriendsUiState> = _uiState.asStateFlow()
 
-        init {
-            refresh()
-        }
+        // Skip auto-refresh on create — Room is already hydrated by Home/SyncWorker.
+        // Explicit pull-to-refresh still calls [refresh].
 
         fun clearMessages() {
             _uiState.update { it.copy(errorMessage = null, infoMessage = null) }

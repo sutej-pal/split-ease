@@ -37,6 +37,35 @@ class RoomPaymentRepository
         override fun observeInvolvingUser(userId: String): Flow<List<Payment>> =
             paymentDao.observeInvolvingUser(userId).map { rows -> rows.map { it.toDomain() } }
 
+        override fun observeRecentInvolvingUser(
+            userId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao.observeRecentInvolvingUser(userId, limit).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentSharedWithUser(
+            userId: String,
+            otherUserId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao
+                .observeRecentSharedWithUser(userId, otherUserId, limit)
+                .map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentNonGroupInvolvingUser(
+            userId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao
+                .observeRecentNonGroupInvolvingUser(userId, limit)
+                .map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentByGroup(
+            groupId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao.observeRecentByGroup(groupId, limit).map { rows -> rows.map { it.toDomain() } }
+
         override suspend fun getById(id: String): Payment? = paymentDao.getById(id)?.toDomain()
 
         override suspend fun upsert(payment: Payment) {

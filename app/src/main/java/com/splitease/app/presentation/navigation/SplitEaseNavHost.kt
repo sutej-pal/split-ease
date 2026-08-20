@@ -1031,7 +1031,13 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable(Routes.ADD_EXPENSE_PICKER) {
+            composable(
+                route = Routes.ADD_EXPENSE_PICKER,
+                enterTransition = { addExpenseSlideEnterTransition() },
+                exitTransition = { fadeOut(animationSpec = tween(ADD_EXPENSE_TRANSITION_MS)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(ADD_EXPENSE_TRANSITION_MS)) },
+                popExitTransition = { addExpenseSlidePopExitTransition() },
+            ) {
                 AddExpensePickerScreen(
                     onBack = { navController.popBackStack() },
                     onPickGroup = { groupId ->
@@ -1069,16 +1075,16 @@ private fun SignedInNavHost(
                     if (shouldExpandAddExpenseFromFab(initialState, targetState)) {
                         addExpenseEnterTransition()
                     } else {
-                        fadeIn(animationSpec = tween(NAV_TRANSITION_MS))
+                        addExpenseSlideEnterTransition()
                     }
                 },
-                exitTransition = { fadeOut(animationSpec = tween(NAV_TRANSITION_MS)) },
-                popEnterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
+                exitTransition = { fadeOut(animationSpec = tween(ADD_EXPENSE_TRANSITION_MS)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(ADD_EXPENSE_TRANSITION_MS)) },
                 popExitTransition = {
                     if (shouldFoldAddExpenseIntoFab(initialState, targetState)) {
                         addExpensePopExitTransition()
                     } else {
-                        fadeOut(animationSpec = tween(NAV_TRANSITION_MS))
+                        addExpenseSlidePopExitTransition()
                     }
                 },
             ) { entry ->

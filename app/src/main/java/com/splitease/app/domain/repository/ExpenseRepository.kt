@@ -83,6 +83,39 @@ interface ExpenseRepository {
     fun observeInvolvingUser(userId: String): Flow<List<Expense>>
 
     /**
+     * Newest [limit] expenses involving [userId] (UI feeds; balances use [observeInvolvingUser]).
+     */
+    fun observeRecentInvolvingUser(
+        userId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
+     * Newest [limit] expenses shared with [otherUserId] (any group).
+     */
+    fun observeRecentSharedWithUser(
+        userId: String,
+        otherUserId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
+     * Newest [limit] non-group expenses involving [userId].
+     */
+    fun observeRecentNonGroupInvolvingUser(
+        userId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
+     * Newest [limit] expenses in [groupId] (ledger UI).
+     */
+    fun observeRecentByGroup(
+        groupId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
      * Loads split rows for many expenses.
      *
      * @param expenseIds Parent expense ids.

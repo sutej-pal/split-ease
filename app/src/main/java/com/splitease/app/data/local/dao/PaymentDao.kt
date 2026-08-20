@@ -58,6 +58,73 @@ interface PaymentDao {
     )
     fun observeInvolvingUser(userId: String): Flow<List<PaymentEntity>>
 
+    /**
+     * Newest [limit] payments involving [userId].
+     */
+    @Query(
+        """
+        SELECT * FROM payments
+        WHERE fromUserId = :userId OR toUserId = :userId
+        ORDER BY paidAtEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentInvolvingUser(
+        userId: String,
+        limit: Int,
+    ): Flow<List<PaymentEntity>>
+
+    /**
+     * Newest [limit] payments between two users (either direction, any group).
+     */
+    @Query(
+        """
+        SELECT * FROM payments
+        WHERE (fromUserId = :userId AND toUserId = :otherUserId)
+           OR (fromUserId = :otherUserId AND toUserId = :userId)
+        ORDER BY paidAtEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentSharedWithUser(
+        userId: String,
+        otherUserId: String,
+        limit: Int,
+    ): Flow<List<PaymentEntity>>
+
+    /**
+     * Newest [limit] non-group payments involving [userId].
+     */
+    @Query(
+        """
+        SELECT * FROM payments
+        WHERE groupId IS NULL
+          AND (fromUserId = :userId OR toUserId = :userId)
+        ORDER BY paidAtEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentNonGroupInvolvingUser(
+        userId: String,
+        limit: Int,
+    ): Flow<List<PaymentEntity>>
+
+    /**
+     * Newest [limit] payments for [groupId].
+     */
+    @Query(
+        """
+        SELECT * FROM payments
+        WHERE groupId = :groupId
+        ORDER BY paidAtEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentByGroup(
+        groupId: String,
+        limit: Int,
+    ): Flow<List<PaymentEntity>>
+
     /** @param id Local UUID. @return Payment or null. */
     @Query("SELECT * FROM payments WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): PaymentEntity?

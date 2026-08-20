@@ -118,9 +118,9 @@ class GroupsViewModel
         private val simplifyFlows = ConcurrentHashMap<String, StateFlow<Boolean>>()
         private val muteGroupFlows = ConcurrentHashMap<String, StateFlow<Boolean>>()
 
-        init {
-            refresh()
-        }
+        // Do not force-sync on every destination-scoped ViewModel create (Create Group,
+        // Group Detail, Settings, Balances). Home / SyncWorker already hydrate Room;
+        // call [refresh] only from explicit pull-to-refresh.
 
         fun clearMessages() {
             _uiState.update { it.copy(errorMessage = null, infoMessage = null) }

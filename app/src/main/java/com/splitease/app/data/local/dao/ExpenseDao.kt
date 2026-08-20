@@ -160,6 +160,89 @@ interface ExpenseDao {
     fun observeInvolvingUser(userId: String): Flow<List<ExpenseEntity>>
 
     /**
+     * Newest [limit] expenses where [userId] is payer or a split participant.
+     *
+     * @param userId User id.
+     * @param limit Max rows (UI feeds).
+     */
+    @Query(
+        """
+        SELECT DISTINCT e.* FROM expenses e
+        LEFT JOIN expense_splits s ON s.expenseId = e.id
+        WHERE e.paidByUserId = :userId OR s.userId = :userId
+        ORDER BY e.expenseDateEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentInvolvingUser(
+        userId: String,
+        limit: Int,
+    ): Flow<List<ExpenseEntity>>
+
+    /**
+     * Newest [limit] expenses where both users are payer or split participants
+     * (any group, including non-group).
+     */
+    @Query(
+        """
+        SELECT DISTINCT e.* FROM expenses e
+        WHERE (
+          e.paidByUserId = :userId OR EXISTS (
+            SELECT 1 FROM expense_splits s
+            WHERE s.expenseId = e.id AND s.userId = :userId
+          )
+        )
+        AND (
+          e.paidByUserId = :otherUserId OR EXISTS (
+            SELECT 1 FROM expense_splits s
+            WHERE s.expenseId = e.id AND s.userId = :otherUserId
+          )
+        )
+        ORDER BY e.expenseDateEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentSharedWithUser(
+        userId: String,
+        otherUserId: String,
+        limit: Int,
+    ): Flow<List<ExpenseEntity>>
+
+    /**
+     * Newest [limit] non-group expenses involving [userId].
+     */
+    @Query(
+        """
+        SELECT DISTINCT e.* FROM expenses e
+        LEFT JOIN expense_splits s ON s.expenseId = e.id
+        WHERE e.groupId IS NULL
+          AND (e.paidByUserId = :userId OR s.userId = :userId)
+        ORDER BY e.expenseDateEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentNonGroupInvolvingUser(
+        userId: String,
+        limit: Int,
+    ): Flow<List<ExpenseEntity>>
+
+    /**
+     * Newest [limit] expenses in [groupId].
+     */
+    @Query(
+        """
+        SELECT * FROM expenses
+        WHERE groupId = :groupId
+        ORDER BY expenseDateEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentByGroup(
+        groupId: String,
+        limit: Int,
+    ): Flow<List<ExpenseEntity>>
+
+    /**
      * Searches expenses by description or notes (case-insensitive).
      *
      * @param query Substring; empty returns newest expenses.

@@ -12,6 +12,7 @@ import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.math.BigDecimal
 import javax.inject.Inject
@@ -165,7 +167,7 @@ class BalanceInteractor
                         ),
                     )
                 }
-            }
+            }.flowOn(Dispatchers.Default)
 
         /**
          * Observes aggregate balance for all non-group (1:1) expenses involving the viewer.
@@ -199,7 +201,7 @@ class BalanceInteractor
                         ),
                     )
                 }
-            }
+            }.flowOn(Dispatchers.Default)
 
         /**
          * Observes overall 1:1 + shared-group nets between viewer and a friend,
@@ -291,7 +293,7 @@ class BalanceInteractor
                         ),
                     )
                 }
-            }
+            }.flowOn(Dispatchers.Default)
 
         private data class FriendBalanceInputs(
             val expenses: List<Expense>,
@@ -440,7 +442,7 @@ class BalanceInteractor
                         ),
                     )
                 }
-            }
+            }.flowOn(Dispatchers.Default)
 
         private suspend fun buildGroupBalance(
             groupId: String,

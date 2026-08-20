@@ -18,6 +18,7 @@ import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
+import com.splitease.app.domain.repository.FeedQueryLimits
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
@@ -25,12 +26,14 @@ import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.presentation.common.MoneyFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -101,8 +104,8 @@ class ActivityViewModel
                     } else {
                         combine(
                             combine(
-                                expenseRepository.observeInvolvingUser(me),
-                                paymentRepository.observeInvolvingUser(me),
+                                expenseRepository.observeRecentInvolvingUser(me),
+                                paymentRepository.observeRecentInvolvingUser(me),
                                 groupRepository.observeGroupsForUser(me),
                                 userRepository.observeUsers(),
                                 friendRepository.observeFriends(me),
@@ -115,7 +118,7 @@ class ActivityViewModel
                                     friends = friends,
                                 )
                             },
-                            activityEventRepository.observeForUser(me),
+                            activityEventRepository.observeRecentForUser(me),
                         ) { sources, events -> sources to events }
                             .flatMapLatest { (sources, events) ->
                                 val expenseIds =
@@ -129,8 +132,8 @@ class ActivityViewModel
                                         sources = sources,
                                         events = events,
                                         splitsByExpenseId = splitsByExpenseId,
-                                    )
-                                }
+                                    ).take(FeedQueryLimits.UI_FEED)
+                                }.flowOn(Dispatchers.Default)
                             }
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -138,7 +141,8 @@ class ActivityViewModel
         init {
             viewModelScope.launch {
                 userId.collect { me ->
-                    if (me != null) {
+                    // Soft sync only when Home/other screens have not hydrated recently.
+                    if (me != null && !syncInteractor.wasSyncedRecently()) {
                         runCatching { syncInteractor.syncForUser(me) }
                     }
                 }

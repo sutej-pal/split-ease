@@ -102,6 +102,7 @@ fun FriendDetailScreen(
 
     LaunchedEffect(friendUserId) {
         title = viewModel.friendLabel(friendUserId)
+        kotlinx.coroutines.yield()
         viewModel.refreshMyExpenses()
     }
 

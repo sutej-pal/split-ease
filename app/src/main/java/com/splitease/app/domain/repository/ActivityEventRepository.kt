@@ -20,4 +20,12 @@ interface ActivityEventRepository {
      * @param userId Signed-in user id.
      */
     fun observeForUser(userId: String): Flow<List<ActivityEvent>>
+
+    /**
+     * Newest [limit] events involving [userId] (Activity tab).
+     */
+    fun observeRecentForUser(
+        userId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<ActivityEvent>>
 }

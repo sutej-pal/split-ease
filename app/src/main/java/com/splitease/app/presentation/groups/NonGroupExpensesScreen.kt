@@ -108,6 +108,7 @@ fun NonGroupExpensesScreen(
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            kotlinx.coroutines.yield()
             expensesViewModel.refreshMyExpenses()
         }
     }
@@ -191,7 +192,7 @@ fun NonGroupExpensesScreen(
                 NonGroupDetailPane.Expenses -> {
                     SePullRefreshBox(
                         isRefreshing = expensesUi.isRefreshing,
-                        onRefresh = { expensesViewModel.refreshMyExpenses() },
+                        onRefresh = { expensesViewModel.refreshMyExpenses(force = true) },
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -232,7 +233,7 @@ fun NonGroupExpensesScreen(
                 NonGroupDetailPane.Balances -> {
                     SePullRefreshBox(
                         isRefreshing = expensesUi.isRefreshing,
-                        onRefresh = { expensesViewModel.refreshMyExpenses() },
+                        onRefresh = { expensesViewModel.refreshMyExpenses(force = true) },
                         modifier =
                             Modifier
                                 .weight(1f)

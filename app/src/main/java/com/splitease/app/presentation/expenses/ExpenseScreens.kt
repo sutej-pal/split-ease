@@ -262,8 +262,6 @@ fun AddExpenseScreen(
         )
     }
 
-    // Hide the form while the members gate applies (or while leaving after dismiss) so the
-    // Dialog window is removed before navigation — avoids the underlay popping first.
     val blockingOnMembersGate =
         groupId != null &&
             !isEdit &&

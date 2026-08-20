@@ -31,6 +31,39 @@ interface PaymentRepository {
     fun observeInvolvingUser(userId: String): Flow<List<Payment>>
 
     /**
+     * Newest [limit] payments involving [userId] (UI feeds).
+     */
+    fun observeRecentInvolvingUser(
+        userId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Payment>>
+
+    /**
+     * Newest [limit] payments between two users (either direction, any group).
+     */
+    fun observeRecentSharedWithUser(
+        userId: String,
+        otherUserId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Payment>>
+
+    /**
+     * Newest [limit] non-group payments involving [userId].
+     */
+    fun observeRecentNonGroupInvolvingUser(
+        userId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Payment>>
+
+    /**
+     * Newest [limit] payments for [groupId] (ledger UI).
+     */
+    fun observeRecentByGroup(
+        groupId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Payment>>
+
+    /**
      * Loads a payment by id.
      *
      * @param id Local UUID.

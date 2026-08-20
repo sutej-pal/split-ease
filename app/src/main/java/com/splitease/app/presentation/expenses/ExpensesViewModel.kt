@@ -41,6 +41,7 @@ import com.splitease.app.domain.spending.GroupSpendingCalculator
 import com.splitease.app.presentation.common.MoneyFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -50,6 +51,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -265,35 +267,37 @@ class ExpensesViewModel
                             flowOf(emptyList())
                         } else {
                             combine(
-                                expenseRepository.observeExpenses(groupId),
-                                paymentRepository.observePayments(groupId),
-                                expenseRepository.observeSplitsByGroup(groupId),
+                                expenseRepository.observeRecentByGroup(groupId),
+                                paymentRepository.observeRecentByGroup(groupId),
                                 userRepository.observeUsers(),
                                 friendRepository.observeFriends(me),
-                            ) { expenses, payments, splitsByExpenseId, users, friends ->
+                            ) { expenses, payments, users, friends ->
                                 LedgerSource(
                                     expenses = expenses,
                                     payments = payments,
-                                    splitsByExpenseId = splitsByExpenseId,
+                                    splitsByExpenseId = emptyMap(),
                                     users = users,
                                     friends = friends,
                                 )
-                            }.combine(categoryRepository.observeCategories()) { source, categories ->
-                                source to categories
-                            }.map { (source, categories) ->
-                                buildLedger(
-                                    expenses = source.expenses,
-                                    payments = source.payments,
-                                    me = me,
-                                    categoryById = categories.associateBy { it.id },
-                                    friendNames =
-                                        source.friends.associateBy(
-                                            { it.friendUserId },
-                                            { it.displayNameSnapshot },
-                                        ),
-                                    userNames = source.users.associateBy({ it.id }, { it.displayName }),
-                                    splitsByExpenseId = source.splitsByExpenseId,
-                                )
+                            }.flatMapLatest { source ->
+                                expenseRepository
+                                    .observeSplitsForExpenses(source.expenses.map { it.id })
+                                    .combine(categoryRepository.observeCategories()) { splits, categories ->
+                                        buildLedger(
+                                            expenses = source.expenses,
+                                            payments = source.payments,
+                                            me = me,
+                                            categoryById = categories.associateBy { it.id },
+                                            friendNames =
+                                                source.friends.associateBy(
+                                                    { it.friendUserId },
+                                                    { it.displayNameSnapshot },
+                                                ),
+                                            userNames =
+                                                source.users.associateBy({ it.id }, { it.displayName }),
+                                            splitsByExpenseId = splits,
+                                        )
+                                    }.flowOn(Dispatchers.Default)
                             }
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -312,8 +316,8 @@ class ExpensesViewModel
                             flowOf(emptyList())
                         } else {
                             combine(
-                                expenseRepository.observeInvolvingUser(me),
-                                paymentRepository.observeInvolvingUser(me),
+                                expenseRepository.observeRecentSharedWithUser(me, friendUserId),
+                                paymentRepository.observeRecentSharedWithUser(me, friendUserId),
                                 userRepository.observeUsers(),
                                 friendRepository.observeFriends(me),
                             ) { expenses, payments, users, friends ->
@@ -327,22 +331,9 @@ class ExpensesViewModel
                                 expenseRepository
                                     .observeSplitsForExpenses(source.expenses.map { it.id })
                                     .combine(categoryRepository.observeCategories()) { allSplits, categories ->
-                                        val sharedExpenses =
-                                            source.expenses.filter { expense ->
-                                                val splits = allSplits[expense.id].orEmpty()
-                                                val participants =
-                                                    (splits.map { it.userId } + expense.paidByUserId)
-                                                        .toSet()
-                                                me in participants && friendUserId in participants
-                                            }
-                                        val sharedPayments =
-                                            source.payments.filter { payment ->
-                                                (payment.fromUserId == me && payment.toUserId == friendUserId) ||
-                                                    (payment.fromUserId == friendUserId && payment.toUserId == me)
-                                            }
                                         buildLedger(
-                                            expenses = sharedExpenses,
-                                            payments = sharedPayments,
+                                            expenses = source.expenses,
+                                            payments = source.payments,
                                             me = me,
                                             categoryById = categories.associateBy { it.id },
                                             friendNames =
@@ -354,7 +345,7 @@ class ExpensesViewModel
                                                 source.users.associateBy({ it.id }, { it.displayName }),
                                             splitsByExpenseId = allSplits,
                                         )
-                                    }
+                                    }.flowOn(Dispatchers.Default)
                             }
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -380,13 +371,13 @@ class ExpensesViewModel
                             flowOf(emptyList())
                         } else {
                             combine(
-                                expenseRepository.observeInvolvingUser(me),
-                                paymentRepository.observeInvolvingUser(me),
+                                expenseRepository.observeRecentNonGroupInvolvingUser(me),
+                                paymentRepository.observeRecentNonGroupInvolvingUser(me),
                                 userRepository.observeUsers(),
                                 friendRepository.observeFriends(me),
                             ) { expenses, payments, users, friends ->
-                                val nonGroupExpenses = expenses.filter { it.groupId == null }
-                                val nonGroupPayments = payments.filter { it.groupId == null }
+                                val nonGroupExpenses = expenses
+                                val nonGroupPayments = payments
                                 LedgerSource(
                                     expenses = nonGroupExpenses,
                                     payments = nonGroupPayments,
@@ -412,7 +403,7 @@ class ExpensesViewModel
                                                 source.users.associateBy({ it.id }, { it.displayName }),
                                             splitsByExpenseId = splits,
                                         )
-                                    }
+                                    }.flowOn(Dispatchers.Default)
                             }
                         }
                     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -542,15 +533,17 @@ class ExpensesViewModel
             }
 
         /**
-         * Flushes local PENDING writes, pulls cloud data for the signed-in user, then
-         * re-fetches expenses for [groupId] so the open group shows other members' changes.
+         * Pushes local PENDING writes, then re-fetches expenses/payments for [groupId].
+         *
+         * Avoids a full-user [SyncInteractor.syncForUser] on every group open — that was
+         * stacking with destination ViewModel init and freezing navigation.
          *
          * @param groupId Group being viewed.
          */
         fun refreshGroupFromCloud(groupId: String) {
             viewModelScope.launch {
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-                runCatching { syncInteractor.syncForUser(userId.value) }
+                runCatching { syncInteractor.flushPending() }
                 val refreshError =
                     runCatching {
                         expenseInteractor.refreshGroupExpenses(groupId)
@@ -578,19 +571,20 @@ class ExpensesViewModel
             }
         }
 
-        fun refreshMyExpenses() {
+        /**
+         * Soft full-user sync (respects recent-sync gap) unless [force] is true.
+         * Prefer [force] only for explicit pull-to-refresh.
+         */
+        fun refreshMyExpenses(force: Boolean = false) {
             val id = userId.value ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-                runCatching { syncInteractor.syncForUser(id, force = true) }
-                runCatching {
-                    expenseInteractor.refreshExpensesForUser(id)
-                    paymentInteractor.refreshPaymentsForUser(id)
-                }.onFailure { err ->
-                    _uiState.update {
-                        it.copy(errorMessage = userFacingRefreshError(err))
+                runCatching { syncInteractor.syncForUser(id, force = force) }
+                    .onFailure { err ->
+                        _uiState.update {
+                            it.copy(errorMessage = userFacingRefreshError(err))
+                        }
                     }
-                }
                 _uiState.update { it.copy(isRefreshing = false) }
             }
         }

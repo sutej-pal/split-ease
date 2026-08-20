@@ -111,18 +111,22 @@ fun GroupsHomeScreen(
 
     val balances = ui.balances
     val groupRows =
-        ui.allGroups.map { group ->
-            balances?.groupBalances?.firstOrNull { it.groupId == group.id }
-                ?: GroupBalanceUi(
-                    groupId = group.id,
-                    groupName = group.name,
-                    myNetByCurrency = emptyMap(),
-                    memberNetsByCurrency = emptyMap(),
-                    simplifiedDebts = emptyList(),
-                )
+        remember(ui.allGroups, balances) {
+            ui.allGroups.map { group ->
+                balances?.groupBalances?.firstOrNull { it.groupId == group.id }
+                    ?: GroupBalanceUi(
+                        groupId = group.id,
+                        groupName = group.name,
+                        myNetByCurrency = emptyMap(),
+                        memberNetsByCurrency = emptyMap(),
+                        simplifiedDebts = emptyList(),
+                    )
+            }
         }
-    val settled = groupRows.filter { it.myNetByCurrency.isEmpty() }
-    val filteredGroups = groupRows.filter { it.matches(listFilter) }
+    val settled =
+        remember(groupRows) { groupRows.filter { it.myNetByCurrency.isEmpty() } }
+    val filteredGroups =
+        remember(groupRows, listFilter) { groupRows.filter { it.matches(listFilter) } }
     val outstandingWithSettledHidden =
         listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isNotEmpty()
     // If outstanding filter matches nothing, fall back to all groups (same as before).

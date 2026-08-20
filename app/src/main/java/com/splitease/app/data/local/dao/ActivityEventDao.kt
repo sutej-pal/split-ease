@@ -34,4 +34,22 @@ interface ActivityEventDao {
         userId: String,
         userIdToken: String,
     ): Flow<List<ActivityEventEntity>>
+
+    /**
+     * Newest [limit] events for [userId] (actor or involved participant).
+     */
+    @Query(
+        """
+        SELECT * FROM activity_events
+        WHERE actorUserId = :userId
+           OR involvedUserIds LIKE '%' || :userIdToken || '%'
+        ORDER BY sortEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentForUser(
+        userId: String,
+        userIdToken: String,
+        limit: Int,
+    ): Flow<List<ActivityEventEntity>>
 }

@@ -120,6 +120,7 @@ fun GroupBalancesScreen(
 
     LaunchedEffect(groupId, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            kotlinx.coroutines.yield()
             expensesViewModel.refreshGroupFromCloud(groupId)
         }
     }

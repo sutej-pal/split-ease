@@ -368,10 +368,11 @@ fun GroupDetailScreen(
 
     LaunchedEffect(groupId, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // Flush local writes + pull remote so other members' expense/payment edits show up.
+            // Let the nav transition paint before network / Realtime work.
+            kotlinx.coroutines.yield()
+            // Group-scoped pull only (no full-user sync) + profiles + live updates.
             expensesViewModel.refreshGroupFromCloud(groupId)
             viewModel.refreshMemberProfiles(groupId)
-            // Keep Room fresh while this screen is visible (Supabase Realtime).
             expensesViewModel.observeGroupLiveUpdates(groupId)
         }
     }

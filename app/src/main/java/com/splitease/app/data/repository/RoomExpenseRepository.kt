@@ -64,6 +64,35 @@ class RoomExpenseRepository
         override fun observeInvolvingUser(userId: String): Flow<List<Expense>> =
             expenseDao.observeInvolvingUser(userId).map { rows -> rows.map { it.toDomain() } }
 
+        override fun observeRecentInvolvingUser(
+            userId: String,
+            limit: Int,
+        ): Flow<List<Expense>> =
+            expenseDao.observeRecentInvolvingUser(userId, limit).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentSharedWithUser(
+            userId: String,
+            otherUserId: String,
+            limit: Int,
+        ): Flow<List<Expense>> =
+            expenseDao
+                .observeRecentSharedWithUser(userId, otherUserId, limit)
+                .map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentNonGroupInvolvingUser(
+            userId: String,
+            limit: Int,
+        ): Flow<List<Expense>> =
+            expenseDao
+                .observeRecentNonGroupInvolvingUser(userId, limit)
+                .map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentByGroup(
+            groupId: String,
+            limit: Int,
+        ): Flow<List<Expense>> =
+            expenseDao.observeRecentByGroup(groupId, limit).map { rows -> rows.map { it.toDomain() } }
+
         override suspend fun getSplitsForExpenses(expenseIds: List<String>): Map<String, List<ExpenseSplit>> {
             if (expenseIds.isEmpty()) return emptyMap()
             val grouped = linkedMapOf<String, MutableList<ExpenseSplit>>()

@@ -28,6 +28,17 @@ class RoomActivityEventRepository
                 .observeForUser(userId = userId, userIdToken = ",$userId,")
                 .map { rows -> rows.map { it.toDomain() } }
 
+        override fun observeRecentForUser(
+            userId: String,
+            limit: Int,
+        ): Flow<List<ActivityEvent>> =
+            activityEventDao
+                .observeRecentForUser(
+                    userId = userId,
+                    userIdToken = ",$userId,",
+                    limit = limit,
+                ).map { rows -> rows.map { it.toDomain() } }
+
         private fun ActivityEvent.toEntity(): ActivityEventEntity =
             ActivityEventEntity(
                 id = id,
