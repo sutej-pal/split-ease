@@ -24,9 +24,13 @@ private val FabTransformOrigin = TransformOrigin(0.86f, 0.93f)
 /** Scale of the screen when it matches the FAB — not 0, or it vanishes into the corner. */
 private const val FAB_SCALE = 0.14f
 
-/** True when the route is add-expense in create mode (not editing). */
+/**
+ * True when [entry] is the add-expense form in create mode (not editing).
+ * Uses the `expenseId` nav arg instead of [NavBackStackEntry.destination.route]
+ * because resolved routes omit the query-parameter template from [Routes.ADD_EXPENSE].
+ */
 fun isCreatingExpense(entry: NavBackStackEntry): Boolean =
-    entry.destination.route == Routes.ADD_EXPENSE &&
+    entry.arguments?.containsKey("expenseId") == true &&
         entry.arguments?.getString("expenseId").orEmpty().isBlank()
 
 fun NavBackStackEntry.isAddExpensePicker(): Boolean =
