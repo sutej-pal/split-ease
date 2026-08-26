@@ -144,7 +144,6 @@ fun ResetPasswordOtpScreen(
             enabled = !formState.isLoading && !otpReady,
             isError = otpFieldError,
             length = AuthViewModel.SIGNUP_OTP_LENGTH,
-            horizontalAlignment = Alignment.Start,
         )
         if (showValidation && otpIncomplete) {
             Spacer(modifier = Modifier.height(8.dp))

@@ -9,7 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,16 +45,18 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SePreview
 import kotlinx.coroutines.delay
 
 private val OtpBoxShape = RoundedCornerShape(12.dp)
-private val OtpBoxWidth = 48.dp
 private val OtpBoxHeight = 56.dp
+private val OtpBoxMaxWidth = 56.dp
 
 /**
  * Six-box numeric OTP entry with auto-advance, backspace navigation, and paste support.
@@ -70,7 +73,6 @@ fun SegmentedOtpInput(
     length: Int = 6,
     enabled: Boolean = true,
     isError: Boolean = false,
-    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
 ) {
     val digits = remember(value, length) { normalizeOtp(value, length) }
     val focusRequesters = remember(length) { List(length) { FocusRequester() } }
@@ -157,7 +159,7 @@ fun SegmentedOtpInput(
             modifier
                 .fillMaxWidth()
                 .offset { IntOffset(shakeOffset.value.dp.roundToPx(), 0) },
-        horizontalArrangement = Arrangement.spacedBy(8.dp, horizontalAlignment),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (index in 0 until length) {
@@ -169,6 +171,7 @@ fun SegmentedOtpInput(
                 isFilled = char.isNotEmpty(),
                 isError = isError,
                 focusRequester = focusRequesters[index],
+                modifier = Modifier.weight(1f, fill = false).widthIn(max = OtpBoxMaxWidth),
                 contentDescription =
                     stringResource(R.string.cd_otp_digit, index + 1, length),
                 onFocusChanged = { focused ->
@@ -198,6 +201,7 @@ private fun OtpDigitBox(
     onFocusChanged: (Boolean) -> Unit,
     onBackspaceWhenEmpty: () -> Unit,
     onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var fieldValue by remember(value) {
         mutableStateOf(TextFieldValue(value, TextRange(value.length)))
@@ -219,8 +223,8 @@ private fun OtpDigitBox(
 
     Box(
         modifier =
-            Modifier
-                .width(OtpBoxWidth)
+            modifier
+                .fillMaxWidth()
                 .height(OtpBoxHeight)
                 .clip(OtpBoxShape)
                 .border(borderWidth, borderColor, OtpBoxShape)
@@ -285,3 +289,18 @@ private fun OtpDigitBox(
 
 private fun normalizeOtp(raw: String, length: Int): String =
     raw.filter { it.isDigit() }.take(length)
+
+@Preview(showBackground = true)
+@Composable
+private fun SegmentedOtpInputPreview() {
+    var code by remember { mutableStateOf("123") }
+    SePreview {
+        Box(modifier = Modifier.padding(16.dp)) {
+            SegmentedOtpInput(
+                value = code,
+                onValueChange = { code = it },
+                onComplete = {},
+            )
+        }
+    }
+}

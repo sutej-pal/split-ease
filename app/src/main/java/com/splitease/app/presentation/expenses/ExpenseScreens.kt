@@ -1020,7 +1020,7 @@ private fun ExpenseUnderlineField(
                 leadingLabel != null ->
                     Text(
                         text = leadingLabel,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = SplitEaseColors.Navy,
                     )
@@ -1029,6 +1029,7 @@ private fun ExpenseUnderlineField(
                         imageVector = icon,
                         contentDescription = iconContentDescription,
                         tint = SplitEaseColors.NavyMuted,
+                        modifier = Modifier.size(26.dp),
                     )
             }
         }

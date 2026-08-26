@@ -89,7 +89,6 @@ fun VerifyEmailScreen(
             enabled = !formState.isLoading,
             isError = otpIsError,
             length = AuthViewModel.SIGNUP_OTP_LENGTH,
-            horizontalAlignment = Alignment.Start,
         )
         if (showValidation && otpIncomplete) {
             Spacer(modifier = Modifier.height(8.dp))
