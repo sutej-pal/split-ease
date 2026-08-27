@@ -6,22 +6,25 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,9 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -42,11 +45,11 @@ import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeOutlinedButton
+import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePreview
-import com.splitease.app.presentation.ui.SePrimaryButton
-import com.splitease.app.presentation.ui.SeScreen
-import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 
 @Composable
@@ -79,46 +82,94 @@ fun AccountScreen(
         }
     }
 
-    SeScreen(
-        title = stringResource(R.string.nav_account),
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            SePageHeader(title = stringResource(R.string.nav_account))
+        },
     ) { padding ->
         Column(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(padding.values)
+                    .padding(padding)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 8.dp),
         ) {
-            AccountProfileHeader(
-                displayName = profile.displayName.ifBlank { stringResource(R.string.account_name_fallback) },
-                email = profile.email,
-                photoUrl = profile.photoUrl,
-                isBusy = settings.isSaving,
-                onEditProfile = onOpenAccountProfile,
-                onChangePhoto = photoPicker::launch,
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            SeSectionHeader(text = stringResource(R.string.settings_title))
-            SeListRow(
-                title = stringResource(R.string.settings_title),
-                subtitle = stringResource(R.string.settings_hub_subtitle),
-                onClick = onOpenSettings,
-            )
-            SeListRow(
-                title = stringResource(R.string.spending_title),
-                subtitle = stringResource(R.string.spending_hub_subtitle),
-                onClick = onOpenSpending,
-            )
-            SeListRow(
-                title = stringResource(R.string.import_title),
-                subtitle = stringResource(R.string.import_hub_subtitle),
-                onClick = onOpenImport,
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            SePrimaryButton(text = stringResource(R.string.action_sign_out), onClick = onSignOut)
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                AccountProfileHeader(
+                    displayName = profile.displayName.ifBlank { stringResource(R.string.account_name_fallback) },
+                    email = profile.email,
+                    photoUrl = profile.photoUrl,
+                    isBusy = settings.isSaving,
+                    onEditProfile = onOpenAccountProfile,
+                    onChangePhoto = photoPicker::launch,
+                )
+            }
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(SplitEaseColors.Surface)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                AccountHubRow(
+                    title = stringResource(R.string.settings_title),
+                    subtitle = stringResource(R.string.settings_hub_subtitle),
+                    icon = Icons.Filled.Settings,
+                    tint = SplitEaseColors.Primary,
+                    onClick = onOpenSettings,
+                )
+                AccountHubRow(
+                    title = stringResource(R.string.spending_title),
+                    subtitle = stringResource(R.string.spending_hub_subtitle),
+                    icon = Icons.AutoMirrored.Filled.ShowChart,
+                    tint = SplitEaseColors.OwedToYou,
+                    onClick = onOpenSpending,
+                )
+                AccountHubRow(
+                    title = stringResource(R.string.import_title),
+                    subtitle = stringResource(R.string.import_hub_subtitle),
+                    icon = Icons.Filled.Download,
+                    tint = SplitEaseColors.Accent,
+                    onClick = onOpenImport,
+                    showDivider = false,
+                )
+            }
+            Spacer(modifier = Modifier.height(28.dp))
+            SeOutlinedButton(text = stringResource(R.string.action_sign_out), onClick = onSignOut)
         }
     }
+}
+
+@Composable
+private fun AccountHubRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    tint: Color,
+    onClick: () -> Unit,
+    showDivider: Boolean = true,
+) {
+    SeListRow(
+        title = title,
+        subtitle = subtitle,
+        onClick = onClick,
+        showDivider = showDivider,
+        leading = { SeIconTile(icon = icon, tint = tint, size = 44) },
+        trailing = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = SplitEaseColors.NavyMuted,
+                modifier = Modifier.size(22.dp),
+            )
+        },
+    )
 }
 
 @Composable
@@ -130,31 +181,31 @@ private fun AccountProfileHeader(
     onEditProfile: () -> Unit,
     onChangePhoto: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier =
                 Modifier
-                    .size(72.dp)
+                    .size(96.dp)
                     .clickable(onClick = onChangePhoto),
         ) {
             SeAvatarBadge(
                 name = displayName,
                 photoUrl = photoUrl,
-                size = 72.dp,
-                borderWidth = 1.dp,
-                borderColor = SplitEaseColors.OutlineStrong,
+                size = 96.dp,
+                borderWidth = 3.dp,
+                borderColor = SplitEaseColors.PrimarySoft,
             )
             Box(
                 modifier =
                     Modifier
                         .align(Alignment.BottomEnd)
-                        .size(26.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White)
-                        .border(1.dp, SplitEaseColors.Outline, RoundedCornerShape(8.dp)),
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(SplitEaseColors.Surface)
+                        .border(1.dp, SplitEaseColors.Outline, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (isBusy) {
@@ -173,22 +224,19 @@ private fun AccountProfileHeader(
                 }
             }
         }
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = displayName,
+            style = MaterialTheme.typography.headlineSmall,
+            color = SplitEaseColors.Navy,
+        )
+        if (email.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = displayName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = SplitEaseColors.Navy,
+                text = email,
+                style = MaterialTheme.typography.bodyMedium,
+                color = SplitEaseColors.NavyMuted,
             )
-            if (email.isNotBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
-                )
-            }
         }
         SeTextButton(
             text = stringResource(R.string.action_edit),

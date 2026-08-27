@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -314,6 +315,17 @@ private fun GroupType.tint() =
         GroupType.OTHER -> SplitEaseColors.IconOther
     }
 
+@Composable
+private fun GroupType.bannerColor(): Color {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    if (dark) return lerp(tint(), MaterialTheme.colorScheme.surface, 0.2f)
+    return when (this) {
+        GroupType.FRIENDS -> SplitEaseColors.BannerFriends
+        GroupType.HOME -> SplitEaseColors.BannerHome
+        GroupType.OTHER -> SplitEaseColors.BannerOther
+    }
+}
+
 private fun GroupType.labelRes() =
     when (this) {
         GroupType.FRIENDS -> R.string.group_type_friends
@@ -364,7 +376,7 @@ fun GroupDetailScreen(
             (nets.isEmpty() || nets.values.all { it.compareTo(BigDecimal.ZERO) == 0 })
     var showSettledExpenses by rememberSaveable(groupId) { mutableStateOf(value = false) }
     val lifecycleOwner = LocalLifecycleOwner.current
-    val bannerColor = lerp((group?.groupType ?: GroupType.OTHER).tint(), SplitEaseColors.Navy, 0.28f)
+    val bannerColor = (group?.groupType ?: GroupType.OTHER).bannerColor()
 
     LaunchedEffect(groupId, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -617,6 +629,10 @@ private fun GroupDetailBanner(
     collapseFraction: Float = 0f,
 ) {
     val title = group?.name ?: stringResource(R.string.groups_title)
+    val onBanner =
+        if (bannerColor.luminance() > 0.5f) SplitEaseColors.Navy else Color.White
+    val titleShadow =
+        if (bannerColor.luminance() > 0.5f) null else GroupDetailTitleShadow
     // Sequential crossfade: large title fully gone before compact title appears.
     val expandedTitleAlpha = (1f - collapseFraction * 2f).coerceIn(0f, 1f)
     val collapsedTitleAlpha = ((collapseFraction - 0.5f) / 0.5f).coerceIn(0f, 1f)
@@ -630,6 +646,24 @@ private fun GroupDetailBanner(
                 .clipToBounds()
                 .background(bannerColor),
     ) {
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 36.dp, y = (-28).dp)
+                    .size(140.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.18f)),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-40).dp, y = 36.dp)
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.14f)),
+        )
         Row(
             modifier =
                 Modifier
@@ -648,10 +682,10 @@ private fun GroupDetailBanner(
                 text = title,
                 style =
                     MaterialTheme.typography.titleLarge.copy(
-                        shadow = GroupDetailTitleShadow,
+                        shadow = titleShadow,
                     ),
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = onBanner,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier =
@@ -671,10 +705,10 @@ private fun GroupDetailBanner(
             text = title,
             style =
                 MaterialTheme.typography.headlineMedium.copy(
-                    shadow = GroupDetailTitleShadow,
+                    shadow = titleShadow,
                 ),
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = onBanner,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier =
@@ -716,6 +750,7 @@ internal fun BannerCircleIconButton(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.White)
+                .border(1.dp, SplitEaseColors.Outline, CircleShape)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -1081,7 +1116,7 @@ private fun GroupExpenseListPreview() {
             createdAtEpochMs = 0L,
             updatedAtEpochMs = 0L,
         )
-    val bannerColor = lerp(sampleGroup.groupType.tint(), SplitEaseColors.Navy, 0.28f)
+    val bannerColor = sampleGroup.groupType.bannerColor()
     val sampleBalance =
         GroupBalanceUi(
             groupId = sampleGroup.id,

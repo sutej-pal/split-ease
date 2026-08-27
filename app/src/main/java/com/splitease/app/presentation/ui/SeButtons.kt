@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.splitease.app.presentation.theme.SplitEaseColors
 
-private val ButtonShape = RoundedCornerShape(12.dp)
+private val ButtonShape = RoundedCornerShape(16.dp)
 private val FabShape = RoundedCornerShape(28.dp)
 
 @Composable

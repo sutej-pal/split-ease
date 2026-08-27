@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.activity
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -21,15 +23,8 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -50,13 +46,16 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeActionChip
+import com.splitease.app.presentation.ui.SeActionChipRow
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeIconTileWithAvatar
 import com.splitease.app.presentation.ui.SeLayout
+import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePreview
-import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.seDetailHorizontal
 
@@ -89,29 +88,26 @@ fun ActivityScreen(
             stringResource(R.string.activity_empty_filtered)
         }
 
-    SeScreen(
-        title = stringResource(R.string.nav_activity),
-        actions = {
-            ActivityFilterButton(
-                selectedFilter = listFilter,
-                onFilterSelected = { listFilter = it },
-            )
-            IconButton(
-                onClick = {
-                    if (showSearch) {
-                        searchVisible = false
-                        query = ""
-                    } else {
-                        searchVisible = true
-                    }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            SePageHeader(
+                title = stringResource(R.string.nav_activity),
+                actions = {
+                    SeSoftIconButton(
+                        onClick = {
+                            if (showSearch) {
+                                searchVisible = false
+                                query = ""
+                            } else {
+                                searchVisible = true
+                            }
+                        },
+                        imageVector = if (showSearch) Icons.Filled.Close else Icons.Filled.Search,
+                        contentDescription = stringResource(R.string.cd_search),
+                    )
                 },
-            ) {
-                Icon(
-                    imageVector = if (showSearch) Icons.Filled.Close else Icons.Filled.Search,
-                    contentDescription = stringResource(R.string.cd_search),
-                    tint = SplitEaseColors.Navy,
-                )
-            }
+            )
         },
         floatingActionButton = {
             SeExtendedFab(
@@ -120,13 +116,22 @@ fun ActivityScreen(
                 icon = Icons.Filled.Receipt,
             )
         },
-        content = { padding ->
+    ) { padding ->
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values),
+                        .padding(padding),
             ) {
+                SeActionChipRow {
+                    ActivityListFilter.entries.forEach { option ->
+                        SeActionChip(
+                            label = stringResource(option.chipLabelRes),
+                            selected = listFilter == option,
+                            onClick = { listFilter = option },
+                        )
+                    }
+                }
                 if (showSearch) {
                     SeTextField(
                         value = query,
@@ -141,6 +146,7 @@ fun ActivityScreen(
                 if (visibleItems.isEmpty()) {
                     SeEmptyState(
                         message = emptyMessage,
+                        icon = Icons.Filled.Receipt,
                         modifier = Modifier.seDetailHorizontal(),
                     )
                 } else {
@@ -159,66 +165,16 @@ fun ActivityScreen(
                     }
                 }
             }
-        },
-    )
-}
-
-@Composable
-private fun ActivityFilterButton(
-    selectedFilter: ActivityListFilter,
-    onFilterSelected: (ActivityListFilter) -> Unit,
-) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { menuExpanded = true }) {
-            Icon(
-                imageVector = Icons.Filled.Tune,
-                contentDescription = stringResource(R.string.cd_filter_activity),
-                tint =
-                    if (selectedFilter == ActivityListFilter.ALL) {
-                        SplitEaseColors.Navy
-                    } else {
-                        SplitEaseColors.Primary
-                    },
-            )
-        }
-        DropdownMenu(
-            expanded = menuExpanded,
-            onDismissRequest = { menuExpanded = false },
-        ) {
-            ActivityListFilter.entries.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(text = stringResource(option.labelRes)) },
-                    onClick = {
-                        onFilterSelected(option)
-                        menuExpanded = false
-                    },
-                    leadingIcon = {
-                        RadioButton(
-                            selected = selectedFilter == option,
-                            onClick = {
-                                onFilterSelected(option)
-                                menuExpanded = false
-                            },
-                            colors =
-                                RadioButtonDefaults.colors(
-                                    selectedColor = SplitEaseColors.Primary,
-                                ),
-                        )
-                    },
-                )
-            }
-        }
     }
 }
 
-private val ActivityListFilter.labelRes: Int
+private val ActivityListFilter.chipLabelRes: Int
     get() =
         when (this) {
-            ActivityListFilter.ALL -> R.string.activity_filter_all
-            ActivityListFilter.EXPENSE -> R.string.activity_filter_expense
-            ActivityListFilter.SETTLEMENTS -> R.string.activity_filter_settlements
-            ActivityListFilter.GROUPS -> R.string.activity_filter_groups
+            ActivityListFilter.ALL -> R.string.filter_all
+            ActivityListFilter.EXPENSE -> R.string.activity_filter_chip_expense
+            ActivityListFilter.SETTLEMENTS -> R.string.activity_filter_chip_settlements
+            ActivityListFilter.GROUPS -> R.string.activity_filter_chip_groups
         }
 
 private fun ActivityUiItem.matches(filter: ActivityListFilter): Boolean =
@@ -260,71 +216,81 @@ private fun ActivityRow(
         item.kind == ActivityKind.EXPENSE ||
             item.kind == ActivityKind.EXPENSE_UPDATED ||
             item.kind == ActivityKind.EXPENSE_DELETED
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
+    val railColor =
+        when (item.kind) {
+            ActivityKind.PAYMENT -> SplitEaseColors.OwedToYou
+            ActivityKind.EXPENSE_DELETED -> SplitEaseColors.YouOwe
+            ActivityKind.GROUP_CREATED -> SplitEaseColors.IconFriends
+            else -> SplitEaseColors.Primary
+        }
+    val amountTone =
+        when (item.balanceTone) {
+            ActivityBalanceTone.POSITIVE -> SplitEaseColors.OwedToYou
+            ActivityBalanceTone.NEGATIVE -> SplitEaseColors.YouOwe
+            null -> SplitEaseColors.Navy
+        }
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                    .seDetailHorizontal()
-                    .padding(vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (isExpenseKind && !item.actorDisplayName.isNullOrBlank()) {
-                SeIconTileWithAvatar(
-                    icon = icon,
-                    tint = tint,
-                    actorName = item.actorDisplayName,
-                    actorPhotoUrl = item.actorPhotoUrl,
-                )
-            } else {
-                SeIconTile(icon = icon, tint = tint, size = 44)
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
+                    .width(4.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(railColor),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        if (isExpenseKind && !item.actorDisplayName.isNullOrBlank()) {
+            SeIconTileWithAvatar(
+                icon = icon,
+                tint = tint,
+                actorName = item.actorDisplayName,
+                actorPhotoUrl = item.actorPhotoUrl,
+            )
+        } else {
+            SeIconTile(icon = icon, tint = tint, size = 44)
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = activityTitleText(item.title, item.expenseTitle),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            if (!item.balanceLabel.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = activityTitleText(item.title, item.expenseTitle),
-                    style =
-                        MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Normal,
-                        ),
-                    color = MaterialTheme.colorScheme.onBackground,
+                    text = item.balanceLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = amountTone,
                 )
-                if (!item.balanceLabel.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = item.balanceLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color =
-                            when (item.balanceTone) {
-                                ActivityBalanceTone.POSITIVE -> SplitEaseColors.OwedToYou
-                                ActivityBalanceTone.NEGATIVE -> SplitEaseColors.YouOwe
-                                null -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
-                }
-                if (item.subtitle.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = item.subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
-            if (item.amountLabel.isNotBlank()) {
-                Spacer(modifier = Modifier.width(8.dp))
+            if (item.subtitle.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = item.amountLabel,
-                    color = SplitEaseColors.Navy,
+                    text = item.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        HorizontalDivider(
-            modifier = Modifier.seDetailHorizontal(),
-            color = SplitEaseColors.Outline,
-        )
+        if (item.amountLabel.isNotBlank()) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = item.amountLabel,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = amountTone,
+            )
+        }
     }
 }
 

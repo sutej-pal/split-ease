@@ -10,8 +10,6 @@ import androidx.compose.ui.graphics.Color
  *
  * Theme-dependent roles resolve from [MaterialTheme.colorScheme] so light and dark
  * stay readable. Canonical brand hex values live in [Color.kt].
- *
- * Semantic money colors ([YouOwe], [OwedToYou]) are **PLACEHOLDERS** — see TODOs.
  */
 object SplitEaseColors {
     // Brand / surface roles (theme-aware)
@@ -77,11 +75,10 @@ object SplitEaseColors {
     val OutlineStrong: Color
         get() = MaterialTheme.colorScheme.outline
 
-    // TODO(design): Confirm semantic balance colors before shipping.
-    /** PLACEHOLDER — "you owe". */
+    /** "You owe". */
     val YouOwe = ErrorPlaceholder
 
-    /** PLACEHOLDER — "you're owed" / positive. */
+    /** "You're owed" / positive. */
     val OwedToYou = PositivePlaceholder
 
     @get:Composable
@@ -89,16 +86,20 @@ object SplitEaseColors {
     val Settled: Color
         get() = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // Group type tiles (tint accents; may revisit with brand)
+    // Group type tiles (glyph color; [SeIconTile] washes these into a pastel fill)
     val IconFriends = IndigoLight
     val IconHome = AmberLight
-    val IconOther = IndigoDark
+    val IconOther = Color(0xFF6D68A0)
+
+    // Light detail-header banners
+    val BannerFriends = BannerFriendsLight
+    val BannerHome = BannerHomeLight
+    val BannerOther = BannerOtherLight
 
     // Dark shell aliases (fixed dark tokens for forced-dark chrome)
     val ShellBackground = BackgroundDark
     val ShellSurface = SurfaceDark
 
-    // Explicit positive pair for callers that need containers
-    /** PLACEHOLDER — positive fill. Confirm before shipping. */
+    /** Positive fill. */
     val Positive = PositivePlaceholder
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -40,10 +41,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -63,19 +66,20 @@ fun SeIconTile(
     modifier: Modifier = Modifier,
     size: Int = 56,
 ) {
+    val fillAlpha = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) 0.16f else 0.28f
     Box(
         modifier =
             modifier
                 .size(size.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(tint),
+                .clip(RoundedCornerShape(16.dp))
+                .background(tint.copy(alpha = fillAlpha)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size((size * 0.5f).dp),
+            tint = tint,
+            modifier = Modifier.size((size * 0.48f).dp),
         )
     }
 }
@@ -252,6 +256,115 @@ private fun localAvatarContentStamp(photoUrl: String?): Long {
     return File(path).takeIf { it.isFile }?.lastModified() ?: 0L
 }
 
+/**
+ * White/surface card used on tinted canvases (home, friends, activity).
+ */
+@Composable
+fun SeInsetCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(SeLayout.cardRadius)
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(SplitEaseColors.Surface)
+                .border(1.dp, SplitEaseColors.Outline, shape)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        content = content,
+    )
+}
+
+/**
+ * Soft indigo wash for overall-balance headlines.
+ */
+@Composable
+fun SeSummaryCard(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(SeLayout.cardRadius)
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(SplitEaseColors.PrimarySoft)
+                .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+/**
+ * Amount-first list row: leading tile, name + caption, large trailing balance.
+ * Used on Groups / Friends instead of bordered cards.
+ */
+@Composable
+fun SeLedgerRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    leading: @Composable (() -> Unit)? = null,
+    amount: String? = null,
+    amountTone: SeMoneyTone = SeMoneyTone.NEUTRAL,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    extra: @Composable ColumnScope.() -> Unit = {},
+) {
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = SeLayout.detailHorizontal, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (leading != null) {
+                leading()
+                Spacer(modifier = Modifier.width(14.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subtitle != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (trailing != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                trailing()
+            } else if (!amount.isNullOrBlank()) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = amount,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = amountTone.color(),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
+        extra()
+    }
+}
+
 @Composable
 fun SeListRow(
     title: String,
@@ -320,21 +433,44 @@ fun SeSectionHeader(
 fun SeEmptyState(
     message: String,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.Start,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = 48.dp, horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        if (icon != null) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(88.dp)
+                        .clip(CircleShape)
+                        .background(SplitEaseColors.PrimarySoft),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = SplitEaseColors.Primary,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+        }
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
         if (actionLabel != null && onAction != null) {
-            Spacer(modifier = Modifier.height(12.dp))
-            SeOutlinedButton(text = actionLabel, onClick = onAction)
+            Spacer(modifier = Modifier.height(20.dp))
+            SePrimaryButton(text = actionLabel, onClick = onAction)
         }
     }
 }
@@ -348,17 +484,17 @@ fun SeActionChip(
     enabled: Boolean = true,
     icon: ImageVector? = null,
 ) {
-    val bg = if (selected) SplitEaseColors.PrimarySoft else SplitEaseColors.Surface
+    val bg = if (selected) SplitEaseColors.Primary else SplitEaseColors.Surface
     val content =
         when {
             !enabled -> SplitEaseColors.OutlineStrong
-            selected -> SplitEaseColors.PrimaryDark
+            selected -> MaterialTheme.colorScheme.onPrimary
             else -> SplitEaseColors.Navy
         }
     val border =
         when {
             !enabled -> SplitEaseColors.Outline
-            selected -> SplitEaseColors.Primary
+            selected -> Color.Transparent
             else -> SplitEaseColors.Outline
         }
     Row(
@@ -449,9 +585,9 @@ fun SeTypeChip(
         modifier =
             modifier
                 .height(92.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(bg)
-                .border(1.dp, border, RoundedCornerShape(14.dp))
+                .border(1.dp, border, RoundedCornerShape(16.dp))
                 .clickable(enabled = enabled, onClick = onClick)
                 .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

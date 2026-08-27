@@ -669,4 +669,11 @@
     <string name="pin_board_remove_image">Remove image</string>
     <string name="pin_board_image_unavailable">Image unavailable on this device</string>
     <string name="action_open_pin_board">Pin Board</string>
+    <string name="filter_all">All</string>
+    <string name="filter_outstanding">Open</string>
+    <string name="filter_you_owe">You owe</string>
+    <string name="filter_owed_to_you">Owed to you</string>
+    <string name="activity_filter_chip_expense">Expenses</string>
+    <string name="activity_filter_chip_settlements">Settlements</string>
+    <string name="activity_filter_chip_groups">Groups</string>
 </resources>

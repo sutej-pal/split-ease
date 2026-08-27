@@ -50,7 +50,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         setContent {
             val themeMode by
-                appSettingsRepository.observeThemeMode().collectAsStateWithLifecycle(ThemeMode.SYSTEM)
+                appSettingsRepository.observeThemeMode().collectAsStateWithLifecycle(ThemeMode.DEFAULT)
             val biometricLock by
                 appSettingsRepository.observeBiometricLockEnabled().collectAsStateWithLifecycle(false)
             val authTimeout by

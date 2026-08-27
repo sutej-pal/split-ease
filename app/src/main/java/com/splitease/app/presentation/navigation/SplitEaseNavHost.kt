@@ -548,7 +548,7 @@ private fun SignedInNavHost(
             if (showBottomBar) {
                 // Restore dark status-bar glyphs (Wi-Fi, signal, battery) when returning from
                 // screens that force light icons on a colored banner (e.g. group detail).
-                val barBg = MaterialTheme.colorScheme.surface
+                val barBg = MaterialTheme.colorScheme.background
                 val darkGlyphs = barBg.luminance() > 0.5f
                 SeSystemBars(
                     statusBarColor = MaterialTheme.colorScheme.background,

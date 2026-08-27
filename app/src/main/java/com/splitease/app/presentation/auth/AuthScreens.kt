@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
@@ -46,7 +47,6 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.seScreenSubtitleStyle
-import com.splitease.app.presentation.ui.seScreenTitleStyle
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBar
@@ -105,12 +105,13 @@ internal fun AuthScaffold(
     val topBarTitle =
         if (hasBack && contentPlacement == AuthContentPlacement.Center) title else ""
     val bg = MaterialTheme.colorScheme.background
+    val lightGlyphs = bg.luminance() > 0.5f
 
     SeSystemBars(
         statusBarColor = bg,
         navigationBarColor = bg,
-        statusBarDarkIcons = true,
-        navigationBarDarkIcons = true,
+        statusBarDarkIcons = lightGlyphs,
+        navigationBarDarkIcons = lightGlyphs,
     )
 
     Scaffold(
@@ -210,7 +211,8 @@ private fun AuthScaffoldHeader(
     if (title != null) {
         Text(
             text = title,
-            style = seScreenTitleStyle(),
+            style = MaterialTheme.typography.headlineMedium,
+            color = SplitEaseColors.Navy,
             textAlign = textAlign,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

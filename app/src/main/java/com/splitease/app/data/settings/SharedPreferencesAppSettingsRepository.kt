@@ -405,7 +405,7 @@ class SharedPreferencesAppSettingsRepository
             AppCurrencies.normalizeOrDefault(prefs.getString(KEY_CURRENCY, AppCurrencies.DEFAULT))
 
         private fun readThemeMode(): ThemeMode =
-            ThemeMode.fromStorage(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name))
+            ThemeMode.fromStorage(prefs.getString(KEY_THEME_MODE, ThemeMode.DEFAULT.name))
 
         private fun readBiometricLock(): Boolean = prefs.getBoolean(KEY_BIOMETRIC_LOCK, false)
 

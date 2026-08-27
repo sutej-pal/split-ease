@@ -2,6 +2,7 @@ package com.splitease.app.presentation.groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,10 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
@@ -31,7 +35,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
@@ -103,7 +110,12 @@ fun NonGroupExpensesScreen(
     val me = expensesViewModel.currentUserId()
     val nothingToSettle = stringResource(R.string.group_nothing_to_settle)
     val lifecycleOwner = LocalLifecycleOwner.current
-    val bannerColor = lerp(IndigoLight, TextPrimaryLight, 0.35f)
+    val bannerColor =
+        if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+            SplitEaseColors.BannerFriends
+        } else {
+            lerp(IndigoLight, TextPrimaryLight, 0.35f)
+        }
     val currencyFallback = AppCurrencies.DEFAULT
 
     LaunchedEffect(lifecycleOwner) {
@@ -148,7 +160,7 @@ fun NonGroupExpensesScreen(
             statusBarColor = bannerColor,
             // Keep dark system-nav glyphs on the light content/FAB area at the bottom.
             navigationBarColor = MaterialTheme.colorScheme.background,
-            statusBarDarkIcons = false,
+            statusBarDarkIcons = bannerColor.luminance() > 0.5f,
             navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
         Column(
@@ -320,38 +332,64 @@ private fun NonGroupDetailBanner(
     onBack: () -> Unit,
     onOpenInfo: () -> Unit,
 ) {
-    Column(
+    Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(bannerColor)
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 20.dp),
+                .clipToBounds()
+                .background(bannerColor),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 36.dp, y = (-28).dp)
+                    .size(140.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.22f)),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-40).dp, y = 36.dp)
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.16f)),
+        )
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp, bottom = 20.dp),
         ) {
-            BannerCircleIconButton(
-                onClick = onBack,
-                imageVector = Icons.Filled.ChevronLeft,
-                contentDescription = stringResource(R.string.cd_back),
-            )
-            BannerCircleIconButton(
-                onClick = onOpenInfo,
-                imageVector = Icons.Filled.Info,
-                contentDescription = stringResource(R.string.cd_non_group_info),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                BannerCircleIconButton(
+                    onClick = onBack,
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = stringResource(R.string.cd_back),
+                )
+                BannerCircleIconButton(
+                    onClick = onOpenInfo,
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = stringResource(R.string.cd_non_group_info),
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.non_group_expenses),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color =
+                    if (bannerColor.luminance() > 0.5f) SplitEaseColors.Navy else Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.non_group_expenses),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }

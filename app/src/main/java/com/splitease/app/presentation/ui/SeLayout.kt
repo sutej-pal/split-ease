@@ -53,6 +53,9 @@ object SeLayout {
 
     /** Extra space above primary CTAs at the bottom of a form. */
     val ctaTopGap: Dp = 20.dp
+
+    /** Corner radius for inset cards on list screens. */
+    val cardRadius: Dp = 18.dp
 }
 
 /**
@@ -92,7 +95,7 @@ fun seScreenTitleStyle(): TextStyle =
  * this over a raw `headline*` / `titleLarge` pick so those headings stay the
  * same size and weight. Do not use this for [SeTopBar] titles
  * ([seScreenTitleStyle]), section headers, dialog titles, list-item titles,
- * amounts, or white-on-banner group detail titles.
+ * amounts, or group-detail banner titles.
  */
 @Composable
 @ReadOnlyComposable

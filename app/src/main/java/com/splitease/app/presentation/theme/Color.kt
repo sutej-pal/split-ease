@@ -3,12 +3,9 @@ package com.splitease.app.presentation.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Brand-approved SplitEase colors derived from the app icon (two-tone indigo receipt
- * with amber divider). These hex values are intentional design tokens — do not change
- * them without updating the icon and design docs in tandem.
- *
- * Semantic balance-state colors ("you owe" / "you're owed") are **not** finalized;
- * see the PLACEHOLDER vals and TODOs below.
+ * SplitEase brand palette: indigo + amber from the app icon, tuned for an airy
+ * light UI. Semantic balance-state colors ("you owe" / "you're owed") use soft
+ * rose and teal so they stay readable on pale surfaces.
  */
 
 // --- Light theme ---
@@ -16,20 +13,37 @@ import androidx.compose.ui.graphics.Color
 /** Primary indigo — CTAs, focused fields, links, and other brand accents. */
 val IndigoLight = Color(0xFF4F46E5)
 
-/** Accent amber — divider, CTAs, highlights, "pending" states. */
+/** Accent amber — highlights, "pending" states, home-group warmth. */
 val AmberLight = Color(0xFFFFA008)
 
-/** Screen backgrounds. */
-val BackgroundLight = Color(0xFFFFFFFF)
+/** Screen canvas — lavender-tinted off-white, not stark paper. */
+val BackgroundLight = Color(0xFFF6F5FC)
 
 /** Soft indigo fill for selected / muted brand accents (not screen backgrounds). */
-val PrimaryContainerLight = Color(0xFFE8EAFE)
+val PrimaryContainerLight = Color(0xFFE4E3FD)
 
-/** Cards, sheets, input fields. */
+/** Cards, sheets, dialogs. */
 val SurfaceLight = Color(0xFFFFFFFF)
 
+/** Grouped rows, unfocused fields, chip idle fills. */
+val SurfaceMutedLight = Color(0xFFEFEEF8)
+
 /** Body/heading text on light backgrounds. */
-val TextPrimaryLight = Color(0xFF1E1B4B)
+val TextPrimaryLight = Color(0xFF1A1840)
+
+/** Captions, hints, timestamps, muted labels (light theme). */
+val TextSecondaryLight = Color(0xFF6B6790)
+
+/** Resting borders. */
+val OutlineLight = Color(0xFFD9D6E8)
+
+/** Hairline / card edges. */
+val OutlineVariantLight = Color(0xFFECEAF4)
+
+/** Pastel detail-header banners. */
+val BannerFriendsLight = Color(0xFFDDDCFC)
+val BannerHomeLight = Color(0xFFFFECD0)
+val BannerOtherLight = Color(0xFFE6E4F4)
 
 // --- Dark theme ---
 
@@ -51,19 +65,16 @@ val TextPrimaryDark = Color(0xFFECEAFB)
 /** Captions, hints, timestamps, muted labels (dark theme). */
 val TextSecondaryDark = Color(0xFFB4AFC7)
 
-// --- Semantic balance PLACEHOLDERS (not brand-approved) ---
+// --- Semantic balance ---
 
-// TODO(design): Confirm "you owe" / "you're owed" / pending semantic colors before shipping.
-// These reuse desaturated Material-ish red/green as labeled placeholders only.
+/** "You owe" / error — rose that stays readable on pale fills. */
+val ErrorPlaceholder = Color(0xFFC43D5A)
 
-/** PLACEHOLDER — "you owe" / error. Confirm before shipping. */
-val ErrorPlaceholder = Color(0xFFB3261E)
+/** Error / you-owe container. */
+val ErrorContainerPlaceholder = Color(0xFFFDE8EC)
 
-/** PLACEHOLDER — error container. Confirm before shipping. */
-val ErrorContainerPlaceholder = Color(0xFFF9DEDC)
+/** "You're owed" / positive — teal. */
+val PositivePlaceholder = Color(0xFF1B8A6B)
 
-/** PLACEHOLDER — "you're owed" / positive. Confirm before shipping. */
-val PositivePlaceholder = Color(0xFF386A20)
-
-/** PLACEHOLDER — positive container. Confirm before shipping. */
-val PositiveContainerPlaceholder = Color(0xFFB7F397)
+/** Positive container. */
+val PositiveContainerPlaceholder = Color(0xFFDDF6EE)

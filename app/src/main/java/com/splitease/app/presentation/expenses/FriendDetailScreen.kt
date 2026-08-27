@@ -47,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
@@ -92,7 +93,12 @@ fun FriendDetailScreen(
         .collectAsStateWithLifecycle()
     var title by remember { mutableStateOf(friendUserId.take(8)) }
     val me = viewModel.currentUserId()
-    val bannerColor = lerp(SplitEaseColors.IconFriends, SplitEaseColors.Navy, 0.28f)
+    val bannerColor =
+        if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+            SplitEaseColors.BannerFriends
+        } else {
+            lerp(SplitEaseColors.IconFriends, SplitEaseColors.Navy, 0.28f)
+        }
     val displayName = title.removeSuffix(" (invited)").trim()
     val canSettle =
         me != null &&
@@ -191,13 +197,34 @@ private fun FriendDetailBanner(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(bannerColor)
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 48.dp),
+                .clipToBounds()
+                .background(bannerColor),
     ) {
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 36.dp, y = (-28).dp)
+                    .size(140.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.22f)),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-40).dp, y = 36.dp)
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.16f)),
+        )
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp, bottom = 48.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {

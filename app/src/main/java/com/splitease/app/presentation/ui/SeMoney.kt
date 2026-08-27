@@ -1,19 +1,32 @@
 package com.splitease.app.presentation.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.theme.ErrorContainerPlaceholder
+import com.splitease.app.presentation.theme.PositiveContainerPlaceholder
 import com.splitease.app.presentation.theme.SplitEaseColors
 import java.math.BigDecimal
 
@@ -32,13 +45,7 @@ fun SeMoneyText(
     modifier: Modifier = Modifier,
     prefix: String? = null,
 ) {
-    val color =
-        when (tone) {
-            SeMoneyTone.YOU_OWE -> SplitEaseColors.YouOwe
-            SeMoneyTone.OWED_TO_YOU -> SplitEaseColors.OwedToYou
-            SeMoneyTone.SETTLED -> SplitEaseColors.Settled
-            SeMoneyTone.NEUTRAL -> MaterialTheme.colorScheme.onBackground
-        }
+    val color = tone.color()
     val money = MoneyFormat.format(amount, currencyCode)
     val text =
         when {
@@ -54,6 +61,33 @@ fun SeMoneyText(
         fontWeight = FontWeight.Medium,
     )
 }
+
+/** Trailing amount on a ledger row — the visual punch of the list. */
+@Composable
+fun SeLedgerAmount(
+    amount: BigDecimal,
+    currencyCode: String,
+    tone: SeMoneyTone,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = MoneyFormat.format(amount, currencyCode),
+        modifier = modifier,
+        style = MaterialTheme.typography.titleLarge,
+        color = tone.color(),
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+    )
+}
+
+@Composable
+fun SeMoneyTone.color() =
+    when (this) {
+        SeMoneyTone.YOU_OWE -> SplitEaseColors.YouOwe
+        SeMoneyTone.OWED_TO_YOU -> SplitEaseColors.OwedToYou
+        SeMoneyTone.SETTLED -> SplitEaseColors.Settled
+        SeMoneyTone.NEUTRAL -> MaterialTheme.colorScheme.onBackground
+    }
 
 @Composable
 fun SeOverallSummary(
@@ -72,42 +106,128 @@ fun SeOverallSummary(
         )
         return
     }
-    val accent =
-        when (tone) {
-            SeMoneyTone.YOU_OWE -> SplitEaseColors.YouOwe
-            SeMoneyTone.OWED_TO_YOU -> SplitEaseColors.OwedToYou
-            else -> MaterialTheme.colorScheme.onBackground
-        }
     Text(
-        text =
-            buildAnnotatedString {
-                append(prefix)
-                append(" ")
-                withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Bold)) {
-                    append(MoneyFormat.format(amount, currencyCode))
-                }
-            },
+        text = "$prefix ${MoneyFormat.format(amount, currencyCode)}",
         modifier = modifier,
         style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
+        color = tone.color(),
+        fontWeight = FontWeight.Bold,
     )
+}
+
+/**
+ * Two side-by-side balance tiles: you-owe and owed-to-you, with large amounts.
+ */
+@Composable
+fun SeHeroBalancePair(
+    iOwe: Map<String, BigDecimal>,
+    owedToMe: Map<String, BigDecimal>,
+    currencyCode: String,
+    modifier: Modifier = Modifier,
+) {
+    val oweEntry = iOwe.entries.firstOrNull()
+    val owedEntry = owedToMe.entries.firstOrNull()
+    val bothEmpty = oweEntry == null && owedEntry == null
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SeHeroTile(
+            label = stringResource(R.string.balances_you_owe_plain),
+            amount = oweEntry?.value,
+            currencyCode = oweEntry?.key?.ifBlank { currencyCode } ?: currencyCode,
+            tone = SeMoneyTone.YOU_OWE,
+            modifier = Modifier.weight(1f),
+            settled = bothEmpty,
+        )
+        SeHeroTile(
+            label = stringResource(R.string.balances_you_are_owed_plain),
+            amount = owedEntry?.value,
+            currencyCode = owedEntry?.key?.ifBlank { currencyCode } ?: currencyCode,
+            tone = SeMoneyTone.OWED_TO_YOU,
+            modifier = Modifier.weight(1f),
+            settled = bothEmpty,
+        )
+    }
+}
+
+@Composable
+private fun SeHeroTile(
+    label: String,
+    amount: BigDecimal?,
+    currencyCode: String,
+    tone: SeMoneyTone,
+    modifier: Modifier = Modifier,
+    settled: Boolean = false,
+) {
+    val fill =
+        when {
+            settled || amount == null || amount.compareTo(BigDecimal.ZERO) == 0 ->
+                SplitEaseColors.SurfaceMuted
+            tone == SeMoneyTone.YOU_OWE -> ErrorContainerPlaceholder
+            else -> PositiveContainerPlaceholder
+        }
+    val pip =
+        when {
+            settled || amount == null || amount.compareTo(BigDecimal.ZERO) == 0 ->
+                SplitEaseColors.NavyMuted
+            else -> tone.color()
+        }
+    val value =
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) == 0) {
+            MoneyFormat.format(BigDecimal.ZERO, currencyCode)
+        } else {
+            MoneyFormat.format(amount, currencyCode)
+        }
+    Column(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(fill)
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(pip),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = SplitEaseColors.NavyMuted,
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineMedium,
+            color =
+                if (settled || amount == null || amount.compareTo(BigDecimal.ZERO) == 0) {
+                    SplitEaseColors.Navy
+                } else {
+                    tone.color()
+                },
+            maxLines = 1,
+        )
+    }
 }
 
 @Preview(name = "Money", showBackground = true)
 @Composable
 private fun SeMoneyPreview() {
     SePreview {
-        Column {
-            SeOverallSummary(
-                prefix = "Overall, you owe",
-                amount = BigDecimal("1642.21"),
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            SeHeroBalancePair(
+                iOwe = mapOf("INR" to BigDecimal("1642.21")),
+                owedToMe = mapOf("INR" to BigDecimal("80.00")),
                 currencyCode = "INR",
-                tone = SeMoneyTone.YOU_OWE,
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            SeLedgerAmount(BigDecimal("420.00"), "INR", SeMoneyTone.YOU_OWE)
             SeMoneyText(BigDecimal("420.00"), "INR", SeMoneyTone.YOU_OWE, prefix = "you owe")
-            SeMoneyText(BigDecimal("100.00"), "INR", SeMoneyTone.OWED_TO_YOU, prefix = "you are owed")
-            SeMoneyText(BigDecimal.ZERO, "INR", SeMoneyTone.SETTLED, prefix = "settled up")
         }
     }
 }

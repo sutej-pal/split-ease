@@ -23,7 +23,7 @@ import androidx.core.view.WindowCompat
 private val LightColorScheme =
     lightColorScheme(
         primary = IndigoLight,
-        onPrimary = Color.White, // WCAG vs IndigoLight ≈ 6.29:1
+        onPrimary = Color.White,
         primaryContainer = PrimaryContainerLight,
         onPrimaryContainer = TextPrimaryLight,
         secondary = IndigoLight,
@@ -31,25 +31,25 @@ private val LightColorScheme =
         secondaryContainer = PrimaryContainerLight,
         onSecondaryContainer = TextPrimaryLight,
         tertiary = AmberLight,
-        onTertiary = TextPrimaryLight, // amber is light; dark indigo text reads better than white
-        tertiaryContainer = Color(0xFFFFE8C2),
+        onTertiary = TextPrimaryLight,
+        tertiaryContainer = BannerHomeLight,
         onTertiaryContainer = TextPrimaryLight,
         background = BackgroundLight,
         onBackground = TextPrimaryLight,
         surface = SurfaceLight,
         onSurface = TextPrimaryLight,
-        // Light muted text not in brand table — neutral gray pending confirmation.
-        surfaceVariant = Color(0xFFF3F4F6),
-        onSurfaceVariant = Color(0xFF5C5878),
-        // Neutral resting borders (inputs, chips). Brand indigo is reserved for
-        // primary / focused / link accents — not default outlines.
-        outline = Color(0xFFD1D5DB),
-        outlineVariant = Color(0xFFE5E7EB),
-        // TODO(design): error* are PLACEHOLDERs for "you owe" — confirm before shipping.
+        surfaceVariant = SurfaceMutedLight,
+        onSurfaceVariant = TextSecondaryLight,
+        outline = OutlineLight,
+        outlineVariant = OutlineVariantLight,
         error = ErrorPlaceholder,
         onError = Color.White,
         errorContainer = ErrorContainerPlaceholder,
         onErrorContainer = ErrorPlaceholder,
+        inverseSurface = TextPrimaryLight,
+        inverseOnSurface = BackgroundLight,
+        inversePrimary = IndigoDark,
+        surfaceTint = IndigoLight,
     )
 
 /**
@@ -58,7 +58,7 @@ private val LightColorScheme =
 private val DarkColorScheme =
     darkColorScheme(
         primary = IndigoDark,
-        onPrimary = BackgroundDark, // WCAG vs IndigoDark ≈ 6.20:1
+        onPrimary = BackgroundDark,
         primaryContainer = SurfaceDark,
         onPrimaryContainer = TextPrimaryDark,
         secondary = IndigoDark,
@@ -77,7 +77,6 @@ private val DarkColorScheme =
         onSurfaceVariant = TextSecondaryDark,
         outline = Color(0xFF4B465C),
         outlineVariant = Color(0xFF3A3552),
-        // TODO(design): error* are PLACEHOLDERs for "you owe" — confirm before shipping.
         error = ErrorPlaceholder,
         onError = Color.White,
         errorContainer = Color(0xFF8C1D18),

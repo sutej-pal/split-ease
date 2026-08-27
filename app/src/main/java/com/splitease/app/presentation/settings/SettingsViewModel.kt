@@ -32,7 +32,7 @@ class SettingsViewModel
         val themeMode: StateFlow<ThemeMode> =
             appSettingsRepository
                 .observeThemeMode()
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.SYSTEM)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.DEFAULT)
 
         val biometricLockEnabled: StateFlow<Boolean> =
             appSettingsRepository

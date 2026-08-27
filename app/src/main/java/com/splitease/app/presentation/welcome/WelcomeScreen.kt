@@ -1,17 +1,20 @@
 package com.splitease.app.presentation.welcome
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -53,35 +57,65 @@ fun WelcomeScreen(
 
     val startColor = SplitEaseColors.PrimarySoft
     val midColor = SplitEaseColors.Background
-    val endColor = SplitEaseColors.Surface
 
     val gradient =
         Brush.verticalGradient(
-            colors = listOf(startColor, midColor, endColor),
+            colors = listOf(startColor, midColor, SplitEaseColors.Background),
         )
 
     Box(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(gradient)
-                .padding(24.dp),
-        contentAlignment = Alignment.Center,
+                .background(gradient),
     ) {
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 48.dp, y = (-36).dp)
+                    .size(200.dp)
+                    .clip(CircleShape)
+                    .background(SplitEaseColors.Primary.copy(alpha = 0.12f)),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-64).dp, y = 48.dp)
+                    .size(240.dp)
+                    .clip(CircleShape)
+                    .background(SplitEaseColors.Accent.copy(alpha = 0.16f)),
+        )
         Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 28.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
         ) {
-            Image(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
-                contentDescription = stringResource(R.string.welcome_title),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(96.dp),
-            )
+            Spacer(modifier = Modifier.weight(1f))
+            Box(
+                modifier =
+                    Modifier
+                        .size(128.dp)
+                        .clip(CircleShape)
+                        .background(SplitEaseColors.Surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = stringResource(R.string.welcome_title),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(96.dp),
+                )
+            }
             Spacer(modifier = Modifier.height(28.dp))
             Text(
                 text = stringResource(R.string.welcome_title),
-                style = MaterialTheme.typography.displayLarge,
+                style = MaterialTheme.typography.displayMedium,
                 color = SplitEaseColors.Primary,
                 textAlign = TextAlign.Center,
             )
@@ -92,7 +126,7 @@ fun WelcomeScreen(
                 color = SplitEaseColors.NavyMuted,
                 textAlign = TextAlign.Center,
             )
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.weight(1f))
             SePrimaryButton(
                 text = stringResource(R.string.action_get_started),
                 onClick = onGetStarted,
@@ -102,7 +136,7 @@ fun WelcomeScreen(
                 text = stringResource(R.string.action_log_in),
                 onClick = onLogIn,
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             SeTextButton(
                 text = stringResource(R.string.action_have_invite_link),
                 onClick = {

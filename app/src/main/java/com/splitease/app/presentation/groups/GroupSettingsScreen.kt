@@ -833,7 +833,7 @@ private fun SettingsActionRow(
                     modifier =
                         Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF7C4DFF))
+                            .background(SplitEaseColors.Primary)
                             .padding(horizontal = 8.dp, vertical = 2.dp),
                 ) {
                     Text(

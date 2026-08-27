@@ -18,7 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
 
-private val SeTextFieldShape = RoundedCornerShape(10.dp)
+private val SeTextFieldShape = RoundedCornerShape(14.dp)
 
 @Composable
 fun SeTextField(
@@ -85,7 +85,7 @@ fun SeTextField(
                 unfocusedTextColor = SplitEaseColors.Navy,
                 disabledTextColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
                 focusedContainerColor = SplitEaseColors.Surface,
-                unfocusedContainerColor = SplitEaseColors.Surface,
+                unfocusedContainerColor = SplitEaseColors.SurfaceMuted,
                 disabledContainerColor = SplitEaseColors.SurfaceMuted,
                 errorContainerColor = SplitEaseColors.Surface,
                 errorSupportingTextColor = MaterialTheme.colorScheme.error,

@@ -72,7 +72,7 @@ interface AppSettingsRepository {
     /**
      * Observes the appearance preference.
      *
-     * @return Cold [Flow]; defaults to [ThemeMode.SYSTEM].
+     * @return Cold [Flow]; defaults to [ThemeMode.DEFAULT] (light).
      */
     fun observeThemeMode(): Flow<ThemeMode>
 
