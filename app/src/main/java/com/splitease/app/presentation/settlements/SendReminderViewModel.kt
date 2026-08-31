@@ -3,6 +3,7 @@ package com.splitease.app.presentation.settlements
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
@@ -182,8 +183,11 @@ class SendReminderViewModel
                         it.copy(
                             isSending = false,
                             errorMessage =
-                                result.exceptionOrNull()?.message
-                                    ?: appContext.getString(R.string.msg_reminder_failed),
+                                ErrorMessages.messageOrNull(
+                                    appContext,
+                                    TAG,
+                                    result.exceptionOrNull(),
+                                ) ?: appContext.getString(ErrorMessages.GENERIC),
                         )
                     }
                 }
@@ -223,4 +227,8 @@ class SendReminderViewModel
 
         private fun String.toBigDecimalOrZero(): BigDecimal =
             trim().toBigDecimalOrNull() ?: BigDecimal.ZERO
+
+        private companion object {
+            const val TAG = "SendReminderViewModel"
+        }
     }

@@ -1,7 +1,9 @@
 package com.splitease.app.presentation.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.balance.BalanceInteractor
 import com.splitease.app.data.balance.OverallBalancesUi
 import com.splitease.app.data.social.SocialInteractor
@@ -13,6 +15,7 @@ import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +48,7 @@ data class GroupsHomeUi(
 class GroupsHomeViewModel
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val balanceInteractor: BalanceInteractor,
         private val groupRepository: GroupRepository,
@@ -163,8 +167,16 @@ class GroupsHomeViewModel
                     if (result.isSuccess) {
                         null to null
                     } else {
-                        null to (result.exceptionOrNull()?.message ?: "Could not update photo.")
+                        null to ErrorMessages.messageOrNull(
+                            appContext,
+                            TAG,
+                            result.exceptionOrNull(),
+                        )
                     }
             }
+        }
+
+        private companion object {
+            const val TAG = "GroupsHomeViewModel"
         }
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.SignUpResult
@@ -937,13 +938,11 @@ class AuthViewModel
         }
 
         /**
-         * Maps Supabase/RestException dumps into short user-facing copy.
+         * Maps known auth failures into short user-facing copy.
+         * Unexpected dumps (timeouts, URLs, RestException) stay in Logcat only.
          */
         private fun friendlyAuthError(throwable: Throwable?): String {
-            if (throwable != null) {
-                // Unit tests do not mock android.util.Log; never fail the UI path on logging.
-                runCatching { android.util.Log.e(TAG, "Auth error", throwable) }
-            }
+            ErrorMessages.log(TAG, throwable)
             val raw = collectAuthErrorText(throwable)
             val lower = raw.lowercase()
             return when {
@@ -965,29 +964,7 @@ class AuthViewModel
                     msg(AuthMessages.INVALID_EMAIL)
                 isWeakPassword(lower) ->
                     msg(AuthMessages.PASSWORD_SHORT)
-                raw.isBlank() -> msg(AuthMessages.GENERIC)
-                // RestException dumps include Url / Headers / Http Method — never show those.
-                "url:" in lower || "headers:" in lower || "http method" in lower ->
-                    when {
-                        isAlreadyRegistered(lower) ->
-                            msg(AuthMessages.ALREADY_REGISTERED)
-                        isGoogleIdentityConflict(lower) ->
-                            msg(AuthMessages.EMAIL_ALREADY_REGISTERED)
-                        isSamePassword(lower) ->
-                            msg(AuthMessages.RESET_PASSWORD_SAME_AS_OLD)
-                        isRecoverySessionMissing(throwable) ->
-                            msg(AuthMessages.RESET_PASSWORD_SESSION_EXPIRED)
-                        isEmailRateLimited(lower) ->
-                            msg(AuthMessages.EMAIL_RATE_LIMITED)
-                        isEmailDeliveryFailure(lower) ->
-                            msg(AuthMessages.EMAIL_DELIVERY_FAILED)
-                        isInvalidEmail(lower) ->
-                            msg(AuthMessages.INVALID_EMAIL)
-                        else -> msg(AuthMessages.GENERIC)
-                    }
-                else ->
-                    extractReadableAuthMessage(raw)
-                        ?: msg(AuthMessages.GENERIC)
+                else -> msg(ErrorMessages.GENERIC)
             }
         }
 
@@ -1008,40 +985,6 @@ class AuthViewModel
                 depth++
             }
             return parts.joinToString("\n")
-        }
-
-        /**
-         * Pulls a short human message from JSON-ish auth errors when present.
-         */
-        private fun extractReadableAuthMessage(raw: String): String? {
-            val jsonKey =
-                Regex("\"(?:error_description|msg|message|error)\"\\s*:\\s*\"([^\"]+)\"")
-            val queryKey = Regex("error_description=([^&\\s]+)")
-            for (pattern in listOf(jsonKey, queryKey)) {
-                val match = pattern
-                    .find(raw)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.trim()
-                    .orEmpty()
-                if (match.isNotBlank() &&
-                    "url:" !in match.lowercase() &&
-                    "http" !in match.lowercase()
-                ) {
-                    return match.take(160)
-                }
-            }
-            val firstLine =
-                raw
-                    .lineSequence()
-                    .map { it.trim() }
-                    .firstOrNull { line ->
-                        line.isNotEmpty() &&
-                            "url:" !in line.lowercase() &&
-                            "headers:" !in line.lowercase() &&
-                            "http method" !in line.lowercase()
-                    }
-            return firstLine?.take(160)?.takeIf { it.isNotBlank() }
         }
 
         private fun isAlreadyRegistered(lower: String): Boolean =

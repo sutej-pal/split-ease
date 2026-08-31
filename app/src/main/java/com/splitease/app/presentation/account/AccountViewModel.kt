@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.UserRepository
@@ -120,7 +121,7 @@ class AccountViewModel
                 _settings.update {
                     it.copy(
                         isSaving = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             if (result.isSuccess) {
                                 appContext.getString(R.string.msg_profile_name_saved)
@@ -141,7 +142,7 @@ class AccountViewModel
                 _settings.update {
                     it.copy(
                         isSaving = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             if (result.isSuccess) {
                                 appContext.getString(R.string.msg_profile_photo_saved)
@@ -151,5 +152,9 @@ class AccountViewModel
                     )
                 }
             }
+        }
+
+        private companion object {
+            const val TAG = "AccountViewModel"
         }
     }

@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
@@ -122,10 +123,7 @@ class ReviewFriendsViewModel
                     val outcome = result.getOrNull()
                     if (outcome == null) {
                         firstError =
-                            userFacingError(
-                                result.exceptionOrNull()?.message
-                                    ?: appContext.getString(R.string.msg_friend_add_failed),
-                            )
+                            userFacingError(result.exceptionOrNull())
                         break
                     }
                     // Drop successes immediately so a partial-failure retry does not
@@ -173,11 +171,18 @@ class ReviewFriendsViewModel
             return (session as? AuthSession.SignedIn)?.user?.userId
         }
 
-        private fun userFacingError(raw: String): String =
-            when {
+        private fun userFacingError(error: Throwable?): String {
+            ErrorMessages.log(TAG, error)
+            val raw = error?.message.orEmpty()
+            return when {
                 raw.contains("FOREIGN KEY", ignoreCase = true) ||
                     raw.contains("SQLITE_CONSTRAINT_FOREIGNKEY", ignoreCase = true) ->
                     appContext.getString(R.string.msg_local_profile_missing)
-                else -> raw
+                else -> appContext.getString(ErrorMessages.GENERIC)
             }
+        }
+
+        private companion object {
+            const val TAG = "ReviewFriendsViewModel"
+        }
     }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -38,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -53,25 +55,15 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.SeIconTileWithAvatar
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.seDetailHorizontal
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-
-private enum class ActivityListFilter {
-    ALL,
-    EXPENSE,
-    SETTLEMENTS,
-    GROUPS,
-}
 
 @Composable
 fun ActivityScreen(
@@ -79,21 +71,15 @@ fun ActivityScreen(
     onAddExpense: () -> Unit = {},
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
-    val items by viewModel.items.collectAsStateWithLifecycle()
-    var listFilter by rememberSaveable { mutableStateOf(ActivityListFilter.ALL) }
-    var query by rememberSaveable { mutableStateOf("") }
+    val feed by viewModel.feed.collectAsStateWithLifecycle()
+    val listFilter by viewModel.listFilter.collectAsStateWithLifecycle()
+    val query by viewModel.searchQuery.collectAsStateWithLifecycle()
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     val showSearch = searchVisible || query.isNotBlank()
-    val visibleItems =
-        remember(items, listFilter, query) {
-            items.filter { it.matches(listFilter) && it.matchesQuery(query) }
-        }
-    val groupedItems =
-        remember(visibleItems) {
-            visibleItems.groupBy { dayKey(it.sortEpochMs) }
-        }
+    val listState = rememberLazyListState()
+
     val emptyMessage =
-        if (items.isEmpty() && listFilter == ActivityListFilter.ALL && query.isBlank()) {
+        if (!feed.hasAnyItems && !feed.isFiltered) {
             stringResource(R.string.activity_empty)
         } else {
             stringResource(R.string.activity_empty_filtered)
@@ -109,7 +95,7 @@ fun ActivityScreen(
                         onClick = {
                             if (showSearch) {
                                 searchVisible = false
-                                query = ""
+                                viewModel.setSearchQuery("")
                             } else {
                                 searchVisible = true
                             }
@@ -119,7 +105,7 @@ fun ActivityScreen(
                     )
                     ActivityFilterButton(
                         selectedFilter = listFilter,
-                        onFilterSelected = { listFilter = it },
+                        onFilterSelected = { viewModel.setListFilter(it) },
                     )
                 },
             )
@@ -141,7 +127,7 @@ fun ActivityScreen(
             if (showSearch) {
                 SeTextField(
                     value = query,
-                    onValueChange = { query = it },
+                    onValueChange = viewModel::setSearchQuery,
                     placeholder = stringResource(R.string.activity_search_hint),
                     modifier =
                         Modifier
@@ -149,29 +135,41 @@ fun ActivityScreen(
                             .padding(top = 4.dp, bottom = 4.dp),
                 )
             }
-            if (visibleItems.isEmpty()) {
-                SeEmptyState(
-                    message = emptyMessage,
-                    icon = Icons.Filled.Receipt,
-                    modifier = Modifier.seDetailHorizontal(),
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 96.dp),
-                ) {
-                    groupedItems.forEach { (day, dayItems) ->
-                        item(key = "day-$day") {
-                            ActivityDayHeader(day = day)
-                        }
-                        items(dayItems, key = { it.id }) { item ->
-                            ActivityRow(
-                                item = item,
-                                onClick =
-                                    item.relatedExpenseId?.let { expenseId ->
-                                        { onOpenExpense(expenseId) }
-                                    },
-                            )
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 96.dp),
+            ) {
+                if (feed.entries.isEmpty()) {
+                    item(key = "empty", contentType = "empty") {
+                        SeEmptyState(
+                            message = emptyMessage,
+                            icon = Icons.Filled.Receipt,
+                            modifier = Modifier.seDetailHorizontal(),
+                        )
+                    }
+                } else {
+                    items(
+                        items = feed.entries,
+                        key = { it.stableKey() },
+                        contentType = { entry ->
+                            when (entry) {
+                                is ActivityListEntry.DayHeader -> "header"
+                                is ActivityListEntry.Row -> "row"
+                            }
+                        },
+                    ) { entry ->
+                        when (entry) {
+                            is ActivityListEntry.DayHeader ->
+                                ActivityDayHeader(day = entry.day)
+                            is ActivityListEntry.Row ->
+                                ActivityRow(
+                                    item = entry.item,
+                                    onClick =
+                                        entry.item.relatedExpenseId?.let { expenseId ->
+                                            { onOpenExpense(expenseId) }
+                                        },
+                                )
                         }
                     }
                 }
@@ -231,42 +229,18 @@ private val ActivityListFilter.labelRes: Int
             ActivityListFilter.GROUPS -> R.string.activity_filter_groups
         }
 
-private fun ActivityUiItem.matches(filter: ActivityListFilter): Boolean =
-    when (filter) {
-        ActivityListFilter.ALL -> true
-        ActivityListFilter.EXPENSE ->
-            kind == ActivityKind.EXPENSE ||
-                kind == ActivityKind.EXPENSE_UPDATED ||
-                kind == ActivityKind.EXPENSE_DELETED
-        ActivityListFilter.SETTLEMENTS -> kind == ActivityKind.PAYMENT
-        ActivityListFilter.GROUPS -> kind == ActivityKind.GROUP_CREATED
-    }
-
-private fun ActivityUiItem.matchesQuery(query: String): Boolean {
-    val needle = query.trim()
-    if (needle.isEmpty()) return true
-    return title.contains(needle, ignoreCase = true) ||
-        subtitle.contains(needle, ignoreCase = true) ||
-        amountLabel.contains(needle, ignoreCase = true) ||
-        (balanceLabel?.contains(needle, ignoreCase = true) == true) ||
-        (expenseTitle?.contains(needle, ignoreCase = true) == true) ||
-        (actorDisplayName?.contains(needle, ignoreCase = true) == true)
-}
-
-private fun dayKey(epochMs: Long): LocalDate =
-    Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
-
 @Composable
 private fun ActivityDayHeader(day: LocalDate) {
     val today = LocalDate.now()
+    val formattedDay =
+        remember(day) {
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(day)
+        }
     val label =
         when (day) {
             today -> stringResource(R.string.activity_section_today)
             today.minusDays(1) -> stringResource(R.string.activity_section_yesterday)
-            else ->
-                remember(day) {
-                    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(day)
-                }
+            else -> formattedDay
         }
     Text(
         text = label,
@@ -294,23 +268,16 @@ private fun ActivityRow(
             ActivityKind.PAYMENT -> Icons.Filled.Payments to SplitEaseColors.OwedToYou
             ActivityKind.GROUP_CREATED -> Icons.Filled.Group to SplitEaseColors.IconFriends
         }
-    val isExpenseKind =
+    val showsBalanceSlot =
         item.kind == ActivityKind.EXPENSE ||
             item.kind == ActivityKind.EXPENSE_UPDATED ||
-            item.kind == ActivityKind.EXPENSE_DELETED
+            item.kind == ActivityKind.EXPENSE_DELETED ||
+            item.kind == ActivityKind.PAYMENT
     val amountTone =
         when (item.balanceTone) {
             ActivityBalanceTone.POSITIVE -> SplitEaseColors.OwedToYou
             ActivityBalanceTone.NEGATIVE -> SplitEaseColors.YouOwe
             null -> SplitEaseColors.Navy
-        }
-    val timeLabel =
-        remember(item.sortEpochMs) {
-            DateTimeFormatter
-                .ofLocalizedTime(FormatStyle.SHORT)
-                .format(
-                    Instant.ofEpochMilli(item.sortEpochMs).atZone(ZoneId.systemDefault()),
-                )
         }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -321,38 +288,31 @@ private fun ActivityRow(
                     .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            if (isExpenseKind && !item.actorDisplayName.isNullOrBlank()) {
-                SeIconTileWithAvatar(
-                    icon = icon,
-                    tint = tint,
-                    actorName = item.actorDisplayName,
-                    actorPhotoUrl = item.actorPhotoUrl,
-                )
-            } else {
-                SeIconTile(icon = icon, tint = tint, size = 44)
-            }
+            SeIconTile(icon = icon, tint = tint, size = 44)
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = activityTitleText(item.title, item.expenseTitle),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!item.balanceLabel.isNullOrBlank()) {
+                ActivityRowTitle(item = item)
+                if (showsBalanceSlot) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = item.balanceLabel,
+                        text = item.balanceLabel.orEmpty(),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = amountTone,
+                        color =
+                            if (item.balanceLabel.isNullOrBlank()) {
+                                Color.Transparent
+                            } else {
+                                amountTone
+                            },
+                        minLines = 1,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = timeLabel,
+                text = item.timeLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = SplitEaseColors.NavyMuted,
             )
@@ -364,14 +324,36 @@ private fun ActivityRow(
     }
 }
 
+@Composable
+private fun ActivityRowTitle(item: ActivityUiItem) {
+    val expenseTitle = item.expenseTitle
+    if (expenseTitle.isNullOrBlank()) {
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    } else {
+        val titleText =
+            remember(item.title, expenseTitle) {
+                activityTitleText(item.title, expenseTitle)
+            }
+        Text(
+            text = titleText,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 private fun activityTitleText(
     title: String,
-    expenseTitle: String?,
+    expenseTitle: String,
 ) = buildAnnotatedString {
-    if (expenseTitle.isNullOrBlank()) {
-        append(title)
-        return@buildAnnotatedString
-    }
     val start = title.indexOf(expenseTitle)
     if (start < 0) {
         append(title)
@@ -398,9 +380,9 @@ private fun ActivityScreenPreview() {
                     subtitle = "Aug 5, 2026, 6:12 PM",
                     amountLabel = "",
                     sortEpochMs = System.currentTimeMillis(),
+                    timeLabel = "6:12 PM",
                     balanceLabel = "You get back ₹100.00",
                     balanceTone = ActivityBalanceTone.POSITIVE,
-                    actorDisplayName = "Sutej Pal Hotmail",
                     expenseTitle = "exp3",
                 ),
             )
@@ -412,9 +394,9 @@ private fun ActivityScreenPreview() {
                     subtitle = "Aug 5, 2026, 5:40 PM",
                     amountLabel = "",
                     sortEpochMs = System.currentTimeMillis() - 32 * 60_000L,
+                    timeLabel = "5:40 PM",
                     balanceLabel = "you owe ₹250.00",
                     balanceTone = ActivityBalanceTone.NEGATIVE,
-                    actorDisplayName = "You",
                     expenseTitle = "exp2",
                 ),
             )
@@ -427,6 +409,7 @@ private fun ActivityScreenPreview() {
                     subtitle = "Jul 22, 2026, 3:15 PM",
                     amountLabel = "",
                     sortEpochMs = System.currentTimeMillis() - 86_400_000L,
+                    timeLabel = "3:15 PM",
                 ),
             )
         }

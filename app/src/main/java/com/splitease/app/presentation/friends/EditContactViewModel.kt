@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.contacts.DeviceContactsDataSource
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
@@ -170,7 +171,7 @@ class EditContactViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             when {
                                 outcome == null -> null
@@ -426,5 +427,9 @@ class EditContactViewModel
         private suspend fun requireUserId(): String? {
             val session = authRepository.observeSession().first { it !is AuthSession.Loading }
             return (session as? AuthSession.SignedIn)?.user?.userId
+        }
+
+        private companion object {
+            const val TAG = "EditContactViewModel"
         }
     }

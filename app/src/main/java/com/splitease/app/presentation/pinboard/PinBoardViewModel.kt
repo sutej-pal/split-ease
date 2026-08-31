@@ -1,13 +1,16 @@
 package com.splitease.app.presentation.pinboard
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.pinboard.PinBoardInteractor
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.GroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +35,7 @@ data class PinBoardUiState(
 class PinBoardViewModel
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val interactor: PinBoardInteractor,
         private val socialRemote: SocialRemoteDataSource,
@@ -70,7 +74,7 @@ class PinBoardViewModel
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        errorMessage = e.message ?: "Could not load pin board.",
+                        errorMessage = ErrorMessages.message(appContext, TAG, e),
                     )
                 }
             }
@@ -105,7 +109,7 @@ class PinBoardViewModel
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
-                        errorMessage = e.message ?: "Could not save pin board.",
+                        errorMessage = ErrorMessages.message(appContext, TAG, e),
                     )
                 }
             }
@@ -118,4 +122,8 @@ class PinBoardViewModel
             groupId: String,
             localPath: String,
         ): String = interactor.uploadLocalImage(groupId, localPath) ?: localPath
+
+        private companion object {
+            const val TAG = "PinBoardViewModel"
+        }
     }

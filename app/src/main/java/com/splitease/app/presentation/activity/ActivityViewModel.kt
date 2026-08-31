@@ -1,10 +1,11 @@
 package com.splitease.app.presentation.activity
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
-import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.balance.BalanceCalculator
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
@@ -14,7 +15,6 @@ import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.Payment
-import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
@@ -31,16 +31,24 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.text.DateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
+import kotlin.system.measureTimeMillis
 
 enum class ActivityKind {
     EXPENSE,
@@ -55,6 +63,14 @@ enum class ActivityBalanceTone {
     NEGATIVE,
 }
 
+enum class ActivityListFilter {
+    ALL,
+    EXPENSE,
+    SETTLEMENTS,
+    GROUPS,
+}
+
+@Immutable
 data class ActivityUiItem(
     val id: String,
     val kind: ActivityKind,
@@ -62,23 +78,36 @@ data class ActivityUiItem(
     val subtitle: String,
     val amountLabel: String,
     val sortEpochMs: Long,
+    /** Pre-formatted time shown at the end of each row. */
+    val timeLabel: String,
     /** Balance line under the title (expenses / some payments). */
     val balanceLabel: String? = null,
     val balanceTone: ActivityBalanceTone? = null,
     /** When set and the expense still exists, Activity can open expense details. */
     val relatedExpenseId: String? = null,
-    /** Display name of who added/updated/deleted (expense rows only). */
-    val actorDisplayName: String? = null,
-    /** Optional avatar URL for [actorDisplayName]. */
-    val actorPhotoUrl: String? = null,
     /** Expense description to render semibold inside [title]. */
     val expenseTitle: String? = null,
+)
+
+@Immutable
+sealed interface ActivityListEntry {
+    data class DayHeader(val day: java.time.LocalDate) : ActivityListEntry
+
+    data class Row(val item: ActivityUiItem) : ActivityListEntry
+}
+
+@Immutable
+data class ActivityFeedState(
+    val entries: List<ActivityListEntry> = emptyList(),
+    val hasAnyItems: Boolean = false,
+    val isFiltered: Boolean = false,
 )
 
 @HiltViewModel
 class ActivityViewModel
     @Inject
     constructor(
+        savedStateHandle: SavedStateHandle,
         @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val expenseRepository: ExpenseRepository,
@@ -87,7 +116,6 @@ class ActivityViewModel
         private val userRepository: UserRepository,
         private val friendRepository: FriendRepository,
         private val activityEventRepository: ActivityEventRepository,
-        private val syncInteractor: SyncInteractor,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository
@@ -95,59 +123,187 @@ class ActivityViewModel
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+        private val searchQueryFlow =
+            savedStateHandle.getStateFlow(KEY_SEARCH_QUERY, "")
+
+        /** Immediate query for the search field. */
+        val searchQuery: StateFlow<String> = searchQueryFlow
+
+        val listFilter: StateFlow<ActivityListFilter> =
+            savedStateHandle
+                .getStateFlow(KEY_LIST_FILTER, ActivityListFilter.ALL.name)
+                .map(::parseListFilter)
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(5_000),
+                    parseListFilter(savedStateHandle[KEY_LIST_FILTER] ?: ActivityListFilter.ALL.name),
+                )
+
+        private val debouncedSearchQuery: StateFlow<String> =
+            searchQueryFlow
+                .debounce(SEARCH_DEBOUNCE_MS)
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(5_000),
+                    savedStateHandle[KEY_SEARCH_QUERY].orEmpty(),
+                )
+
         @OptIn(ExperimentalCoroutinesApi::class)
-        val items: StateFlow<List<ActivityUiItem>> =
+        private val items: StateFlow<List<ActivityUiItem>> =
             userId
                 .flatMapLatest { me ->
                     if (me == null) {
                         flowOf(emptyList())
                     } else {
-                        combine(
+                        val sourcesFlow =
                             combine(
-                                expenseRepository.observeRecentInvolvingUser(me),
-                                paymentRepository.observeRecentInvolvingUser(me),
-                                groupRepository.observeGroupsForUser(me),
-                                userRepository.observeUsers(),
-                                friendRepository.observeFriends(me),
-                            ) { expenses, payments, groups, users, friends ->
+                                expenseRepository
+                                    .observeRecentInvolvingUser(me)
+                                    .onEach { rows ->
+                                        ActivityPerfLog.emit("expenses", "count=${rows.size}")
+                                    },
+                                paymentRepository
+                                    .observeRecentInvolvingUser(me)
+                                    .onEach { rows ->
+                                        ActivityPerfLog.emit("payments", "count=${rows.size}")
+                                    },
+                                groupRepository
+                                    .observeGroupsForUser(me)
+                                    .onEach { rows ->
+                                        ActivityPerfLog.emit("groups", "count=${rows.size}")
+                                    },
+                                userRepository
+                                    .observeUsers()
+                                    .map { users -> users.associate { it.id to it.displayName } }
+                                    .distinctUntilChanged()
+                                    .onEach { map ->
+                                        ActivityPerfLog.emit("users", "count=${map.size}")
+                                    },
+                                friendRepository
+                                    .observeFriends(me)
+                                    .onEach { rows ->
+                                        ActivityPerfLog.emit("friends", "count=${rows.size}")
+                                    },
+                            ) { expenses, payments, groups, userNames, friends ->
                                 ActivitySources(
                                     expenses = expenses,
                                     payments = payments,
                                     groups = groups,
-                                    users = users,
+                                    userNames = userNames,
                                     friends = friends,
                                 )
-                            },
-                            activityEventRepository.observeRecentForUser(me),
-                        ) { sources, events -> sources to events }
-                            .flatMapLatest { (sources, events) ->
-                                val expenseIds =
-                                    (
-                                        sources.expenses.map { it.id } +
-                                            events.mapNotNull { it.relatedExpenseId }
-                                    ).distinct()
-                                expenseRepository.observeSplitsForExpenses(expenseIds).map { splitsByExpenseId ->
-                                    buildItems(
-                                        me = me,
-                                        sources = sources,
-                                        events = events,
-                                        splitsByExpenseId = splitsByExpenseId,
-                                    ).take(FeedQueryLimits.UI_FEED)
-                                }.flowOn(Dispatchers.Default)
                             }
-                    }
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-        init {
-            viewModelScope.launch {
-                userId.collect { me ->
-                    // Soft sync only when Home/other screens have not hydrated recently.
-                    if (me != null && !syncInteractor.wasSyncedRecently()) {
-                        runCatching { syncInteractor.syncForUser(me) }
+                        val eventsFlow =
+                            activityEventRepository
+                                .observeRecentForUser(me)
+                                .onEach { rows ->
+                                    ActivityPerfLog.emit("events", "count=${rows.size}")
+                                }
+
+                        val feedInputsFlow =
+                            combine(sourcesFlow, eventsFlow) { sources, events ->
+                                ActivityFeedInputs(
+                                    sources = sources,
+                                    events = events,
+                                    expenseIds = expenseIdsForFeed(sources, events),
+                                )
+                            }
+
+                        val expenseIdsFlow =
+                            feedInputsFlow
+                                .map { it.expenseIds }
+                                .distinctUntilChanged()
+
+                        val splitsFlow =
+                            expenseIdsFlow.flatMapLatest { ids ->
+                                if (ids.isEmpty()) {
+                                    flowOf(emptyMap())
+                                } else {
+                                    expenseRepository
+                                        .observeSplitsForExpenses(ids)
+                                        .onEach { splits ->
+                                            ActivityPerfLog.emit(
+                                                "splits",
+                                                "expenses=${ids.size} loaded=${splits.size}",
+                                            )
+                                        }
+                                }
+                            }
+
+                        combine(feedInputsFlow, splitsFlow) { inputs, splitsByExpenseId ->
+                            inputs to splitsByExpenseId
+                        }.distinctUntilChanged { old, new ->
+                            old.first.rebuildKey(old.second) == new.first.rebuildKey(new.second)
+                        }.map { (inputs, splitsByExpenseId) ->
+                            var built: List<ActivityUiItem>
+                            val elapsed =
+                                measureTimeMillis {
+                                    built =
+                                        buildItems(
+                                            me = me,
+                                            sources = inputs.sources,
+                                            events = inputs.events,
+                                            splitsByExpenseId = splitsByExpenseId,
+                                        ).take(FeedQueryLimits.UI_FEED)
+                                }
+                            ActivityPerfLog.rebuild(
+                                reason = "feed-combine",
+                                itemCount = built.size,
+                                elapsedMs = elapsed,
+                                signatureChanged = true,
+                            )
+                            built
+                        }.distinctUntilChanged { old, new ->
+                            val same = old.contentSignature() == new.contentSignature()
+                            if (!same) {
+                                ActivityPerfLog.scrollJumpSuspect(
+                                    previousCount = old.size,
+                                    newCount = new.size,
+                                    previousTopId = old.firstOrNull()?.id,
+                                    newTopId = new.firstOrNull()?.id,
+                                )
+                            }
+                            same
+                        }
                     }
-                }
-            }
+                }.flowOn(Dispatchers.Default)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        val feed: StateFlow<ActivityFeedState> =
+            combine(items, listFilter, debouncedSearchQuery) { allItems, filter, query ->
+                val visible =
+                    allItems.filter { item ->
+                        item.matches(filter) && item.matchesQuery(query)
+                    }
+                ActivityFeedState(
+                    entries = buildActivityListEntries(visible),
+                    hasAnyItems = allItems.isNotEmpty(),
+                    isFiltered = filter != ActivityListFilter.ALL || query.isNotBlank(),
+                )
+            }.flowOn(Dispatchers.Default)
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(5_000),
+                    ActivityFeedState(),
+                )
+
+        fun setListFilter(filter: ActivityListFilter) {
+            savedStateHandle[KEY_LIST_FILTER] = filter.name
         }
+
+        fun setSearchQuery(query: String) {
+            savedStateHandle[KEY_SEARCH_QUERY] = query
+        }
+
+        private fun expenseIdsForFeed(
+            sources: ActivitySources,
+            events: List<ActivityEvent>,
+        ): List<String> =
+            (
+                sources.expenses.map { it.id } +
+                    events.mapNotNull { it.relatedExpenseId }
+            ).distinct().sorted()
 
         private fun buildItems(
             me: String,
@@ -156,8 +312,6 @@ class ActivityViewModel
             splitsByExpenseId: Map<String, List<ExpenseSplit>>,
         ): List<ActivityUiItem> {
             val groupNames = sources.groups.associate { it.id to it.name }
-            val userNames = sources.users.associate { it.id to it.displayName }
-            val userPhotos = sources.users.associate { it.id to it.photoUrl }
             val friendNames =
                 sources.friends.associate { it.friendUserId to it.displayNameSnapshot }
             val expensesById = sources.expenses.associateBy { it.id }
@@ -167,11 +321,9 @@ class ActivityViewModel
                     me -> "You"
                     else ->
                         friendNames[id]
-                            ?: userNames[id]
+                            ?: sources.userNames[id]
                             ?: id.take(8)
                 }
-
-            fun photoOf(id: String): String? = userPhotos[id]
 
             val expenseIdsWithEvents =
                 events.mapNotNull { it.relatedExpenseId }.toSet()
@@ -183,7 +335,6 @@ class ActivityViewModel
                             me = me,
                             groupNames = groupNames,
                             nameOf = ::nameOf,
-                            photoOf = ::photoOf,
                             splits = splitsByExpenseId[expense.id].orEmpty(),
                         )
                     }
@@ -195,7 +346,6 @@ class ActivityViewModel
                         expensesById = expensesById,
                         splitsByExpenseId = splitsByExpenseId,
                         nameOf = ::nameOf,
-                        photoOf = ::photoOf,
                     )
                 }
             val paymentItems =
@@ -205,6 +355,8 @@ class ActivityViewModel
             val groupCreatedItems =
                 sources.groups
                     .filter { it.createdByUserId == me }
+                    .sortedByDescending { it.createdAtEpochMs }
+                    .take(FeedQueryLimits.UI_FEED)
                     .map { it.toCreatedUi() }
             return (legacyExpenseItems + eventItems + paymentItems + groupCreatedItems)
                 .sortedByDescending { it.sortEpochMs }
@@ -216,7 +368,6 @@ class ActivityViewModel
             expensesById: Map<String, Expense>,
             splitsByExpenseId: Map<String, List<ExpenseSplit>>,
             nameOf: (String) -> String,
-            photoOf: (String) -> String?,
         ): ActivityUiItem {
             val uiKind =
                 when (kind) {
@@ -258,13 +409,12 @@ class ActivityViewModel
                 title = titleLine,
                 subtitle = formatDateTime(sortEpochMs),
                 amountLabel = "",
+                timeLabel = formatTimeLabel(sortEpochMs),
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
                 sortEpochMs = sortEpochMs,
                 relatedExpenseId =
                     relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
-                actorDisplayName = actorName,
-                actorPhotoUrl = photoOf(actorUserId),
                 expenseTitle = description,
             )
         }
@@ -276,6 +426,7 @@ class ActivityViewModel
                 title = appContext.getString(R.string.activity_you_created, name),
                 subtitle = formatDateTime(createdAtEpochMs),
                 amountLabel = "",
+                timeLabel = formatTimeLabel(createdAtEpochMs),
                 sortEpochMs = createdAtEpochMs,
             )
 
@@ -283,7 +434,6 @@ class ActivityViewModel
             me: String,
             groupNames: Map<String, String>,
             nameOf: (String) -> String,
-            photoOf: (String) -> String?,
             splits: List<ExpenseSplit>,
         ): ActivityUiItem {
             val contextLabel =
@@ -303,12 +453,11 @@ class ActivityViewModel
                     ),
                 subtitle = formatDateTime(displayEpochMs),
                 amountLabel = "",
+                timeLabel = formatTimeLabel(displayEpochMs),
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
                 sortEpochMs = displayEpochMs,
                 relatedExpenseId = id,
-                actorDisplayName = actorName,
-                actorPhotoUrl = photoOf(paidByUserId),
                 expenseTitle = description,
             )
         }
@@ -356,28 +505,202 @@ class ActivityViewModel
                     toUserId == me -> ActivityBalanceTone.POSITIVE
                     else -> null
                 }
+            val sortMs = paidAtEpochMs.coerceAtLeast(createdAtEpochMs)
             return ActivityUiItem(
                 id = "payment-$id",
                 kind = ActivityKind.PAYMENT,
                 title = title,
-                subtitle = formatDateTime(paidAtEpochMs),
+                subtitle = formatDateTime(sortMs),
                 amountLabel = "",
+                timeLabel = formatTimeLabel(sortMs),
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
-                sortEpochMs = paidAtEpochMs.coerceAtLeast(createdAtEpochMs),
+                sortEpochMs = sortMs,
             )
         }
 
         private fun formatDateTime(epochMs: Long): String =
-            DateFormat
-                .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-                .format(Date(epochMs))
+            DATE_TIME_FORMAT.get().format(Date(epochMs))
+
+        private fun formatTimeLabel(epochMs: Long): String =
+            timeFormatter().format(
+                Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()),
+            )
+
+        private fun timeFormatter(): DateTimeFormatter {
+            val locale = appContext.resources.configuration.locales[0]
+            if (cachedTimeLocale != locale) {
+                cachedTimeLocale = locale
+                cachedTimeFormatter =
+                    DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
+            }
+            return cachedTimeFormatter!!
+        }
+
+        private companion object {
+            private const val KEY_LIST_FILTER = "activity_list_filter"
+            private const val KEY_SEARCH_QUERY = "activity_search_query"
+            private const val SEARCH_DEBOUNCE_MS = 200L
+
+            private val DATE_TIME_FORMAT =
+                ThreadLocal.withInitial {
+                    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                }
+        }
+
+        private var cachedTimeLocale: Locale? = null
+        private var cachedTimeFormatter: DateTimeFormatter? = null
     }
 
 private data class ActivitySources(
     val expenses: List<Expense>,
     val payments: List<Payment>,
     val groups: List<Group>,
-    val users: List<User>,
+    val userNames: Map<String, String>,
     val friends: List<Friend>,
 )
+
+private data class ActivityFeedInputs(
+    val sources: ActivitySources,
+    val events: List<ActivityEvent>,
+    val expenseIds: List<String>,
+)
+
+private fun ActivityFeedInputs.relevantActorIds(): Set<String> {
+    val ids = linkedSetOf<String>()
+    sources.expenses.forEach { ids.add(it.paidByUserId) }
+    sources.payments.forEach {
+        ids.add(it.fromUserId)
+        ids.add(it.toUserId)
+    }
+    events.forEach { ids.add(it.actorUserId) }
+    return ids
+}
+
+private fun ActivityFeedInputs.rebuildKey(splitsByExpenseId: Map<String, List<ExpenseSplit>>): String {
+    val sb = StringBuilder(4096)
+    val actorIds = relevantActorIds()
+    sources.expenses.forEach { expense ->
+        sb.append('E')
+            .append(expense.id)
+            .append(expense.updatedAtEpochMs)
+            .append(expense.amount)
+            .append(expense.description)
+            .append(expense.paidByUserId)
+            .append(expense.groupId)
+            .append(expense.expenseDateEpochMs)
+            .append(expense.createdAtEpochMs)
+            .append(expense.currencyCode)
+    }
+    sources.payments.forEach { payment ->
+        sb.append('P')
+            .append(payment.id)
+            .append(payment.paidAtEpochMs)
+            .append(payment.amount)
+            .append(payment.fromUserId)
+            .append(payment.toUserId)
+            .append(payment.currencyCode)
+            .append(payment.createdAtEpochMs)
+    }
+    events.forEach { event ->
+        sb.append('V')
+            .append(event.id)
+            .append(event.sortEpochMs)
+            .append(event.kind)
+            .append(event.actorUserId)
+            .append(event.relatedExpenseId)
+            .append(event.title)
+            .append(event.subtitle)
+    }
+    sources.groups.forEach { group ->
+        sb.append('G')
+            .append(group.id)
+            .append(group.name)
+            .append(group.createdAtEpochMs)
+            .append(group.createdByUserId)
+    }
+    sources.friends
+        .filter { it.friendUserId in actorIds }
+        .forEach { friend ->
+            sb.append('F')
+                .append(friend.friendUserId)
+                .append(friend.displayNameSnapshot)
+        }
+    sources.userNames
+        .filterKeys { it in actorIds }
+        .entries
+        .sortedBy { it.key }
+        .forEach { (id, name) ->
+            sb.append('U').append(id).append(name)
+        }
+    expenseIds.forEach { id ->
+        splitsByExpenseId[id]?.sortedBy { it.userId }?.forEach { split ->
+            sb.append('S')
+                .append(id)
+                .append(split.userId)
+                .append(split.owedAmount)
+        }
+    }
+    return sb.toString()
+}
+
+private fun buildActivityListEntries(items: List<ActivityUiItem>): List<ActivityListEntry> =
+    items
+        .groupBy { dayKey(it.sortEpochMs) }
+        .entries
+        .sortedByDescending { (day, _) -> day }
+        .flatMap { (day, dayItems) ->
+            buildList {
+                add(ActivityListEntry.DayHeader(day))
+                dayItems.forEach { add(ActivityListEntry.Row(it)) }
+            }
+        }
+
+private fun dayKey(epochMs: Long): java.time.LocalDate =
+    Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
+
+internal fun ActivityListEntry.stableKey(): String =
+    when (this) {
+        is ActivityListEntry.DayHeader -> "day-$day"
+        is ActivityListEntry.Row -> item.id
+    }
+
+private fun parseListFilter(name: String): ActivityListFilter =
+    runCatching { ActivityListFilter.valueOf(name) }.getOrDefault(ActivityListFilter.ALL)
+
+private fun ActivityUiItem.matches(filter: ActivityListFilter): Boolean =
+    when (filter) {
+        ActivityListFilter.ALL -> true
+        ActivityListFilter.EXPENSE ->
+            kind == ActivityKind.EXPENSE ||
+                kind == ActivityKind.EXPENSE_UPDATED ||
+                kind == ActivityKind.EXPENSE_DELETED
+        ActivityListFilter.SETTLEMENTS -> kind == ActivityKind.PAYMENT
+        ActivityListFilter.GROUPS -> kind == ActivityKind.GROUP_CREATED
+    }
+
+private fun ActivityUiItem.matchesQuery(query: String): Boolean {
+    val needle = query.trim()
+    if (needle.isEmpty()) return true
+    return title.contains(needle, ignoreCase = true) ||
+        subtitle.contains(needle, ignoreCase = true) ||
+        amountLabel.contains(needle, ignoreCase = true) ||
+        (balanceLabel?.contains(needle, ignoreCase = true) == true) ||
+        (expenseTitle?.contains(needle, ignoreCase = true) == true)
+}
+
+/** Stable fingerprint so identical UI rows do not trigger LazyColumn relayout. */
+private fun List<ActivityUiItem>.contentSignature(): List<String> =
+    map { item ->
+        buildString {
+            append(item.id)
+            append('|')
+            append(item.sortEpochMs)
+            append('|')
+            append(item.title)
+            append('|')
+            append(item.balanceLabel.orEmpty())
+            append('|')
+            append(item.timeLabel)
+        }
+    }

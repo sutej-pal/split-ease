@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.payment.RecordPaymentInput
 import com.splitease.app.domain.model.AuthSession
@@ -125,7 +126,7 @@ class SettleUpViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                     )
                 }
                 if (result.isSuccess) onSuccess()
@@ -159,5 +160,9 @@ class SettleUpViewModel
                 email = email,
                 photoUrl = photo,
             )
+        }
+
+        private companion object {
+            const val TAG = "SettleUpViewModel"
         }
     }

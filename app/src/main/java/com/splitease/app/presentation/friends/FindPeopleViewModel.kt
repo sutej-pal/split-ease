@@ -7,6 +7,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.contacts.DeviceContact
 import com.splitease.app.data.contacts.DeviceContactsDataSource
 import com.splitease.app.data.social.SocialInteractor
@@ -282,7 +283,7 @@ class FindPeopleViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         pendingShareText = outcome?.inviteShareText,
                         infoMessage =
                             when {
@@ -335,7 +336,7 @@ class FindPeopleViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         pendingShareText = outcome?.inviteShareText,
                         infoMessage =
                             when {
@@ -355,5 +356,9 @@ class FindPeopleViewModel
                     onDone()
                 }
             }
+        }
+
+        private companion object {
+            const val TAG = "FindPeopleViewModel"
         }
     }

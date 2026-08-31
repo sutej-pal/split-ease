@@ -98,12 +98,17 @@ fun SeGroupIconTile(
     val context = LocalContext.current
     val contentStamp = localAvatarContentStamp(photoUrl)
     val bitmap by produceState<ImageBitmap?>(null, photoUrl, contentStamp) {
-        value = null
-        if (photoUrl.isNullOrBlank()) return@produceState
-        value =
+        if (photoUrl.isNullOrBlank()) {
+            value = null
+            return@produceState
+        }
+        val loaded =
             withContext(Dispatchers.IO) {
                 loadLocalAvatarBitmap(context, photoUrl)
             }
+        if (loaded != null) {
+            value = loaded
+        }
     }
     val loadedBitmap = bitmap
     if (loadedBitmap != null) {
@@ -171,12 +176,17 @@ fun SeAvatarBadge(
     // Include file mtime so overwriting the same path still reloads the bitmap.
     val contentStamp = localAvatarContentStamp(photoUrl)
     val bitmap by produceState<ImageBitmap?>(null, photoUrl, contentStamp) {
-        value = null
-        if (photoUrl.isNullOrBlank()) return@produceState
-        value =
+        if (photoUrl.isNullOrBlank()) {
+            value = null
+            return@produceState
+        }
+        val loaded =
             withContext(Dispatchers.IO) {
                 loadLocalAvatarBitmap(context, photoUrl)
             }
+        if (loaded != null) {
+            value = loaded
+        }
     }
     Box(
         modifier =

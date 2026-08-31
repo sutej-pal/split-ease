@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
@@ -145,7 +146,7 @@ class FriendSettingsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         removed = result.isSuccess,
                         infoMessage =
                             if (result.isSuccess) {
@@ -190,5 +191,9 @@ class FriendSettingsViewModel
             userId.value?.let { return it }
             val session = authRepository.observeSession().first { it !is AuthSession.Loading }
             return (session as? AuthSession.SignedIn)?.user?.userId
+        }
+
+        private companion object {
+            const val TAG = "FriendSettingsViewModel"
         }
     }

@@ -9,6 +9,7 @@ import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.exports.GroupExportInteractor
 import com.splitease.app.data.push.NotificationPrefsCoordinator
 import com.splitease.app.data.social.SocialInteractor
@@ -245,7 +246,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage = null,
                         pendingShareText = shareText,
                     )
@@ -404,7 +405,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_group_updated) else null,
                     )
                 }
@@ -422,7 +423,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             if (result.isSuccess) {
                                 appContext.getString(R.string.msg_group_photo_saved)
@@ -501,7 +502,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             if (result.isSuccess) {
                                 appContext.getString(R.string.msg_member_added)
@@ -533,7 +534,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             when {
                                 outcome == null -> null
@@ -564,7 +565,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                     )
                 }
                 if (result.isSuccess) onLeft()
@@ -583,7 +584,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             if (result.isSuccess) {
                                 appContext.getString(R.string.msg_member_removed)
@@ -608,7 +609,7 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                     )
                 }
                 if (result.isSuccess) onDeleted()
@@ -635,6 +636,7 @@ class GroupsViewModel
         }
 
         private fun userFacingError(error: Throwable?): String {
+            ErrorMessages.log(TAG, error)
             val raw = error?.message.orEmpty()
             return when {
                 raw.contains("FOREIGN KEY", ignoreCase = true) ||
@@ -647,8 +649,11 @@ class GroupsViewModel
                     raw.contains("Bearer ", ignoreCase = true) ||
                     raw.contains("apikey", ignoreCase = true) ->
                     appContext.getString(R.string.msg_cloud_unreachable)
-                raw.isNotBlank() && raw.length <= 160 -> raw
-                else -> appContext.getString(R.string.error_generic)
+                else -> appContext.getString(ErrorMessages.GENERIC)
             }
+        }
+
+        private companion object {
+            const val TAG = "GroupsViewModel"
         }
     }

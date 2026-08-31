@@ -143,11 +143,30 @@ class AuthViewModelTest {
             coEvery { repository.signOut() } returns Result.success(Unit)
             viewModel.signIn("a@b.com", "bad")
             advanceUntilIdle()
-            assertEquals("Invalid login", viewModel.formState.value.errorMessage)
+            assertEquals(msg(AuthMessages.GENERIC), viewModel.formState.value.errorMessage)
             assertFalse(viewModel.formState.value.holdSignedInForOtp)
             assertNull(viewModel.formState.value.pendingConfirmationEmail)
             coVerify(exactly = 0) { repository.sendLoginOtp(any()) }
             coVerify(exactly = 0) { repository.ensureLocalProfile() }
+        }
+
+    @Test
+    fun `signIn timeout shows generic error`() =
+        runTest {
+            coEvery { repository.signIn(any(), any()) } returns
+                Result.failure(
+                    IllegalStateException(
+                        "Request timeout has expired [url=https://example.supabase.co/auth/v1/token?grant_type=password&redirect_to=splitease%3A%2F%2Fauth-callback, request]",
+                    ),
+                )
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            viewModel.signIn("a@b.com", "secret1")
+            advanceUntilIdle()
+            assertEquals(
+                msg(AuthMessages.GENERIC),
+                viewModel.formState.value.errorMessage,
+            )
+            coVerify(exactly = 0) { repository.sendLoginOtp(any()) }
         }
 
     @Test

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.imports.TransactionImportInteractor
 import com.splitease.app.domain.imports.CsvTransactionParser
 import com.splitease.app.domain.imports.ImportedTransaction
@@ -70,7 +71,7 @@ class ImportTransactionsViewModel
                     _ui.update {
                         it.copy(
                             preview = emptyList(),
-                            errorMessage = err.message ?: appContext.getString(R.string.msg_could_not_parse_csv),
+                            errorMessage = ErrorMessages.message(appContext, TAG, err),
                         )
                     }
                 }
@@ -90,7 +91,7 @@ class ImportTransactionsViewModel
                         _ui.update {
                             it.copy(
                                 isImporting = false,
-                                errorMessage = err.message ?: appContext.getString(R.string.msg_import_failed),
+                                errorMessage = ErrorMessages.message(appContext, TAG, err),
                             )
                         }
                         return@launch
@@ -109,11 +110,20 @@ class ImportTransactionsViewModel
                                     result.failures.size,
                                 )
                             },
-                        errorMessage = result.failures.firstOrNull(),
+                        errorMessage =
+                            if (result.failures.isEmpty()) {
+                                null
+                            } else {
+                                appContext.getString(ErrorMessages.GENERIC)
+                            },
                         preview = if (result.failures.isEmpty()) emptyList() else it.preview,
                     )
                 }
                 if (result.imported > 0 && result.failures.isEmpty()) onDone()
             }
+        }
+
+        private companion object {
+            const val TAG = "ImportTransactionsViewModel"
         }
     }

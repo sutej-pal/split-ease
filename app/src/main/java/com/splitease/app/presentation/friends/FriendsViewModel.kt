@@ -7,6 +7,7 @@ import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.balance.BalanceInteractor
 import com.splitease.app.data.balance.OverallBalancesUi
 import com.splitease.app.data.social.SocialInteractor
@@ -215,9 +216,7 @@ class FriendsViewModel
                 }.onFailure { err ->
                     _uiState.update {
                         it.copy(
-                            errorMessage =
-                                err.message
-                                    ?: appContext.getString(R.string.msg_could_not_refresh_friends),
+                            errorMessage = ErrorMessages.message(appContext, TAG, err),
                         )
                     }
                 }
@@ -254,7 +253,7 @@ class FriendsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage =
                             when {
                                 outcome == null -> null
@@ -281,5 +280,9 @@ class FriendsViewModel
             userId.value?.let { return it }
             val session = authRepository.observeSession().first { it !is AuthSession.Loading }
             return (session as? AuthSession.SignedIn)?.user?.userId
+        }
+
+        private companion object {
+            const val TAG = "FriendsViewModel"
         }
     }

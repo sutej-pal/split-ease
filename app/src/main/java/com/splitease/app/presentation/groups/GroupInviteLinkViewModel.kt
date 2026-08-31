@@ -8,6 +8,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
@@ -219,19 +220,17 @@ class GroupInviteLinkViewModel
 
         private fun friendlyInviteError(error: Throwable?): String? {
             if (error == null) return null
+            ErrorMessages.log(TAG, error)
             val raw = error.message.orEmpty()
             val lower = raw.lowercase()
             return when {
                 "row-level security" in lower || "42501" in lower ->
                     appContext.getString(R.string.msg_group_sync_rls)
-                raw.isNotBlank() &&
-                    raw.length <= 160 &&
-                    "url:" !in lower &&
-                    "headers:" !in lower ->
-                    raw.lineSequence().firstOrNull()?.trim().orEmpty().ifBlank {
-                        appContext.getString(R.string.error_generic)
-                    }
-                else -> appContext.getString(R.string.error_generic)
+                else -> appContext.getString(ErrorMessages.GENERIC)
             }
+        }
+
+        private companion object {
+            const val TAG = "GroupInviteLinkViewModel"
         }
     }

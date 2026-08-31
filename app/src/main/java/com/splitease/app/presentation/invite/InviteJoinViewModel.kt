@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.InvitePreview
 import com.splitease.app.domain.model.pendingOpenTarget
@@ -96,9 +97,7 @@ class InviteJoinViewModel
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage =
-                                    error.localizedMessage
-                                        ?: appContext.getString(R.string.invite_preview_failed),
+                                errorMessage = ErrorMessages.message(appContext, TAG, error),
                             )
                         }
                         return
@@ -121,5 +120,9 @@ class InviteJoinViewModel
                     )
                 }
             }
+        }
+
+        private companion object {
+            const val TAG = "InviteJoinViewModel"
         }
     }

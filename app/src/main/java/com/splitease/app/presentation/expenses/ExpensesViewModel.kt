@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.expense.CreateExpenseInput
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.data.expense.resolvedDisplayUri
@@ -999,8 +1000,11 @@ class ExpensesViewModel
                     _uiState.update {
                         it.copy(
                             errorMessage =
-                                result.exceptionOrNull()?.message
-                                    ?: appContext.getString(R.string.msg_comment_failed),
+                                ErrorMessages.messageOrNull(
+                                    appContext,
+                                    TAG,
+                                    result.exceptionOrNull(),
+                                ) ?: appContext.getString(ErrorMessages.GENERIC),
                         )
                     }
                 }
@@ -1035,8 +1039,11 @@ class ExpensesViewModel
                         errorMessage =
                             when {
                                 result.isFailure ->
-                                    result.exceptionOrNull()?.message
-                                        ?: appContext.getString(R.string.msg_photo_failed)
+                                    ErrorMessages.messageOrNull(
+                                        appContext,
+                                        TAG,
+                                        result.exceptionOrNull(),
+                                    ) ?: appContext.getString(ErrorMessages.GENERIC)
                                 payload != null && payload.failedCount > 0 ->
                                     appContext.getString(
                                         R.string.msg_attachments_partial,
@@ -1157,7 +1164,7 @@ class ExpensesViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = result.exceptionOrNull()?.message,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage = if (result.isSuccess) appContext.getString(R.string.msg_expense_deleted) else null,
                     )
                 }
@@ -1236,7 +1243,9 @@ class ExpensesViewModel
         }
 
         private fun mapExpenseSaveError(throwable: Throwable?): String? {
-            val raw = throwable?.message ?: return null
+            if (throwable == null) return null
+            ErrorMessages.log(TAG, throwable)
+            val raw = throwable.message.orEmpty()
             val lower = raw.lowercase()
             return when {
                 lower.contains("row-level security") && lower.contains("expenses") ->
@@ -1248,21 +1257,18 @@ class ExpensesViewModel
                     appContext.getString(R.string.msg_expense_cloud_schema)
                 isNetworkError(raw) ->
                     appContext.getString(R.string.msg_cloud_unreachable)
-                else -> raw
+                else -> appContext.getString(ErrorMessages.GENERIC)
             }
         }
 
         private fun userFacingRefreshError(error: Throwable): String {
+            ErrorMessages.log(TAG, error)
             val raw = error.message.orEmpty()
             return when {
                 isNetworkError(raw) ->
                     appContext.getString(R.string.msg_cloud_unreachable)
-                raw.isNotBlank() &&
-                    raw.length <= 120 &&
-                    !raw.contains("http", ignoreCase = true) ->
-                    raw
                 else ->
-                    appContext.getString(R.string.msg_could_not_refresh_expenses)
+                    appContext.getString(ErrorMessages.GENERIC)
             }
         }
 
@@ -1274,5 +1280,9 @@ class ExpensesViewModel
                 lower.contains("timeout") ||
                 lower.contains("network is unreachable") ||
                 lower.contains("no address associated with hostname")
+        }
+
+        private companion object {
+            const val TAG = "ExpensesViewModel"
         }
     }

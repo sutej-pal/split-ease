@@ -3,6 +3,7 @@ package com.splitease.app.presentation.auth
 import android.content.Context
 import androidx.annotation.StringRes
 import com.splitease.app.R
+import com.splitease.app.core.ErrorMessages
 
 /**
  * Auth feedback copy as [R.string] / [R.plurals] ids — single source in `strings.xml`.
@@ -10,7 +11,7 @@ import com.splitease.app.R
  * Resolve with `context.getString(...)` / `stringResource(...)`. Formatted helpers take [Context].
  */
 object AuthMessages {
-    @StringRes val GENERIC = R.string.error_generic
+    @StringRes val GENERIC = ErrorMessages.GENERIC
 
     // Login
     @StringRes val LOGIN_FIELDS_REQUIRED = R.string.error_login_fields_required

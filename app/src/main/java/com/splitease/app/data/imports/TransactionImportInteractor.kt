@@ -1,5 +1,6 @@
 package com.splitease.app.data.imports
 
+import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.expense.CreateExpenseInput
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.domain.imports.CsvTransactionParser
@@ -67,7 +68,8 @@ class TransactionImportInteractor
                     ).getOrThrow()
                     imported++
                 }.onFailure { err ->
-                    failures += "${row.description}: ${err.message ?: "failed"}"
+                    ErrorMessages.log(TAG, err)
+                    failures += row.description
                 }
             }
             return ImportResult(imported = imported, failures = failures)
@@ -90,5 +92,9 @@ class TransactionImportInteractor
                 ),
             )
             return id
+        }
+
+        private companion object {
+            const val TAG = "TransactionImport"
         }
     }
