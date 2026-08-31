@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.pinboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -34,10 +33,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -50,18 +51,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -380,65 +389,22 @@ fun PinBoardScreen(
                         key(block.id) {
                             when (block) {
                                 is PinBlock.Text -> {
-                                    val isEditing = editingTextId == block.id
+                                    val autoFocus = editingTextId == block.id
                                     val focusRequester = remember(block.id) { FocusRequester() }
-                                    LaunchedEffect(isEditing) {
-                                        if (isEditing) focusRequester.requestFocus()
+                                    LaunchedEffect(autoFocus) {
+                                        if (autoFocus) focusRequester.requestFocus()
                                     }
-                                    if (isEditing) {
-                                        val value = textValueFor(block.id)
-                                        BasicTextField(
-                                            value = value,
-                                            onValueChange = { updateTextBlock(block.id, it) },
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .heightIn(min = 24.dp)
-                                                    .focusRequester(focusRequester)
-                                                    .onFocusChanged { focusState ->
-                                                        if (focusState.isFocused) {
-                                                            focusedTextId = block.id
-                                                            editingTextId = block.id
-                                                        } else if (editingTextId == block.id) {
-                                                            // Keep focusedTextId so toolbar /
-                                                            // image insert still target this
-                                                            // block and caret after blur.
-                                                            editingTextId = null
-                                                        }
-                                                    },
-                                            textStyle =
-                                                MaterialTheme.typography.bodyLarge.copy(
-                                                    color = SplitEaseColors.Navy,
-                                                ),
-                                            cursorBrush = SolidColor(SplitEaseColors.Primary),
-                                            decorationBox = { inner ->
-                                                if (showPlaceholder && block.id == blocks.first().id) {
-                                                    Text(
-                                                        text = stringResource(R.string.pin_board_placeholder),
-                                                        style = MaterialTheme.typography.bodyLarge,
-                                                        color = SplitEaseColors.NavyMuted,
-                                                    )
-                                                }
-                                                inner()
-                                            },
-                                        )
-                                    } else {
-                                        PinBoardFormattedText(
-                                            text = block.value,
-                                            showPlaceholder = showPlaceholder && block.id == blocks.first().id,
-                                            onBeginEdit = {
-                                                editingTextId = block.id
-                                                focusedTextId = block.id
-                                            },
-                                            onToggleChecklistLine = { lineIndex ->
-                                                val updated = toggleChecklistAtLine(block.value, lineIndex)
-                                                updateTextBlock(
-                                                    block.id,
-                                                    TextFieldValue(updated, TextRange(updated.length)),
-                                                )
-                                            },
-                                        )
-                                    }
+                                    PinBoardTextBlockEditor(
+                                        value = textValueFor(block.id),
+                                        onValueChange = { updateTextBlock(block.id, it) },
+                                        showPlaceholder = showPlaceholder && block.id == blocks.first().id,
+                                        autoFocus = autoFocus,
+                                        focusRequester = focusRequester,
+                                        onFocused = {
+                                            focusedTextId = block.id
+                                            editingTextId = block.id
+                                        },
+                                    )
                                 }
                                 is PinBlock.Image -> {
                                     PinBoardImageBlock(
@@ -460,77 +426,228 @@ fun PinBoardScreen(
     }
 }
 
+private val PinBoardChecklistSize = 20.dp
+private val PinBoardChecklistRowHeight = 24.dp
+
 @Composable
-private fun PinBoardFormattedText(
-    text: String,
+private fun PinBoardTextBlockEditor(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     showPlaceholder: Boolean,
-    onBeginEdit: () -> Unit,
-    onToggleChecklistLine: (Int) -> Unit,
+    autoFocus: Boolean,
+    focusRequester: FocusRequester,
+    onFocused: () -> Unit,
 ) {
-    if (showPlaceholder && text.isBlank()) {
-        Text(
-            text = stringResource(R.string.pin_board_placeholder),
-            style = MaterialTheme.typography.bodyLarge,
-            color = SplitEaseColors.NavyMuted,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onBeginEdit)
-                    .padding(vertical = 2.dp),
+    val lines = parsePinTextLines(value.text)
+    val (focusLineIndex, bodyCursor) = lineBodyCursorFromFull(value.text, value.selection.min)
+    val lineFocusRequesters = remember(lines.size) { List(lines.size) { FocusRequester() } }
+    val textStyle =
+        MaterialTheme.typography.bodyLarge.copy(
+            color = SplitEaseColors.Navy,
         )
-        return
+    val focusedChecklist = lines.getOrNull(focusLineIndex)?.isChecklist == true
+
+    LaunchedEffect(autoFocus, focusedChecklist, focusLineIndex, lines.size) {
+        if (autoFocus) {
+            runCatching { lineFocusRequesters.getOrNull(focusLineIndex)?.requestFocus() }
+        }
     }
+
     Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        text.split('\n').forEachIndexed { index, line ->
-            if (isChecklistLine(line)) {
-                val checked = isChecklistLineChecked(line)
-                val body = checklistItemBody(line)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Checkbox(
-                        checked = checked,
-                        onCheckedChange = { onToggleChecklistLine(index) },
-                        colors =
-                            CheckboxDefaults.colors(
-                                checkedColor = SplitEaseColors.Primary,
-                                uncheckedColor = SplitEaseColors.NavyMuted,
-                                checkmarkColor = MaterialTheme.colorScheme.surface,
-                            ),
+        lines.forEachIndexed { index, line ->
+            key(index) {
+                val requester = lineFocusRequesters.getOrNull(index)
+                val fieldValue =
+                    TextFieldValue(
+                        text = line.body,
+                        selection =
+                            if (index == focusLineIndex) {
+                                TextRange(bodyCursor.coerceIn(0, line.body.length))
+                            } else {
+                                TextRange(line.body.length)
+                            },
                     )
-                    Text(
-                        text = buildPinBoardAnnotatedString(body),
-                        style =
-                            MaterialTheme.typography.bodyLarge.copy(
-                                color = SplitEaseColors.Navy,
-                                textDecoration =
-                                    if (checked) TextDecoration.LineThrough else TextDecoration.None,
-                            ),
+                    val fieldModifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = PinBoardChecklistSize)
+                        .then(
+                            if (requester != null) {
+                                Modifier.focusRequester(requester)
+                            } else {
+                                Modifier
+                            },
+                        ).then(
+                            if (index == focusLineIndex) {
+                                Modifier.focusRequester(focusRequester)
+                            } else {
+                                Modifier
+                            },
+                        ).onFocusChanged { state ->
+                            if (state.isFocused) onFocused()
+                        }.onPreviewKeyEvent { event ->
+                            if (event.type != KeyEventType.KeyDown || event.key != Key.Backspace) {
+                                return@onPreviewKeyEvent false
+                            }
+                            if (!fieldValue.selection.collapsed || fieldValue.selection.start != 0) {
+                                return@onPreviewKeyEvent false
+                            }
+                            val merged =
+                                mergePinLineBackward(value.text, index)
+                                    ?: return@onPreviewKeyEvent false
+                            onValueChange(TextFieldValue(merged.first, TextRange(merged.second)))
+                            true
+                        }
+
+                fun commitField(incoming: TextFieldValue) {
+                    val (newText, cursor) =
+                        applyPinLineFieldChange(
+                            text = value.text,
+                            lineIndex = index,
+                            fieldText = incoming.text,
+                            fieldCursor = incoming.selection.end,
+                        )
+                    val range =
+                        if ('\n' in incoming.text || incoming.selection.collapsed) {
+                            TextRange(cursor)
+                        } else {
+                            TextRange(
+                                start =
+                                    fullCursorFromLineBody(
+                                        newText,
+                                        index,
+                                        incoming.selection.start.coerceIn(0, incoming.text.length),
+                                    ),
+                                end =
+                                    fullCursorFromLineBody(
+                                        newText,
+                                        index,
+                                        incoming.selection.end.coerceIn(0, incoming.text.length),
+                                    ),
+                            )
+                        }
+                    onValueChange(TextFieldValue(newText, range))
+                }
+
+                if (line.isChecklist) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier =
                             Modifier
-                                .weight(1f)
-                                .clickable(onClick = onBeginEdit),
+                                .fillMaxWidth()
+                                .heightIn(min = PinBoardChecklistRowHeight),
+                    ) {
+                        PinBoardChecklistBox(
+                            checked = line.checked,
+                            onCheckedChange = {
+                                val (updated, cursor) =
+                                    cursorAfterPinLineCheckedToggle(
+                                        originalText = value.text,
+                                        originalCursor = value.selection.min,
+                                        toggledLineIndex = index,
+                                    )
+                                onValueChange(TextFieldValue(updated, TextRange(cursor)))
+                            },
+                        )
+                        PinBoardLineTextField(
+                            value = fieldValue,
+                            onValueChange = ::commitField,
+                            modifier = fieldModifier.weight(1f, fill = false),
+                            textStyle =
+                                textStyle.copy(
+                                    textDecoration =
+                                        if (line.checked) {
+                                            TextDecoration.LineThrough
+                                        } else {
+                                            TextDecoration.None
+                                        },
+                                ),
+                            showPlaceholder = false,
+                            centerVertically = true,
+                        )
+                    }
+                } else {
+                    PinBoardLineTextField(
+                        value = fieldValue,
+                        onValueChange = ::commitField,
+                        modifier = fieldModifier,
+                        textStyle = textStyle,
+                        showPlaceholder = showPlaceholder && index == 0 && line.body.isEmpty(),
                     )
                 }
-            } else {
-                Text(
-                    text = buildPinBoardAnnotatedString(line),
-                    style =
-                        MaterialTheme.typography.bodyLarge.copy(
-                            color = SplitEaseColors.Navy,
-                        ),
-                    modifier = Modifier.clickable(onClick = onBeginEdit),
-                )
             }
         }
     }
+}
+
+@Composable
+private fun PinBoardChecklistBox(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Box(
+        modifier = Modifier.size(PinBoardChecklistRowHeight),
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            Checkbox(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                modifier =
+                    Modifier
+                        .size(PinBoardChecklistSize)
+                        .focusProperties { canFocus = false },
+                colors =
+                    CheckboxDefaults.colors(
+                        checkedColor = SplitEaseColors.Primary,
+                        uncheckedColor = SplitEaseColors.NavyMuted,
+                        checkmarkColor = MaterialTheme.colorScheme.surface,
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PinBoardLineTextField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    modifier: Modifier,
+    textStyle: TextStyle,
+    showPlaceholder: Boolean,
+    centerVertically: Boolean = false,
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        textStyle = textStyle,
+        cursorBrush = SolidColor(SplitEaseColors.Primary),
+        visualTransformation = PinBoardInlineVisualTransformation,
+        decorationBox = { inner ->
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment =
+                    if (centerVertically) {
+                        Alignment.CenterStart
+                    } else {
+                        Alignment.TopStart
+                    },
+            ) {
+                if (showPlaceholder) {
+                    Text(
+                        text = stringResource(R.string.pin_board_placeholder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = SplitEaseColors.NavyMuted,
+                    )
+                }
+                inner()
+            }
+        },
+    )
 }
 
 private sealed class PinImageLoadState {

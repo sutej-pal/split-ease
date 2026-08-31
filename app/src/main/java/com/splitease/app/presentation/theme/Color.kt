@@ -1,14 +1,15 @@
 package com.splitease.app.presentation.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /**
- * SplitEase brand palette: indigo + amber from the app icon, tuned for an airy
- * light UI. Semantic balance-state colors ("you owe" / "you're owed") use soft
- * rose and teal so they stay readable on pale surfaces.
+ * SplitEase brand palette. [IndigoLight] (primary) and [AmberLight] (secondary /
+ * accent) are the only authored seeds; every other token is mixed from those
+ * toward white or black so banners, fills, and chrome stay on-brand.
  */
 
-// --- Light theme ---
+// --- Brand seeds ---
 
 /** Primary indigo — CTAs, focused fields, links, and other brand accents. */
 val IndigoLight = Color(0xFF4F46E5)
@@ -16,54 +17,63 @@ val IndigoLight = Color(0xFF4F46E5)
 /** Accent amber — highlights, "pending" states, home-group warmth. */
 val AmberLight = Color(0xFFFFA008)
 
-/** Screen canvas — lavender-tinted off-white, not stark paper. */
-val BackgroundLight = Color(0xFFF6F5FC)
+private fun Color.wash(amount: Float): Color = lerp(this, Color.White, amount)
+
+private fun Color.shade(amount: Float): Color = lerp(this, Color.Black, amount)
+
+/** Soft indigo fill used on Friends + Other group banners and the friends header. */
+private val IndigoBannerWash = IndigoLight.wash(0.70f)
+
+// --- Light theme (derived from seeds) ---
+
+/** Screen canvas — indigo washed almost to white. */
+val BackgroundLight = IndigoLight.wash(0.96f)
 
 /** Soft indigo fill for selected / muted brand accents (not screen backgrounds). */
-val PrimaryContainerLight = Color(0xFFE4E3FD)
+val PrimaryContainerLight = IndigoLight.wash(0.88f)
 
 /** Cards, sheets, dialogs. */
-val SurfaceLight = Color(0xFFFFFFFF)
+val SurfaceLight = Color.White
 
 /** Grouped rows, unfocused fields, chip idle fills. */
-val SurfaceMutedLight = Color(0xFFEFEEF8)
+val SurfaceMutedLight = IndigoLight.wash(0.93f)
 
 /** Body/heading text on light backgrounds. */
-val TextPrimaryLight = Color(0xFF1A1840)
+val TextPrimaryLight = IndigoLight.shade(0.72f)
 
 /** Captions, hints, timestamps, muted labels (light theme). */
-val TextSecondaryLight = Color(0xFF6B6790)
+val TextSecondaryLight = lerp(IndigoLight.wash(0.40f), Color.Black, 0.28f)
 
 /** Resting borders. */
-val OutlineLight = Color(0xFFD9D6E8)
+val OutlineLight = IndigoLight.wash(0.82f)
 
 /** Hairline / card edges. */
-val OutlineVariantLight = Color(0xFFECEAF4)
+val OutlineVariantLight = IndigoLight.wash(0.90f)
 
 /** Pastel detail-header banners. */
-val BannerFriendsLight = Color(0xFFDDDCFC)
-val BannerHomeLight = Color(0xFFFFECD0)
-val BannerOtherLight = Color(0xFFE6E4F4)
+val BannerFriendsLight = IndigoBannerWash
+val BannerHomeLight = AmberLight.wash(0.76f)
+val BannerOtherLight = IndigoBannerWash
 
-// --- Dark theme ---
+// --- Dark theme (derived from the same seeds) ---
 
 /** Primary indigo — CTAs, focused fields, links, and other brand accents. */
-val IndigoDark = Color(0xFF818CF8)
+val IndigoDark = IndigoLight.wash(0.28f)
 
 /** Accent amber — divider, CTAs, highlights, "pending" states. */
-val AmberDark = Color(0xFFFFB020)
+val AmberDark = AmberLight.wash(0.14f)
 
 /** Screen backgrounds. */
-val BackgroundDark = Color(0xFF14121F)
+val BackgroundDark = IndigoLight.shade(0.88f)
 
 /** Cards, sheets, input fields (one step lighter than background). */
-val SurfaceDark = Color(0xFF201C33)
+val SurfaceDark = IndigoLight.shade(0.78f)
 
 /** Body/heading text on dark backgrounds. */
-val TextPrimaryDark = Color(0xFFECEAFB)
+val TextPrimaryDark = IndigoLight.wash(0.92f)
 
 /** Captions, hints, timestamps, muted labels (dark theme). */
-val TextSecondaryDark = Color(0xFFB4AFC7)
+val TextSecondaryDark = IndigoLight.wash(0.68f)
 
 // --- Semantic balance ---
 

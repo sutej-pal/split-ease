@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /**
  * Convenience aliases for screens and `Se*` components.
@@ -89,7 +90,7 @@ object SplitEaseColors {
     // Group type tiles (glyph color; [SeIconTile] washes these into a pastel fill)
     val IconFriends = IndigoLight
     val IconHome = AmberLight
-    val IconOther = Color(0xFF6D68A0)
+    val IconOther = lerp(IndigoLight, Color.Gray, 0.38f)
 
     // Light detail-header banners
     val BannerFriends = BannerFriendsLight

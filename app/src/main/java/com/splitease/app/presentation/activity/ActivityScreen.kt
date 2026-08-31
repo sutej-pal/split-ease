@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.activity
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -23,7 +21,13 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,11 +38,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,8 +50,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeActionChip
-import com.splitease.app.presentation.ui.SeActionChipRow
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeIconTile
@@ -58,6 +60,11 @@ import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.seDetailHorizontal
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 private enum class ActivityListFilter {
     ALL,
@@ -80,6 +87,10 @@ fun ActivityScreen(
     val visibleItems =
         remember(items, listFilter, query) {
             items.filter { it.matches(listFilter) && it.matchesQuery(query) }
+        }
+    val groupedItems =
+        remember(visibleItems) {
+            visibleItems.groupBy { dayKey(it.sortEpochMs) }
         }
     val emptyMessage =
         if (items.isEmpty() && listFilter == ActivityListFilter.ALL && query.isBlank()) {
@@ -106,6 +117,10 @@ fun ActivityScreen(
                         imageVector = if (showSearch) Icons.Filled.Close else Icons.Filled.Search,
                         contentDescription = stringResource(R.string.cd_search),
                     )
+                    ActivityFilterButton(
+                        selectedFilter = listFilter,
+                        onFilterSelected = { listFilter = it },
+                    )
                 },
             )
         },
@@ -117,43 +132,39 @@ fun ActivityScreen(
             )
         },
     ) { padding ->
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-            ) {
-                SeActionChipRow {
-                    ActivityListFilter.entries.forEach { option ->
-                        SeActionChip(
-                            label = stringResource(option.chipLabelRes),
-                            selected = listFilter == option,
-                            onClick = { listFilter = option },
-                        )
-                    }
-                }
-                if (showSearch) {
-                    SeTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = stringResource(R.string.activity_search_hint),
-                        modifier =
-                            Modifier
-                                .seDetailHorizontal()
-                                .padding(top = 8.dp, bottom = 4.dp),
-                    )
-                }
-                if (visibleItems.isEmpty()) {
-                    SeEmptyState(
-                        message = emptyMessage,
-                        icon = Icons.Filled.Receipt,
-                        modifier = Modifier.seDetailHorizontal(),
-                    )
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
-                    ) {
-                        items(visibleItems, key = { it.id }) { item ->
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+        ) {
+            if (showSearch) {
+                SeTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = stringResource(R.string.activity_search_hint),
+                    modifier =
+                        Modifier
+                            .seDetailHorizontal()
+                            .padding(top = 4.dp, bottom = 4.dp),
+                )
+            }
+            if (visibleItems.isEmpty()) {
+                SeEmptyState(
+                    message = emptyMessage,
+                    icon = Icons.Filled.Receipt,
+                    modifier = Modifier.seDetailHorizontal(),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                ) {
+                    groupedItems.forEach { (day, dayItems) ->
+                        item(key = "day-$day") {
+                            ActivityDayHeader(day = day)
+                        }
+                        items(dayItems, key = { it.id }) { item ->
                             ActivityRow(
                                 item = item,
                                 onClick =
@@ -165,16 +176,59 @@ fun ActivityScreen(
                     }
                 }
             }
+        }
     }
 }
 
-private val ActivityListFilter.chipLabelRes: Int
+@Composable
+private fun ActivityFilterButton(
+    selectedFilter: ActivityListFilter,
+    onFilterSelected: (ActivityListFilter) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box {
+        SeSoftIconButton(
+            onClick = { menuExpanded = true },
+            imageVector = Icons.Filled.Tune,
+            contentDescription = stringResource(R.string.cd_filter_activity),
+        )
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            ActivityListFilter.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(text = stringResource(option.labelRes)) },
+                    onClick = {
+                        onFilterSelected(option)
+                        menuExpanded = false
+                    },
+                    leadingIcon = {
+                        RadioButton(
+                            selected = selectedFilter == option,
+                            onClick = {
+                                onFilterSelected(option)
+                                menuExpanded = false
+                            },
+                            colors =
+                                RadioButtonDefaults.colors(
+                                    selectedColor = SplitEaseColors.Primary,
+                                ),
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+private val ActivityListFilter.labelRes: Int
     get() =
         when (this) {
-            ActivityListFilter.ALL -> R.string.filter_all
-            ActivityListFilter.EXPENSE -> R.string.activity_filter_chip_expense
-            ActivityListFilter.SETTLEMENTS -> R.string.activity_filter_chip_settlements
-            ActivityListFilter.GROUPS -> R.string.activity_filter_chip_groups
+            ActivityListFilter.ALL -> R.string.activity_filter_all
+            ActivityListFilter.EXPENSE -> R.string.activity_filter_expense
+            ActivityListFilter.SETTLEMENTS -> R.string.activity_filter_settlements
+            ActivityListFilter.GROUPS -> R.string.activity_filter_groups
         }
 
 private fun ActivityUiItem.matches(filter: ActivityListFilter): Boolean =
@@ -199,6 +253,34 @@ private fun ActivityUiItem.matchesQuery(query: String): Boolean {
         (actorDisplayName?.contains(needle, ignoreCase = true) == true)
 }
 
+private fun dayKey(epochMs: Long): LocalDate =
+    Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
+
+@Composable
+private fun ActivityDayHeader(day: LocalDate) {
+    val today = LocalDate.now()
+    val label =
+        when (day) {
+            today -> stringResource(R.string.activity_section_today)
+            today.minusDays(1) -> stringResource(R.string.activity_section_yesterday)
+            else ->
+                remember(day) {
+                    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(day)
+                }
+        }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = SplitEaseColors.Navy,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = SeLayout.detailHorizontal)
+                .padding(top = 16.dp, bottom = 4.dp),
+    )
+}
+
 @Composable
 private fun ActivityRow(
     item: ActivityUiItem,
@@ -216,81 +298,69 @@ private fun ActivityRow(
         item.kind == ActivityKind.EXPENSE ||
             item.kind == ActivityKind.EXPENSE_UPDATED ||
             item.kind == ActivityKind.EXPENSE_DELETED
-    val railColor =
-        when (item.kind) {
-            ActivityKind.PAYMENT -> SplitEaseColors.OwedToYou
-            ActivityKind.EXPENSE_DELETED -> SplitEaseColors.YouOwe
-            ActivityKind.GROUP_CREATED -> SplitEaseColors.IconFriends
-            else -> SplitEaseColors.Primary
-        }
     val amountTone =
         when (item.balanceTone) {
             ActivityBalanceTone.POSITIVE -> SplitEaseColors.OwedToYou
             ActivityBalanceTone.NEGATIVE -> SplitEaseColors.YouOwe
             null -> SplitEaseColors.Navy
         }
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+    val timeLabel =
+        remember(item.sortEpochMs) {
+            DateTimeFormatter
+                .ofLocalizedTime(FormatStyle.SHORT)
+                .format(
+                    Instant.ofEpochMilli(item.sortEpochMs).atZone(ZoneId.systemDefault()),
+                )
+        }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier =
                 Modifier
-                    .width(4.dp)
-                    .height(44.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(railColor),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        if (isExpenseKind && !item.actorDisplayName.isNullOrBlank()) {
-            SeIconTileWithAvatar(
-                icon = icon,
-                tint = tint,
-                actorName = item.actorDisplayName,
-                actorPhotoUrl = item.actorPhotoUrl,
-            )
-        } else {
-            SeIconTile(icon = icon, tint = tint, size = 44)
-        }
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = activityTitleText(item.title, item.expenseTitle),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            if (!item.balanceLabel.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = item.balanceLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = amountTone,
+                    .fillMaxWidth()
+                    .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                    .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            if (isExpenseKind && !item.actorDisplayName.isNullOrBlank()) {
+                SeIconTileWithAvatar(
+                    icon = icon,
+                    tint = tint,
+                    actorName = item.actorDisplayName,
+                    actorPhotoUrl = item.actorPhotoUrl,
                 )
+            } else {
+                SeIconTile(icon = icon, tint = tint, size = 44)
             }
-            if (item.subtitle.isNotBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = activityTitleText(item.title, item.expenseTitle),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                if (!item.balanceLabel.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = item.balanceLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = amountTone,
+                    )
+                }
             }
-        }
-        if (item.amountLabel.isNotBlank()) {
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = item.amountLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = amountTone,
+                text = timeLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = SplitEaseColors.NavyMuted,
             )
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = SeLayout.detailHorizontal + 58.dp),
+            color = SplitEaseColors.Outline,
+        )
     }
 }
 
@@ -319,6 +389,7 @@ private fun activityTitleText(
 private fun ActivityScreenPreview() {
     SePreview {
         Column {
+            ActivityDayHeader(day = LocalDate.now())
             ActivityRow(
                 ActivityUiItem(
                     id = "1",
@@ -326,7 +397,7 @@ private fun ActivityScreenPreview() {
                     title = "Sutej Pal Hotmail added exp3 in Noida room",
                     subtitle = "Aug 5, 2026, 6:12 PM",
                     amountLabel = "",
-                    sortEpochMs = 0L,
+                    sortEpochMs = System.currentTimeMillis(),
                     balanceLabel = "You get back ₹100.00",
                     balanceTone = ActivityBalanceTone.POSITIVE,
                     actorDisplayName = "Sutej Pal Hotmail",
@@ -340,13 +411,14 @@ private fun ActivityScreenPreview() {
                     title = "You added exp2 in Noida room",
                     subtitle = "Aug 5, 2026, 5:40 PM",
                     amountLabel = "",
-                    sortEpochMs = 0L,
+                    sortEpochMs = System.currentTimeMillis() - 32 * 60_000L,
                     balanceLabel = "you owe ₹250.00",
                     balanceTone = ActivityBalanceTone.NEGATIVE,
                     actorDisplayName = "You",
                     expenseTitle = "exp2",
                 ),
             )
+            ActivityDayHeader(day = LocalDate.now().minusDays(1))
             ActivityRow(
                 ActivityUiItem(
                     id = "3",
@@ -354,7 +426,7 @@ private fun ActivityScreenPreview() {
                     title = "You created \"Trip\"",
                     subtitle = "Jul 22, 2026, 3:15 PM",
                     amountLabel = "",
-                    sortEpochMs = 0L,
+                    sortEpochMs = System.currentTimeMillis() - 86_400_000L,
                 ),
             )
         }

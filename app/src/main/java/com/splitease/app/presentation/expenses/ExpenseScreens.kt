@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -226,8 +227,13 @@ fun AddExpenseScreen(
             isMultiPayer = true
             paidAmountTexts =
                 detail.splits.associate { split ->
+                    val paid = split.paidAmount ?: BigDecimal.ZERO
                     split.userId to
-                        (split.paidAmount ?: BigDecimal.ZERO.setScale(2)).toPlainString()
+                        if (paid.compareTo(BigDecimal.ZERO) == 0) {
+                            ""
+                        } else {
+                            paid.setScale(2).toPlainString()
+                        }
                 }
         } else {
             isMultiPayer = false
@@ -697,6 +703,12 @@ fun AddExpenseScreen(
                     },
                     placeholder = "0.00",
                     leadingLabel = currencySymbol(currencyCode),
+                    iconBoxSize = 56.dp,
+                    leadingTextStyle =
+                        MaterialTheme.typography.headlineMedium.copy(
+                            color = SplitEaseColors.Navy,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
                     enabled = !uiState.isSubmitting,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountError,
@@ -969,6 +981,8 @@ private fun ExpenseUnderlineField(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     leadingLabel: String? = null,
+    iconBoxSize: Dp = 48.dp,
+    leadingTextStyle: TextStyle? = null,
     onIconClick: (() -> Unit)? = null,
     iconContentDescription: String? = null,
     enabled: Boolean = true,
@@ -1003,7 +1017,7 @@ private fun ExpenseUnderlineField(
         Box(
             modifier =
                 Modifier
-                    .size(48.dp)
+                    .size(iconBoxSize)
                     .background(SplitEaseColors.SurfaceMuted, RoundedCornerShape(12.dp))
                     .border(1.dp, SplitEaseColors.OutlineStrong, RoundedCornerShape(12.dp))
                     .clip(RoundedCornerShape(12.dp))
@@ -1020,7 +1034,9 @@ private fun ExpenseUnderlineField(
                 leadingLabel != null ->
                     Text(
                         text = leadingLabel,
-                        style = MaterialTheme.typography.titleLarge,
+                        style =
+                            leadingTextStyle
+                                ?: MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = SplitEaseColors.Navy,
                     )
@@ -1269,6 +1285,12 @@ private fun AddExpenseScreenPreview() {
                             onValueChange = { amount = it },
                             placeholder = "0.00",
                             leadingLabel = currencySymbol(currencyCode),
+                            iconBoxSize = 56.dp,
+                            leadingTextStyle =
+                                MaterialTheme.typography.headlineMedium.copy(
+                                    color = SplitEaseColors.Navy,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             textStyle =
                                 MaterialTheme.typography.headlineMedium.copy(

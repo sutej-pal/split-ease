@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.expenses
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,11 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -79,23 +86,14 @@ fun WhoPaidScreen(
                         onClick = { onSelectPerson(option.userId) },
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.expense_multiple_people),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onMultiplePeople)
-                            .padding(vertical = 16.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    color =
-                        if (isMultiplePeople) {
-                            SplitEaseColors.Primary
-                        } else {
-                            SplitEaseColors.Navy
-                        },
-                    fontWeight =
-                        if (isMultiplePeople) FontWeight.SemiBold else FontWeight.Normal,
+                Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider(color = SplitEaseColors.Outline)
+                WhoPaidRow(
+                    name = stringResource(R.string.expense_multiple_people),
+                    photoUrl = null,
+                    selected = isMultiplePeople,
+                    leadingIcon = Icons.Filled.Group,
+                    onClick = onMultiplePeople,
                 )
             }
         },
@@ -120,7 +118,7 @@ fun EnterPaidAmountsScreen(
     var drafts by remember(participants, initialAmounts) {
         mutableStateOf(
             participants.associate { option ->
-                option.userId to initialAmounts[option.userId].orEmpty().ifBlank { "0.00" }
+                option.userId to zeroLikeAsEmpty(initialAmounts[option.userId])
             },
         )
     }
@@ -188,6 +186,7 @@ fun EnterPaidAmountsScreen(
                             onValueChange = { raw ->
                                 drafts = drafts + (option.userId to filterMoneyInput(raw))
                             },
+                            placeholder = "0.00",
                         )
                     }
                 }
@@ -259,34 +258,55 @@ private fun WhoPaidRow(
     photoUrl: String?,
     selected: Boolean,
     onClick: () -> Unit,
+    leadingIcon: ImageVector? = null,
 ) {
+    val labelColor = if (selected) SplitEaseColors.Primary else SplitEaseColors.Navy
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (selected) SplitEaseColors.PrimarySoft else Color.Transparent)
                 .clickable(onClick = onClick)
-                .padding(vertical = 14.dp),
+                .padding(horizontal = 8.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SeAvatarBadge(
-            name = name,
-            photoUrl = photoUrl,
-            size = 44.dp,
-            borderWidth = 0.dp,
-        )
+        if (leadingIcon != null) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(44.dp)
+                        .background(SplitEaseColors.SurfaceMuted, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (selected) SplitEaseColors.Primary else SplitEaseColors.NavyMuted,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        } else {
+            SeAvatarBadge(
+                name = name,
+                photoUrl = photoUrl,
+                size = 44.dp,
+                borderWidth = 0.dp,
+            )
+        }
         Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = name,
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleMedium,
-            color = SplitEaseColors.Navy,
+            color = labelColor,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
         if (selected) {
             Icon(
                 Icons.Filled.Check,
                 contentDescription = null,
-                tint = SplitEaseColors.Navy,
+                tint = SplitEaseColors.Primary,
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -300,6 +320,7 @@ private fun PaidAmountRow(
     currencySymbol: String,
     value: String,
     onValueChange: (String) -> Unit,
+    placeholder: String,
 ) {
     Row(
         modifier =
@@ -329,6 +350,15 @@ private fun PaidAmountRow(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Box(modifier = Modifier.width(88.dp)) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SplitEaseColors.NavyMuted,
+                        textAlign = TextAlign.End,
+                    )
+                }
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
@@ -352,6 +382,14 @@ private fun PaidAmountRow(
             }
         }
     }
+}
+
+/** Treat blank / 0 / 0.00 as empty so the field can show a placeholder instead. */
+private fun zeroLikeAsEmpty(text: String?): String {
+    val raw = text.orEmpty().trim()
+    if (raw.isEmpty()) return ""
+    val parsed = runCatching { BigDecimal(raw) }.getOrNull() ?: return raw
+    return if (parsed.compareTo(BigDecimal.ZERO) == 0) "" else raw
 }
 
 private fun filterMoneyInput(raw: String): String {

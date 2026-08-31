@@ -13,6 +13,7 @@ import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,10 +22,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class GroupsHomeUi(
@@ -66,20 +69,19 @@ class GroupsHomeViewModel
                         isInitialLoading.value = true
                         return@collect
                     }
-                    // 1) Paint from Room immediately when anything is cached.
-                    val cached = runCatching { groupRepository.observeGroupsForUser(id).first() }
-                        .getOrDefault(emptyList())
-                    if (cached.isNotEmpty() || syncInteractor.wasSyncedRecently()) {
-                        isInitialLoading.value = false
-                    } else {
-                        // 2) First login / empty DB: wait only for a lite group-list pull
-                        //    (no members/profiles/expenses).
-                        isInitialLoading.value = true
-                        runCatching { socialInteractor.refreshGroupList(id) }
-                        isInitialLoading.value = false
+                    withContext(Dispatchers.IO) {
+                        val cached =
+                            runCatching { groupRepository.observeGroupsForUser(id).first() }
+                                .getOrDefault(emptyList())
+                        if (cached.isNotEmpty() || syncInteractor.wasSyncedRecently()) {
+                            isInitialLoading.value = false
+                        } else {
+                            isInitialLoading.value = true
+                            runCatching { socialInteractor.refreshGroupList(id) }
+                            isInitialLoading.value = false
+                        }
                     }
-                    // 3) Full hydrate (members, expenses, balances) never blocks Home.
-                    launch {
+                    launch(Dispatchers.IO) {
                         runCatching { syncInteractor.syncForUser(id) }
                     }
                 }
@@ -94,24 +96,39 @@ class GroupsHomeViewModel
                         flowOf(GroupsHomeUi())
                     } else {
                         combine(
-                            balanceInteractor.observeOverallBalances(me),
+                            isInitialLoading.flatMapLatest { loading ->
+                                if (loading) {
+                                    flowOf<OverallBalancesUi?>(null)
+                                } else {
+                                    balanceInteractor
+                                        .observeOverallBalances(me)
+                                        .flowOn(Dispatchers.Default)
+                                }
+                            },
                             groupRepository.observeGroupsForUser(me),
                             appSettingsRepository.observeCurrencyCode(),
-                        ) { balances, groups, currency ->
-                            GroupsHomeUi(
-                                currencyCode = currency,
-                                balances = balances,
-                                allGroups = groups,
-                            )
+                            isInitialLoading,
+                        ) { balances, groups, currency, loading ->
+                            if (loading) {
+                                GroupsHomeUi(
+                                    currencyCode = currency,
+                                    isLoading = true,
+                                )
+                            } else {
+                                GroupsHomeUi(
+                                    currencyCode = currency,
+                                    balances = balances,
+                                    allGroups = groups,
+                                    isLoading = false,
+                                )
+                            }
                         }
                     }
                 },
-                isInitialLoading,
                 isRefreshing,
                 feedback,
-            ) { home, loading, refreshing, messages ->
+            ) { home, refreshing, messages ->
                 home.copy(
-                    isLoading = loading,
                     isRefreshing = refreshing,
                     infoMessage = messages.first,
                     errorMessage = messages.second,
@@ -124,7 +141,9 @@ class GroupsHomeViewModel
             if (isInitialLoading.value) return
             viewModelScope.launch {
                 isRefreshing.update { true }
-                runCatching { syncInteractor.syncForUser(id, force = true) }
+                withContext(Dispatchers.IO) {
+                    runCatching { syncInteractor.syncForUser(id, force = true) }
+                }
                 isRefreshing.update { false }
             }
         }
@@ -136,7 +155,10 @@ class GroupsHomeViewModel
         ) {
             if (photoUri.isBlank()) return
             viewModelScope.launch {
-                val result = socialInteractor.updateGroupPhoto(groupId, photoUri)
+                val result =
+                    withContext(Dispatchers.IO) {
+                        socialInteractor.updateGroupPhoto(groupId, photoUri)
+                    }
                 feedback.value =
                     if (result.isSuccess) {
                         null to null

@@ -2,34 +2,213 @@ package com.splitease.app.presentation.pinboard
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 
+/** Unchecked (`- []` / `- [ ]`) or checked (`- [x]`) markdown checklist line. */
 private val CHECKLIST_LINE =
-    Regex("""^(\s*)-\s*\[( |x|X)\]\s*(.*)$""")
+    Regex("""^(\s*)-\s*\[(\s*|x|X)\]\s*(.*)$""")
+
+internal data class PinTextLine(
+    val isChecklist: Boolean,
+    val checked: Boolean,
+    val body: String,
+)
 
 /** Whether [line] is a markdown checklist item. */
 internal fun isChecklistLine(line: String): Boolean = CHECKLIST_LINE.matches(line)
 
 /** Toggles a checklist line between unchecked and checked. */
 internal fun toggleChecklistLine(line: String): String {
-    val match = CHECKLIST_LINE.matchEntire(line) ?: return line
-    val indent = match.groupValues[1]
-    val checked = match.groupValues[2] != " "
-    val body = match.groupValues[3]
-    val mark = if (checked) " " else "x"
-    return "$indent- [$mark] $body"
+    val parsed = parsePinTextLine(line)
+    if (!parsed.isChecklist) return line
+    return serializePinTextLine(parsed.copy(checked = !parsed.checked))
 }
 
 /** Checklist item label without the `- [ ]` prefix. */
-internal fun checklistItemBody(line: String): String =
-    CHECKLIST_LINE.matchEntire(line)?.groupValues?.get(3).orEmpty()
+internal fun checklistItemBody(line: String): String = parsePinTextLine(line).body
 
-internal fun isChecklistLineChecked(line: String): Boolean {
-    val mark = CHECKLIST_LINE.matchEntire(line)?.groupValues?.get(2) ?: return false
-    return mark.equals("x", ignoreCase = true)
+internal fun isChecklistLineChecked(line: String): Boolean = parsePinTextLine(line).checked
+
+internal fun parsePinTextLine(line: String): PinTextLine {
+    val match = CHECKLIST_LINE.matchEntire(line) ?: return PinTextLine(false, false, line)
+    return PinTextLine(
+        isChecklist = true,
+        checked = match.groupValues[2].equals("x", ignoreCase = true),
+        body = match.groupValues[3],
+    )
+}
+
+internal fun parsePinTextLines(text: String): List<PinTextLine> {
+    if (text.isEmpty()) return listOf(PinTextLine(false, false, ""))
+    return text.split('\n').map(::parsePinTextLine)
+}
+
+internal fun serializePinTextLine(line: PinTextLine): String =
+    when {
+        !line.isChecklist -> line.body
+        line.checked -> "- [x] ${line.body}"
+        else -> "- [ ] ${line.body}"
+    }
+
+internal fun serializePinTextLines(lines: List<PinTextLine>): String =
+    lines.joinToString("\n", transform = ::serializePinTextLine)
+
+/** Line index and cursor offset inside that line's editable body. */
+internal fun lineBodyCursorFromFull(
+    text: String,
+    cursor: Int,
+): Pair<Int, Int> {
+    val parts = if (text.isEmpty()) listOf("") else text.split('\n')
+    val safe = cursor.coerceIn(0, text.length)
+    var start = 0
+    parts.forEachIndexed { index, raw ->
+        val end = start + raw.length
+        if (safe <= end) {
+            val parsed = parsePinTextLine(raw)
+            val prefixLen = (raw.length - parsed.body.length).coerceAtLeast(0)
+            val bodyOffset = (safe - start - prefixLen).coerceIn(0, parsed.body.length)
+            return index to bodyOffset
+        }
+        start = end + 1
+    }
+    val last = parsePinTextLine(parts.last())
+    return parts.lastIndex to last.body.length
+}
+
+internal fun fullCursorFromLineBody(
+    text: String,
+    lineIndex: Int,
+    bodyOffset: Int,
+): Int {
+    val parts = if (text.isEmpty()) listOf("") else text.split('\n')
+    var start = 0
+    parts.forEachIndexed { index, raw ->
+        if (index == lineIndex) {
+            val parsed = parsePinTextLine(raw)
+            val prefixLen = (raw.length - parsed.body.length).coerceAtLeast(0)
+            return start + prefixLen + bodyOffset.coerceIn(0, parsed.body.length)
+        }
+        start += raw.length + 1
+    }
+    return text.length
+}
+
+/**
+ * Applies a per-line text-field change (typing, selection, or Enter) back onto
+ * the full markdown source.
+ *
+ * @return Updated markdown and cursor in that full string.
+ */
+internal fun applyPinLineFieldChange(
+    text: String,
+    lineIndex: Int,
+    fieldText: String,
+    fieldCursor: Int,
+): Pair<String, Int> {
+    val lines = parsePinTextLines(text).toMutableList()
+    if (lineIndex !in lines.indices) return text to text.length
+    val current = lines[lineIndex]
+    val sel = fieldCursor.coerceIn(0, fieldText.length)
+
+    if ('\n' !in fieldText) {
+        lines[lineIndex] = current.copy(body = fieldText)
+        val newText = serializePinTextLines(lines)
+        val cursor = fullCursorFromLineBody(newText, lineIndex, sel)
+        return newText to cursor
+    }
+
+    val parts = fieldText.split('\n')
+    val before = parts.first()
+    val after = parts.drop(1)
+
+    // Empty checklist item + Enter leaves the list (plain paragraph).
+    if (current.isChecklist && before.isBlank() && after.all { it.isBlank() }) {
+        lines[lineIndex] = PinTextLine(isChecklist = false, checked = false, body = "")
+        val newText = serializePinTextLines(lines)
+        return newText to fullCursorFromLineBody(newText, lineIndex, 0)
+    }
+
+    lines[lineIndex] = current.copy(body = before)
+    after.forEachIndexed { offset, part ->
+        lines.add(
+            lineIndex + 1 + offset,
+            PinTextLine(
+                isChecklist = current.isChecklist,
+                checked = false,
+                body = part,
+            ),
+        )
+    }
+    val newText = serializePinTextLines(lines)
+    val cursor =
+        if (sel <= before.length) {
+            fullCursorFromLineBody(newText, lineIndex, sel)
+        } else if (after.size == 1) {
+            fullCursorFromLineBody(
+                newText,
+                lineIndex + 1,
+                (sel - before.length - 1).coerceIn(0, after[0].length),
+            )
+        } else {
+            fullCursorFromLineBody(newText, lineIndex + after.size, after.last().length)
+        }
+    return newText to cursor
+}
+
+internal fun togglePinLineChecked(
+    text: String,
+    lineIndex: Int,
+): String {
+    val lines = parsePinTextLines(text).toMutableList()
+    if (lineIndex !in lines.indices) return text
+    val line = lines[lineIndex]
+    if (!line.isChecklist) return text
+    lines[lineIndex] = line.copy(checked = !line.checked)
+    return serializePinTextLines(lines)
+}
+
+/**
+ * Toggles the checklist at [toggledLineIndex] and remaps [originalCursor] onto the
+ * same focused line so checking another row does not steal the caret.
+ */
+internal fun cursorAfterPinLineCheckedToggle(
+    originalText: String,
+    originalCursor: Int,
+    toggledLineIndex: Int,
+): Pair<String, Int> {
+    val updated = togglePinLineChecked(originalText, toggledLineIndex)
+    val (focusLine, focusBody) = lineBodyCursorFromFull(originalText, originalCursor)
+    return updated to fullCursorFromLineBody(updated, focusLine, focusBody)
+}
+
+/**
+ * Backspace at the start of a line: unwrap a checklist, otherwise merge into
+ * the previous line.
+ */
+internal fun mergePinLineBackward(
+    text: String,
+    lineIndex: Int,
+): Pair<String, Int>? {
+    val lines = parsePinTextLines(text).toMutableList()
+    if (lineIndex !in lines.indices) return null
+    val current = lines[lineIndex]
+    if (current.isChecklist) {
+        lines[lineIndex] = current.copy(isChecklist = false, checked = false)
+        val newText = serializePinTextLines(lines)
+        return newText to fullCursorFromLineBody(newText, lineIndex, 0)
+    }
+    if (lineIndex == 0) return null
+    val prev = lines[lineIndex - 1]
+    val mergeAt = prev.body.length
+    lines[lineIndex - 1] = prev.copy(body = prev.body + current.body)
+    lines.removeAt(lineIndex)
+    val newText = serializePinTextLines(lines)
+    return newText to fullCursorFromLineBody(newText, lineIndex - 1, mergeAt)
 }
 
 /**
@@ -73,13 +252,11 @@ internal fun insertChecklistMarker(
     val insert =
         when {
             linePrefix.isBlank() -> "- [ ] "
-            safeCursor == lineEnd -> "\n- [ ] "
             else -> "\n- [ ] "
         }
     val insertAt =
         when {
             linePrefix.isBlank() -> lineStart
-            safeCursor == lineEnd -> lineEnd
             else -> safeCursor
         }
     val newText = text.replaceRange(insertAt, insertAt, insert)
@@ -87,36 +264,91 @@ internal fun insertChecklistMarker(
 }
 
 /** Renders inline markdown (**bold**, _italic_) for pin-board display. */
-internal fun buildPinBoardAnnotatedString(text: String): AnnotatedString =
-    buildAnnotatedString {
-        var index = 0
-        while (index < text.length) {
-            when {
-                text.startsWith("**", index) -> {
-                    val end = text.indexOf("**", index + 2)
-                    if (end > index + 2) {
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(text.substring(index + 2, end))
-                        }
-                        index = end + 2
-                        continue
+internal fun buildPinBoardAnnotatedString(text: String): AnnotatedString = transformPinBoardInline(text).text
+
+/** Hides `**` / `_` markers in the editor while keeping styles. */
+internal object PinBoardInlineVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText = transformPinBoardInline(text.text)
+}
+
+internal fun transformPinBoardInline(source: String): TransformedText {
+    if (source.isEmpty()) return TransformedText(AnnotatedString(""), OffsetMapping.Identity)
+
+    val origToTrans = IntArray(source.length + 1)
+    val transToOrig = ArrayList<Int>(source.length + 1)
+    var trans = 0
+    val annotated =
+        AnnotatedString.Builder().apply {
+            var index = 0
+            while (index < source.length) {
+                val boldEnd = inlineMarkerEnd(source, index, "**")
+                if (boldEnd != null) {
+                    origToTrans[index] = trans
+                    origToTrans[index + 1] = trans
+                    val style = SpanStyle(fontWeight = FontWeight.Bold)
+                    var inner = index + 2
+                    while (inner < boldEnd) {
+                        origToTrans[inner] = trans
+                        transToOrig.add(inner)
+                        withStyle(style) { append(source[inner]) }
+                        trans++
+                        inner++
                     }
+                    origToTrans[boldEnd] = trans
+                    origToTrans[boldEnd + 1] = trans
+                    index = boldEnd + 2
+                    continue
                 }
-                text.startsWith("_", index) -> {
-                    val end = text.indexOf("_", index + 1)
-                    if (end > index + 1) {
-                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                            append(text.substring(index + 1, end))
-                        }
-                        index = end + 1
-                        continue
+                val italicEnd = inlineMarkerEnd(source, index, "_")
+                if (italicEnd != null) {
+                    origToTrans[index] = trans
+                    val style = SpanStyle(fontStyle = FontStyle.Italic)
+                    var inner = index + 1
+                    while (inner < italicEnd) {
+                        origToTrans[inner] = trans
+                        transToOrig.add(inner)
+                        withStyle(style) { append(source[inner]) }
+                        trans++
+                        inner++
                     }
+                    origToTrans[italicEnd] = trans
+                    index = italicEnd + 1
+                    continue
                 }
+                origToTrans[index] = trans
+                transToOrig.add(index)
+                append(source[index])
+                trans++
+                index++
             }
-            append(text[index])
-            index++
         }
-    }
+    origToTrans[source.length] = trans
+    transToOrig.add(source.length)
+    val toOrig = transToOrig.toIntArray()
+    return TransformedText(
+        annotated.toAnnotatedString(),
+        object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int =
+                origToTrans[offset.coerceIn(0, origToTrans.lastIndex)]
+
+            override fun transformedToOriginal(offset: Int): Int =
+                toOrig[offset.coerceIn(0, toOrig.lastIndex)]
+        },
+    )
+}
+
+private fun inlineMarkerEnd(
+    source: String,
+    index: Int,
+    marker: String,
+): Int? {
+    if (!source.startsWith(marker, index)) return null
+    val innerStart = index + marker.length
+    val end = source.indexOf(marker, innerStart)
+    if (end < innerStart) return null
+    if ('\n' in source.substring(innerStart, end)) return null
+    return end
+}
 
 /** Toggles the checklist item on [lineIndex] within [text]. */
 internal fun toggleChecklistAtLine(

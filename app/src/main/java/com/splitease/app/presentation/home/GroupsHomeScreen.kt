@@ -5,10 +5,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -18,7 +21,14 @@ import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +44,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -42,19 +53,16 @@ import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.domain.model.GroupType
-import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeActionChip
-import com.splitease.app.presentation.ui.SeActionChipRow
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeHeroBalancePair
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInlineLoader
-import com.splitease.app.presentation.ui.SeLedgerRow
+import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
@@ -62,7 +70,6 @@ import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextButton
-import com.splitease.app.presentation.ui.seDetailHorizontal
 import java.math.BigDecimal
 
 /** How the groups list on Home is filtered. */
@@ -99,6 +106,23 @@ fun GroupsHomeScreen(
             photoTargetGroupId = null
             viewModel.updateGroupPhoto(groupId, uri)
         }
+
+    if (ui.isLoading) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+        ) { padding ->
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                SeInlineLoader(text = stringResource(R.string.groups_fetching))
+            }
+        }
+        return
+    }
 
     val balances = ui.balances
     val groupRows =
@@ -148,91 +172,64 @@ fun GroupsHomeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            if (!ui.isLoading) {
-                SePageHeader(
-                    title = stringResource(R.string.groups_title),
-                    actions = {
-                        SeSoftIconButton(
-                            onClick = onOpenSearch,
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = stringResource(R.string.cd_search),
-                        )
-                        SeSoftIconButton(
-                            onClick = onCreateGroup,
-                            imageVector = Icons.Filled.GroupAdd,
-                            contentDescription = stringResource(R.string.action_create_group),
-                        )
-                    },
-                )
-            }
+            SePageHeader(
+                title = stringResource(R.string.groups_title),
+                actions = {
+                    SeSoftIconButton(
+                        onClick = onOpenSearch,
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = stringResource(R.string.cd_search),
+                    )
+                    SeSoftIconButton(
+                        onClick = onCreateGroup,
+                        imageVector = Icons.Filled.GroupAdd,
+                        contentDescription = stringResource(R.string.action_create_group),
+                    )
+                },
+            )
         },
         floatingActionButton = {
-            if (!ui.isLoading) {
-                SeExtendedFab(
-                    text = stringResource(R.string.action_add_expense),
-                    onClick = onAddExpense,
-                    icon = Icons.Filled.Receipt,
-                )
-            }
+            SeExtendedFab(
+                text = stringResource(R.string.action_add_expense),
+                onClick = onAddExpense,
+                icon = Icons.Filled.Receipt,
+            )
         },
     ) { padding ->
-        if (ui.isLoading) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                contentAlignment = Alignment.Center,
+        SePullRefreshBox(
+            isRefreshing = ui.isRefreshing,
+            onRefresh = viewModel::refresh,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
             ) {
-                SeInlineLoader(text = stringResource(R.string.groups_fetching))
-            }
-        } else {
-            SePullRefreshBox(
-                isRefreshing = ui.isRefreshing,
-                onRefresh = viewModel::refresh,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-            ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    // No horizontal contentPadding — row click/ripple is full-bleed; content
-                    // keeps [SeLayout.detailHorizontal] inset inside each item.
-                    contentPadding = PaddingValues(bottom = 96.dp),
-                ) {
                     item {
                         SeHeroBalancePair(
                             iOwe = balances?.totalIOweByCurrency.orEmpty(),
                             owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
                             currencyCode = ui.currencyCode,
-                            modifier =
-                                Modifier
-                                    .seDetailHorizontal()
-                                    .padding(top = 4.dp, bottom = 4.dp),
+                            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                         )
-                        SeActionChipRow {
-                            GroupsHomeFilter.entries.forEach { option ->
-                                SeActionChip(
-                                    label = stringResource(option.chipLabelRes),
-                                    selected = listFilter == option,
-                                    onClick = {
-                                        listFilter = option
-                                        showSettledGroups = false
-                                    },
-                                )
-                            }
-                        }
+                        GroupsFilterMenu(
+                            selectedFilter = listFilter,
+                            onFilterSelected = {
+                                listFilter = it
+                                showSettledGroups = false
+                            },
+                        )
                     }
 
                     if (ui.allGroups.isEmpty() && !showNonGroup) {
                         item {
                             SeEmptyState(
                                 message = stringResource(R.string.groups_empty_home),
-                                icon = Icons.Filled.Group,
                                 actionLabel = stringResource(R.string.action_create_group),
                                 onAction = onCreateGroup,
-                                modifier = Modifier.seDetailHorizontal(),
                             )
                         }
                     }
@@ -267,50 +264,95 @@ fun GroupsHomeScreen(
 
                     if (hiddenSettledCount > 0) {
                         item {
-                            Column(modifier = Modifier.seDetailHorizontal()) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = stringResource(R.string.groups_hiding_settled),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeOutlinedButton(
-                                    text =
-                                        pluralStringResource(
-                                            R.plurals.groups_show_settled,
-                                            hiddenSettledCount,
-                                            hiddenSettledCount,
-                                        ),
-                                    onClick = { showSettledGroups = true },
-                                )
-                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(R.string.groups_hiding_settled),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeOutlinedButton(
+                                text =
+                                    pluralStringResource(
+                                        R.plurals.groups_show_settled,
+                                        hiddenSettledCount,
+                                        hiddenSettledCount,
+                                    ),
+                                onClick = { showSettledGroups = true },
+                            )
                         }
                     } else if (canHideSettled) {
                         item {
-                            Column(modifier = Modifier.seDetailHorizontal()) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeTextButton(
-                                    text = stringResource(R.string.groups_hide_settled),
-                                    onClick = { showSettledGroups = false },
-                                )
-                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeTextButton(
+                                text = stringResource(R.string.groups_hide_settled),
+                                onClick = { showSettledGroups = false },
+                            )
                         }
                     }
+                }
+            }
+    }
+}
+
+private val GroupsHomeFilter.labelRes: Int
+    get() =
+        when (this) {
+            GroupsHomeFilter.ALL -> R.string.groups_filter_all
+            GroupsHomeFilter.OUTSTANDING -> R.string.groups_filter_outstanding
+            GroupsHomeFilter.YOU_OWE -> R.string.groups_filter_you_owe
+            GroupsHomeFilter.OWED_TO_YOU -> R.string.groups_filter_owed_to_you
+        }
+
+@Composable
+private fun GroupsFilterMenu(
+    selectedFilter: GroupsHomeFilter,
+    onFilterSelected: (GroupsHomeFilter) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Spacer(modifier = Modifier.weight(1f))
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(
+                    Icons.Filled.Tune,
+                    contentDescription = stringResource(R.string.cd_filter_groups),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                GroupsHomeFilter.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(text = stringResource(option.labelRes)) },
+                        onClick = {
+                            onFilterSelected(option)
+                            menuExpanded = false
+                        },
+                        leadingIcon = {
+                            RadioButton(
+                                selected = selectedFilter == option,
+                                onClick = {
+                                    onFilterSelected(option)
+                                    menuExpanded = false
+                                },
+                                colors =
+                                    RadioButtonDefaults.colors(
+                                        selectedColor = SplitEaseColors.Primary,
+                                    ),
+                            )
+                        },
+                    )
                 }
             }
         }
     }
 }
-
-private val GroupsHomeFilter.chipLabelRes: Int
-    get() =
-        when (this) {
-            GroupsHomeFilter.ALL -> R.string.filter_all
-            GroupsHomeFilter.OUTSTANDING -> R.string.filter_outstanding
-            GroupsHomeFilter.YOU_OWE -> R.string.filter_you_owe
-            GroupsHomeFilter.OWED_TO_YOU -> R.string.filter_owed_to_you
-        }
 
 private fun GroupBalanceUi.matches(filter: GroupsHomeFilter): Boolean =
     myNetByCurrency.matches(filter)
@@ -336,41 +378,44 @@ private fun GroupBalanceListItem(
     onIconClick: () -> Unit,
     iconContentDescription: String,
 ) {
-    val net = row.myNetByCurrency.primaryLedger(currencyFallback)
-    val debtSubtitle =
-        row.simplifiedDebts
-            .filter { it.fromLabel == "You" || it.toLabel == "You" }
-            .firstOrNull()
-            ?.let { debt ->
-                val youOwe = debt.fromLabel == "You"
-                if (youOwe) {
-                    "You owe ${debt.toLabel}"
-                } else {
-                    "${debt.fromLabel} owes you"
-                }
-            }
-    SeLedgerRow(
-        title = row.groupName,
-        subtitle = debtSubtitle ?: net.caption,
-        amount = net.amountLabel,
-        amountTone = net.tone,
-        onClick = onClick,
-        leading = {
-            SeGroupIconTile(
-                photoUrl = photoUrl,
-                fallbackIcon = icon,
-                fallbackTint = iconTint,
-                modifier =
-                    Modifier
-                        .semantics { contentDescription = iconContentDescription }
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onIconClick,
-                        ),
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        SeGroupIconTile(
+            photoUrl = photoUrl,
+            fallbackIcon = icon,
+            fallbackTint = iconTint,
+            modifier =
+                Modifier
+                    .semantics { contentDescription = iconContentDescription }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onIconClick,
+                    ),
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = row.groupName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
             )
-        },
-    )
+            Spacer(modifier = Modifier.height(2.dp))
+            MyNetStatus(row.myNetByCurrency, currencyFallback)
+            row.simplifiedDebts
+                .filter { it.fromLabel == "You" || it.toLabel == "You" }
+                .take(3)
+                .forEach { debt ->
+                    DebtLine(debt)
+                }
+        }
+    }
 }
 
 @Composable
@@ -380,49 +425,63 @@ private fun NonGroupListItem(
     currencyFallback: String,
     onClick: () -> Unit,
 ) {
-    val net = myNet.primaryLedger(currencyFallback)
-    val debtSubtitle =
-        debts.firstOrNull()?.let { debt ->
-            val youOwe = debt.fromLabel == "You"
-            if (youOwe) "You owe ${debt.toLabel}" else "${debt.fromLabel} owes you"
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        SeIconTile(icon = Icons.AutoMirrored.Filled.List, tint = SplitEaseColors.IconOther)
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.non_group_expenses),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            MyNetStatus(myNet, currencyFallback)
+            debts.take(3).forEach { DebtLine(it) }
         }
-    SeLedgerRow(
-        title = stringResource(R.string.non_group_expenses),
-        subtitle = debtSubtitle ?: net.caption,
-        amount = net.amountLabel,
-        amountTone = net.tone,
-        onClick = onClick,
-        leading = {
-            SeIconTile(icon = Icons.AutoMirrored.Filled.List, tint = SplitEaseColors.IconOther)
-        },
-    )
+    }
 }
 
-private data class LedgerNet(
-    val amountLabel: String?,
-    val tone: SeMoneyTone,
-    val caption: String,
-)
-
-private fun Map<String, BigDecimal>.primaryLedger(fallback: String): LedgerNet {
-    val settledCaption = "settled up"
-    val entry =
-        entries.firstOrNull { it.value.compareTo(BigDecimal.ZERO) != 0 }
-            ?: return LedgerNet(amountLabel = null, tone = SeMoneyTone.SETTLED, caption = settledCaption)
-    val code = entry.key.ifBlank { fallback }
-    return if (entry.value < BigDecimal.ZERO) {
-        LedgerNet(
-            amountLabel = MoneyFormat.format(entry.value.abs(), code),
-            tone = SeMoneyTone.YOU_OWE,
-            caption = "you owe",
+@Composable
+private fun MyNetStatus(
+    myNet: Map<String, BigDecimal>,
+    currencyFallback: String,
+) {
+    if (myNet.isEmpty()) {
+        SeMoneyText(
+            amount = BigDecimal.ZERO,
+            currencyCode = currencyFallback,
+            tone = SeMoneyTone.SETTLED,
+            prefix = stringResource(R.string.balances_settled_up).lowercase(),
         )
-    } else {
-        LedgerNet(
-            amountLabel = MoneyFormat.format(entry.value, code),
-            tone = SeMoneyTone.OWED_TO_YOU,
-            caption = "you are owed",
-        )
+        return
     }
+    myNet.toSortedMap().forEach { (currency, net) ->
+        val code = currency.ifBlank { currencyFallback }
+        when {
+            net < BigDecimal.ZERO ->
+                SeMoneyText(net.abs(), code, SeMoneyTone.YOU_OWE, prefix = "you owe")
+            net > BigDecimal.ZERO ->
+                SeMoneyText(net, code, SeMoneyTone.OWED_TO_YOU, prefix = "you are owed")
+        }
+    }
+}
+
+@Composable
+private fun DebtLine(debt: LabeledDebt) {
+    val youOwe = debt.fromLabel == "You"
+    SeMoneyText(
+        amount = debt.amount,
+        currencyCode = debt.currencyCode,
+        tone = if (youOwe) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU,
+        prefix = if (youOwe) "You owe ${debt.toLabel}" else "${debt.fromLabel} owes you",
+    )
 }
 
 private fun groupTypeIcon(type: GroupType?): ImageVector =

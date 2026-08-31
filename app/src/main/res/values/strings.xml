@@ -345,6 +345,8 @@
     <string name="activity_filter_expense">Expense</string>
     <string name="activity_filter_settlements">Settlements</string>
     <string name="activity_filter_groups">Groups</string>
+    <string name="activity_section_today">Today</string>
+    <string name="activity_section_yesterday">Yesterday</string>
     <string name="activity_added_in">%1$s added %2$s in %3$s</string>
     <string name="activity_updated_in">%1$s updated %2$s in %3$s</string>
     <string name="activity_deleted_in">%1$s deleted %2$s in %3$s</string>
