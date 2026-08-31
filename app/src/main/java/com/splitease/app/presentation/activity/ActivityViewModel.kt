@@ -107,7 +107,7 @@ data class ActivityFeedState(
 class ActivityViewModel
     @Inject
     constructor(
-        savedStateHandle: SavedStateHandle,
+        private val savedStateHandle: SavedStateHandle,
         @ApplicationContext private val appContext: Context,
         authRepository: AuthRepository,
         private val expenseRepository: ExpenseRepository,
@@ -145,7 +145,7 @@ class ActivityViewModel
                 .stateIn(
                     viewModelScope,
                     SharingStarted.WhileSubscribed(5_000),
-                    savedStateHandle[KEY_SEARCH_QUERY].orEmpty(),
+                    savedStateHandle.get<String>(KEY_SEARCH_QUERY).orEmpty(),
                 )
 
         @OptIn(ExperimentalCoroutinesApi::class)
