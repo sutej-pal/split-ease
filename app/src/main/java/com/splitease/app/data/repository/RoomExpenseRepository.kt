@@ -35,6 +35,17 @@ class RoomExpenseRepository
 
         override suspend fun getExpenseById(id: String): Expense? = expenseDao.getById(id)?.toDomain()
 
+        override suspend fun getExpensesByIds(ids: List<String>): Map<String, Expense> {
+            if (ids.isEmpty()) return emptyMap()
+            val found = linkedMapOf<String, Expense>()
+            ids.chunked(SQLITE_BIND_CHUNK).forEach { chunk ->
+                expenseDao.getByIds(chunk).forEach { row ->
+                    found[row.id] = row.toDomain()
+                }
+            }
+            return found
+        }
+
         override fun observeExpenseById(id: String): Flow<Expense?> =
             expenseDao.observeById(id).map { rows -> rows.firstOrNull()?.toDomain() }
 
@@ -44,6 +55,17 @@ class RoomExpenseRepository
         ) {
             expenseDao.upsertExpenseWithSplits(
                 expense = expense.toEntity(),
+                splits = splits.map { it.toEntity() },
+            )
+        }
+
+        override suspend fun upsertExpensesWithSplits(
+            expenses: List<Expense>,
+            splits: List<ExpenseSplit>,
+        ) {
+            if (expenses.isEmpty()) return
+            expenseDao.upsertExpensesWithSplits(
+                expenses = expenses.map { it.toEntity() },
                 splits = splits.map { it.toEntity() },
             )
         }

@@ -25,6 +25,14 @@ interface ExpenseRepository {
     suspend fun getExpenseById(id: String): Expense?
 
     /**
+     * Loads expenses by id.
+     *
+     * @param ids Local UUIDs.
+     * @return Map of id → expense (missing ids omitted).
+     */
+    suspend fun getExpensesByIds(ids: List<String>): Map<String, Expense>
+
+    /**
      * Observes a single expense by id.
      *
      * @param id Local UUID.
@@ -39,6 +47,17 @@ interface ExpenseRepository {
      */
     suspend fun upsertExpenseWithSplits(
         expense: Expense,
+        splits: List<ExpenseSplit>,
+    )
+
+    /**
+     * Persists many expenses together with their split lines in one transaction.
+     *
+     * @param expenses Parent expenses.
+     * @param splits Participant split rows; must reference an id in [expenses].
+     */
+    suspend fun upsertExpensesWithSplits(
+        expenses: List<Expense>,
         splits: List<ExpenseSplit>,
     )
 

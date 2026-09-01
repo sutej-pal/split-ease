@@ -11,21 +11,35 @@ import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.GroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+enum class SaveState {
+    IDLE,
+    PENDING,
+    SAVING,
+    SAVED,
+    ERROR,
+}
 
 data class PinBoardUiState(
     val content: String = "",
     val groupName: String = "",
     val isLoading: Boolean = true,
-    val isSaving: Boolean = false,
-    val isDirty: Boolean = false,
+    val saveState: SaveState = SaveState.IDLE,
     val lastEditedBy: String? = null,
     val lastEditedAt: String? = null,
     val errorMessage: String? = null,
@@ -50,7 +64,20 @@ class PinBoardViewModel
         private val _uiState = MutableStateFlow(PinBoardUiState())
         val uiState: StateFlow<PinBoardUiState> = _uiState.asStateFlow()
 
+        private val contentChanges = MutableSharedFlow<String>(extraBufferCapacity = 1)
         private var loadedGroupId: String? = null
+
+        init {
+            @OptIn(FlowPreview::class)
+            viewModelScope.launch {
+                contentChanges
+                    .debounce(600)
+                    .distinctUntilChanged()
+                    .collectLatest { content ->
+                        saveContent(content)
+                    }
+            }
+        }
 
         fun load(groupId: String) {
             if (loadedGroupId == groupId && !_uiState.value.isLoading) return
@@ -67,7 +94,7 @@ class PinBoardViewModel
                         content = dto.content,
                         groupName = groupName,
                         isLoading = false,
-                        isDirty = false,
+                        saveState = SaveState.IDLE,
                         lastEditedBy = editorName,
                         lastEditedAt = dto.updatedAt,
                     )
@@ -80,39 +107,65 @@ class PinBoardViewModel
             }
         }
 
-        fun onContentChanged(newContent: String) {
-            _uiState.value = _uiState.value.copy(
-                content = newContent,
-                isDirty = true,
-            )
+        fun onContentChanged(
+            newContent: String,
+            immediate: Boolean = false,
+        ) {
+            _uiState.value =
+                _uiState.value.copy(
+                    content = newContent,
+                    saveState = SaveState.PENDING,
+                )
+            if (immediate) {
+                viewModelScope.launch { saveContent(newContent) }
+            } else {
+                contentChanges.tryEmit(newContent)
+            }
         }
 
         /**
-         * Persists the current content when the user taps Save.
+         * Persists the current content immediately (bypassing debounce).
          */
-        fun save() {
-            val content = _uiState.value.content
+        fun saveImmediately() {
+            viewModelScope.launch {
+                saveContent(_uiState.value.content)
+            }
+        }
+
+        private suspend fun saveContent(content: String) {
             val gid = loadedGroupId ?: return
             val uid = userId.value ?: return
-            if (!_uiState.value.isDirty || _uiState.value.isSaving) return
-            viewModelScope.launch {
-                try {
-                    _uiState.value = _uiState.value.copy(isSaving = true, errorMessage = null)
-                    val synced = interactor.save(gid, content, uid)
-                    val editorName = socialRemote.fetchProfileById(uid)?.displayName
-                    _uiState.value = _uiState.value.copy(
-                        content = synced,
-                        isSaving = false,
-                        isDirty = false,
-                        lastEditedBy = editorName,
-                    )
-                } catch (e: Exception) {
-                    _uiState.value = _uiState.value.copy(
-                        isSaving = false,
-                        errorMessage = ErrorMessages.message(appContext, TAG, e),
-                    )
+            if (_uiState.value.saveState == SaveState.SAVING) return
+            try {
+                _uiState.value = _uiState.value.copy(saveState = SaveState.SAVING, errorMessage = null)
+                // Save locally first
+                interactor.saveLocal(gid, content, uid)
+                // Enqueue sync (Interactor.sync handles both local file paths and remote upsert)
+                interactor.sync(gid)
+
+                val editorName = socialRemote.fetchProfileById(uid)?.displayName
+                _uiState.value = _uiState.value.copy(
+                    saveState = SaveState.SAVED,
+                    lastEditedBy = editorName,
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    saveState = SaveState.ERROR,
+                    errorMessage = ErrorMessages.message(appContext, TAG, e),
+                )
+            }
+        }
+
+        override fun onCleared() {
+            viewModelScope.launch(NonCancellable) {
+                val gid = loadedGroupId ?: return@launch
+                val uid = userId.value ?: return@launch
+                if (_uiState.value.saveState == SaveState.PENDING) {
+                    interactor.saveLocal(gid, _uiState.value.content, uid)
+                    interactor.sync(gid)
                 }
             }
+            super.onCleared()
         }
 
         /**

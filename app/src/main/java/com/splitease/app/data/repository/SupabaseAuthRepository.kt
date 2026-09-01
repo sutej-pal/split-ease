@@ -37,6 +37,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -46,6 +48,7 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 private const val PENDING_SIGNUP_PHOTO_NAME = "pending_signup.jpg"
+private const val PROFILE_UPSERT_COALESCE_MS = 2_000L
 
 /**
  * Supabase-backed [AuthRepository] that upserts local Room [User] and remote `profiles`.
@@ -64,6 +67,13 @@ class SupabaseAuthRepository
         private val localUserDataCleanup: LocalUserDataCleanup,
         private val syncInteractor: Provider<SyncInteractor>,
     ) : AuthRepository {
+        private val persistUserMutex = Mutex()
+
+        @Volatile
+        private var lastProfileUpsertUserId: String? = null
+
+        @Volatile
+        private var lastProfileUpsertAtMs: Long = 0L
         override suspend fun getSignedInUserOrNull(): AuthUser? =
             supabase.auth.currentUserOrNull()?.toAuthUser()
 
@@ -246,7 +256,7 @@ class SupabaseAuthRepository
                     supabase.auth.updateUser {
                         data = buildJsonObject { put("display_name", trimmed) }
                     }
-                    persistCurrentUser()
+                    persistCurrentUser(forceRemoteUpsert = true)
                 }
             }
 
@@ -267,7 +277,7 @@ class SupabaseAuthRepository
                     if (!previousPhotoUrl.isNullOrBlank() && previousPhotoUrl != stored) {
                         mediaStorageCleanup.purgeProfilePhoto(previousPhotoUrl)
                     }
-                    persistCurrentUser()
+                    persistCurrentUser(forceRemoteUpsert = true)
                 }
             }
 
@@ -280,7 +290,7 @@ class SupabaseAuthRepository
                     supabase.auth.updateUser {
                         data = buildJsonObject { put("preferred_currency", currency) }
                     }
-                    persistCurrentUser()
+                    persistCurrentUser(forceRemoteUpsert = true)
                 }
             }
 
@@ -336,6 +346,8 @@ class SupabaseAuthRepository
         override suspend fun signOut(): Result<Unit> =
             runCatching {
                 supabase.auth.signOut()
+                lastProfileUpsertUserId = null
+                lastProfileUpsertAtMs = 0L
                 // Drop Room + media + user prefs so the next account cannot see leftovers.
                 localUserDataCleanup.clearAll()
             }
@@ -352,10 +364,26 @@ class SupabaseAuthRepository
             runCatching { syncInteractor.get().syncForUser(userId) }
         }
 
-        private suspend fun persistCurrentUser() {
-            val info = supabase.auth.currentUserOrNull() ?: return
-            // Unverified accounts must not appear in public.profiles yet.
-            if (info.emailConfirmedAt == null) return
+        private suspend fun persistCurrentUser(forceRemoteUpsert: Boolean = false) {
+            persistUserMutex.withLock {
+                val info = supabase.auth.currentUserOrNull() ?: return
+                // Unverified accounts must not appear in public.profiles yet.
+                if (info.emailConfirmedAt == null) return
+                val now = System.currentTimeMillis()
+                if (
+                    !forceRemoteUpsert &&
+                    lastProfileUpsertUserId == info.id &&
+                    now - lastProfileUpsertAtMs < PROFILE_UPSERT_COALESCE_MS
+                ) {
+                    return
+                }
+                persistCurrentUserLocked(info)
+                lastProfileUpsertUserId = info.id
+                lastProfileUpsertAtMs = System.currentTimeMillis()
+            }
+        }
+
+        private suspend fun persistCurrentUserLocked(info: UserInfo) {
             val authUser = info.toAuthUser()
             val now = System.currentTimeMillis()
             val existing = userRepository.getUserById(authUser.userId)

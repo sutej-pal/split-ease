@@ -6,6 +6,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
+import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.data.sync.SyncState
+import com.splitease.app.data.sync.shouldFreezeBalances
 import com.splitease.app.domain.balance.BalanceCalculator
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
@@ -28,6 +31,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -39,6 +43,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.text.DateFormat
 import java.time.Instant
@@ -101,6 +107,8 @@ data class ActivityFeedState(
     val entries: List<ActivityListEntry> = emptyList(),
     val hasAnyItems: Boolean = false,
     val isFiltered: Boolean = false,
+    /** First-login full hydrate phase; subsequent opens stay [SyncState.IDLE]. */
+    val syncState: SyncState = SyncState.IDLE,
 )
 
 @HiltViewModel
@@ -116,12 +124,31 @@ class ActivityViewModel
         private val userRepository: UserRepository,
         private val friendRepository: FriendRepository,
         private val activityEventRepository: ActivityEventRepository,
+        private val syncInteractor: SyncInteractor,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository
                 .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+        init {
+            viewModelScope.launch {
+                userId.collect { id ->
+                    if (id == null) {
+                        return@collect
+                    }
+                    withContext(Dispatchers.IO) {
+                        if (!syncInteractor.hasCompletedInitialHydrate(id)) {
+                            syncInteractor.markInitialHydrateStarted(id)
+                        }
+                    }
+                    launch(Dispatchers.IO) {
+                        runCatching { syncInteractor.syncForUser(id) }
+                    }
+                }
+            }
+        }
 
         private val searchQueryFlow =
             savedStateHandle.getStateFlow(KEY_SEARCH_QUERY, "")
@@ -155,123 +182,24 @@ class ActivityViewModel
                     if (me == null) {
                         flowOf(emptyList())
                     } else {
-                        val sourcesFlow =
-                            combine(
-                                expenseRepository
-                                    .observeRecentInvolvingUser(me)
-                                    .onEach { rows ->
-                                        ActivityPerfLog.emit("expenses", "count=${rows.size}")
-                                    },
-                                paymentRepository
-                                    .observeRecentInvolvingUser(me)
-                                    .onEach { rows ->
-                                        ActivityPerfLog.emit("payments", "count=${rows.size}")
-                                    },
-                                groupRepository
-                                    .observeGroupsForUser(me)
-                                    .onEach { rows ->
-                                        ActivityPerfLog.emit("groups", "count=${rows.size}")
-                                    },
-                                userRepository
-                                    .observeUsers()
-                                    .map { users -> users.associate { it.id to it.displayName } }
-                                    .distinctUntilChanged()
-                                    .onEach { map ->
-                                        ActivityPerfLog.emit("users", "count=${map.size}")
-                                    },
-                                friendRepository
-                                    .observeFriends(me)
-                                    .onEach { rows ->
-                                        ActivityPerfLog.emit("friends", "count=${rows.size}")
-                                    },
-                            ) { expenses, payments, groups, userNames, friends ->
-                                ActivitySources(
-                                    expenses = expenses,
-                                    payments = payments,
-                                    groups = groups,
-                                    userNames = userNames,
-                                    friends = friends,
-                                )
+                        syncInteractor.syncState.flatMapLatest { sync ->
+                            if (sync.shouldFreezeBalances) {
+                                flowOf(emptyList())
+                            } else {
+                                observeLiveFeed(me)
                             }
-
-                        val eventsFlow =
-                            activityEventRepository
-                                .observeRecentForUser(me)
-                                .onEach { rows ->
-                                    ActivityPerfLog.emit("events", "count=${rows.size}")
-                                }
-
-                        val feedInputsFlow =
-                            combine(sourcesFlow, eventsFlow) { sources, events ->
-                                ActivityFeedInputs(
-                                    sources = sources,
-                                    events = events,
-                                    expenseIds = expenseIdsForFeed(sources, events),
-                                )
-                            }
-
-                        val expenseIdsFlow =
-                            feedInputsFlow
-                                .map { it.expenseIds }
-                                .distinctUntilChanged()
-
-                        val splitsFlow =
-                            expenseIdsFlow.flatMapLatest { ids ->
-                                if (ids.isEmpty()) {
-                                    flowOf(emptyMap())
-                                } else {
-                                    expenseRepository
-                                        .observeSplitsForExpenses(ids)
-                                        .onEach { splits ->
-                                            ActivityPerfLog.emit(
-                                                "splits",
-                                                "expenses=${ids.size} loaded=${splits.size}",
-                                            )
-                                        }
-                                }
-                            }
-
-                        combine(feedInputsFlow, splitsFlow) { inputs, splitsByExpenseId ->
-                            inputs to splitsByExpenseId
-                        }.distinctUntilChanged { old, new ->
-                            old.first.rebuildKey(old.second) == new.first.rebuildKey(new.second)
-                        }.map { (inputs, splitsByExpenseId) ->
-                            var built: List<ActivityUiItem>
-                            val elapsed =
-                                measureTimeMillis {
-                                    built =
-                                        buildItems(
-                                            me = me,
-                                            sources = inputs.sources,
-                                            events = inputs.events,
-                                            splitsByExpenseId = splitsByExpenseId,
-                                        ).take(FeedQueryLimits.UI_FEED)
-                                }
-                            ActivityPerfLog.rebuild(
-                                reason = "feed-combine",
-                                itemCount = built.size,
-                                elapsedMs = elapsed,
-                                signatureChanged = true,
-                            )
-                            built
-                        }.distinctUntilChanged { old, new ->
-                            val same = old.contentSignature() == new.contentSignature()
-                            if (!same) {
-                                ActivityPerfLog.scrollJumpSuspect(
-                                    previousCount = old.size,
-                                    newCount = new.size,
-                                    previousTopId = old.firstOrNull()?.id,
-                                    newTopId = new.firstOrNull()?.id,
-                                )
-                            }
-                            same
                         }
                     }
                 }.flowOn(Dispatchers.Default)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         val feed: StateFlow<ActivityFeedState> =
-            combine(items, listFilter, debouncedSearchQuery) { allItems, filter, query ->
+            combine(
+                items,
+                listFilter,
+                debouncedSearchQuery,
+                syncInteractor.syncState,
+            ) { allItems, filter, query, sync ->
                 val visible =
                     allItems.filter { item ->
                         item.matches(filter) && item.matchesQuery(query)
@@ -280,12 +208,13 @@ class ActivityViewModel
                     entries = buildActivityListEntries(visible),
                     hasAnyItems = allItems.isNotEmpty(),
                     isFiltered = filter != ActivityListFilter.ALL || query.isNotBlank(),
+                    syncState = sync,
                 )
             }.flowOn(Dispatchers.Default)
                 .stateIn(
                     viewModelScope,
                     SharingStarted.WhileSubscribed(5_000),
-                    ActivityFeedState(),
+                    ActivityFeedState(syncState = syncInteractor.syncState.value),
                 )
 
         fun setListFilter(filter: ActivityListFilter) {
@@ -294,6 +223,135 @@ class ActivityViewModel
 
         fun setSearchQuery(query: String) {
             savedStateHandle[KEY_SEARCH_QUERY] = query
+        }
+
+        /**
+         * Retries a failed first-login hydrate. The list stays on skeleton until COMPLETE.
+         */
+        fun retryInitialHydrate() {
+            val id = userId.value ?: return
+            if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
+            viewModelScope.launch {
+                withContext(Dispatchers.IO) {
+                    syncInteractor.markInitialHydrateStarted(id)
+                    runCatching { syncInteractor.syncForUser(id, force = true) }
+                }
+            }
+        }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private fun observeLiveFeed(me: String): Flow<List<ActivityUiItem>> {
+            val sourcesFlow =
+                combine(
+                    expenseRepository
+                        .observeRecentInvolvingUser(me)
+                        .onEach { rows ->
+                            ActivityPerfLog.emit("expenses", "count=${rows.size}")
+                        },
+                    paymentRepository
+                        .observeRecentInvolvingUser(me)
+                        .onEach { rows ->
+                            ActivityPerfLog.emit("payments", "count=${rows.size}")
+                        },
+                    groupRepository
+                        .observeGroupsForUser(me)
+                        .onEach { rows ->
+                            ActivityPerfLog.emit("groups", "count=${rows.size}")
+                        },
+                    userRepository
+                        .observeUsers()
+                        .map { users -> users.associate { it.id to it.displayName } }
+                        .distinctUntilChanged()
+                        .onEach { map ->
+                            ActivityPerfLog.emit("users", "count=${map.size}")
+                        },
+                    friendRepository
+                        .observeFriends(me)
+                        .onEach { rows ->
+                            ActivityPerfLog.emit("friends", "count=${rows.size}")
+                        },
+                ) { expenses, payments, groups, userNames, friends ->
+                    ActivitySources(
+                        expenses = expenses,
+                        payments = payments,
+                        groups = groups,
+                        userNames = userNames,
+                        friends = friends,
+                    )
+                }
+
+            val eventsFlow =
+                activityEventRepository
+                    .observeRecentForUser(me)
+                    .onEach { rows ->
+                        ActivityPerfLog.emit("events", "count=${rows.size}")
+                    }
+
+            val feedInputsFlow =
+                combine(sourcesFlow, eventsFlow) { sources, events ->
+                    ActivityFeedInputs(
+                        sources = sources,
+                        events = events,
+                        expenseIds = expenseIdsForFeed(sources, events),
+                    )
+                }
+
+            val expenseIdsFlow =
+                feedInputsFlow
+                    .map { it.expenseIds }
+                    .distinctUntilChanged()
+
+            val splitsFlow =
+                expenseIdsFlow.flatMapLatest { ids ->
+                    if (ids.isEmpty()) {
+                        flowOf(emptyMap())
+                    } else {
+                        expenseRepository
+                            .observeSplitsForExpenses(ids)
+                            .onEach { splits ->
+                                ActivityPerfLog.emit(
+                                    "splits",
+                                    "expenses=${ids.size} loaded=${splits.size}",
+                                )
+                            }
+                    }
+                }
+
+            return combine(feedInputsFlow, splitsFlow) { inputs, splitsByExpenseId ->
+                inputs to splitsByExpenseId
+            }.distinctUntilChanged { old, new ->
+                old.first.rebuildKey(old.second) == new.first.rebuildKey(new.second)
+            }.map { (inputs, splitsByExpenseId) ->
+                var built: List<ActivityUiItem>
+                val elapsed =
+                    measureTimeMillis {
+                        built =
+                            buildItems(
+                                me = me,
+                                sources = inputs.sources,
+                                events = inputs.events,
+                                splitsByExpenseId = splitsByExpenseId,
+                            ).take(FeedQueryLimits.UI_FEED)
+                    }
+                ActivityPerfLog.rebuild(
+                    reason = "feed-combine",
+                    itemCount = built.size,
+                    elapsedMs = elapsed,
+                    signatureChanged = true,
+                )
+                built
+            }.distinctUntilChanged { old, new ->
+                val same = old.contentSignature() == new.contentSignature()
+                if (!same) {
+                    ActivityPerfLog.scrollJumpSuspect(
+                        previousCount = old.size,
+                        newCount = new.size,
+                        previousTopId = old.firstOrNull()?.id,
+                        newTopId = new.firstOrNull()?.id,
+                    )
+                }
+                same
+            }
         }
 
         private fun expenseIdsForFeed(

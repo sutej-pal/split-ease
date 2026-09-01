@@ -2,10 +2,15 @@ package com.splitease.app.presentation.pinboard
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -27,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,9 +46,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -63,16 +72,24 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
@@ -101,10 +118,23 @@ fun PinBoardScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val bg = MaterialTheme.colorScheme.background
 
     LaunchedEffect(groupId) { viewModel.load(groupId) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                viewModel.saveImmediately()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     SeSystemBars(
         statusBarColor = bg,
@@ -117,6 +147,7 @@ fun PinBoardScreen(
     var textValues by remember(groupId) { mutableStateOf(mapOf<String, TextFieldValue>()) }
     var focusedTextId by remember(groupId) { mutableStateOf<String?>(null) }
     var editingTextId by remember(groupId) { mutableStateOf<String?>(null) }
+    var editRequest by remember(groupId) { mutableIntStateOf(0) }
     /** Snapshot used when the image picker opens (focus blurs before the crop returns). */
     var pendingImageInsert by remember(groupId) {
         mutableStateOf<Pair<String, Int>?>(null)
@@ -140,7 +171,24 @@ fun PinBoardScreen(
             ?: TextFieldValue(block?.value.orEmpty(), TextRange(block?.value.orEmpty().length))
     }
 
-    fun commit(newBlocks: List<PinBlock>) {
+    fun beginEditing(
+        blockId: String?,
+        cursorToEnd: Boolean = false,
+    ) {
+        val id = blockId ?: return
+        if (cursorToEnd) {
+            val current = textValueFor(id)
+            textValues = textValues + (id to current.copy(selection = TextRange(current.text.length)))
+        }
+        focusedTextId = id
+        editingTextId = id
+        editRequest++
+    }
+
+    fun commit(
+        newBlocks: List<PinBlock>,
+        immediate: Boolean = false,
+    ) {
         blocks = newBlocks
         val nextValues = textValues.toMutableMap()
         newBlocks.filterIsInstance<PinBlock.Text>().forEach { textBlock ->
@@ -156,7 +204,7 @@ fun PinBoardScreen(
         val liveIds = newBlocks.map { it.id }.toSet()
         nextValues.keys.retainAll(liveIds)
         textValues = nextValues
-        viewModel.onContentChanged(serializePinBlocks(newBlocks))
+        viewModel.onContentChanged(serializePinBlocks(newBlocks), immediate = immediate)
     }
 
     LaunchedEffect(groupId, state.isLoading) {
@@ -172,15 +220,15 @@ fun PinBoardScreen(
                 parsed.all { it is PinBlock.Text && it.value.isBlank() } &&
                     parsed.none { it is PinBlock.Image }
             if (emptyBoard) {
-                editingTextId = focusedTextId
+                beginEditing(focusedTextId)
             }
             seededForGroup = true
         }
     }
 
     // After save (or cloud image upload), refresh blocks when server content replaces local paths.
-    LaunchedEffect(state.content, state.isDirty, state.isSaving) {
-        if (!state.isLoading && !state.isDirty && !state.isSaving && seededForGroup) {
+    LaunchedEffect(state.content, state.saveState) {
+        if (!state.isLoading && state.saveState == SaveState.SAVED && seededForGroup) {
             val parsed = parsePinBlocks(state.content)
             if (serializePinBlocks(parsed) != serializePinBlocks(blocks)) {
                 blocks = parsed
@@ -202,6 +250,7 @@ fun PinBoardScreen(
     fun updateTextBlock(
         blockId: String,
         value: TextFieldValue,
+        immediate: Boolean = false,
     ) {
         textValues = textValues + (blockId to value)
         focusedTextId = blockId
@@ -215,7 +264,7 @@ fun PinBoardScreen(
                 }
             }
         blocks = newBlocks
-        viewModel.onContentChanged(serializePinBlocks(newBlocks))
+        viewModel.onContentChanged(serializePinBlocks(newBlocks), immediate = immediate)
     }
 
     fun applyAroundSelection(
@@ -234,7 +283,7 @@ fun PinBoardScreen(
                 prefix = prefix,
                 suffix = suffix,
             )
-        updateTextBlock(id, TextFieldValue(newText, TextRange(cursor)))
+        updateTextBlock(id, TextFieldValue(newText, TextRange(cursor)), immediate = true)
     }
 
     fun applyChecklist() {
@@ -242,8 +291,17 @@ fun PinBoardScreen(
         editingTextId = id
         focusedTextId = id
         val current = textValueFor(id)
-        val (newText, cursor) = insertChecklistMarker(current.text, current.selection.min)
-        updateTextBlock(id, TextFieldValue(newText, TextRange(cursor)))
+        val (lineIndex, _) = lineBodyCursorFromFull(current.text, current.selection.min)
+        val line = parsePinTextLines(current.text).getOrNull(lineIndex)
+        val (newText, cursor) =
+            if (line?.isChecklist == true) {
+                val updated = toggleChecklistBlockAtLine(current.text, lineIndex)
+                val (_, focusBody) = lineBodyCursorFromFull(current.text, current.selection.min)
+                updated to fullCursorFromLineBody(updated, lineIndex, focusBody)
+            } else {
+                insertChecklistMarker(current.text, current.selection.min)
+            }
+        updateTextBlock(id, TextFieldValue(newText, TextRange(cursor)), immediate = true)
     }
 
     val imagePicker =
@@ -278,7 +336,7 @@ fun PinBoardScreen(
                     insert?.second
                         ?: focusId?.let { textValueFor(it).selection.min }
                         ?: 0
-                commit(insertImageAt(blocks, focusIndex, cursor, displayPath))
+                commit(insertImageAt(blocks, focusIndex, cursor, displayPath), immediate = true)
             }
         }
 
@@ -289,27 +347,38 @@ fun PinBoardScreen(
                 title = stringResource(R.string.pin_board_title),
                 onBack = onBack,
                 actions = {
+                    val saveState = state.saveState
                     SeTopBarActionButton(
-                        onClick = { viewModel.save() },
-                        enabled = state.isDirty && !state.isSaving && !state.isLoading,
+                        onClick = { viewModel.saveImmediately() },
+                        enabled = saveState == SaveState.PENDING || saveState == SaveState.ERROR,
                     ) {
-                        if (state.isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = SplitEaseColors.Primary,
-                            )
-                        } else {
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = stringResource(R.string.cd_save_pin_board),
-                                tint =
-                                    if (state.isDirty && !state.isSaving && !state.isLoading) {
-                                        SplitEaseColors.Primary
-                                    } else {
-                                        SplitEaseColors.OutlineStrong
-                                    },
-                            )
+                        when (saveState) {
+                            SaveState.SAVING -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = SplitEaseColors.Primary,
+                                )
+                            }
+                            SaveState.ERROR -> {
+                                Icon(
+                                    Icons.Filled.Warning,
+                                    contentDescription = stringResource(R.string.action_save),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = stringResource(R.string.cd_save_pin_board),
+                                    tint =
+                                        if (saveState == SaveState.SAVED || saveState == SaveState.IDLE) {
+                                            SplitEaseColors.Primary
+                                        } else {
+                                            SplitEaseColors.OutlineStrong
+                                        },
+                                )
+                            }
                         }
                     }
                 },
@@ -352,7 +421,14 @@ fun PinBoardScreen(
                     Spacer(modifier = Modifier.height(SeLayout.headerToContent))
                 }
 
+                val activeId = resolveActiveTextBlockId()
+                val activeValue = activeId?.let { textValueFor(it) } ?: TextFieldValue()
+                val (focusLineIndex, _) = lineBodyCursorFromFull(activeValue.text, activeValue.selection.min)
+
                 MarkdownToolbar(
+                    boldActive = isStyleActive(activeValue.text, activeValue.selection, "**"),
+                    italicActive = isStyleActive(activeValue.text, activeValue.selection, "_"),
+                    checklistActive = parsePinTextLines(activeValue.text).getOrNull(focusLineIndex)?.isChecklist == true,
                     onBold = { applyAroundSelection("**", "**") },
                     onItalic = { applyAroundSelection("_", "_") },
                     onChecklist = { applyChecklist() },
@@ -371,62 +447,98 @@ fun PinBoardScreen(
                 HorizontalDivider(color = SplitEaseColors.OutlineStrong)
 
                 val boardScroll = rememberScrollState()
-                Column(
+                val lastTextBlockId = blocks.filterIsInstance<PinBlock.Text>().lastOrNull()?.id
+                BoxWithConstraints(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .fillMaxWidth()
-                            .verticalScroll(boardScroll)
-                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                            .fillMaxWidth(),
                 ) {
-                    val showPlaceholder =
-                        blocks.all { block ->
-                            block is PinBlock.Text && block.value.isBlank()
-                        } && blocks.none { it is PinBlock.Image }
+                    val density = LocalDensity.current
+                    var blocksHeightPx by remember { mutableIntStateOf(0) }
+                    val verticalPadding = 24.dp
+                    val fillerHeight =
+                        with(density) {
+                            (maxHeight.toPx() - blocksHeightPx - verticalPadding.toPx())
+                                .toDp()
+                                .coerceAtLeast(0.dp)
+                        }
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(boardScroll)
+                                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
+                    ) {
+                        val showPlaceholder =
+                            blocks.all { block ->
+                                block is PinBlock.Text && block.value.isBlank()
+                            } && blocks.none { it is PinBlock.Image }
 
-                    blocks.forEach { block ->
-                        key(block.id) {
-                            when (block) {
-                                is PinBlock.Text -> {
-                                    val autoFocus = editingTextId == block.id
-                                    val focusRequester = remember(block.id) { FocusRequester() }
-                                    LaunchedEffect(autoFocus) {
-                                        if (autoFocus) focusRequester.requestFocus()
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .onGloballyPositioned { blocksHeightPx = it.size.height },
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            blocks.forEach { block ->
+                                key(block.id) {
+                                    when (block) {
+                                        is PinBlock.Text -> {
+                                            val autoFocus = editingTextId == block.id
+                                            val focusRequester = remember(block.id) { FocusRequester() }
+                                            LaunchedEffect(editRequest) {
+                                                if (autoFocus) focusRequester.requestFocus()
+                                            }
+                                            PinBoardTextBlockEditor(
+                                                value = textValueFor(block.id),
+                                                onValueChange = { updateTextBlock(block.id, it) },
+                                                showPlaceholder = showPlaceholder && block.id == blocks.first().id,
+                                                autoFocus = autoFocus,
+                                                focusToken = editRequest,
+                                                focusRequester = focusRequester,
+                                                onFocused = {
+                                                    focusedTextId = block.id
+                                                    editingTextId = block.id
+                                                },
+                                                onRequestEdit = { beginEditing(block.id) },
+                                            )
+                                        }
+                                        is PinBlock.Image -> {
+                                            PinBoardImageBlock(
+                                                path = block.path,
+                                                onRemove = { commit(removeImageBlock(blocks, block.id)) },
+                                            )
+                                        }
                                     }
-                                    PinBoardTextBlockEditor(
-                                        value = textValueFor(block.id),
-                                        onValueChange = { updateTextBlock(block.id, it) },
-                                        showPlaceholder = showPlaceholder && block.id == blocks.first().id,
-                                        autoFocus = autoFocus,
-                                        focusRequester = focusRequester,
-                                        onFocused = {
-                                            focusedTextId = block.id
-                                            editingTextId = block.id
-                                        },
-                                    )
-                                }
-                                is PinBlock.Image -> {
-                                    PinBoardImageBlock(
-                                        path = block.path,
-                                        onRemove = { commit(removeImageBlock(blocks, block.id)) },
-                                    )
                                 }
                             }
                         }
+                        Spacer(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(fillerHeight)
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        onClick = { beginEditing(lastTextBlockId, cursorToEnd = true) },
+                                    ),
+                        )
                     }
                 }
 
                 PinBoardFooter(
                     lastEditedBy = state.lastEditedBy,
-                    isSaving = state.isSaving,
+                    saveState = state.saveState,
                 )
             }
         }
     }
 }
 
-private val PinBoardChecklistSize = 20.dp
+private val PinBoardChecklistSize = 16.dp
 private val PinBoardChecklistRowHeight = 24.dp
 
 @Composable
@@ -435,26 +547,36 @@ private fun PinBoardTextBlockEditor(
     onValueChange: (TextFieldValue) -> Unit,
     showPlaceholder: Boolean,
     autoFocus: Boolean,
+    focusToken: Int,
     focusRequester: FocusRequester,
     onFocused: () -> Unit,
+    onRequestEdit: () -> Unit,
 ) {
     val lines = parsePinTextLines(value.text)
     val (focusLineIndex, bodyCursor) = lineBodyCursorFromFull(value.text, value.selection.min)
     val lineFocusRequesters = remember(lines.size) { List(lines.size) { FocusRequester() } }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val textStyle =
         MaterialTheme.typography.bodyLarge.copy(
             color = SplitEaseColors.Navy,
         )
-    val focusedChecklist = lines.getOrNull(focusLineIndex)?.isChecklist == true
 
-    LaunchedEffect(autoFocus, focusedChecklist, focusLineIndex, lines.size) {
+    LaunchedEffect(focusToken, focusLineIndex, lines.size) {
         if (autoFocus) {
             runCatching { lineFocusRequesters.getOrNull(focusLineIndex)?.requestFocus() }
+            keyboardController?.show()
         }
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = onRequestEdit,
+                ),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         lines.forEachIndexed { index, line ->
@@ -489,17 +611,29 @@ private fun PinBoardTextBlockEditor(
                         ).onFocusChanged { state ->
                             if (state.isFocused) onFocused()
                         }.onPreviewKeyEvent { event ->
-                            if (event.type != KeyEventType.KeyDown || event.key != Key.Backspace) {
-                                return@onPreviewKeyEvent false
+                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            if (event.key == Key.Backspace) {
+                                if (!fieldValue.selection.collapsed || fieldValue.selection.start != 0) {
+                                    return@onPreviewKeyEvent false
+                                }
+                                val merged =
+                                    mergePinLineBackward(value.text, index)
+                                        ?: return@onPreviewKeyEvent false
+                                onValueChange(TextFieldValue(merged.first, TextRange(merged.second)))
+                                return@onPreviewKeyEvent true
                             }
-                            if (!fieldValue.selection.collapsed || fieldValue.selection.start != 0) {
-                                return@onPreviewKeyEvent false
+                            if (event.key == Key.Enter || event.key == Key.NumPadEnter) {
+                                val (newText, cursor) =
+                                    applyPinLineFieldChange(
+                                        text = value.text,
+                                        lineIndex = index,
+                                        fieldText = fieldValue.text.substring(0, fieldValue.selection.min) + "\n" + fieldValue.text.substring(fieldValue.selection.max),
+                                        fieldCursor = fieldValue.selection.min + 1,
+                                    )
+                                onValueChange(TextFieldValue(newText, TextRange(cursor)))
+                                return@onPreviewKeyEvent true
                             }
-                            val merged =
-                                mergePinLineBackward(value.text, index)
-                                    ?: return@onPreviewKeyEvent false
-                            onValueChange(TextFieldValue(merged.first, TextRange(merged.second)))
-                            true
+                            false
                         }
 
                 fun commitField(incoming: TextFieldValue) {
@@ -550,12 +684,13 @@ private fun PinBoardTextBlockEditor(
                                         toggledLineIndex = index,
                                     )
                                 onValueChange(TextFieldValue(updated, TextRange(cursor)))
+                                onRequestEdit()
                             },
                         )
                         PinBoardLineTextField(
                             value = fieldValue,
                             onValueChange = ::commitField,
-                            modifier = fieldModifier.weight(1f, fill = false),
+                            modifier = fieldModifier.weight(1f),
                             textStyle =
                                 textStyle.copy(
                                     textDecoration =
@@ -627,6 +762,10 @@ private fun PinBoardLineTextField(
         textStyle = textStyle,
         cursorBrush = SolidColor(SplitEaseColors.Primary),
         visualTransformation = PinBoardInlineVisualTransformation,
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences,
+            imeAction = ImeAction.Default,
+        ),
         decorationBox = { inner ->
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -755,6 +894,9 @@ private fun PinBoardImageBlock(
 
 @Composable
 private fun MarkdownToolbar(
+    boldActive: Boolean,
+    italicActive: Boolean,
+    checklistActive: Boolean,
     onBold: () -> Unit,
     onItalic: () -> Unit,
     onChecklist: () -> Unit,
@@ -769,25 +911,63 @@ private fun MarkdownToolbar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SeActionChip(
-            label = stringResource(R.string.pin_board_bold),
-            onClick = onBold,
+        SeIconActionChip(
             icon = Icons.Filled.FormatBold,
+            contentDescription = stringResource(R.string.pin_board_bold),
+            onClick = onBold,
+            selected = boldActive,
         )
-        SeActionChip(
-            label = stringResource(R.string.pin_board_italic),
-            onClick = onItalic,
+        SeIconActionChip(
             icon = Icons.Filled.FormatItalic,
+            contentDescription = stringResource(R.string.pin_board_italic),
+            onClick = onItalic,
+            selected = italicActive,
         )
-        SeActionChip(
-            label = stringResource(R.string.pin_board_checklist),
-            onClick = onChecklist,
+        SeIconActionChip(
             icon = Icons.Filled.Checklist,
+            contentDescription = stringResource(R.string.pin_board_checklist),
+            onClick = onChecklist,
+            selected = checklistActive,
         )
-        SeActionChip(
-            label = stringResource(R.string.pin_board_image),
-            onClick = onImage,
+        SeIconActionChip(
             icon = Icons.Filled.Image,
+            contentDescription = stringResource(R.string.pin_board_image),
+            onClick = onImage,
+        )
+    }
+}
+
+@Composable
+private fun SeIconActionChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    selected: Boolean = false,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (selected) SplitEaseColors.Primary else SplitEaseColors.Surface)
+                .then(
+                    if (!selected) {
+                        Modifier.border(
+                            1.dp,
+                            SplitEaseColors.Outline,
+                            RoundedCornerShape(20.dp),
+                        )
+                    } else {
+                        Modifier
+                    },
+                ).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (selected) MaterialTheme.colorScheme.onPrimary else SplitEaseColors.Navy,
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -795,7 +975,7 @@ private fun MarkdownToolbar(
 @Composable
 private fun PinBoardFooter(
     lastEditedBy: String?,
-    isSaving: Boolean,
+    saveState: SaveState,
 ) {
     Row(
         modifier =
@@ -805,7 +985,7 @@ private fun PinBoardFooter(
                 .padding(horizontal = SeLayout.screenHorizontal, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (isSaving) {
+        if (saveState == SaveState.SAVING) {
             CircularProgressIndicator(
                 modifier = Modifier.size(14.dp),
                 strokeWidth = 2.dp,

@@ -31,6 +31,10 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ExpenseEntity?
 
+    /** @param ids Expense ids. @return Matching expense rows. */
+    @Query("SELECT * FROM expenses WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<ExpenseEntity>
+
     /** @param id Local UUID. @return Flow of matching rows (0 or 1). */
     @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
     fun observeById(id: String): Flow<List<ExpenseEntity>>
@@ -39,6 +43,10 @@ interface ExpenseDao {
     @Upsert
     suspend fun upsert(expense: ExpenseEntity)
 
+    /** Inserts or replaces [expenses]. */
+    @Upsert
+    suspend fun upsertAll(expenses: List<ExpenseEntity>)
+
     /** Inserts or replaces [splits]. */
     @Upsert
     suspend fun upsertSplits(splits: List<ExpenseSplitEntity>)
@@ -46,6 +54,10 @@ interface ExpenseDao {
     /** Deletes existing splits for [expenseId]. */
     @Query("DELETE FROM expense_splits WHERE expenseId = :expenseId")
     suspend fun deleteSplitsForExpense(expenseId: String)
+
+    /** Deletes existing splits for many expenses. */
+    @Query("DELETE FROM expense_splits WHERE expenseId IN (:expenseIds)")
+    suspend fun deleteSplitsForExpenses(expenseIds: List<String>)
 
     /** Deletes expense [id] (splits cascade). */
     @Query("DELETE FROM expenses WHERE id = :id")
@@ -368,4 +380,28 @@ interface ExpenseDao {
             upsertSplits(splits)
         }
     }
+
+    /**
+     * Replaces many expenses and their splits atomically.
+     *
+     * @param expenses Parent rows.
+     * @param splits Split rows for [expenses] (ids not in [expenses] are ignored by callers).
+     */
+    @Transaction
+    suspend fun upsertExpensesWithSplits(
+        expenses: List<ExpenseEntity>,
+        splits: List<ExpenseSplitEntity>,
+    ) {
+        if (expenses.isEmpty()) return
+        upsertAll(expenses)
+        expenses.map { it.id }.chunked(SQLITE_IN_CHUNK).forEach { chunk ->
+            deleteSplitsForExpenses(chunk)
+        }
+        if (splits.isNotEmpty()) {
+            upsertSplits(splits)
+        }
+    }
 }
+
+/** Stay under SQLite's 999-bind limit for `IN` lists. */
+private const val SQLITE_IN_CHUNK = 400

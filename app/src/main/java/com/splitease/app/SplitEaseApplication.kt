@@ -11,6 +11,7 @@ import com.splitease.app.data.push.SplitEaseNotificationChannels
 import com.splitease.app.data.recurring.RecurringExpenseWorker
 import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
 import com.splitease.app.data.social.InstallReferrerInviteBootstrap
+import com.splitease.app.data.sync.SyncNetworkLog
 import com.splitease.app.data.sync.SyncWorker
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.ads.AdConfig
@@ -60,6 +61,10 @@ class SplitEaseApplication :
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) {
+            val dir = getExternalFilesDir(null) ?: filesDir
+            SyncNetworkLog.attach(dir)
+        }
         SupabaseImageAuth.update(supabaseClient.auth.currentSessionOrNull()?.accessToken)
         (appSettingsRepository as? SharedPreferencesAppSettingsRepository)?.applyStoredLocale()
         installReferrerInviteBootstrap.start()

@@ -8,6 +8,8 @@ import com.splitease.app.data.balance.BalanceInteractor
 import com.splitease.app.data.balance.OverallBalancesUi
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.data.sync.SyncState
+import com.splitease.app.data.sync.shouldFreezeBalances
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.repository.AuthRepository
@@ -40,6 +42,8 @@ data class GroupsHomeUi(
     /** True only while the first lite group list pull runs (Room empty). */
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
+    /** First-login full hydrate phase; subsequent opens stay [SyncState.IDLE]. */
+    val syncState: SyncState = SyncState.IDLE,
     val infoMessage: String? = null,
     val errorMessage: String? = null,
 )
@@ -74,10 +78,19 @@ class GroupsHomeViewModel
                         return@collect
                     }
                     withContext(Dispatchers.IO) {
+                        val alreadyHydrated = syncInteractor.hasCompletedInitialHydrate(id)
                         val cached =
                             runCatching { groupRepository.observeGroupsForUser(id).first() }
                                 .getOrDefault(emptyList())
-                        if (cached.isNotEmpty() || syncInteractor.wasSyncedRecently()) {
+                        if (!alreadyHydrated) {
+                            // Pin IN_PROGRESS before any Room writes so summary cards never
+                            // observe incrementing partial totals on first login.
+                            syncInteractor.markInitialHydrateStarted(id)
+                        }
+                        if (cached.isNotEmpty() ||
+                            alreadyHydrated ||
+                            syncInteractor.wasSyncedRecently()
+                        ) {
                             isInitialLoading.value = false
                         } else {
                             isInitialLoading.value = true
@@ -100,8 +113,10 @@ class GroupsHomeViewModel
                         flowOf(GroupsHomeUi())
                     } else {
                         combine(
-                            isInitialLoading.flatMapLatest { loading ->
-                                if (loading) {
+                            combine(isInitialLoading, syncInteractor.syncState) { loading, sync ->
+                                loading to sync
+                            }.flatMapLatest { (loading, sync) ->
+                                if (loading || sync.shouldFreezeBalances) {
                                     flowOf<OverallBalancesUi?>(null)
                                 } else {
                                     balanceInteractor
@@ -112,11 +127,13 @@ class GroupsHomeViewModel
                             groupRepository.observeGroupsForUser(me),
                             appSettingsRepository.observeCurrencyCode(),
                             isInitialLoading,
-                        ) { balances, groups, currency, loading ->
+                            syncInteractor.syncState,
+                        ) { balances, groups, currency, loading, sync ->
                             if (loading) {
                                 GroupsHomeUi(
                                     currencyCode = currency,
                                     isLoading = true,
+                                    syncState = sync,
                                 )
                             } else {
                                 GroupsHomeUi(
@@ -124,6 +141,7 @@ class GroupsHomeViewModel
                                     balances = balances,
                                     allGroups = groups,
                                     isLoading = false,
+                                    syncState = sync,
                                 )
                             }
                         }
@@ -143,12 +161,30 @@ class GroupsHomeViewModel
         fun refresh() {
             val id = userId.value ?: return
             if (isInitialLoading.value) return
+            if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
             viewModelScope.launch {
                 isRefreshing.update { true }
                 withContext(Dispatchers.IO) {
+                    if (syncInteractor.syncState.value == SyncState.FAILED) {
+                        syncInteractor.markInitialHydrateStarted(id)
+                    }
                     runCatching { syncInteractor.syncForUser(id, force = true) }
                 }
                 isRefreshing.update { false }
+            }
+        }
+
+        /**
+         * Retries a failed first-login hydrate. Cards return to skeleton until COMPLETE.
+         */
+        fun retryInitialHydrate() {
+            val id = userId.value ?: return
+            if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
+            viewModelScope.launch {
+                withContext(Dispatchers.IO) {
+                    syncInteractor.markInitialHydrateStarted(id)
+                    runCatching { syncInteractor.syncForUser(id, force = true) }
+                }
             }
         }
 

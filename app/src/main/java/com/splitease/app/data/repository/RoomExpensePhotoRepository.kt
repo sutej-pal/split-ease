@@ -22,6 +22,13 @@ class RoomExpensePhotoRepository
         override suspend fun getForExpense(expenseId: String): List<ExpensePhoto> =
             dao.getForExpense(expenseId).map { it.toDomain() }
 
+        override suspend fun getForExpenses(expenseIds: List<String>): List<ExpensePhoto> {
+            if (expenseIds.isEmpty()) return emptyList()
+            return expenseIds.chunked(PHOTO_IN_CHUNK).flatMap { chunk ->
+                dao.getForExpenses(chunk).map { it.toDomain() }
+            }
+        }
+
         override suspend fun upsert(photo: ExpensePhoto) {
             dao.upsert(photo.toEntity())
         }
@@ -62,3 +69,5 @@ class RoomExpensePhotoRepository
                 syncStatus = syncStatus,
             )
     }
+
+private const val PHOTO_IN_CHUNK = 400

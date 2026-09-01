@@ -14,6 +14,7 @@ import com.splitease.app.data.local.dao.GroupDao
 import com.splitease.app.data.local.dao.InviteDao
 import com.splitease.app.data.local.dao.PaymentDao
 import com.splitease.app.data.local.dao.UserDao
+import com.splitease.app.data.local.dao.PinBoardDao
 import com.splitease.app.data.local.entity.ActivityEventEntity
 import com.splitease.app.data.local.entity.CategoryEntity
 import com.splitease.app.data.local.entity.ExpenseCommentEntity
@@ -25,10 +26,11 @@ import com.splitease.app.data.local.entity.GroupEntity
 import com.splitease.app.data.local.entity.GroupMemberEntity
 import com.splitease.app.data.local.entity.InviteEntity
 import com.splitease.app.data.local.entity.PaymentEntity
+import com.splitease.app.data.local.entity.PinBoardEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 13 — drops unused group coverUrl).
+ * Offline-first Room database for SplitEase (version 14 — added pin_boards).
  */
 @Database(
     entities = [
@@ -44,8 +46,9 @@ import com.splitease.app.data.local.entity.UserEntity
         PaymentEntity::class,
         InviteEntity::class,
         ActivityEventEntity::class,
+        PinBoardEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)
@@ -55,6 +58,9 @@ abstract class SplitEaseDatabase : RoomDatabase() {
 
     /** @return DAO for friends. */
     abstract fun friendDao(): FriendDao
+
+    /** @return DAO for pin boards. */
+    abstract fun pinBoardDao(): PinBoardDao
 
     /** @return DAO for groups and members. */
     abstract fun groupDao(): GroupDao

@@ -11,6 +11,7 @@ import com.splitease.app.data.local.dao.FriendDao
 import com.splitease.app.data.local.dao.GroupDao
 import com.splitease.app.data.local.dao.InviteDao
 import com.splitease.app.data.local.dao.PaymentDao
+import com.splitease.app.data.local.dao.PinBoardDao
 import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.db.SplitEaseDatabase
 import com.splitease.app.data.local.db.SplitEaseMigrations
@@ -81,6 +82,10 @@ object DatabaseModule {
     /** @param db Database. @return [InviteDao]. */
     @Provides
     fun provideInviteDao(db: SplitEaseDatabase): InviteDao = db.inviteDao()
+
+    /** @param db Database. @return [PinBoardDao]. */
+    @Provides
+    fun providePinBoardDao(db: SplitEaseDatabase): PinBoardDao = db.pinBoardDao()
 
     /** @param db Database. @return [ActivityEventDao]. */
     @Provides

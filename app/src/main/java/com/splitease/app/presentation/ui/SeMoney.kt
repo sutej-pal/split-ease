@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -151,6 +153,79 @@ fun SeHeroBalancePair(
     }
 }
 
+/**
+ * Shimmer stand-in for [SeHeroBalancePair] while the first-login full sync runs.
+ * Matches the live tiles' size so the list does not jump when totals appear.
+ */
+@Composable
+fun SeHeroBalancePairSkeleton(modifier: Modifier = Modifier) {
+    val loadingCd = stringResource(R.string.groups_balances_loading)
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = loadingCd },
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SeHeroTileSkeleton(modifier = Modifier.weight(1f))
+        SeHeroTileSkeleton(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun SeHeroTileSkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(SplitEaseColors.SurfaceMuted)
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(SplitEaseColors.NavyMuted),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .width(72.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.72f)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .seShimmer(),
+        )
+    }
+}
+
+@Composable
+fun SeLineSkeleton(
+    modifier: Modifier = Modifier,
+    widthFraction: Float = 0.55f,
+) {
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth(widthFraction)
+                .height(12.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .seShimmer(),
+    )
+}
+
 @Composable
 private fun SeHeroTile(
     label: String,
@@ -226,6 +301,7 @@ private fun SeMoneyPreview() {
                 owedToMe = mapOf("INR" to BigDecimal("80.00")),
                 currencyCode = "INR",
             )
+            SeHeroBalancePairSkeleton()
             SeLedgerAmount(BigDecimal("420.00"), "INR", SeMoneyTone.YOU_OWE)
             SeMoneyText(BigDecimal("420.00"), "INR", SeMoneyTone.YOU_OWE, prefix = "you owe")
         }

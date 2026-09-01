@@ -4,6 +4,7 @@ import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.dto.PaymentDto
 import com.splitease.app.data.sync.REMOTE_FETCH_ROW_CAP
 import com.splitease.app.data.sync.SyncConflictPolicy
+import com.splitease.app.data.sync.SyncNetworkLog
 import com.splitease.app.data.sync.isCompleteRemoteFetch
 import com.splitease.app.domain.model.Payment
 import com.splitease.app.domain.model.SyncStatus
@@ -90,6 +91,10 @@ class PaymentInteractor
          */
         suspend fun refreshPaymentsForUser(userId: String) {
             val remoteRows = remote.fetchInvolvingUser(userId)
+            SyncNetworkLog.info(
+                "payments plan: involvingUser=${remoteRows.size} " +
+                    "(2 GETs: from_user_id + to_user_id), then 1 GET per group",
+            )
             remoteRows.forEach { dto ->
                 runCatching { persistRemotePayment(dto) }
                     .onFailure { err ->

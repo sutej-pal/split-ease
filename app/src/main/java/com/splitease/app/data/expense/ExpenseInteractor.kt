@@ -17,6 +17,7 @@ import com.splitease.app.data.sync.ExpensePushPolicy
 import com.splitease.app.data.sync.REMOTE_FETCH_ROW_CAP
 import com.splitease.app.data.sync.SyncConflictPolicy
 import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.data.sync.SyncNetworkLog
 import com.splitease.app.data.sync.SyncWorker
 import com.splitease.app.data.sync.isCompleteRemoteFetch
 import com.splitease.app.domain.model.ActivityEvent
@@ -44,6 +45,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -332,7 +335,8 @@ class ExpenseInteractor
         suspend fun refreshExpenseSideData(expenseId: String) {
             val id = expenseId.trim()
             if (id.isEmpty()) return
-            pullCommentsAndPhotos(id)
+            persistRemoteComments(remote.fetchComments(id))
+            persistRemotePhotos(remote.fetchPhotos(id))
         }
 
         /** Pushes pending comments / photos that failed earlier (called from sync flush). */
@@ -496,16 +500,7 @@ class ExpenseInteractor
          */
         suspend fun refreshGroupExpenses(groupId: String) {
             val remoteRows = remote.fetchByGroup(groupId)
-            remoteRows.forEach { dto ->
-                runCatching { persistRemoteExpense(dto) }
-                    .onFailure { err ->
-                        android.util.Log.w(
-                            "ExpenseSync",
-                            "Failed to persist remote expense ${dto.id}: ${dto.description}",
-                            err,
-                        )
-                    }
-            }
+            persistRemoteExpenseBatch(remoteRows)
             pruneSyncedMissingRemote(
                 localSyncedIds = expenseRepository.getSyncedIdsByGroup(groupId),
                 remoteIds = remoteRows.map { it.id }.toSet(),
@@ -522,40 +517,75 @@ class ExpenseInteractor
          *   membership alone does not put the user on historical split rows)
          *
          * After hydrate, prunes SYNCED 1:1 rows missing remotely; group rows are
-         * pruned inside [refreshGroupExpenses].
+         * pruned from the batched group_id fetch (not a second child-table pull).
          *
          * @param userId Current user id.
          */
         suspend fun refreshExpensesForUser(userId: String) {
-            val ids =
-                (
-                    remote.fetchPaidBy(userId).map { it.id } +
-                        remote.fetchSplitExpenseIdsForUser(userId)
-                ).distinct()
+            val groups = groupRepository.observeGroupsForUser(userId).first()
+            val groupIds = groups.map { it.id }
+            val (paid, splitIds) =
+                coroutineScope {
+                    val paidDeferred = async { remote.fetchPaidBy(userId) }
+                    val splitDeferred = async { remote.fetchSplitExpenseIdsForUser(userId) }
+                    paidDeferred.await() to splitDeferred.await()
+                }
+            val paidIds = paid.map { it.id }.toSet()
+            val involvingIds = (paidIds + splitIds).distinct()
 
-            ids.forEach { expenseId ->
-                val dto = remote.fetchExpense(expenseId) ?: return@forEach
-                runCatching { persistRemoteExpense(dto) }
-                    .onFailure { err ->
-                        android.util.Log.w(
-                            "ExpenseSync",
-                            "Failed to persist remote expense $expenseId",
-                            err,
-                        )
-                    }
+            val groupRows =
+                if (groupIds.isEmpty()) {
+                    emptyList()
+                } else {
+                    remote.fetchByGroupIds(groupIds)
+                }
+            val groupById = groupRows.associateBy { it.id }
+            val missingIds = involvingIds.filter { id -> id !in paidIds && id !in groupById }
+            val extraRows =
+                if (missingIds.isEmpty()) {
+                    emptyList()
+                } else {
+                    remote.fetchByIds(missingIds)
+                }
+
+            val allDtos =
+                LinkedHashMap<String, ExpenseDto>(paid.size + extraRows.size + groupRows.size)
+                    .apply {
+                        paid.forEach { put(it.id, it) }
+                        extraRows.forEach { put(it.id, it) }
+                        groupRows.forEach { put(it.id, it) }
+                    }.values
+                    .toList()
+
+            SyncNetworkLog.info(
+                "expenses plan: paidBy=${paid.size} splitParticipantIds=${splitIds.size} " +
+                    "uniqueInvolving=${involvingIds.size} groups=${groupIds.size} " +
+                    "groupRows=${groupRows.size} extraIds=${missingIds.size} " +
+                    "hydrate=${allDtos.size} — batched in() for expenses+splits+comments+photos",
+            )
+
+            persistRemoteExpenseBatch(allDtos)
+
+            val groupFetchComplete = isCompleteRemoteFetch(groupRows.size)
+            val groupRowsByGroup = groupRows.groupBy { it.groupId }
+            groups.forEach { group ->
+                val remoteForGroup = groupRowsByGroup[group.id].orEmpty()
+                pruneSyncedMissingRemote(
+                    localSyncedIds = expenseRepository.getSyncedIdsByGroup(group.id),
+                    remoteIds = remoteForGroup.map { it.id }.toSet(),
+                    remoteRowCount =
+                        if (groupFetchComplete) {
+                            remoteForGroup.size
+                        } else {
+                            REMOTE_FETCH_ROW_CAP
+                        },
+                )
             }
 
-            // Group membership grants SELECT via RLS; pull those rows even when the
-            // joiner is not (yet) on any split.
-            groupRepository.observeGroupsForUser(userId).first().forEach { group ->
-                refreshGroupExpenses(group.id)
-            }
-
-            // 1:1 (non-group) SYNCED rows: prune when absent from the involving-user set.
             pruneSyncedMissingRemote(
                 localSyncedIds = expenseRepository.getSyncedNonGroupIdsInvolvingUser(userId),
-                remoteIds = ids.toSet(),
-                remoteRowCount = ids.size,
+                remoteIds = involvingIds.toSet(),
+                remoteRowCount = involvingIds.size,
             )
         }
 
@@ -934,72 +964,129 @@ class ExpenseInteractor
             )
         }
 
-        private suspend fun persistRemoteExpense(dto: ExpenseDto) {
-            val existing = expenseRepository.getExpenseById(dto.id)
-            val shouldApply =
-                SyncConflictPolicy.shouldApplyRemote(
-                    localUpdatedAtEpochMs = existing?.updatedAtEpochMs,
-                    localSyncStatus = existing?.syncStatus,
-                    remoteUpdatedAtEpochMs = dto.updatedAtEpochMs,
-                )
-            if (!shouldApply) {
-                android.util.Log.d(
-                    "ExpenseSync",
-                    "Skip remote expense ${dto.id}: local ${existing?.syncStatus} " +
-                        "updatedAt=${existing?.updatedAtEpochMs} >= remote ${dto.updatedAtEpochMs}",
-                )
-                // Attachments/comments are child tables — still pull them even when the
-                // expense row itself is not re-applied (LWW skip / local PENDING edit).
-                pullCommentsAndPhotos(dto.id)
-                return
-            }
-            val splits = remote.fetchSplits(dto.id)
-            // Room FKs require local user rows for payer + participants (other members).
-            ensureLocalUserExists(dto.paidByUserId)
-            splits.forEach { ensureLocalUserExists(it.userId) }
-            // Default category ids are device-local UUIDs on older installs; stable `cat_*`
-            // ids are auto-seeded on pull. Custom categories remain local-only.
-            val categoryId = categoryRepository.resolveCategoryForRemotePull(dto.categoryId)
-            // Cloud expenses have no created_at column; never clobber local creation
-            // time with updated_at (that would move the expense after every edit sync).
-            val createdAt =
-                existing?.createdAtEpochMs
-                    ?: dto.expenseDateEpochMs.takeIf { it > 0L }
-                    ?: dto.updatedAtEpochMs
-            val expense =
-                Expense(
-                    id = dto.id,
-                    description = dto.description,
-                    amount = BigDecimal(dto.amount),
-                    currencyCode = dto.currencyCode,
-                    categoryId = categoryId,
-                    paidByUserId = dto.paidByUserId,
-                    groupId = dto.groupId,
-                    expenseDateEpochMs = dto.expenseDateEpochMs,
-                    splitType = runCatching { SplitType.valueOf(dto.splitType) }.getOrDefault(SplitType.EQUAL),
-                    notes = dto.notes,
-                    remoteId = dto.id,
-                    createdAtEpochMs = createdAt,
-                    updatedAtEpochMs = dto.updatedAtEpochMs,
-                    syncStatus = SyncStatus.SYNCED,
-                )
-            expenseRepository.upsertExpenseWithSplits(
-                expense,
-                splits.map { split ->
-                    ExpenseSplit(
-                        id = split.id,
-                        expenseId = split.expenseId,
-                        userId = split.userId,
-                        owedAmount = BigDecimal(split.owedAmount),
-                        percentage = split.percentage?.let { BigDecimal(it) },
-                        shares = split.shares,
-                        paidAmount = split.paidAmount?.let { BigDecimal(it) },
-                        adjustmentAmount = split.adjustmentAmount?.let { BigDecimal(it) },
-                        syncStatus = SyncStatus.SYNCED,
-                    )
-                },
+        private suspend fun persistRemoteExpenseBatch(dtos: List<ExpenseDto>) {
+            if (dtos.isEmpty()) return
+            val ids = dtos.map { it.id }
+            val (splits, comments, photos) =
+                coroutineScope {
+                    val splitsDeferred = async { remote.fetchSplitsForExpenseIds(ids) }
+                    val commentsDeferred = async { remote.fetchCommentsForExpenseIds(ids) }
+                    val photosDeferred = async { remote.fetchPhotosForExpenseIds(ids) }
+                    Triple(splitsDeferred.await(), commentsDeferred.await(), photosDeferred.await())
+                }
+            persistHydratedExpenses(
+                dtos = dtos,
+                splitsByExpenseId = splits.groupBy { it.expenseId },
+                commentsByExpenseId = comments.groupBy { it.expenseId },
+                photosByExpenseId = photos.groupBy { it.expenseId },
             )
-            pullCommentsAndPhotos(dto.id)
+        }
+
+        private suspend fun persistHydratedExpenses(
+            dtos: List<ExpenseDto>,
+            splitsByExpenseId: Map<String, List<ExpenseSplitDto>>,
+            commentsByExpenseId: Map<String, List<ExpenseCommentDto>>,
+            photosByExpenseId: Map<String, List<ExpensePhotoDto>>,
+        ) {
+            val existingById = expenseRepository.getExpensesByIds(dtos.map { it.id })
+            val toApplyExpenses = mutableListOf<Expense>()
+            val toApplySplits = mutableListOf<ExpenseSplit>()
+            val commentDtos = commentsByExpenseId.values.flatten()
+            val photoDtos = photosByExpenseId.values.flatten()
+            val fetchedSplitCount = splitsByExpenseId.values.sumOf { it.size }
+            val skipEmptySplitsAtRowCap =
+                fetchedSplitCount >= REMOTE_FETCH_ROW_CAP &&
+                    splitsByExpenseId.keys.size < dtos.size
+
+            dtos.forEach { dto ->
+                runCatching {
+                    val existing = existingById[dto.id]
+                    val shouldApply =
+                        SyncConflictPolicy.shouldApplyRemote(
+                            localUpdatedAtEpochMs = existing?.updatedAtEpochMs,
+                            localSyncStatus = existing?.syncStatus,
+                            remoteUpdatedAtEpochMs = dto.updatedAtEpochMs,
+                        )
+                    if (!shouldApply) {
+                        android.util.Log.d(
+                            "ExpenseSync",
+                            "Skip remote expense ${dto.id}: local ${existing?.syncStatus} " +
+                                "updatedAt=${existing?.updatedAtEpochMs} >= remote ${dto.updatedAtEpochMs}",
+                        )
+                        return@runCatching
+                    }
+                    val splitDtos = splitsByExpenseId[dto.id].orEmpty()
+                    if (skipEmptySplitsAtRowCap && splitDtos.isEmpty()) {
+                        android.util.Log.w(
+                            "ExpenseSync",
+                            "Skip remote expense ${dto.id}: split fetch hit row cap " +
+                                "($fetchedSplitCount) with no splits in this page",
+                        )
+                        return@runCatching
+                    }
+                    val categoryId = categoryRepository.resolveCategoryForRemotePull(dto.categoryId)
+                    val createdAt =
+                        existing?.createdAtEpochMs
+                            ?: dto.expenseDateEpochMs.takeIf { it > 0L }
+                            ?: dto.updatedAtEpochMs
+                    val expense =
+                        Expense(
+                            id = dto.id,
+                            description = dto.description,
+                            amount = BigDecimal(dto.amount),
+                            currencyCode = dto.currencyCode,
+                            categoryId = categoryId,
+                            paidByUserId = dto.paidByUserId,
+                            groupId = dto.groupId,
+                            expenseDateEpochMs = dto.expenseDateEpochMs,
+                            splitType =
+                                runCatching { SplitType.valueOf(dto.splitType) }
+                                    .getOrDefault(SplitType.EQUAL),
+                            notes = dto.notes,
+                            remoteId = dto.id,
+                            createdAtEpochMs = createdAt,
+                            updatedAtEpochMs = dto.updatedAtEpochMs,
+                            syncStatus = SyncStatus.SYNCED,
+                        )
+                    val splits =
+                        splitDtos.map { split ->
+                            ExpenseSplit(
+                                id = split.id,
+                                expenseId = split.expenseId,
+                                userId = split.userId,
+                                owedAmount = BigDecimal(split.owedAmount),
+                                percentage = split.percentage?.let { BigDecimal(it) },
+                                shares = split.shares,
+                                paidAmount = split.paidAmount?.let { BigDecimal(it) },
+                                adjustmentAmount = split.adjustmentAmount?.let { BigDecimal(it) },
+                                syncStatus = SyncStatus.SYNCED,
+                            )
+                        }
+                    toApplyExpenses += expense
+                    toApplySplits += splits
+                }.onFailure { err ->
+                    android.util.Log.w(
+                        "ExpenseSync",
+                        "Failed to persist remote expense ${dto.id}: ${dto.description}",
+                        err,
+                    )
+                }
+            }
+
+            val userIds =
+                buildSet {
+                    toApplyExpenses.forEach { add(it.paidByUserId) }
+                    toApplySplits.forEach { add(it.userId) }
+                    commentDtos.forEach { add(it.authorUserId) }
+                    photoDtos.forEach { add(it.createdByUserId) }
+                }
+            userIds.forEach { ensureLocalUserExists(it) }
+
+            if (toApplyExpenses.isNotEmpty()) {
+                expenseRepository.upsertExpensesWithSplits(toApplyExpenses, toApplySplits)
+            }
+            persistRemoteComments(commentDtos)
+            persistRemotePhotos(photoDtos)
         }
 
         /**
@@ -1042,33 +1129,34 @@ class ExpenseInteractor
             }
         }
 
-        private suspend fun pullCommentsAndPhotos(expenseId: String) {
+        private suspend fun persistRemoteComments(remoteComments: List<ExpenseCommentDto>) {
+            if (remoteComments.isEmpty()) return
             runCatching {
-                val remoteComments = remote.fetchComments(expenseId)
-                if (remoteComments.isNotEmpty()) {
-                    expenseCommentRepository.upsertAll(
-                        remoteComments.map { dto ->
-                            ensureLocalUserExists(dto.authorUserId)
-                            ExpenseComment(
-                                id = dto.id,
-                                expenseId = dto.expenseId,
-                                authorUserId = dto.authorUserId,
-                                body = dto.body,
-                                kind =
-                                    runCatching { ExpenseCommentKind.valueOf(dto.kind) }
-                                        .getOrDefault(ExpenseCommentKind.USER),
-                                createdAtEpochMs = dto.createdAtEpochMs,
-                                syncStatus = SyncStatus.SYNCED,
-                            )
-                        },
-                    )
-                }
+                expenseCommentRepository.upsertAll(
+                    remoteComments.map { dto ->
+                        ensureLocalUserExists(dto.authorUserId)
+                        ExpenseComment(
+                            id = dto.id,
+                            expenseId = dto.expenseId,
+                            authorUserId = dto.authorUserId,
+                            body = dto.body,
+                            kind =
+                                runCatching { ExpenseCommentKind.valueOf(dto.kind) }
+                                    .getOrDefault(ExpenseCommentKind.USER),
+                            createdAtEpochMs = dto.createdAtEpochMs,
+                            syncStatus = SyncStatus.SYNCED,
+                        )
+                    },
+                )
             }
+        }
+
+        private suspend fun persistRemotePhotos(remotePhotos: List<ExpensePhotoDto>) {
+            if (remotePhotos.isEmpty()) return
             runCatching {
-                val remotePhotos = remote.fetchPhotos(expenseId)
-                if (remotePhotos.isEmpty()) return@runCatching
+                val expenseIds = remotePhotos.map { it.expenseId }.distinct()
                 val localById =
-                    expensePhotoRepository.getForExpense(expenseId).associateBy { it.id }
+                    expensePhotoRepository.getForExpenses(expenseIds).associateBy { it.id }
                 expensePhotoRepository.upsertAll(
                     remotePhotos.map { dto ->
                         ensureLocalUserExists(dto.createdByUserId)

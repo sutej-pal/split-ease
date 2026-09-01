@@ -2,6 +2,7 @@ package com.splitease.app.presentation.pinboard
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
@@ -27,6 +28,12 @@ internal fun toggleChecklistLine(line: String): String {
     val parsed = parsePinTextLine(line)
     if (!parsed.isChecklist) return line
     return serializePinTextLine(parsed.copy(checked = !parsed.checked))
+}
+
+/** Converts a checklist line to plain text, or a plain line to a checklist item. */
+internal fun toggleChecklistBlock(line: String): String {
+    val parsed = parsePinTextLine(line)
+    return serializePinTextLine(parsed.copy(isChecklist = !parsed.isChecklist))
 }
 
 /** Checklist item label without the `- [ ]` prefix. */
@@ -359,4 +366,54 @@ internal fun toggleChecklistAtLine(
     if (lineIndex !in lines.indices) return text
     lines[lineIndex] = toggleChecklistLine(lines[lineIndex])
     return lines.joinToString("\n")
+}
+
+/** Converts the line at [lineIndex] between checklist and plain text. */
+internal fun toggleChecklistBlockAtLine(
+    text: String,
+    lineIndex: Int,
+): String {
+    val lines = text.split('\n').toMutableList()
+    if (lineIndex !in lines.indices) return text
+    lines[lineIndex] = toggleChecklistBlock(lines[lineIndex])
+    return lines.joinToString("\n")
+}
+
+/** Checks if the cursor at [cursor] is inside a bold/italic span. */
+internal fun isStyleActive(
+    text: String,
+    selection: TextRange,
+    marker: String,
+): Boolean {
+    if (text.isEmpty()) return false
+    val start = selection.min
+    val end = selection.max
+
+    fun isActiveAt(index: Int): Boolean {
+        val lineStart = text.lastIndexOf('\n', index - 1).let { if (it < 0) 0 else it + 1 }
+        val lineEnd = text.indexOf('\n', index).let { if (it < 0) text.length else it }
+        val line = text.substring(lineStart, lineEnd)
+        val relativeIndex = index - lineStart
+
+        var searchIndex = 0
+        while (searchIndex < line.length) {
+            val markerEnd = inlineMarkerEnd(line, searchIndex, marker)
+            if (markerEnd != null) {
+                val innerStart = searchIndex + marker.length
+                val innerEnd = markerEnd
+                if (relativeIndex in innerStart..innerEnd) return true
+                searchIndex = markerEnd + marker.length
+            } else {
+                searchIndex++
+            }
+        }
+        return false
+    }
+
+    // Rule: active only if the entire selection is within the style.
+    if (start == end) return isActiveAt(start)
+    for (i in start until end) {
+        if (!isActiveAt(i)) return false
+    }
+    return true
 }

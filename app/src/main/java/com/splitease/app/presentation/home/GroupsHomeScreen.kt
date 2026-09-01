@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.home
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -52,22 +53,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
+import com.splitease.app.data.sync.SyncState
+import com.splitease.app.data.sync.shouldFreezeBalances
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeHeroBalancePair
+import com.splitease.app.presentation.ui.SeHeroBalancePairSkeleton
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInlineLoader
+import com.splitease.app.presentation.ui.SeLineSkeleton
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePullRefreshBox
+import com.splitease.app.presentation.ui.SeShimmerHost
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextButton
 import java.math.BigDecimal
@@ -124,18 +131,29 @@ fun GroupsHomeScreen(
         return
     }
 
+    val freezeBalances = ui.syncState.shouldFreezeBalances
     val balances = ui.balances
     val groupRows =
-        remember(ui.allGroups, balances) {
+        remember(ui.allGroups, balances, freezeBalances) {
             ui.allGroups.map { group ->
-                balances?.groupBalances?.firstOrNull { it.groupId == group.id }
-                    ?: GroupBalanceUi(
+                if (freezeBalances) {
+                    GroupBalanceUi(
                         groupId = group.id,
                         groupName = group.name,
                         myNetByCurrency = emptyMap(),
                         memberNetsByCurrency = emptyMap(),
                         simplifiedDebts = emptyList(),
                     )
+                } else {
+                    balances?.groupBalances?.firstOrNull { it.groupId == group.id }
+                        ?: GroupBalanceUi(
+                            groupId = group.id,
+                            groupName = group.name,
+                            myNetByCurrency = emptyMap(),
+                            memberNetsByCurrency = emptyMap(),
+                            simplifiedDebts = emptyList(),
+                        )
+                }
             }
         }
     val settled =
@@ -204,17 +222,38 @@ fun GroupsHomeScreen(
                     .fillMaxSize()
                     .padding(padding),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
-            ) {
+            SeShimmerHost(enabled = freezeBalances) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
+                ) {
                     item {
-                        SeHeroBalancePair(
-                            iOwe = balances?.totalIOweByCurrency.orEmpty(),
-                            owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
-                            currencyCode = ui.currencyCode,
-                            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                        )
+                        Crossfade(
+                            targetState = ui.syncState,
+                            label = "groups-hero-balances",
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { sync ->
+                            when (sync) {
+                                SyncState.IN_PROGRESS ->
+                                    SeHeroBalancePairSkeleton(
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                                    )
+                                SyncState.FAILED ->
+                                    GroupsBalancesSyncError(
+                                        onRetry = viewModel::retryInitialHydrate,
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                                    )
+                                SyncState.IDLE,
+                                SyncState.COMPLETE,
+                                ->
+                                    SeHeroBalancePair(
+                                        iOwe = balances?.totalIOweByCurrency.orEmpty(),
+                                        owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
+                                        currencyCode = ui.currencyCode,
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                                    )
+                            }
+                        }
                         GroupsFilterMenu(
                             selectedFilter = listFilter,
                             onFilterSelected = {
@@ -242,6 +281,7 @@ fun GroupsHomeScreen(
                             icon = groupTypeIcon(group?.groupType),
                             iconTint = groupTypeColor(group?.groupType),
                             currencyFallback = ui.currencyCode,
+                            showAmounts = !freezeBalances,
                             onClick = { onOpenGroup(row.groupId) },
                             onIconClick = {
                                 photoTargetGroupId = row.groupId
@@ -257,6 +297,7 @@ fun GroupsHomeScreen(
                                 myNet = balances.nonGroupMyNetByCurrency,
                                 debts = balances.nonGroupDebts,
                                 currencyFallback = ui.currencyCode,
+                                showAmounts = !freezeBalances,
                                 onClick = onOpenNonGroup,
                             )
                         }
@@ -292,6 +333,7 @@ fun GroupsHomeScreen(
                     }
                 }
             }
+        }
     }
 }
 
@@ -303,6 +345,21 @@ private val GroupsHomeFilter.labelRes: Int
             GroupsHomeFilter.YOU_OWE -> R.string.groups_filter_you_owe
             GroupsHomeFilter.OWED_TO_YOU -> R.string.groups_filter_owed_to_you
         }
+
+@Composable
+private fun GroupsBalancesSyncError(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        SeErrorText(text = stringResource(R.string.groups_balances_sync_failed))
+        Spacer(modifier = Modifier.height(12.dp))
+        SeOutlinedButton(
+            text = stringResource(R.string.action_retry),
+            onClick = onRetry,
+        )
+    }
+}
 
 @Composable
 private fun GroupsFilterMenu(
@@ -377,6 +434,7 @@ private fun GroupBalanceListItem(
     onClick: () -> Unit,
     onIconClick: () -> Unit,
     iconContentDescription: String,
+    showAmounts: Boolean = true,
 ) {
     Row(
         modifier =
@@ -407,13 +465,17 @@ private fun GroupBalanceListItem(
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(2.dp))
-            MyNetStatus(row.myNetByCurrency, currencyFallback)
-            row.simplifiedDebts
-                .filter { it.fromLabel == "You" || it.toLabel == "You" }
-                .take(3)
-                .forEach { debt ->
-                    DebtLine(debt)
-                }
+            if (showAmounts) {
+                MyNetStatus(row.myNetByCurrency, currencyFallback)
+                row.simplifiedDebts
+                    .filter { it.fromLabel == "You" || it.toLabel == "You" }
+                    .take(3)
+                    .forEach { debt ->
+                        DebtLine(debt)
+                    }
+            } else {
+                SeLineSkeleton(modifier = Modifier.padding(top = 6.dp))
+            }
         }
     }
 }
@@ -424,6 +486,7 @@ private fun NonGroupListItem(
     debts: List<LabeledDebt>,
     currencyFallback: String,
     onClick: () -> Unit,
+    showAmounts: Boolean = true,
 ) {
     Row(
         modifier =
@@ -442,8 +505,12 @@ private fun NonGroupListItem(
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(2.dp))
-            MyNetStatus(myNet, currencyFallback)
-            debts.take(3).forEach { DebtLine(it) }
+            if (showAmounts) {
+                MyNetStatus(myNet, currencyFallback)
+                debts.take(3).forEach { DebtLine(it) }
+            } else {
+                SeLineSkeleton(modifier = Modifier.padding(top = 6.dp))
+            }
         }
     }
 }

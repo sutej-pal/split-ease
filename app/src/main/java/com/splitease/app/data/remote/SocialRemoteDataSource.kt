@@ -7,6 +7,7 @@ import com.splitease.app.data.remote.dto.GroupPhotoUrlPatch
 import com.splitease.app.data.remote.dto.InviteDto
 import com.splitease.app.data.remote.dto.InvitePreviewDto
 import com.splitease.app.data.remote.dto.ProfileDto
+import com.splitease.app.data.sync.POSTGREST_IN_FILTER_CHUNK
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
@@ -77,13 +78,15 @@ class SocialRemoteDataSource
         suspend fun fetchProfilesByIds(userIds: List<String>): List<ProfileDto> {
             val distinct = userIds.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
             if (distinct.isEmpty()) return emptyList()
-            return supabase
-                .from("profiles")
-                .select(Columns.ALL) {
-                    filter {
-                        isIn("id", distinct)
-                    }
-                }.decodeList()
+            return distinct.chunked(POSTGREST_IN_FILTER_CHUNK).flatMap { chunk ->
+                supabase
+                    .from("profiles")
+                    .select(Columns.ALL) {
+                        filter {
+                            isIn("id", chunk)
+                        }
+                    }.decodeList()
+            }
         }
 
         /**

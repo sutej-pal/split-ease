@@ -325,6 +325,9 @@
     <string name="cd_non_group_info">About non-group expenses</string>
     <string name="groups_empty_home">No groups yet. Create one to start splitting.</string>
     <string name="groups_fetching">Fetching groups…</string>
+    <string name="groups_balances_loading">Loading balances</string>
+    <string name="groups_balances_sync_failed">Couldn\'t load your balances. Check your connection and try again.</string>
+    <string name="action_retry">Retry</string>
     <string name="groups_hiding_settled">Hiding groups that are settled up.</string>
     <plurals name="groups_show_settled">
         <item quantity="one">Show %1$d settled-up group</item>
@@ -339,6 +342,8 @@
     <string name="pick_group_for_expense">Choose a group</string>
     <string name="activity_empty">No activity yet. Create a group, add an expense, or record a payment to see it here.</string>
     <string name="activity_empty_filtered">No matching activity.</string>
+    <string name="activity_loading">Loading activity</string>
+    <string name="activity_sync_failed">Couldn\'t load your activity. Check your connection and try again.</string>
     <string name="activity_search_hint">Search activity</string>
     <string name="cd_filter_activity">Filter activity</string>
     <string name="activity_filter_all">All events</string>

@@ -9,10 +9,12 @@ import com.splitease.app.data.remote.GroupCoverStorage
 import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.GroupMemberDto
+import com.splitease.app.data.remote.dto.InviteDto
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
 import com.splitease.app.data.remote.mapper.toDomain
 import com.splitease.app.data.remote.mapper.toDto
+import com.splitease.app.data.sync.SyncNetworkLog
 import com.splitease.app.domain.model.AddPersonOutcome
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
@@ -652,6 +654,18 @@ class SocialInteractor
          */
         suspend fun refreshFriends(ownerUserId: String) {
             val remoteFriends = remote.fetchFriends(ownerUserId)
+            SyncNetworkLog.info(
+                "friends plan: rows=${remoteFriends.size} (1 GET /friends + 1 GET /profiles?id=in)",
+            )
+            val profilesById =
+                if (remoteFriends.isEmpty()) {
+                    emptyMap()
+                } else {
+                    runCatching {
+                        remote.fetchProfilesByIds(remoteFriends.map { it.friendUserId })
+                    }.getOrDefault(emptyList())
+                        .associateBy { it.id }
+                }
             remoteFriends.forEach { dto ->
                 val previous = friendRepository.getById(dto.id)
                 if (previous != null && previous.friendUserId != dto.friendUserId) {
@@ -660,8 +674,10 @@ class SocialInteractor
                 // group_members FK requires a users row for friendUserId
                 ensureLocalUserExists(
                     userId = dto.friendUserId,
+                    profile = profilesById[dto.friendUserId],
                     email = dto.emailSnapshot,
                     displayName = dto.displayNameSnapshot,
+                    fetchProfileIfMissing = false,
                 )
                 friendRepository.upsert(
                     Friend(
@@ -685,7 +701,13 @@ class SocialInteractor
          * @param inviterUserId Current user id.
          */
         suspend fun refreshSentInvites(inviterUserId: String) {
-            remote.fetchInvitesSentBy(inviterUserId).forEach { dto ->
+            val remoteInvites = remote.fetchInvitesSentBy(inviterUserId)
+            persistSentInvites(remoteInvites)
+            reconcileJoinedInvitees(inviterUserId, alreadyFetched = remoteInvites)
+        }
+
+        private suspend fun persistSentInvites(remoteInvites: List<InviteDto>) {
+            remoteInvites.forEach { dto ->
                 val remoteInvite = dto.toDomain()
                 val local = inviteRepository.getByToken(remoteInvite.token)
                 // Do not resurrect a locally cancelled invite that still needs flush.
@@ -698,7 +720,6 @@ class SocialInteractor
                 }
                 inviteRepository.upsert(remoteInvite)
             }
-            reconcileJoinedInvitees(inviterUserId)
         }
 
         /**
@@ -710,9 +731,13 @@ class SocialInteractor
          * Also strips a stale "(invited)" label when the invite is already ACCEPTED and
          * re-pushes expenses so remote splits match any prior local-only remap.
          */
-        suspend fun reconcileJoinedInvitees(ownerUserId: String) {
-            val sent = remote.fetchInvitesSentBy(ownerUserId).map { it.toDomain() }
-            sent.forEach { invite -> inviteRepository.upsert(invite) }
+        suspend fun reconcileJoinedInvitees(
+            ownerUserId: String,
+            alreadyFetched: List<InviteDto>? = null,
+        ) {
+            val sentDtos = alreadyFetched ?: remote.fetchInvitesSentBy(ownerUserId)
+            persistSentInvites(sentDtos)
+            val sent = sentDtos.map { it.toDomain() }
 
             for (invite in sent) {
                 val friendRowId = invite.friendRowId ?: continue
@@ -1561,6 +1586,11 @@ class SocialInteractor
             val createdById = created.associateBy { it.id }
             val groupIds = (memberships.map { it.groupId } + created.map { it.id }).distinct()
             if (groupIds.isEmpty()) return
+            SyncNetworkLog.info(
+                "groups plan: memberships=${memberships.size} created=${created.size} " +
+                    "unique=${groupIds.size} — per group: GET group (if not created-by) + " +
+                    "GET members + GET profiles",
+            )
 
             coroutineScope {
                 groupIds
@@ -1618,7 +1648,11 @@ class SocialInteractor
                     .getOrDefault(emptyList())
                     .associateBy { it.id }
             memberDtos.forEach { memberDto ->
-                ensureLocalUserExists(memberDto.userId, profilesById[memberDto.userId])
+                ensureLocalUserExists(
+                    userId = memberDto.userId,
+                    profile = profilesById[memberDto.userId],
+                    fetchProfileIfMissing = false,
+                )
                 groupRepository.upsertMember(
                     GroupMember(
                         id = memberDto.id,
@@ -1645,15 +1679,23 @@ class SocialInteractor
          * @param profile Optional profile already fetched for this user.
          * @param email Optional email for the stub when no profile.
          * @param displayName Optional display name for the stub when no profile.
+         * @param fetchProfileIfMissing When false, skip a per-id GET if [profile] is null
+         *   (caller already batched `profiles?id=in.(...)`).
          */
         private suspend fun ensureLocalUserExists(
             userId: String,
             profile: ProfileDto? = null,
             email: String = "",
             displayName: String = "Member",
+            fetchProfileIfMissing: Boolean = true,
         ) {
             val resolved =
-                profile ?: runCatching { remote.fetchProfileById(userId) }.getOrNull()
+                profile
+                    ?: if (fetchProfileIfMissing) {
+                        runCatching { remote.fetchProfileById(userId) }.getOrNull()
+                    } else {
+                        null
+                    }
             val existing = userRepository.getUserById(userId)
             val now = System.currentTimeMillis()
             val resolvedEmail =

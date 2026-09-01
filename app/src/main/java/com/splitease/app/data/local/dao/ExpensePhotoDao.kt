@@ -27,6 +27,15 @@ interface ExpensePhotoDao {
     )
     suspend fun getForExpense(expenseId: String): List<ExpensePhotoEntity>
 
+    @Query(
+        """
+        SELECT * FROM expense_photos
+        WHERE expenseId IN (:expenseIds)
+        ORDER BY createdAtEpochMs ASC
+        """,
+    )
+    suspend fun getForExpenses(expenseIds: List<String>): List<ExpensePhotoEntity>
+
     @Query("SELECT * FROM expense_photos WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ExpensePhotoEntity?
 

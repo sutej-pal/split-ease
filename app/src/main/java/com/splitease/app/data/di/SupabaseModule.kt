@@ -1,6 +1,7 @@
 package com.splitease.app.data.di
 
 import com.splitease.app.BuildConfig
+import com.splitease.app.data.sync.SyncNetworkLog
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -60,6 +61,9 @@ object SupabaseModule {
                     connectTimeout(30, TimeUnit.SECONDS)
                     readTimeout(30, TimeUnit.SECONDS)
                     writeTimeout(30, TimeUnit.SECONDS)
+                    if (BuildConfig.DEBUG) {
+                        addInterceptor(SyncNetworkLog.HttpInterceptor())
+                    }
                 }
             }
             install(Auth) {
