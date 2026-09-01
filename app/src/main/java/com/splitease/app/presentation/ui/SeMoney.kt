@@ -13,6 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.CurrencyExchange
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -304,6 +310,55 @@ private fun SeMoneyPreview() {
             SeHeroBalancePairSkeleton()
             SeLedgerAmount(BigDecimal("420.00"), "INR", SeMoneyTone.YOU_OWE)
             SeMoneyText(BigDecimal("420.00"), "INR", SeMoneyTone.YOU_OWE, prefix = "you owe")
+        }
+    }
+}
+
+/**
+ * Banner shown on balance screens when mixed currencies are detected.
+ */
+@Composable
+fun SeMixedCurrencyBanner(
+    targetCurrency: String,
+    onConvert: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = SplitEaseColors.PrimarySoft,
+                contentColor = SplitEaseColors.PrimaryDark,
+            ),
+        onClick = onConvert,
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.CurrencyExchange,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.mixed_currency_banner_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = stringResource(R.string.mixed_currency_banner_body, targetCurrency),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

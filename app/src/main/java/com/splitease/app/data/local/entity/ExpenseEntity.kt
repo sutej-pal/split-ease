@@ -60,4 +60,8 @@ data class ExpenseEntity(
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    val originalAmount: BigDecimal? = null,
+    val originalCurrencyCode: String? = null,
+    val rateToDefaultCurrency: BigDecimal? = null,
+    val rateSource: com.splitease.app.domain.model.ExchangeRateSource? = null,
 )

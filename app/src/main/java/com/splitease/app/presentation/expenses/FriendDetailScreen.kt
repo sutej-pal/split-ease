@@ -71,6 +71,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
+import com.splitease.app.presentation.ui.SeMixedCurrencyBanner
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import java.math.BigDecimal
@@ -83,16 +84,22 @@ fun FriendDetailScreen(
     onAddExpense: () -> Unit,
     onOpenExpense: (expenseId: String) -> Unit,
     onSettleUp: (fromUserId: String, toUserId: String, amount: String, currency: String, label: String) -> Unit,
+    onNavigateSettleSelection: (friendUserId: String) -> Unit,
+    onNavigateConvert: (friendUserId: String) -> Unit,
     viewModel: ExpensesViewModel = hiltViewModel(),
     balancesViewModel: BalancesViewModel = hiltViewModel(),
 ) {
     val ledger by remember(friendUserId) { viewModel.observeFriendLedger(friendUserId) }
         .collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val userCurrency by viewModel.currencyCode.collectAsStateWithLifecycle()
     val balance by remember(friendUserId) { balancesViewModel.observeFriendBalance(friendUserId) }
         .collectAsStateWithLifecycle()
     var title by remember { mutableStateOf(friendUserId.take(8)) }
     val me = viewModel.currentUserId()
+
+    val hasMixed = (balance?.netByCurrency?.size ?: 0) > 1
+    
     val bannerColor =
         if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
             SplitEaseColors.BannerFriends
@@ -150,23 +157,19 @@ fun FriendDetailScreen(
                     balance = balance,
                 )
             }
+            if (hasMixed) {
+                item {
+                    SeMixedCurrencyBanner(
+                        targetCurrency = userCurrency,
+                        onConvert = { onNavigateConvert(friendUserId) },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    )
+                }
+            }
             item {
                 FriendDetailActions(
                     canSettle = canSettle,
-                    onSettleUp = {
-                        val settleCandidate =
-                            balance?.netByCurrency?.entries?.firstOrNull {
-                                it.value.compareTo(BigDecimal.ZERO) != 0
-                            } ?: return@FriendDetailActions
-                        if (me == null) return@FriendDetailActions
-                        val net = settleCandidate.value
-                        val currency = settleCandidate.key
-                        if (net < BigDecimal.ZERO) {
-                            onSettleUp(me, friendUserId, net.abs().toPlainString(), currency, title)
-                        } else {
-                            onSettleUp(friendUserId, me, net.toPlainString(), currency, title)
-                        }
-                    },
+                    onSettleUp = { onNavigateSettleSelection(friendUserId) },
                 )
             }
             uiState.errorMessage?.let { msg ->

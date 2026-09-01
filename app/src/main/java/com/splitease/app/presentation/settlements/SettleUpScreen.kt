@@ -3,11 +3,13 @@ package com.splitease.app.presentation.settlements
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,7 +82,6 @@ fun SettleUpScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val me by viewModel.currentUserId.collectAsStateWithLifecycle()
     var amount by rememberSaveable { mutableStateOf(amountPrefill) }
-    var editingAmount by rememberSaveable { mutableStateOf(false) }
     var note by rememberSaveable { mutableStateOf("") }
     var showValidation by rememberSaveable { mutableStateOf(false) }
     val iAmPaying = me != null && me == fromUserId
@@ -121,21 +123,21 @@ fun SettleUpScreen(
     val payee = uiState.payee
     val payerName = payer?.displayName?.takeUnless { it.equals(youLabel, true) } ?: counterpartyLabel
     val payeeName = payee?.displayName?.takeUnless { it.equals(youLabel, true) } ?: counterpartyLabel
-    val headline =
-        when {
-            me != null && me == toUserId ->
-                stringResource(R.string.settle_paid_you, payerName)
-            me != null && me == fromUserId ->
-                stringResource(R.string.settle_you_paid, payeeName)
-            else ->
-                stringResource(R.string.settle_paid_other, payerName, payeeName)
-        }
     val subtitleEmail =
         when {
             me != null && me == toUserId -> payer?.email
             me != null && me == fromUserId -> payee?.email
-            else -> payer?.email ?: payee?.email
+            else -> null // For custom payer-recipient, don't crowd with email? Or show both?
         }
+    
+    val nameLabel = 
+        when {
+            me != null && me == toUserId -> payerName
+            me != null && me == fromUserId -> payeeName
+            else -> null
+        }
+    
+    val recordLabel = if (nameLabel != null) stringResource(R.string.settle_record_label, nameLabel) else null
 
     SeScreen(
         title = stringResource(R.string.settle_record_title),
@@ -183,19 +185,20 @@ fun SettleUpScreen(
                             borderWidth = 0.dp,
                         )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = headline,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SplitEaseColors.Navy,
-                        textAlign = TextAlign.Center,
-                    )
+                    Spacer(modifier = Modifier.height(28.dp))
+                    if (recordLabel != null) {
+                        Text(
+                            text = recordLabel,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SplitEaseColors.Navy,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                     if (!subtitleEmail.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = subtitleEmail,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = SplitEaseColors.NavyMuted,
                             textAlign = TextAlign.Center,
                         )
@@ -205,11 +208,9 @@ fun SettleUpScreen(
                     SettleAmountEditor(
                         amount = amount,
                         currencyCode = currencyCode,
-                        editing = editingAmount,
                         enabled = !uiState.isSubmitting,
                         isError = amountError,
                         errorText = if (amountError) invalidAmountMsg else null,
-                        onEditingChange = { editingAmount = it },
                         onAmountChange = { amount = it },
                     )
 
@@ -273,7 +274,6 @@ fun SettleUpScreen(
                     onClick = {
                         showValidation = true
                         if (!amountValid) return@SePrimaryButton
-                        editingAmount = false
                         viewModel.recordSettlement(
                             fromUserId = fromUserId,
                             toUserId = toUserId,
@@ -300,9 +300,7 @@ fun SettleUpScreen(
 private fun SettleAmountEditor(
     amount: String,
     currencyCode: String,
-    editing: Boolean,
     enabled: Boolean,
-    onEditingChange: (Boolean) -> Unit,
     onAmountChange: (String) -> Unit,
     isError: Boolean = false,
     errorText: String? = null,
@@ -311,57 +309,52 @@ private fun SettleAmountEditor(
         runCatching {
             Currency.getInstance(currencyCode.ifBlank { "INR" }).getSymbol(Locale.getDefault())
         }.getOrElse { currencyCode.ifBlank { "₹" } }
-    val parsed = amount.trim().toBigDecimalOrNull()
-    val displayValue =
-        if (parsed != null) {
-            MoneyFormat.format(parsed, currencyCode.ifBlank { "INR" })
-        } else {
-            "$symbol ${amount.trim()}"
-        }
+    
+    val textStyle = TextStyle(
+        color = if (isError) MaterialTheme.colorScheme.error else SplitEaseColors.Navy,
+        fontSize = 48.sp,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Start,
+    )
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { onEditingChange(true) },
+        modifier = Modifier.fillMaxWidth()
     ) {
-        if (editing) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(SplitEaseColors.SurfaceMuted, RoundedCornerShape(12.dp))
+                .border(1.dp, SplitEaseColors.OutlineStrong, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = symbol,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = SplitEaseColors.Navy,
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Box {
+            if (amount.isEmpty()) {
+                Text(
+                    text = "0.00",
+                    style = textStyle.copy(color = SplitEaseColors.NavyMuted),
+                )
+            }
             BasicTextField(
                 value = amount,
                 onValueChange = onAmountChange,
-                modifier = Modifier.width(180.dp),
-                textStyle =
-                    TextStyle(
-                        color = SplitEaseColors.Navy,
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    ),
+                modifier = Modifier.width(intrinsicSize = IntrinsicSize.Min).widthIn(min = 120.dp),
+                textStyle = textStyle,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
                 cursorBrush = SolidColor(SplitEaseColors.Primary),
                 enabled = enabled,
             )
-        } else {
-            Text(
-                text = displayValue,
-                style =
-                    MaterialTheme.typography.headlineLarge.copy(
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                color = if (isError) MaterialTheme.colorScheme.error else SplitEaseColors.Navy,
-            )
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.Filled.Edit,
-            contentDescription = stringResource(R.string.cd_edit_amount),
-            tint = SplitEaseColors.NavyMuted,
-            modifier = Modifier.size(20.dp),
-        )
     }
     if (errorText != null) {
         Spacer(modifier = Modifier.height(8.dp))

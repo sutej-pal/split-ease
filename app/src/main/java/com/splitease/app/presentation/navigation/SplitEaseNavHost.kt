@@ -51,10 +51,15 @@ import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.auth.rememberContinueWithGoogle
 import com.splitease.app.presentation.expenses.AddExpensePickerScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
+import com.splitease.app.presentation.expenses.CurrencyConversionScreen
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.expenses.ExpenseAttachmentsGalleryScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
+import com.splitease.app.presentation.settlements.SettlePayerPickerScreen
+import com.splitease.app.presentation.settlements.SettleRecipientPickerScreen
+import com.splitease.app.presentation.settlements.SettleSelectionScreen
+import com.splitease.app.presentation.settlements.SettleUpScreen
 import com.splitease.app.presentation.friends.EditContactScreen
 import com.splitease.app.presentation.friends.FindPeopleScreen
 import com.splitease.app.presentation.friends.FriendSettingsScreen
@@ -109,6 +114,8 @@ object Routes {
     const val NOTIFICATIONS_SETTINGS = "notifications_settings"
     const val LANGUAGE_SETTINGS = "language_settings"
     const val CURRENCY_SETTINGS = "currency_settings"
+    const val CURRENCY_CONVERSION =
+        "currency_conversion?groupId={groupId}&friendUserId={friendUserId}"
     const val SEARCH = "search"
     const val SPENDING = "spending"
     const val IMPORT = "import_transactions"
@@ -135,6 +142,10 @@ object Routes {
     const val PIN_BOARD = "pin_board/{groupId}"
     const val GROUP_BALANCES = "group_balances/{groupId}"
     const val GROUP_TOTALS = "group_totals/{groupId}"
+    const val SETTLE_SELECTION = "settle_selection?groupId={groupId}&friendUserId={friendUserId}"
+    const val SETTLE_PAYER_PICKER = "settle_payer_picker?groupId={groupId}&friendUserId={friendUserId}"
+    const val SETTLE_RECIPIENT_PICKER =
+        "settle_recipient_picker?groupId={groupId}&friendUserId={friendUserId}&payerId={payerId}"
     const val SETTLE_UP =
         "settle_up?fromUserId={fromUserId}&toUserId={toUserId}&amount={amount}&currency={currency}&groupId={groupId}&label={label}"
     const val SEND_REMINDER =
@@ -152,6 +163,11 @@ object Routes {
     fun groupBalances(groupId: String) = "group_balances/$groupId"
 
     fun groupTotals(groupId: String) = "group_totals/$groupId"
+
+    fun currencyConversion(
+        groupId: String? = null,
+        friendUserId: String? = null,
+    ) = "currency_conversion?groupId=${groupId.orEmpty()}&friendUserId=${friendUserId.orEmpty()}"
 
     fun friendDetail(friendUserId: String) = "friend_detail/$friendUserId"
 
@@ -210,6 +226,22 @@ object Routes {
         groupId: String? = null,
         friendUserId: String? = null,
     ) = "add_expense?groupId=${groupId.orEmpty()}&friendUserId=${friendUserId.orEmpty()}&expenseId=$expenseId"
+
+    fun settleSelection(
+        groupId: String? = null,
+        friendUserId: String? = null,
+    ) = "settle_selection?groupId=${groupId.orEmpty()}&friendUserId=${friendUserId.orEmpty()}"
+
+    fun settlePayerPicker(
+        groupId: String? = null,
+        friendUserId: String? = null,
+    ) = "settle_payer_picker?groupId=${groupId.orEmpty()}&friendUserId=${friendUserId.orEmpty()}"
+
+    fun settleRecipientPicker(
+        groupId: String? = null,
+        friendUserId: String? = null,
+        payerId: String,
+    ) = "settle_recipient_picker?groupId=${groupId.orEmpty()}&friendUserId=${friendUserId.orEmpty()}&payerId=$payerId"
 
     fun settleUp(
         fromUserId: String,
@@ -861,6 +893,12 @@ private fun SignedInNavHost(
                             ),
                         )
                     },
+                    onNavigateSettleSelection = { fid ->
+                        navController.navigate(Routes.settleSelection(friendUserId = fid))
+                    },
+                    onNavigateConvert = { fid ->
+                        navController.navigate(Routes.currencyConversion(friendUserId = fid))
+                    },
                 )
             }
             composable(
@@ -915,6 +953,9 @@ private fun SignedInNavHost(
                     },
                     onOpenPinBoard = {
                         navController.navigate(Routes.pinBoard(groupId))
+                    },
+                    onNavigateSettleSelection = { gid ->
+                        navController.navigate(Routes.settleSelection(groupId = gid))
                     },
                     onSettleDebt = { from, to, amount, currency, label ->
                         navController.navigate(
@@ -974,6 +1015,30 @@ private fun SignedInNavHost(
                 GroupTotalsScreen(
                     groupId = groupId,
                     onBack = { navController.popBackStack() },
+                    onNavigateConvert = { gid ->
+                        navController.navigate(Routes.currencyConversion(groupId = gid))
+                    },
+                )
+            }
+            composable(
+                route = Routes.CURRENCY_CONVERSION,
+                arguments =
+                    listOf(
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            nullable = true
+                        },
+                        navArgument("friendUserId") {
+                            type = NavType.StringType
+                            nullable = true
+                        },
+                    ),
+            ) {
+                CurrencyConversionScreen(
+                    onBack = { navController.popBackStack() },
+                    onConverted = {
+                        navController.popBackStack()
+                    },
                 )
             }
             composable(Routes.NON_GROUP_EXPENSES) {
@@ -982,6 +1047,9 @@ private fun SignedInNavHost(
                     onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                     onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
+                    onNavigateSettleSelection = {
+                        navController.navigate(Routes.settleSelection())
+                    },
                     onSettleDebt = { from, to, amount, currency, label ->
                         navController.navigate(
                             Routes.settleUp(
@@ -1159,6 +1227,91 @@ private fun SignedInNavHost(
                     expenseId = attachmentExpenseId,
                     startIndex = startIndex,
                     onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Routes.SETTLE_SELECTION,
+                arguments =
+                    listOf(
+                        navArgument("groupId") {
+                            type = NavType.StringType
+                            nullable = true
+                        },
+                        navArgument("friendUserId") {
+                            type = NavType.StringType
+                            nullable = true
+                        },
+                    ),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId")
+                val friendUserId = entry.arguments?.getString("friendUserId")
+                SettleSelectionScreen(
+                    groupId = groupId,
+                    onBack = { navController.popBackStack() },
+                    onNavigateRecord = { from, to, amount, currency, label ->
+                        navController.navigate(
+                            Routes.settleUp(
+                                fromUserId = from,
+                                toUserId = to,
+                                amount = amount,
+                                currency = currency,
+                                groupId = groupId,
+                                label = label
+                            )
+                        )
+                    },
+                    onNavigateMoreOptions = {
+                        navController.navigate(Routes.settlePayerPicker(groupId, friendUserId))
+                    }
+                )
+            }
+            composable(
+                route = Routes.SETTLE_PAYER_PICKER,
+                arguments =
+                    listOf(
+                        navArgument("groupId") { type = NavType.StringType; nullable = true },
+                        navArgument("friendUserId") { type = NavType.StringType; nullable = true },
+                    ),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId")
+                SettlePayerPickerScreen(
+                    groupId = groupId,
+                    onBack = { navController.popBackStack() },
+                    onPayerSelected = { payerId ->
+                        val friendUserId = entry.arguments?.getString("friendUserId")
+                        navController.navigate(
+                            Routes.settleRecipientPicker(groupId, friendUserId, payerId),
+                        )
+                    }
+                )
+            }
+            composable(
+                route = Routes.SETTLE_RECIPIENT_PICKER,
+                arguments =
+                    listOf(
+                        navArgument("groupId") { type = NavType.StringType; nullable = true },
+                        navArgument("friendUserId") { type = NavType.StringType; nullable = true },
+                        navArgument("payerId") { type = NavType.StringType },
+                    ),
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId")
+                val payerId = entry.arguments?.getString("payerId").orEmpty()
+                SettleRecipientPickerScreen(
+                    groupId = groupId,
+                    payerId = payerId,
+                    onBack = { navController.popBackStack() },
+                    onRecipientSelected = { recipientId ->
+                        navController.navigate(
+                            Routes.settleUp(
+                                fromUserId = payerId,
+                                toUserId = recipientId,
+                                amount = "",
+                                currency = "",
+                                groupId = groupId,
+                                label = ""
+                            )
+                        )
+                    }
                 )
             }
             composable(

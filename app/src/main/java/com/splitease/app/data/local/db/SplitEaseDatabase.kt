@@ -48,7 +48,7 @@ import com.splitease.app.data.local.entity.UserEntity
         ActivityEventEntity::class,
         PinBoardEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)

@@ -1,23 +1,31 @@
 package com.splitease.app.presentation.settlements
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
+import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.payment.RecordPaymentInput
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
+import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -44,13 +52,19 @@ data class SettleUpUiState(
 class SettleUpViewModel
     @Inject
     constructor(
+        private val savedStateHandle: SavedStateHandle,
         authRepository: AuthRepository,
         private val paymentInteractor: PaymentInteractor,
+        private val balanceInteractor: com.splitease.app.data.balance.BalanceInteractor,
+        private val groupRepository: GroupRepository,
         private val appSettingsRepository: AppSettingsRepository,
         private val userRepository: UserRepository,
         private val friendRepository: FriendRepository,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
+        private val groupId: String? = savedStateHandle.get<String>("groupId")?.takeIf { it.isNotBlank() }
+        private val friendUserId: String? = savedStateHandle.get<String>("friendUserId")?.takeIf { it.isNotBlank() }
+
         val currentUserId: StateFlow<String?> =
             authRepository
                 .observeSession()
@@ -59,6 +73,117 @@ class SettleUpViewModel
 
         private val _uiState = MutableStateFlow(SettleUpUiState())
         val uiState: StateFlow<SettleUpUiState> = _uiState.asStateFlow()
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeSuggestedSettlements(groupId: String?): Flow<List<LabeledDebt>> =
+            currentUserId.flatMapLatest { me ->
+                if (me == null) {
+                    flowOf(emptyList())
+                } else when {
+                    groupId != null ->
+                        balanceInteractor.observeGroupBalance(groupId, me).map { it.simplifiedDebts }
+                    friendUserId != null ->
+                        balanceInteractor.observeFriendBalance(me, friendUserId).map { friendBalance ->
+                            friendBalanceToDebts(me, friendBalance)
+                        }
+                    else ->
+                        balanceInteractor.observeNonGroupBalance(me).map { it.simplifiedDebts }
+                }
+            }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeGroupMembers(groupId: String?): Flow<List<SettlePartyUi>> =
+            currentUserId.flatMapLatest { me ->
+                if (groupId != null) {
+                    groupRepository.observeMembers(groupId).flatMapLatest { members ->
+                        if (members.isEmpty()) return@flatMapLatest flowOf(emptyList<SettlePartyUi>())
+                        val flows: List<Flow<SettlePartyUi>> = members.map { member ->
+                            userRepository.observeUserById(member.userId).map { user ->
+                                resolvePartyFromDomain(member.userId, user?.displayName.orEmpty(), user?.email, user?.photoUrl)
+                            }
+                        }
+                        combine(flows) { it.toList() }
+                    }
+                } else if (friendUserId != null) {
+                    combine(
+                        userRepository.observeUserById(me ?: ""),
+                        userRepository.observeUserById(friendUserId),
+                    ) { meUser, friendUser ->
+                        listOf(
+                            resolvePartyFromDomain(
+                                me ?: "",
+                                meUser?.displayName.orEmpty(),
+                                meUser?.email,
+                                meUser?.photoUrl,
+                            ),
+                            resolvePartyFromDomain(
+                                friendUserId,
+                                friendUser?.displayName.orEmpty(),
+                                friendUser?.email,
+                                friendUser?.photoUrl,
+                            ),
+                        ).sortedBy { it.displayName }
+                    }
+                } else {
+                    // Non-group: show all friends plus self
+                    friendRepository.observeFriends(me ?: "").flatMapLatest { friends ->
+                        val flows = friends.map { friend ->
+                            userRepository.observeUserById(friend.friendUserId).map { user ->
+                                resolvePartyFromDomain(friend.friendUserId, user?.displayName.orEmpty(), user?.email, user?.photoUrl)
+                            }
+                        }
+                        val meFlow = userRepository.observeUserById(me ?: "").map { user ->
+                            resolvePartyFromDomain(me ?: "", user?.displayName.orEmpty(), user?.email, user?.photoUrl)
+                        }
+                        combine(flows + meFlow) { it.toList().sortedBy { p -> p.displayName } }
+                    }
+                }
+            }
+
+        private fun friendBalanceToDebts(
+            viewerId: String,
+            friendBalance: com.splitease.app.data.balance.FriendBalanceUi,
+        ): List<LabeledDebt> {
+            val friendId = friendBalance.friendUserId
+            val friendLabel = friendBalance.displayName
+            val youLabel = appContext.getString(R.string.you_label)
+            return friendBalance.netByCurrency.mapNotNull { (currency, net) ->
+                if (net.compareTo(BigDecimal.ZERO) == 0) return@mapNotNull null
+                if (net < BigDecimal.ZERO) {
+                    LabeledDebt(
+                        fromUserId = viewerId,
+                        fromLabel = youLabel,
+                        toUserId = friendId,
+                        toLabel = friendLabel,
+                        amount = net.abs(),
+                        currencyCode = currency,
+                    )
+                } else {
+                    LabeledDebt(
+                        fromUserId = friendId,
+                        fromLabel = friendLabel,
+                        toUserId = viewerId,
+                        toLabel = youLabel,
+                        amount = net,
+                        currencyCode = currency,
+                    )
+                }
+            }
+        }
+
+        private fun resolvePartyFromDomain(
+            userId: String,
+            name: String,
+            email: String?,
+            photoUrl: String?,
+        ): SettlePartyUi {
+            return SettlePartyUi(
+                userId = userId,
+                displayName = name.ifBlank { userId.take(8) },
+                email = email,
+                photoUrl = photoUrl,
+            )
+        }
 
         fun prepare(
             fromUserId: String,
@@ -142,6 +267,7 @@ class SettleUpViewModel
             val friend = friendRepository.getByFriendUserId(userId)
             val name =
                 when {
+                    userId == currentUserId.value -> youLabel
                     !user?.displayName.isNullOrBlank() -> user!!.displayName.trim()
                     !friend?.displayNameSnapshot.isNullOrBlank() ->
                         friend!!.displayNameSnapshot.trim()

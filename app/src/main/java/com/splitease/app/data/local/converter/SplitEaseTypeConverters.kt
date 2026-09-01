@@ -1,6 +1,7 @@
 package com.splitease.app.data.local.converter
 
 import androidx.room.TypeConverter
+import com.splitease.app.domain.model.ExchangeRateSource
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.model.InviteKind
 import com.splitease.app.domain.model.InviteStatus
@@ -90,4 +91,13 @@ class SplitEaseTypeConverters {
     /** @param value Stored name. @return [InviteStatus]. */
     @TypeConverter
     fun toInviteStatus(value: String): InviteStatus = InviteStatus.valueOf(value)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
+    fun fromExchangeRateSource(value: ExchangeRateSource?): String? = value?.name
+
+    /** @param value Stored name. @return [ExchangeRateSource]. */
+    @TypeConverter
+    fun toExchangeRateSource(value: String?): ExchangeRateSource? =
+        value?.let { ExchangeRateSource.valueOf(it) }
 }

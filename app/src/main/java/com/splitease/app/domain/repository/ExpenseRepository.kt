@@ -16,6 +16,12 @@ interface ExpenseRepository {
      */
     fun observeExpenses(groupId: String? = null): Flow<List<Expense>>
 
+    /** @param groupId Group filter. @return Group expense rows. */
+    suspend fun getExpensesByGroupId(groupId: String): List<Expense>
+
+    /** @return Friendship expense rows. */
+    suspend fun getFriendshipExpenses(userId: String, otherUserId: String): List<Expense>
+
     /**
      * Loads an expense by id.
      *

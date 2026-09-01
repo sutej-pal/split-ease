@@ -170,6 +170,10 @@ fun ExpenseEntity.toDomain(): Expense =
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
         syncStatus = syncStatus,
+        originalAmount = originalAmount,
+        originalCurrencyCode = originalCurrencyCode,
+        rateToDefaultCurrency = rateToDefaultCurrency,
+        rateSource = rateSource,
     )
 
 /** Maps domain [Expense] to [ExpenseEntity]. */
@@ -193,6 +197,10 @@ fun Expense.toEntity(): ExpenseEntity =
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
         syncStatus = syncStatus,
+        originalAmount = originalAmount,
+        originalCurrencyCode = originalCurrencyCode,
+        rateToDefaultCurrency = rateToDefaultCurrency,
+        rateSource = rateSource,
     )
 
 /** Maps [ExpenseSplitEntity] to domain [ExpenseSplit]. */

@@ -33,6 +33,12 @@ class RoomExpenseRepository
             return source.map { rows -> rows.map { it.toDomain() } }
         }
 
+        override suspend fun getExpensesByGroupId(groupId: String): List<Expense> =
+            expenseDao.getByGroupId(groupId).map { it.toDomain() }
+
+        override suspend fun getFriendshipExpenses(userId: String, otherUserId: String): List<Expense> =
+            expenseDao.getFriendshipExpenses(userId, otherUserId).map { it.toDomain() }
+
         override suspend fun getExpenseById(id: String): Expense? = expenseDao.getById(id)?.toDomain()
 
         override suspend fun getExpensesByIds(ids: List<String>): Map<String, Expense> {

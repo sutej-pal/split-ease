@@ -343,6 +343,7 @@ fun GroupDetailScreen(
     onOpenBalances: () -> Unit,
     onOpenTotals: () -> Unit,
     onOpenPinBoard: () -> Unit,
+    onNavigateSettleSelection: (groupId: String) -> Unit,
     onSettleDebt: (
         fromUserId: String,
         toUserId: String,
@@ -409,22 +410,7 @@ fun GroupDetailScreen(
     }
 
     fun openSettle() {
-        val debt =
-            groupBalance?.simplifiedDebts?.firstOrNull { d ->
-                me != null && (d.fromUserId == me || d.toUserId == me)
-            }
-        if (debt == null || me == null) {
-            onOpenBalances()
-            return
-        }
-        val label = if (me == debt.fromUserId) debt.toLabel else debt.fromLabel
-        onSettleDebt(
-            debt.fromUserId,
-            debt.toUserId,
-            debt.amount.toPlainString(),
-            debt.currencyCode,
-            label,
-        )
+        onNavigateSettleSelection(groupId)
     }
 
     val density = LocalDensity.current

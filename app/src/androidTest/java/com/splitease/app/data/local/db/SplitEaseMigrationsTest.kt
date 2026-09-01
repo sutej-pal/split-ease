@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 import java.io.IOException
 
 /**
- * Verifies Room migrations from the oldest exported schema (v5) through current (v12).
+ * Verifies Room migrations from the oldest exported schema (v5) through current (v15).
  */
 @RunWith(AndroidJUnit4::class)
 class SplitEaseMigrationsTest {
@@ -29,6 +29,6 @@ class SplitEaseMigrationsTest {
     @Throws(IOException::class)
     fun migrateAll() {
         helper.createDatabase(dbName, 5).close()
-        helper.runMigrationsAndValidate(dbName, 12, true, *SplitEaseMigrations.ALL)
+        helper.runMigrationsAndValidate(dbName, 15, true, *SplitEaseMigrations.ALL)
     }
 }

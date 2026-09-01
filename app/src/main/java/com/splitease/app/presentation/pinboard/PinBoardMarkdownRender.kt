@@ -140,14 +140,20 @@ internal fun applyPinLineFieldChange(
         return newText to fullCursorFromLineBody(newText, lineIndex, 0)
     }
 
-    lines[lineIndex] = current.copy(body = before)
+    // Smart split: balance markers so styled blocks don't break across lines.
+    val unclosed = findUnclosedMarkers(before)
+    val closingSuffix = unclosed.reversed().joinToString("")
+    val openingPrefix = unclosed.joinToString("")
+
+    lines[lineIndex] = current.copy(body = before + closingSuffix)
     after.forEachIndexed { offset, part ->
+        val lineBody = if (offset == 0) openingPrefix + part else part
         lines.add(
             lineIndex + 1 + offset,
             PinTextLine(
                 isChecklist = current.isChecklist,
                 checked = false,
-                body = part,
+                body = lineBody,
             ),
         )
     }
@@ -159,12 +165,45 @@ internal fun applyPinLineFieldChange(
             fullCursorFromLineBody(
                 newText,
                 lineIndex + 1,
-                (sel - before.length - 1).coerceIn(0, after[0].length),
+                (openingPrefix.length + sel - before.length - 1).coerceIn(0, (openingPrefix + after[0]).length),
             )
         } else {
             fullCursorFromLineBody(newText, lineIndex + after.size, after.last().length)
         }
     return newText to cursor
+}
+
+/** Returns the stack of opening markers that haven't been closed in [text]. */
+private fun findUnclosedMarkers(text: String): List<String> {
+    val stack = mutableListOf<String>()
+    var i = 0
+    while (i < text.length) {
+        if (text.startsWith("**", i)) {
+            val end = inlineMarkerEnd(text, i, "**")
+            if (end != null) {
+                // Skip the whole bold block if it's already closed on this side.
+                // We'll process its inside recursively if needed, but for unclosed
+                // check at the tail, a closed block is neutral.
+                i = end + 2
+                continue
+            } else {
+                stack.add("**")
+                i += 2
+            }
+        } else if (text.startsWith("_", i)) {
+            val end = inlineMarkerEnd(text, i, "_")
+            if (end != null) {
+                i = end + 1
+                continue
+            } else {
+                stack.add("_")
+                i += 1
+            }
+        } else {
+            i++
+        }
+    }
+    return stack
 }
 
 internal fun togglePinLineChecked(
@@ -284,62 +323,56 @@ internal fun transformPinBoardInline(source: String): TransformedText {
     val origToTrans = IntArray(source.length + 1)
     val transToOrig = ArrayList<Int>(source.length + 1)
     var trans = 0
-    val annotated =
-        AnnotatedString.Builder().apply {
-            var index = 0
-            while (index < source.length) {
-                val boldEnd = inlineMarkerEnd(source, index, "**")
-                if (boldEnd != null) {
-                    origToTrans[index] = trans
-                    origToTrans[index + 1] = trans
-                    val style = SpanStyle(fontWeight = FontWeight.Bold)
-                    var inner = index + 2
-                    while (inner < boldEnd) {
-                        origToTrans[inner] = trans
-                        transToOrig.add(inner)
-                        withStyle(style) { append(source[inner]) }
-                        trans++
-                        inner++
-                    }
-                    origToTrans[boldEnd] = trans
-                    origToTrans[boldEnd + 1] = trans
-                    index = boldEnd + 2
-                    continue
-                }
-                val italicEnd = inlineMarkerEnd(source, index, "_")
-                if (italicEnd != null) {
-                    origToTrans[index] = trans
-                    val style = SpanStyle(fontStyle = FontStyle.Italic)
-                    var inner = index + 1
-                    while (inner < italicEnd) {
-                        origToTrans[inner] = trans
-                        transToOrig.add(inner)
-                        withStyle(style) { append(source[inner]) }
-                        trans++
-                        inner++
-                    }
-                    origToTrans[italicEnd] = trans
-                    index = italicEnd + 1
-                    continue
-                }
-                origToTrans[index] = trans
-                transToOrig.add(index)
-                append(source[index])
-                trans++
-                index++
+    val annotated = AnnotatedString.Builder()
+
+    fun processRange(
+        start: Int,
+        end: Int,
+        currentStyle: SpanStyle,
+    ) {
+        var i = start
+        while (i < end) {
+            val boldEnd = inlineMarkerEnd(source, i, "**")
+            if (boldEnd != null && boldEnd < end) {
+                origToTrans[i] = trans
+                origToTrans[i + 1] = trans
+                processRange(i + 2, boldEnd, currentStyle.merge(SpanStyle(fontWeight = FontWeight.Bold)))
+                origToTrans[boldEnd] = trans
+                origToTrans[boldEnd + 1] = trans
+                i = boldEnd + 2
+                continue
             }
+            val italicEnd = inlineMarkerEnd(source, i, "_")
+            if (italicEnd != null && italicEnd < end) {
+                origToTrans[i] = trans
+                processRange(i + 1, italicEnd, currentStyle.merge(SpanStyle(fontStyle = FontStyle.Italic)))
+                origToTrans[italicEnd] = trans
+                i = italicEnd + 1
+                continue
+            }
+
+            origToTrans[i] = trans
+            transToOrig.add(i)
+            annotated.withStyle(currentStyle) {
+                append(source[i])
+            }
+            trans++
+            i++
         }
+    }
+
+    processRange(0, source.length, SpanStyle())
+
     origToTrans[source.length] = trans
     transToOrig.add(source.length)
     val toOrig = transToOrig.toIntArray()
+
     return TransformedText(
         annotated.toAnnotatedString(),
         object : OffsetMapping {
-            override fun originalToTransformed(offset: Int): Int =
-                origToTrans[offset.coerceIn(0, origToTrans.lastIndex)]
+            override fun originalToTransformed(offset: Int): Int = origToTrans[offset.coerceIn(0, origToTrans.lastIndex)]
 
-            override fun transformedToOriginal(offset: Int): Int =
-                toOrig[offset.coerceIn(0, toOrig.lastIndex)]
+            override fun transformedToOriginal(offset: Int): Int = toOrig[offset.coerceIn(0, toOrig.lastIndex)]
         },
     )
 }

@@ -45,7 +45,25 @@ data class Expense(
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    /** Amount in the currency it was originally entered (before conversion). */
+    val originalAmount: BigDecimal? = null,
+    /** Currency code selected at creation. */
+    val originalCurrencyCode: String? = null,
+    /** Captured exchange rate: 1 [originalCurrencyCode] = X [currencyCode]. */
+    val rateToDefaultCurrency: BigDecimal? = null,
+    /** Source of the exchange rate. */
+    val rateSource: ExchangeRateSource? = null,
 )
+
+/**
+ * Source of the exchange rate for an expense.
+ */
+enum class ExchangeRateSource {
+    /** Rate fetched from a live API (e.g. ExchangeRate-API). */
+    LIVE,
+    /** Rate entered manually by the user. */
+    CUSTOM,
+}
 
 /**
  * One participant's share of an [Expense].

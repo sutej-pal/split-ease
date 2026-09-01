@@ -38,6 +38,7 @@ data class GroupTotalsUi(
     val yourShare: BigDecimal = BigDecimal.ZERO.setScale(2),
     val sharePercent: Int? = null,
     val chartBars: List<GroupMonthSpending> = emptyList(),
+    val hasMixedCurrencies: Boolean = false,
     val isLoading: Boolean = true,
 )
 
@@ -151,6 +152,7 @@ class GroupTotalsViewModel
                     yourShare = share,
                     sharePercent = GroupSpendingCalculator.sharePercent(total, share),
                     chartBars = bars,
+                    hasMixedCurrencies = expenses.any { it.currencyCode != currency },
                     isLoading = group == null && groupId.isNotBlank(),
                 )
             }.stateIn(

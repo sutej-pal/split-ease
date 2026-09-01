@@ -66,6 +66,7 @@ import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLayout
+import com.splitease.app.presentation.ui.SeMixedCurrencyBanner
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
@@ -83,6 +84,7 @@ import java.util.Locale
 fun GroupTotalsScreen(
     groupId: String,
     onBack: () -> Unit,
+    onNavigateConvert: (String) -> Unit,
     viewModel: GroupTotalsViewModel = hiltViewModel(),
     expensesViewModel: ExpensesViewModel = hiltViewModel(),
 ) {
@@ -180,6 +182,15 @@ fun GroupTotalsScreen(
                     color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.height(28.dp))
+
+                if (ui.hasMixedCurrencies) {
+                    SeMixedCurrencyBanner(
+                        targetCurrency = ui.currencyCode,
+                        onConvert = { onNavigateConvert(ui.groupId) }
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
                 TotalsMonthChart(
                     bars = ui.chartBars,
                     selectedYear = ui.selectedYear,

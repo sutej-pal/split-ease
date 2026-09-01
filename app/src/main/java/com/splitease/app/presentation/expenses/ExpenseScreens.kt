@@ -9,14 +9,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +35,8 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +61,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -73,6 +82,7 @@ import com.splitease.app.R
 import com.splitease.app.domain.category.DefaultCategories
 import com.splitease.app.domain.category.ExpenseCategoryMatcher
 import com.splitease.app.domain.model.Category
+import com.splitease.app.domain.model.ExchangeRateSource
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.settings.AppCurrencies
@@ -85,8 +95,10 @@ import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
@@ -104,13 +116,21 @@ fun AddExpenseScreen(
     viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val currencyCode by viewModel.currencyCode.collectAsStateWithLifecycle()
+    val userCurrency by viewModel.currencyCode.collectAsStateWithLifecycle()
+    val group by viewModel.observeGroup(groupId.orEmpty()).collectAsStateWithLifecycle(null)
+    val targetDefaultCurrency = group?.defaultCurrencyCode ?: userCurrency
+
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val editingExpense by
         viewModel.observeExpenseDetail(expenseId.orEmpty()).collectAsStateWithLifecycle()
+    val fxState by viewModel.exchangeRateState.collectAsStateWithLifecycle()
+
     val isEdit = !expenseId.isNullOrBlank()
     var title by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
+    var selectedCurrencyCode by rememberSaveable { mutableStateOf(AppCurrencies.DEFAULT) }
+    var showCurrencyPicker by rememberSaveable { mutableStateOf(false) }
+
     var notes by rememberSaveable { mutableStateOf("") }
     var selectedCategoryId by rememberSaveable { mutableStateOf(DefaultCategories.ALL.first().id) }
     var categoryManuallySet by rememberSaveable { mutableStateOf(false) }
@@ -165,7 +185,7 @@ fun AddExpenseScreen(
         if (exitAfterMembersDialog) onBack()
     }
 
-    LaunchedEffect(groupId, friendUserId, me, editingExpense) {
+    LaunchedEffect(groupId, friendUserId, me, editingExpense, targetDefaultCurrency) {
         val userId = me ?: return@LaunchedEffect
         val existing = editingExpense?.expense
         participants =
@@ -183,6 +203,7 @@ fun AddExpenseScreen(
             if (!isEdit) {
                 paidBy = userId
                 selected = participants.map { it.userId }.toSet()
+                selectedCurrencyCode = targetDefaultCurrency
             }
         }
     }
@@ -202,6 +223,7 @@ fun AddExpenseScreen(
         val expense = detail.expense
         title = expense.description
         amount = expense.amount.toPlainString()
+        selectedCurrencyCode = expense.currencyCode
         notes = expense.notes.orEmpty()
         selectedCategoryId = expense.categoryId ?: DefaultCategories.ALL.first().id
         categoryManuallySet = true
@@ -335,7 +357,7 @@ fun AddExpenseScreen(
     val expenseTotal =
         runCatching { BigDecimal(amount.trim().ifBlank { "0" }) }
             .getOrDefault(BigDecimal.ZERO)
-            .setScale(2, java.math.RoundingMode.HALF_UP)
+            .setScale(2, RoundingMode.HALF_UP)
     val multiPayerValid =
         !isMultiPayer ||
             run {
@@ -347,7 +369,7 @@ fun AddExpenseScreen(
                                     BigDecimal(paidAmountTexts[id]?.trim().orEmpty().ifBlank { "0" })
                                 }.getOrDefault(BigDecimal.ZERO),
                             )
-                        }.setScale(2, java.math.RoundingMode.HALF_UP)
+                        }.setScale(2, RoundingMode.HALF_UP)
                 sum.compareTo(expenseTotal) == 0 &&
                     paidAmountTexts.keys.any {
                         runCatching {
@@ -356,12 +378,15 @@ fun AddExpenseScreen(
                     }
             }
     val amountValid = isValidExpenseAmount(amount)
+    val fxRequired = selectedCurrencyCode != targetDefaultCurrency
+    val fxValid = !fxRequired || viewModel.isFxReady(selectedCurrencyCode, targetDefaultCurrency)
     val canSaveExpense =
         title.isNotBlank() &&
             amountValid &&
             selected.isNotEmpty() &&
             paidBy.isNotBlank() &&
-            multiPayerValid
+            multiPayerValid &&
+            fxValid
     val titleError = showValidation && title.isBlank()
     val amountError = showValidation && !amountValid
     val participantsError = showValidation && selected.isEmpty()
@@ -458,7 +483,8 @@ fun AddExpenseScreen(
             viewModel.createExpenseInBackground(
                 description = title,
                 amountText = amount,
-                currencyCode = currencyCode,
+                currencyCode = selectedCurrencyCode,
+                targetDefaultCurrency = targetDefaultCurrency,
                 paidByUserId = paidBy,
                 participantIds = selected.toList(),
                 splitType = mode,
@@ -473,6 +499,14 @@ fun AddExpenseScreen(
                 notes = notes.trim().ifBlank { null },
                 expenseDateEpochMs = expenseDateMs,
             )
+        }
+    }
+
+    LaunchedEffect(selectedCurrencyCode, targetDefaultCurrency) {
+        if (selectedCurrencyCode != targetDefaultCurrency) {
+            viewModel.fetchExchangeRate(selectedCurrencyCode, targetDefaultCurrency)
+        } else {
+            viewModel.resetExchangeRate()
         }
     }
 
@@ -496,7 +530,7 @@ fun AddExpenseScreen(
         PaidByStep.EnterAmounts -> {
             EnterPaidAmountsScreen(
                 participants = participants,
-                currencyCode = currencyCode,
+                currencyCode = selectedCurrencyCode,
                 totalAmount = expenseTotal,
                 initialAmounts = paidAmountTexts,
                 onBack = { paidByStep = PaidByStep.WhoPaid.name },
@@ -520,7 +554,7 @@ fun AddExpenseScreen(
     if (showAdjustSplit) {
         AdjustSplitScreen(
             participants = participants,
-            currencyCode = currencyCode,
+            currencyCode = selectedCurrencyCode,
             totalAmount = expenseTotal,
             initialSplitType = mode,
             initialSelectedIds = selected,
@@ -702,7 +736,8 @@ fun AddExpenseScreen(
                         }
                     },
                     placeholder = "0.00",
-                    leadingLabel = currencySymbol(currencyCode),
+                    leadingLabel = currencySymbol(selectedCurrencyCode),
+                    onIconClick = if (isEdit) null else { { showCurrencyPicker = true } },
                     iconBoxSize = 56.dp,
                     leadingTextStyle =
                         MaterialTheme.typography.headlineMedium.copy(
@@ -725,6 +760,12 @@ fun AddExpenseScreen(
                             fontWeight = FontWeight.SemiBold,
                         ),
                 )
+                
+                ExchangeRateRow(
+                    fxState = fxState,
+                    onRateChange = { viewModel.setManualExchangeRate(it) }
+                )
+
                 Spacer(modifier = Modifier.height(20.dp))
                 ExpenseUnderlineField(
                     value = dateTimeLabel,
@@ -791,6 +832,14 @@ fun AddExpenseScreen(
                 }
         },
     )
+
+    if (showCurrencyPicker) {
+        CurrencyPickerDialog(
+            selected = selectedCurrencyCode,
+            onSelect = { selectedCurrencyCode = it },
+            onDismiss = { showCurrencyPicker = false }
+        )
+    }
 
     if (showDatePicker) {
         val dateState =
@@ -1141,6 +1190,149 @@ private fun CategoryPickerDialog(
                             selectedBorderColor = SplitEaseColors.Primary,
                         ),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExchangeRateRow(
+    fxState: ExchangeRateUiState,
+    onRateChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (fxState.fromCurrency == null || fxState.toCurrency == null || fxState.fromCurrency == fxState.toCurrency) {
+        return
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+            .background(SplitEaseColors.SurfaceMuted, RoundedCornerShape(12.dp))
+            .border(1.dp, SplitEaseColors.Outline, RoundedCornerShape(12.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = stringResource(R.string.label_exchange_rate),
+                style = MaterialTheme.typography.labelMedium,
+                color = SplitEaseColors.NavyMuted
+            )
+            if (fxState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            } else {
+                Text(
+                    text = if (fxState.source == ExchangeRateSource.LIVE)
+                        stringResource(R.string.rate_source_live)
+                    else
+                        stringResource(R.string.rate_source_custom),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SplitEaseColors.Primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        if (fxState.fetchError != null) {
+            Text(
+                text = fxState.fetchError,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "1 ${fxState.fromCurrency} =",
+                style = MaterialTheme.typography.bodyLarge,
+                color = SplitEaseColors.Navy
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            val underlineColor = SplitEaseColors.Primary
+            BasicTextField(
+                value = fxState.manualRateText,
+                onValueChange = onRateChange,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = SplitEaseColors.Navy,
+                    fontWeight = FontWeight.Bold
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                cursorBrush = SolidColor(underlineColor),
+                modifier = Modifier
+                    .width(IntrinsicSize.Min)
+                    .widthIn(min = 60.dp)
+                    .drawBehind {
+                        val strokeWidth = 1.dp.toPx()
+                        val y = this.size.height - strokeWidth / 2
+                        drawLine(
+                            color = underlineColor,
+                            start = Offset(0f, y),
+                            end = Offset(this.size.width, y),
+                            strokeWidth = strokeWidth
+                        )
+                    }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = fxState.toCurrency,
+                style = MaterialTheme.typography.bodyLarge,
+                color = SplitEaseColors.Navy
+            )
+        }
+    }
+}
+
+@Composable
+private fun CurrencyPickerDialog(
+    selected: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var filter by rememberSaveable { mutableStateOf("") }
+    val options = remember(filter) { AppCurrencies.filter(filter) }
+    SeModal(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.settings_currency_item),
+        icon = Icons.Filled.Language,
+    ) {
+        SeTextField(
+            value = filter,
+            onValueChange = { filter = it },
+            placeholder = stringResource(R.string.label_search_currencies),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        )
+        Box(modifier = Modifier.heightIn(max = 300.dp)) {
+            LazyColumn {
+                items(options) { (code, name) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(code); onDismiss() }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = code,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (code == selected) SplitEaseColors.Primary else SplitEaseColors.Navy,
+                            modifier = Modifier.width(50.dp)
+                        )
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SplitEaseColors.NavyMuted
+                        )
+                    }
+                }
             }
         }
     }

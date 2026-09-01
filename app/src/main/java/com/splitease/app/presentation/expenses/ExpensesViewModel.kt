@@ -14,6 +14,7 @@ import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.balance.BalanceCalculator
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Category
+import com.splitease.app.domain.model.ExchangeRateSource
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseComment
 import com.splitease.app.domain.model.ExpenseCommentKind
@@ -69,6 +70,16 @@ data class ExpensesUiState(
     val isAttachingPhotos: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
+)
+
+data class ExchangeRateUiState(
+    val rate: BigDecimal? = null,
+    val source: ExchangeRateSource = ExchangeRateSource.LIVE,
+    val isLoading: Boolean = false,
+    val fromCurrency: String? = null,
+    val toCurrency: String? = null,
+    val manualRateText: String = "",
+    val fetchError: String? = null,
 )
 
 /**
@@ -187,8 +198,9 @@ class ExpensesViewModel
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
         private val paymentRepository: PaymentRepository,
-        appSettingsRepository: AppSettingsRepository,
+        private val appSettingsRepository: AppSettingsRepository,
         private val groupLiveSync: GroupLiveSync,
+        private val currencyService: com.splitease.app.data.remote.ExchangeRateCurrencyService,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
             authRepository
@@ -198,6 +210,9 @@ class ExpensesViewModel
 
         private val _uiState = MutableStateFlow(ExpensesUiState())
         val uiState: StateFlow<ExpensesUiState> = _uiState.asStateFlow()
+
+        private val _exchangeRateState = MutableStateFlow(ExchangeRateUiState())
+        val exchangeRateState: StateFlow<ExchangeRateUiState> = _exchangeRateState.asStateFlow()
 
         val categories: StateFlow<List<Category>> =
             categoryRepository
@@ -209,10 +224,104 @@ class ExpensesViewModel
                 .observeCurrencyCode()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppCurrencies.DEFAULT)
 
+        fun observeGroup(id: String) = groupRepository.observeGroupById(id)
+
         fun currentUserId(): String? = userId.value
 
-        /** Reactive signed-in user id for Compose collectors. */
         val signedInUserId: StateFlow<String?> = userId
+
+        fun fetchExchangeRate(from: String, to: String) {
+            if (from.isBlank() || to.isBlank() || from == to) {
+                _exchangeRateState.update {
+                    it.copy(
+                        rate = BigDecimal.ONE,
+                        fromCurrency = from,
+                        toCurrency = to,
+                        isLoading = false,
+                        fetchError = null,
+                    )
+                }
+                return
+            }
+
+            val current = _exchangeRateState.value
+            if (current.fromCurrency == from && current.toCurrency == to && current.rate != null && !current.isLoading) {
+                return
+            }
+
+            viewModelScope.launch {
+                _exchangeRateState.update {
+                    it.copy(isLoading = true, fromCurrency = from, toCurrency = to, fetchError = null)
+                }
+                val result = currencyService.fetchRate(from, to)
+                _exchangeRateState.update { state ->
+                    if (state.fromCurrency == from && state.toCurrency == to) {
+                        val rate = result.getOrNull()
+                        state.copy(
+                            rate = rate,
+                            isLoading = false,
+                            source = ExchangeRateSource.LIVE,
+                            manualRateText = rate?.toPlainString().orEmpty(),
+                            fetchError =
+                                rate?.let { null }
+                                    ?: appContext.getString(R.string.error_exchange_rate_fetch),
+                        )
+                    } else {
+                        state
+                    }
+                }
+            }
+        }
+
+        fun isFxReady(currencyCode: String, targetDefaultCurrency: String): Boolean {
+            if (currencyCode.isBlank() || targetDefaultCurrency.isBlank() || currencyCode == targetDefaultCurrency) {
+                return true
+            }
+            val fx = _exchangeRateState.value
+            return fx.fromCurrency == currencyCode &&
+                fx.toCurrency == targetDefaultCurrency &&
+                !fx.isLoading &&
+                fx.rate != null &&
+                fx.rate!! > BigDecimal.ZERO &&
+                fx.fetchError == null
+        }
+
+        private fun fxSnapshot(currencyCode: String, amount: BigDecimal): FxSnapshot? {
+            val fx = _exchangeRateState.value
+            if (fx.fromCurrency != currencyCode || fx.toCurrency == null || fx.fromCurrency == fx.toCurrency) {
+                return null
+            }
+            val rate = fx.rate ?: return null
+            return FxSnapshot(
+                originalAmount = amount,
+                originalCurrencyCode = currencyCode,
+                rateToDefaultCurrency = rate,
+                rateSource = fx.source,
+            )
+        }
+
+        private data class FxSnapshot(
+            val originalAmount: BigDecimal,
+            val originalCurrencyCode: String,
+            val rateToDefaultCurrency: BigDecimal,
+            val rateSource: ExchangeRateSource,
+        )
+
+        fun setManualExchangeRate(rateText: String) {
+            val rate = runCatching { BigDecimal(rateText.trim()) }.getOrNull()
+            _exchangeRateState.update {
+                it.copy(
+                    rate = rate ?: it.rate,
+                    manualRateText = rateText,
+                    source = ExchangeRateSource.CUSTOM,
+                    fetchError = if (rate != null && rate > BigDecimal.ZERO) null else it.fetchError,
+                )
+            }
+        }
+
+        fun resetExchangeRate() {
+            _exchangeRateState.value = ExchangeRateUiState()
+        }
 
         /** Signed-in display name for share/remind copy (never the localized "You"). */
         val currentUserDisplayName: StateFlow<String?> =
@@ -594,6 +703,7 @@ class ExpensesViewModel
             description: String,
             amountText: String,
             currencyCode: String,
+            targetDefaultCurrency: String,
             paidByUserId: String,
             participantIds: List<String>,
             splitType: SplitType,
@@ -629,6 +739,19 @@ class ExpensesViewModel
                         }
                         return@launch
                     }
+
+                if (!isFxReady(currencyCode, targetDefaultCurrency)) {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = appContext.getString(R.string.error_exchange_rate_required),
+                        )
+                    }
+                    return@launch
+                }
+
+                val fx = fxSnapshot(currencyCode, amount)
+
                 val result =
                     expenseInteractor.createExpense(
                         input =
@@ -649,6 +772,10 @@ class ExpensesViewModel
                                 categoryId = categoryId,
                                 notes = notes,
                                 expenseDateEpochMs = expenseDateEpochMs,
+                                originalAmount = fx?.originalAmount,
+                                originalCurrencyCode = fx?.originalCurrencyCode,
+                                rateToDefaultCurrency = fx?.rateToDefaultCurrency,
+                                rateSource = fx?.rateSource,
                             ),
                         actorUserId = userId.value,
                     )
@@ -675,6 +802,7 @@ class ExpensesViewModel
             description: String,
             amountText: String,
             currencyCode: String,
+            targetDefaultCurrency: String,
             paidByUserId: String,
             participantIds: List<String>,
             splitType: SplitType,
@@ -691,6 +819,8 @@ class ExpensesViewModel
         ) {
             if (paidByUserId.isBlank() || participantIds.isEmpty()) return
             val amount = runCatching { BigDecimal(amountText.trim()) }.getOrNull() ?: return
+            if (!isFxReady(currencyCode, targetDefaultCurrency)) return
+            val fx = fxSnapshot(currencyCode, amount)
             expenseInteractor.enqueueCreateExpense(
                 input =
                     CreateExpenseInput(
@@ -710,6 +840,10 @@ class ExpensesViewModel
                         categoryId = categoryId,
                         notes = notes,
                         expenseDateEpochMs = expenseDateEpochMs,
+                        originalAmount = fx?.originalAmount,
+                        originalCurrencyCode = fx?.originalCurrencyCode,
+                        rateToDefaultCurrency = fx?.rateToDefaultCurrency,
+                        rateSource = fx?.rateSource,
                     ),
                 actorUserId = userId.value,
             )

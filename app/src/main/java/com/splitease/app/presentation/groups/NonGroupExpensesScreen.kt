@@ -87,6 +87,7 @@ fun NonGroupExpensesScreen(
     onAddExpense: () -> Unit,
     onOpenExpense: (expenseId: String) -> Unit,
     onOpenSpending: () -> Unit,
+    onNavigateSettleSelection: () -> Unit,
     onSettleDebt: (
         fromUserId: String,
         toUserId: String,
@@ -126,24 +127,7 @@ fun NonGroupExpensesScreen(
     }
 
     fun openSettle() {
-        val debt =
-            balance?.simplifiedDebts?.firstOrNull { d ->
-                me != null && (d.fromUserId == me || d.toUserId == me)
-            }
-        if (debt == null || me == null) {
-            settleHint = nothingToSettle
-            paneName = NonGroupDetailPane.Balances.name
-            return
-        }
-        settleHint = null
-        val label = if (me == debt.fromUserId) debt.toLabel else debt.fromLabel
-        onSettleDebt(
-            debt.fromUserId,
-            debt.toUserId,
-            debt.amount.toPlainString(),
-            debt.currencyCode,
-            label,
-        )
+        onNavigateSettleSelection()
     }
 
     Scaffold(

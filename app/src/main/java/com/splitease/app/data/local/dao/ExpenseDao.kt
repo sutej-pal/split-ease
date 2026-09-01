@@ -39,6 +39,47 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
     fun observeById(id: String): Flow<List<ExpenseEntity>>
 
+    /** @param groupId Group filter. @return Group expense rows. */
+    @Query("SELECT * FROM expenses WHERE groupId = :groupId")
+    suspend fun getByGroupId(groupId: String): List<ExpenseEntity>
+
+    /**
+     * Non-group expenses shared between [userId] and [otherUserId].
+     */
+    @Query(
+        """
+        SELECT DISTINCT e.* FROM expenses e
+        WHERE e.groupId IS NULL
+          AND (
+            (
+              EXISTS (
+                SELECT 1 FROM expense_splits s1
+                WHERE s1.expenseId = e.id AND s1.userId = :userId
+              )
+              AND EXISTS (
+                SELECT 1 FROM expense_splits s2
+                WHERE s2.expenseId = e.id AND s2.userId = :otherUserId
+              )
+            )
+            OR (
+              e.paidByUserId = :userId
+              AND EXISTS (
+                SELECT 1 FROM expense_splits s
+                WHERE s.expenseId = e.id AND s.userId = :otherUserId
+              )
+            )
+            OR (
+              e.paidByUserId = :otherUserId
+              AND EXISTS (
+                SELECT 1 FROM expense_splits s
+                WHERE s.expenseId = e.id AND s.userId = :userId
+              )
+            )
+          )
+        """,
+    )
+    suspend fun getFriendshipExpenses(userId: String, otherUserId: String): List<ExpenseEntity>
+
     /** Inserts or replaces [expense]. */
     @Upsert
     suspend fun upsert(expense: ExpenseEntity)

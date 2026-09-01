@@ -51,8 +51,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.DateFormat
 import java.util.Date
 import java.util.UUID
@@ -101,6 +103,14 @@ data class CreateExpenseInput(
     val recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
     val expenseDateEpochMs: Long? = null,
     val recurringTemplateId: String? = null,
+    /** Amount in the currency it was originally entered (before conversion). */
+    val originalAmount: BigDecimal? = null,
+    /** Currency code selected at creation. */
+    val originalCurrencyCode: String? = null,
+    /** Captured exchange rate: 1 [originalCurrencyCode] = X [currencyCode]. */
+    val rateToDefaultCurrency: BigDecimal? = null,
+    /** Source of the exchange rate. */
+    val rateSource: com.splitease.app.domain.model.ExchangeRateSource? = null,
 )
 
 /** Outcome of a batch attachment save. */
@@ -408,6 +418,67 @@ class ExpenseInteractor
         }
 
         /**
+         * Snapshot conversion of mixed-currency expenses to a target default currency.
+         * Uses the rate captured at creation time.
+         *
+         * @return Number of converted expenses.
+         */
+        suspend fun convertMixedCurrencies(
+            groupId: String? = null,
+            friendUserId: String? = null,
+            targetCurrencyCode: String,
+            actorUserId: String? = null,
+        ): Result<Int> =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val expenses =
+                        when {
+                            groupId != null -> expenseRepository.getExpensesByGroupId(groupId)
+                            friendUserId != null && actorUserId != null ->
+                                expenseRepository.getFriendshipExpenses(actorUserId, friendUserId)
+                            else -> emptyList()
+                        }
+
+                    val toConvert =
+                        expenses.filter {
+                            it.currencyCode != targetCurrencyCode && it.rateToDefaultCurrency != null
+                        }
+                    if (toConvert.isEmpty()) return@runCatching 0
+
+                    toConvert.forEach { expense ->
+                        val rate = expense.rateToDefaultCurrency!!
+                        val sourceAmount = expense.originalAmount ?: expense.amount
+                        val sourceCurrency = expense.originalCurrencyCode ?: expense.currencyCode
+                        val newAmount = sourceAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP)
+
+                        val updatedExpense =
+                            expense.copy(
+                                amount = newAmount,
+                                currencyCode = targetCurrencyCode,
+                                originalAmount = expense.originalAmount ?: sourceAmount,
+                                originalCurrencyCode = expense.originalCurrencyCode ?: sourceCurrency,
+                                updatedAtEpochMs = System.currentTimeMillis(),
+                                syncStatus = SyncStatus.PENDING,
+                            )
+
+                        val splits =
+                            expenseRepository.getSplits(expense.id).map { split ->
+                                split.copy(
+                                    owedAmount = split.owedAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP),
+                                    paidAmount = split.paidAmount?.multiply(rate)?.setScale(2, RoundingMode.HALF_UP),
+                                    adjustmentAmount = split.adjustmentAmount?.multiply(rate)?.setScale(2, RoundingMode.HALF_UP),
+                                    syncStatus = SyncStatus.PENDING,
+                                )
+                            }
+
+                        expenseRepository.upsertExpenseWithSplits(updatedExpense, splits)
+                        scheduleCloudPush(expense.id)
+                    }
+                    toConvert.size
+                }
+            }
+
+        /**
          * Materializes due recurring templates into one-off expense instances and advances schedules.
          *
          * @param nowEpochMs Current time (injectable for tests).
@@ -657,8 +728,8 @@ class ExpenseInteractor
                 val paidSum =
                     input.paidAmounts.values
                         .fold(BigDecimal.ZERO) { acc, v -> acc.add(v) }
-                        .setScale(2, java.math.RoundingMode.HALF_UP)
-                require(paidSum.compareTo(input.amount.setScale(2, java.math.RoundingMode.HALF_UP)) == 0) {
+                        .setScale(2, RoundingMode.HALF_UP)
+                require(paidSum.compareTo(input.amount.setScale(2, RoundingMode.HALF_UP)) == 0) {
                     "Paid amounts must add up to the expense total."
                 }
             }
@@ -722,6 +793,10 @@ class ExpenseInteractor
                     createdAtEpochMs = existing?.createdAtEpochMs ?: now,
                     updatedAtEpochMs = now,
                     syncStatus = SyncStatus.PENDING,
+                    originalAmount = input.originalAmount ?: existing?.originalAmount,
+                    originalCurrencyCode = input.originalCurrencyCode ?: existing?.originalCurrencyCode,
+                    rateToDefaultCurrency = input.rateToDefaultCurrency ?: existing?.rateToDefaultCurrency,
+                    rateSource = input.rateSource ?: existing?.rateSource,
                 )
 
             val existingSplits =
@@ -762,7 +837,7 @@ class ExpenseInteractor
                 if (isMultiPayer) {
                     input.paidAmounts.mapNotNull { (userId, paid) ->
                         if (userId in owed) return@mapNotNull null
-                        val normalized = paid.setScale(2, java.math.RoundingMode.HALF_UP)
+                        val normalized = paid.setScale(2, RoundingMode.HALF_UP)
                         if (normalized <= zero) return@mapNotNull null
                         splitRow(userId, zero)
                     }
@@ -963,6 +1038,7 @@ class ExpenseInteractor
                 ),
             )
         }
+
 
         private suspend fun persistRemoteExpenseBatch(dtos: List<ExpenseDto>) {
             if (dtos.isEmpty()) return

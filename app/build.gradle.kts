@@ -78,6 +78,7 @@ android {
         buildConfigField("String", "MAIL_SERVICE_API_KEY", "\"${localProp("MAIL_SERVICE_API_KEY")}\"")
         // Web OAuth client ID from Google Cloud (used by Credential Manager; not a secret).
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProp("GOOGLE_WEB_CLIENT_ID")}\"")
+        buildConfigField("String", "EXCHANGE_RATE_API_KEY", "\"${localProp("EXCHANGE_RATE_API_KEY")}\"")
         // Host for https://{host}/invite/{token} browser → app redirects (mail-service).
         manifestPlaceholders["inviteWebHost"] = inviteWebHost
         manifestPlaceholders["admobAppId"] = admobAppIdDebug

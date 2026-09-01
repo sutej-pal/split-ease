@@ -285,6 +285,40 @@ object SplitEaseMigrations {
             }
         }
 
+    /** Adds `pin_boards` table (Phase 7). */
+    val MIGRATION_13_14 =
+        object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `pin_boards` (
+                        `groupId` TEXT NOT NULL,
+                        `content` TEXT NOT NULL,
+                        `updatedByUserId` TEXT,
+                        `updatedAtEpochMs` INTEGER NOT NULL,
+                        `syncStatus` TEXT NOT NULL,
+                        PRIMARY KEY(`groupId`),
+                        FOREIGN KEY(`groupId`) REFERENCES `groups`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_pin_boards_groupId` ON `pin_boards` (`groupId`)",
+                )
+            }
+        }
+
+    /** Adds currency conversion snapshot columns to `expenses` (Phase 7 FX). */
+    val MIGRATION_14_15 =
+        object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `expenses` ADD COLUMN `originalAmount` TEXT")
+                db.execSQL("ALTER TABLE `expenses` ADD COLUMN `originalCurrencyCode` TEXT")
+                db.execSQL("ALTER TABLE `expenses` ADD COLUMN `rateToDefaultCurrency` TEXT")
+                db.execSQL("ALTER TABLE `expenses` ADD COLUMN `rateSource` TEXT")
+            }
+        }
+
     private val STABLE_DEFAULT_CATEGORIES =
         listOf(
             Triple("cat_general", "General", "category_general"),
@@ -310,5 +344,7 @@ object SplitEaseMigrations {
             MIGRATION_10_11,
             MIGRATION_11_12,
             MIGRATION_12_13,
+            MIGRATION_13_14,
+            MIGRATION_14_15,
         )
 }
