@@ -12,6 +12,7 @@ import com.splitease.app.core.ErrorMessages
  */
 object AuthMessages {
     @StringRes val GENERIC = ErrorMessages.GENERIC
+    @StringRes val NETWORK_ERROR = R.string.error_network
 
     // Login
     @StringRes val LOGIN_FIELDS_REQUIRED = R.string.error_login_fields_required

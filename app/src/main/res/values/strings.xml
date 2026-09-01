@@ -500,6 +500,7 @@
     <string name="error_google_no_account">No Google account found on this device.</string>
     <string name="error_google_sign_in_failed">Google Sign-In didn\'t complete. Try again.</string>
     <string name="error_generic">Something went wrong. Try again.</string>
+    <string name="error_network">Network error. Please check your connection and try again.</string>
     <string name="error_signup_email_delivery">We couldn\'t send the verification email. Please try again in a moment.</string>
     <string name="error_signup_email_rate_limit">Too many verification emails were sent. Wait a few minutes and try again.</string>
     <string name="error_invalid_email">Enter a valid email address.</string>

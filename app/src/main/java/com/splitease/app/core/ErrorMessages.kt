@@ -47,4 +47,28 @@ object ErrorMessages {
             Log.e(tag, throwable.message ?: "Unknown error", throwable)
         }
     }
+
+    fun isNetworkError(throwable: Throwable?): Boolean {
+        if (throwable == null) return false
+        var current: Throwable? = throwable
+        var depth = 0
+        while (current != null && depth < 6) {
+            if (isNetworkErrorText(current.message) || isNetworkErrorText(current.localizedMessage)) {
+                return true
+            }
+            current = current.cause
+            depth++
+        }
+        return false
+    }
+
+    private fun isNetworkErrorText(message: String?): Boolean {
+        val raw = message?.lowercase() ?: return false
+        return raw.contains("unable to resolve host") ||
+            raw.contains("unknownhost") ||
+            raw.contains("failed to connect") ||
+            raw.contains("timeout") ||
+            raw.contains("network is unreachable") ||
+            raw.contains("no address associated with hostname")
+    }
 }

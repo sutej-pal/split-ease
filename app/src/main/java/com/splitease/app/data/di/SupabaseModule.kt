@@ -12,6 +12,7 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.storage.Storage
 import io.ktor.client.engine.okhttp.OkHttp
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 /**
@@ -54,7 +55,13 @@ object SupabaseModule {
             supabaseKey = key,
         ) {
             // Explicit engine — do not rely on classpath auto-pick (Android vs OkHttp).
-            httpEngine = OkHttp.create()
+            httpEngine = OkHttp.create {
+                config {
+                    connectTimeout(30, TimeUnit.SECONDS)
+                    readTimeout(30, TimeUnit.SECONDS)
+                    writeTimeout(30, TimeUnit.SECONDS)
+                }
+            }
             install(Auth) {
                 scheme = AUTH_DEEP_LINK_SCHEME
                 host = AUTH_DEEP_LINK_HOST

@@ -946,6 +946,8 @@ class AuthViewModel
             val raw = collectAuthErrorText(throwable)
             val lower = raw.lowercase()
             return when {
+                ErrorMessages.isNetworkError(throwable) ->
+                    msg(AuthMessages.NETWORK_ERROR)
                 isAlreadyRegistered(lower) ->
                     msg(AuthMessages.ALREADY_REGISTERED)
                 isGoogleIdentityConflict(lower) ->

@@ -151,7 +151,7 @@ class AuthViewModelTest {
         }
 
     @Test
-    fun `signIn timeout shows generic error`() =
+    fun `signIn timeout shows network error`() =
         runTest {
             coEvery { repository.signIn(any(), any()) } returns
                 Result.failure(
@@ -163,7 +163,7 @@ class AuthViewModelTest {
             viewModel.signIn("a@b.com", "secret1")
             advanceUntilIdle()
             assertEquals(
-                msg(AuthMessages.GENERIC),
+                msg(AuthMessages.NETWORK_ERROR),
                 viewModel.formState.value.errorMessage,
             )
             coVerify(exactly = 0) { repository.sendLoginOtp(any()) }
@@ -721,6 +721,7 @@ class AuthViewModelTest {
         private val AUTH_STRINGS =
             mapOf(
                 R.string.error_generic to "Something went wrong. Try again.",
+                R.string.error_network to "Network error. Please check your connection and try again.",
                 R.string.error_login_fields_required to "Enter your email and password.",
                 R.string.error_invalid_credentials to "Invalid email or password. Try again.",
                 R.string.error_not_registered to "You're not registered with us. Please sign up.",
