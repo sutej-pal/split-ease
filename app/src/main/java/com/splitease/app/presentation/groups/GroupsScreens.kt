@@ -899,7 +899,7 @@ private fun GroupOverallDebtTreeRow(
             stringResource(R.string.balances_person_owes_you, otherLabel)
         }
     val money = MoneyFormat.format(debt.amount, debt.currencyCode)
-    val rowHeight = 44.dp
+    val rowHeight = 32.dp
     val gutterWidth = 28.dp
     val avatarSize = 24.dp
 

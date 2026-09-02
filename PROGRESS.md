@@ -17,7 +17,7 @@ Track development phases. Always check this file at the start of a session to de
 | 8     | Stretch / Pro-like Features                      | Payment integrations; transaction import; charts                               | Done   | [phase-8-payments-csv-import-and-charts.md](docs/phase-8-payments-csv-import-and-charts.md)                   |
 | 9     | Polish, Testing, and Release Prep                | 7+ languages; release hardening                                                | Done   | [phase-9-i18n-migrations-and-release-prep.md](docs/phase-9-i18n-migrations-and-release-prep.md)               |
 | 10    | Post-MVP Product Hardening                       | Expense details + Activity; onboarding; invite join; welcome mail              | Done   | [phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md) |
-| 11    | Group Pin Board                                  | Shared per-group notepad (Markdown, online-only)                               | Done   | [phase-11-group-pin-board.md](docs/phase-11-group-pin-board.md)                                               |
+| 11    | Group Pin Board                                  | Shared per-group notepad (plain text, auto-save)                               | Done   | [phase-11-group-pin-board.md](docs/phase-11-group-pin-board.md)                                               |
 | 12    | Forgot Password OTP                              | Reset password via email OTP + set new password in-app                         | Done   | [phase-12-forgot-password-email-otp.md](docs/phase-12-forgot-password-email-otp.md)                           |
 
 **Current phase:** Complete through Phase 12 (2026-08-04)

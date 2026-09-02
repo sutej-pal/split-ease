@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Supabase HTTP client engine: **OkHttp** replaces `ktor-client-android` (Realtime WebSockets + safer cancel on navigation)
 - Group settle-up / totals moved to dedicated screens (`group_balances/{groupId}`, `group_totals/{groupId}`); back returns to group detail
 - Secondary-screen chrome unified: `SeScreen` / `SeTopBar` share one title style (`SeScreenTitleStyle` = titleLarge); spacing via `SeLayout` ([design-tokens](docs/design-tokens.md))
+- Pin Board is a plain-text shared notepad (bold/italic/checklist toolbar and in-editor image insert removed); still auto-saves and shows last editor
+- Settle-up person picker uses the back arrow (`onBack`) instead of a close (X) control
 
 ### Removed
 - Group cover / header photo (banner image on group detail, `groups.cover_url`, and `cover.jpg` uploads)
@@ -56,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Account profile header with gallery/camera photo picker; Account settings screen for display name, default currency, and language
 - Sign-up screen redesigned (welcome header, full name + photo, phone + dial code, currency preference, terms links, Done CTA); profile fields `phone_country_code`, `phone_number`, `preferred_currency` on Supabase `profiles` + Room `users` ([sql/migration_db.sql](docs/sql/migration_db.sql))
-- Group Pin Board — shared per-group notepad (Markdown) accessible from the group detail action chips; auto-saves with 2-second debounce; online-only via Supabase `pin_boards` table
+- Group Pin Board — shared per-group notepad accessible from the group detail action chips; auto-saves with debounce via Room + `pin_boards` sync
 - Live group ledger via Supabase Realtime while group detail is open (`GroupLiveSync` + [sql/migration_db.sql](docs/sql/migration_db.sql))
 - FCM push for other group members on expense/payment changes (`device_tokens`, Edge Function `notify-group-members`, [fcm-setup.md](docs/fcm-setup.md))
 - Deferred invite deep link: mail-service Play Store fallback with `referrer=invite_token%3D...` + Android Play Install Referrer bootstrap into `pending_invite_token` (same OTP / accept path as live deep links)

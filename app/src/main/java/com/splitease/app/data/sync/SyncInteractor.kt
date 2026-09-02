@@ -5,7 +5,6 @@ import androidx.core.content.edit
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.pinboard.PinBoardInteractor
-import com.splitease.app.data.pinboard.PinBoardPolicy
 import com.splitease.app.data.remote.PaymentRemoteDataSource
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.dto.PaymentDto
@@ -55,11 +54,10 @@ data class SyncFlushResult(
 /**
  * Offline write queue + remote hydrate for multi-device sync.
  *
- * Flush order: groups → members → invites → expenses → payments (FK-safe).
+ * Flush order: groups → members → invites → expenses → payments → pin boards (FK-safe).
  * Hydrate pulls friends/groups/expenses/payments into Room.
  *
- * **Out of scope (online-only surfaces):** pin boards ([PinBoardPolicy]), activity events.
- * Do not add them here without an explicit offline-first design.
+ * Activity events stay local-only. Pin boards use Room + [PinBoardInteractor.flushPending].
  */
 @Singleton
 class SyncInteractor

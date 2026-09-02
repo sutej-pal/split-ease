@@ -47,7 +47,7 @@ fun SettleSelectionScreen(
 
     SeScreen(
         title = stringResource(R.string.settle_selection_title),
-        onClose = onBack,
+        onBack = onBack,
     ) { padding ->
         Column(
             modifier =

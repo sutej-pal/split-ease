@@ -135,8 +135,6 @@
     <string name="image_crop_title">Adjust photo</string>
     <string name="image_crop_body">Pinch and drag to position the image in the frame.</string>
     <string name="msg_image_load_failed">Could not load that photo. Try another one.</string>
-    <string name="pin_board_image_source_title">Pin board image</string>
-    <string name="pin_board_image_source_body">Choose a photo from your gallery or take a new one.</string>
     <string name="action_use_photo">Use photo</string>
     <string name="label_group_type">Type</string>
     <string name="group_type_friends">Friends</string>
@@ -684,16 +682,9 @@
     <string name="payment_to_person">Payment to %1$s</string>
     <string name="payment_from_person">Payment from %1$s</string>
     <string name="pin_board_title">Pin Board</string>
-    <string name="cd_save_pin_board">Save pin board</string>
     <string name="pin_board_placeholder">Write something for the group…</string>
     <string name="pin_board_saving">Saving…</string>
     <string name="pin_board_last_edited">Last edited by %1$s</string>
-    <string name="pin_board_bold">Bold</string>
-    <string name="pin_board_italic">Italic</string>
-    <string name="pin_board_checklist">Checklist</string>
-    <string name="pin_board_image">Add image</string>
-    <string name="pin_board_remove_image">Remove image</string>
-    <string name="pin_board_image_unavailable">Image unavailable on this device</string>
     <string name="action_open_pin_board">Pin Board</string>
     <string name="filter_all">All</string>
     <string name="filter_outstanding">Open</string>

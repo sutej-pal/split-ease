@@ -82,7 +82,7 @@ The Android app never holds the database **service role** key. It uses `SUPABASE
 
 **Payment / settle up.** A recorded transfer between two people that reduces balances. Optional group context. Pay links can open UPI, PayPal, or Venmo with the amount.
 
-**Pin board.** One shared Markdown notepad per group. Online-only; not in Room. Save explicitly.
+**Pin board.** One shared plain-text notepad per group. Auto-saves (debounced); Room cache + `SyncInteractor` flush. No live collaborative cursor.
 
 **Activity.** A local feed of what you did on this device. It is **not** a cloud-synced social feed of other people’s actions. Remote changes arrive via sync, Realtime, or push.
 
@@ -189,7 +189,7 @@ Mark an expense as recurring (`WEEKLY` / `MONTHLY` / `YEARLY`). A WorkManager da
 
 ### 5.9 Pin Board
 
-On group detail, **Pin Board** is a shared Markdown notepad (bold, italic, checklist, gallery image references). All members can read and edit. Content lives only in Supabase `pin_boards`. There is no offline copy and no live collaborative cursor; reopen or save to refresh. Gallery images referenced in Markdown stay on-device.
+On group detail, **Pin Board** is a shared plain-text notepad. All members can read and edit. There is no formatting toolbar (bold, italic, checklist) and no in-editor image insert. Content auto-saves after a short pause and on leaving the screen. A Room copy supports offline edits until sync; there is no live collaborative cursor — reopen to see another device’s latest save.
 
 ### 5.10 Activity, search, spending, import
 
@@ -233,7 +233,7 @@ Android channel: `group_updates`.
 
 You can create and edit groups, expenses, and payments offline. Rows stay `PENDING` until `SyncInteractor.syncForUser` flushes them (login, cold start, Account Sync, group resume). Conflict policy: last-write-wins on `updatedAtEpochMs`. A local `PENDING` / `LOCAL_ONLY` row is never overwritten by an equal-or-older remote snapshot.
 
-Pin Board does not work offline.
+Pin Board drafts can be edited offline (Room) and flush with the rest of sync. There is no live co-edit; reopen the board to pick up another member’s save.
 
 ---
 
@@ -297,7 +297,7 @@ Living detail: [ARCHITECTURE.md](../ARCHITECTURE.md). Schema: [data-dictionary.m
 | Balances | `BalanceCalculator`, `DebtSimplifier`, `BalanceInteractor` |
 | Payments / recurring | `PaymentInteractor`, `RecurrenceScheduler`, `RecurringExpenseWorker` |
 | Sync | `SyncInteractor`, `SyncConflictPolicy` |
-| Pin Board | `PinBoardInteractor` (not in `SyncInteractor`) |
+| Pin Board | `PinBoardInteractor`, Room `pin_boards`, `SyncInteractor.flushPending` |
 | Push | `PushTokenRegistrar`, `SplitEaseMessagingService`, `notification_prefs` |
 | Settings | `AppSettingsRepository` |
 
@@ -389,7 +389,7 @@ Treat these as honest product caveats, not bugs unless noted:
 | Live FX | Deferred; per-currency buckets only |
 | Stored payment handles (UPI VPA, PayPal, Venmo) | Not stored; amount-only deep links |
 | Invite email automation | Share sheet only |
-| Pin Board offline / live co-edit | Out of scope by design |
+| Pin Board live co-edit | Out of scope by design |
 | Activity badges for remote events | TODO |
 | Play feature graphic / screenshots | TODO |
 | Realtime + Edge Function cost | Watch Supabase free-tier connection and invocation limits |
@@ -409,8 +409,8 @@ Fixed in the tap-navigation path: pending group id must navigate before it is cl
 **“We both have a group called Room 1 but they’re different.”**  
 Names are not unique. Membership is by group UUID. Invite or add the person to the same group id.
 
-**“Pin Board is empty / won’t save offline.”**  
-Expected: online-only.
+**“Pin Board is empty / won’t save.”**  
+Check membership and sync (Account → Sync). Offline drafts stay in Room until flush. There is no live cursor — reopen the board to see another device’s save.
 
 **“Balances don’t match after a delete.”**  
 Confirm both devices pulled; `PENDING` local copies are not deleted by remote prune. Account → Sync, or leave and reopen the group.

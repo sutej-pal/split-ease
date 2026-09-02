@@ -1,6 +1,8 @@
 # Phase 11 — Group Pin Board
 
-Added a shared per-group pin board: one online-only Markdown notepad (toolbar, auto-save, last-edited footer) readable and editable by all members. Not offline-cached.
+Added a shared per-group pin board: one notepad (auto-save, last-edited footer) readable and editable by all members.
+
+**Current editor:** plain text. The formatting toolbar (bold, italic, checklist) and in-editor image insert were removed after the original phase; content is still a single `content` string per group.
 
 ## Phase Goal
 
@@ -29,6 +31,8 @@ Add a shared per-group "Pin Board" — a single rich-text notepad visible and ed
 - **Single board per group:** `pin_boards.group_id` is the PK — one document, not a collection of notes.
 - **Explicit Save:** User taps Save to persist (no debounced auto-save queue).
 
+Later the UI dropped the Markdown toolbar; the field is a plain `BasicTextField`. Persistence is Room + debounced auto-save with `SyncInteractor` flush (see [PinBoardPolicy.kt](../app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt)).
+
 ## Data Model Changes
 
 ### New Supabase table: `pin_boards`
@@ -50,7 +54,7 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 - `data/pinboard/PinBoardRemoteDataSource.kt` — Supabase PostgREST fetch + upsert
 - `data/pinboard/PinBoardInteractor.kt` — load / save orchestration
 - `presentation/pinboard/PinBoardViewModel.kt` — UI state, debounced auto-save
-- `presentation/pinboard/PinBoardScreen.kt` — Compose editor with toolbar + footer
+- `presentation/pinboard/PinBoardScreen.kt` — Compose notepad + last-edited footer
 
 ## Files Modified
 
@@ -60,10 +64,9 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 
 ## Screens / UI Added
 
-- **PinBoardScreen** — full-screen Markdown editor with:
+- **PinBoardScreen** — full-screen notepad with:
   - `SeTopBar` with back arrow
-  - Toolbar row (Bold, Italic, Checklist, Image)
-  - `BasicTextField` for editing
+  - `BasicTextField` for plain-text editing
   - Footer showing saving state or last editor name
 
 ## How to Test
@@ -71,16 +74,14 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 1. Run `docs/sql/migration_db.sql` in Supabase SQL Editor.
 2. Open a group with 2+ members (both signed in on separate devices).
 3. Tap the "Pin Board" chip on the group detail screen.
-4. Type content; tap **Save** — content persists to Supabase.
+4. Type content; it auto-saves after a short pause (or leave the screen).  
 5. Open the same group's pin board on the second device — content should appear after open.
-6. Edit on device 2 → Save → reopen on device 1 — latest content visible.
+6. Edit on device 2, wait for save, reopen on device 1 — latest content visible.
 
 ## Known Issues / TODOs
 
-- No offline cache — board requires network connectivity.
 - No real-time push — second device sees updates only on (re-)open, not live.
-- Content is raw Markdown source, not rendered. A Markdown renderer can be added later.
-- No image cloud sync — gallery inserts are local file paths in Markdown (visible on the same device).
+- Content is plain text (no formatting toolbar). Existing `![](…)` image markdown in stored content is shown as source, not rendered.
 
 ## Screenshots
 

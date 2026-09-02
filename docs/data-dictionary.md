@@ -239,11 +239,11 @@ Share-link burn heal + multi-use token accept: included in [sql/migration_db.sql
 | payments | group_id | UUID | yes | Optional group context |
 | expenses | is_recurring / recurrence_frequency / next_occurrence_epoch_ms / recurring_template_id | mixed | yes/no | Recurring metadata (Phase 6) |
 
-### `pin_boards` (Supabase only — no Room cache)
+### `pin_boards` (Supabase + Room cache)
 
 | Column     | Type                              | Nullable | Description                   |
 | ---------- | --------------------------------- | -------- | ----------------------------- |
 | group_id   | UUID (PK, FK → groups.id CASCADE) | no       | One board per group           |
-| content    | TEXT                              | no       | Markdown content (default '') |
+| content    | TEXT                              | no       | Plain-text notepad (default '') |
 | updated_by | UUID (FK → auth.users SET NULL)   | yes      | Last editor                   |
 | updated_at | TIMESTAMPTZ                       | no       | Last edit timestamp           |

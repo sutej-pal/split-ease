@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 enum class SaveState {
@@ -167,14 +166,6 @@ class PinBoardViewModel
             }
             super.onCleared()
         }
-
-        /**
-         * Uploads [localPath] when possible and returns a display URL (remote preferred).
-         */
-        suspend fun ensureImageUploaded(
-            groupId: String,
-            localPath: String,
-        ): String = interactor.uploadLocalImage(groupId, localPath) ?: localPath
 
         private companion object {
             const val TAG = "PinBoardViewModel"
