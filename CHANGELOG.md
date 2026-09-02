@@ -19,8 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Supabase HTTP client engine: **OkHttp** replaces `ktor-client-android` (Realtime WebSockets + safer cancel on navigation)
 - Group settle-up / totals moved to dedicated screens (`group_balances/{groupId}`, `group_totals/{groupId}`); back returns to group detail
 - Secondary-screen chrome unified: `SeScreen` / `SeTopBar` share one title style (`SeScreenTitleStyle` = titleLarge); spacing via `SeLayout` ([design-tokens](docs/design-tokens.md))
-- Pin Board is a plain-text shared notepad (bold/italic/checklist toolbar and in-editor image insert removed); still auto-saves and shows last editor
+- Pin Board is a plain-text shared notepad with a **Save** action, 2s autosave to Room then cloud, and a server refresh on open/resume (and while idle) so another member’s edits appear
 - Settle-up person picker uses the back arrow (`onBack`) instead of a close (X) control
+- Add expense can convert INR↔USD at save (live ExchangeRate-API or custom rate); Room v15 stores the FX snapshot locally
+- Settle up opens a person-selection screen when more than one outstanding debt exists
 
 ### Removed
 - Group cover / header photo (banner image on group detail, `groups.cover_url`, and `cover.jpg` uploads)

@@ -14,7 +14,7 @@ Work items below are improvements on top of that design. Check boxes when done; 
 
 - [x] **3 — Category cloud sync** — Stable built-in ids (`cat_*`) on the wire; no Supabase `categories` table. Legacy random default ids remapped on upgrade (Room v12 + `ensureDefaults`). Push sends stable ids only; pull auto-seeds missing defaults. Custom categories stay device-local until product needs a cloud table. Cross-ref: [PROGRESS.md](../PROGRESS.md), [TODO.md](../TODO.md).
 
-- [x] **4 — Pin board product rule** — Online-only by design: no Room cache, no PENDING flush, no Realtime. Documented in [phase-11](phase-11-group-pin-board.md) and enforced via [PinBoardPolicy.kt](../app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt) + [SyncInteractor](../app/src/main/java/com/splitease/app/data/sync/SyncInteractor.kt) out-of-scope note.
+- [x] **4 — Pin board product rule** — Offline-first Room cache + PENDING flush (not online-only). Load fetches Supabase so another member’s save is applied unless local is `PENDING`. No Realtime / live cursor. Documented in [phase-11](phase-11-group-pin-board.md) and [PinBoardPolicy.kt](../app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt).
 
 - [ ] **5 — Edge Functions stay non-CRUD** — Keep Edge Functions for push/notify/hooks only. Shared privileged rules belong in SQL RPCs; money math stays on-device. Do not add a second API server for table writes.
 

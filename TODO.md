@@ -30,14 +30,14 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 - [ ] **B6 — Activity badges** — Extend Activity feed / badge when remote events arrive.
 - [x] **B8 — Notification preferences** — Mute all (Settings → Notifications) and mute group (Group settings); synced via `notification_prefs`.
 - [x] **Category sync** — Stable default ids (`cat_*`) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
-- [ ] **TODO(mixed-currency-ux)** — Track and display mixed currencies (no FX). Domain already buckets per `Expense.currencyCode` via `BalanceCalculator.netBalancesByCurrency` / `pairwiseNetByCurrency` — do not change that, and do not add conversion. Spec:
-  1. **Add Expense currency picker** — `ExpensesViewModel.currencyCode` is app-wide only; `ExpenseScreens.kt` shows a static symbol. Add a tappable selector next to amount (reuse `AppCurrencies.OPTIONS`, e.g. SignUp / settings picker or a bottom sheet). Default to the group's `defaultCurrencyCode` (app setting only for non-group / friend expenses); write the chosen code onto `Expense.currencyCode`.
-  2. **Group totals per currency** — `GroupTotalsViewModel` / `GroupSpendingCalculator.periodTotals` skip non-default currencies. Compute totals for each distinct `currencyCode` in the group; change `GroupTotalsUi` from a single `currencyCode`/`totalSpent` to a list of per-currency totals; render labeled rows or a currency tab like `GroupBalancesScreen` does for `memberNetsByCurrency`.
-  3. **Expand `AppCurrencies.OPTIONS`** to a common ~20–30 ISO 4217 set (USD, EUR, GBP, INR, JPY, AUD, CAD, SGD, AED, …). Keep `isSupported` / `normalizeOrDefault` / `labelOf` / `filter` working on the expanded list.
-- [ ] **FX rates** — Multi-currency remains per-bucket; live FX / “convert to one currency” is still deferred (Splitwise Pro-style; out of scope for mixed-currency UX above).
-- [ ] **Social PENDING flush** — Groups/members flush in `SyncInteractor` before expenses (still verify Supabase SQL is applied).
+- [x] **Add Expense currency picker** — Amount symbol opens `CurrencyPickerDialog` (INR / USD). Default is the group `defaultCurrencyCode` (app setting for 1:1).
+- [ ] **Group totals per currency** — `GroupTotalsViewModel` still totals in the group default; `hasMixedCurrencies` is only a flag. Per-currency rows/tabs are not built.
+- [ ] **Expand `AppCurrencies.OPTIONS`** beyond INR and USD (common ~20–30 ISO 4217 set). Keep `isSupported` / `normalizeOrDefault` / `labelOf` / `filter` working on the expanded list.
+- [x] **FX snapshot on add expense** — When the picked currency differs from the group default, a live rate (`ExchangeRateCurrencyService` / ExchangeRate-API) or a custom rate converts the amount. Room stores `originalAmount`, `originalCurrencyCode`, `rateToDefaultCurrency`, `rateSource` (v15). Cloud `expenses.amount` / `currency_code` are the converted values. Balances are not revalued later.
+- [ ] **FX mark-to-market** — No live re-conversion of historical expenses into one display currency.
+- [x] **Social PENDING flush** — Groups/members/invites flush in `SyncInteractor` before expenses.
 - [ ] **Activity events cross-device** — Activity events do not sync to other devices.
-- [ ] **Pin board offline / realtime** — No offline cache by design; second device sees updates on (re-)open only. Boundary documented (architecture TODO **4** — done).
+- [x] **Pin board offline cache / server refresh** — Room + flush; load/resume/idle poll fetch Supabase. Unsaved local drafts are not overwritten. No live co-edit (architecture TODO **4** — done).
 
 ## Payments & stretch
 
@@ -75,8 +75,4 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 
 ## In-code markers
 
-| File                                    | Marker                                             |
-| --------------------------------------- | -------------------------------------------------- |
-| `presentation/theme/Color.kt`           | `TODO(design)` — semantic balance colors           |
-| `presentation/theme/Theme.kt`           | `TODO(design)` — error* placeholders for "you owe" |
-| `presentation/theme/SplitEaseColors.kt` | `TODO(design)` — semantic balance colors           |
+Theme `TODO(design)` comments were removed from `Color.kt` / `Theme.kt` / `SplitEaseColors.kt`. Semantic balance-color confirmation is still an open design item above. The only remaining source `TODO` is in SplitEase Server (`server.js` mail API key).

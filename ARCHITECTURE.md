@@ -28,20 +28,20 @@ Single Gradle module `:app`. Money uses `java.math.BigDecimal` only (never `Floa
 | Work       | WorkManager (+ HiltWorker)  |
 | Money math | `BigDecimal`                |
 
-Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Optional `GOOGLE_WEB_CLIENT_ID` (Google Cloud **Web** OAuth client ID; not a secret) for native Google Sign-In. Never ship database/service-role secrets or the Google client secret in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
+Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Optional `GOOGLE_WEB_CLIENT_ID` (Google Cloud **Web** OAuth client ID; not a secret) for native Google Sign-In. Optional `EXCHANGE_RATE_API_KEY` for add-expense FX snapshots. Never ship database/service-role secrets or the Google client secret in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
 
 ## Data & sync
 
 - **IDs:** string UUIDs locally; `remoteId` stores the cloud id when synced.
 - **Sync bookmarks:** `syncStatus` (`LOCAL_ONLY` \| `PENDING` \| `SYNCED`) + `updatedAtEpochMs`.
-- **Flush then pull:** `SyncInteractor.syncForUser` flushes PENDING groups/members/expenses/payments, then pulls friends/groups/expenses/payments. Also runs on login / cold start / Account Sync / group resume.
+- **Flush then pull:** `SyncInteractor.syncForUser` flushes PENDING groups/members/invites/expenses/payments/pin boards, then pulls friends/groups/expenses/payments. Also runs on login / cold start / Account Sync / group resume.
 - **Conflict policy (pull):** Last-write-wins on `updatedAtEpochMs` via `SyncConflictPolicy`. A local `PENDING` / `LOCAL_ONLY` row is never replaced by an equal-or-older remote snapshot; `SYNCED` skips strictly older remote.
 - **Categories (cloud):** Built-in defaults use stable ids (`cat_general`, `cat_food`, …) on `expenses.category_id`. No Supabase `categories` table; pull auto-seeds missing defaults; push omits custom/local-only ids. Room v12 remaps legacy random default ids.
-- **Pin board:** Shared plain-text notepad per group. Room `pin_boards` cache, debounced auto-save, flush via [SyncInteractor](app/src/main/java/com/splitease/app/data/sync/SyncInteractor.kt). Cloud row is Supabase `pin_boards`. No formatting toolbar and no live collaborative cursor. See [PinBoardPolicy](app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt).
+- **Pin board:** Shared plain-text notepad per group. Room `pin_boards` cache (write locally, then flush). Debounced autosave (~2s) plus an explicit **Save** action. [PinBoardInteractor.load](app/src/main/java/com/splitease/app/data/pinboard/PinBoardInteractor.kt) fetches Supabase on open, resume, and idle poll so another member’s save is applied unless this device has a PENDING draft. No live collaborative cursor. See [PinBoardPolicy](app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt).
 - **Remote deletes:** After a successful group (or 1:1 involving-user) pull, local `SYNCED` expenses/payments absent from the remote id set are removed from Room. `PENDING` / `LOCAL_ONLY` are never pruned. Soft-delete / `deleted_at` is not used (cloud rows are hard-deleted).
-- **Balances:** derived from Room expenses/splits/payments (no balance tables). Per-currency buckets; no live FX.
+- **Balances:** derived from Room expenses/splits/payments (no balance tables). Stored `amount`/`currencyCode` after optional add-expense FX snapshot (INR↔USD via ExchangeRate-API or a custom rate; original amount kept on the Room row). Balances are not revalued as market rates move.
 - **Activity events:** local `activity_events` (Room); not cloud-synced.
-- **Schema SoT:** [docs/data-dictionary.md](docs/data-dictionary.md) + `app/schemas/`.
+- **Schema SoT:** [docs/data-dictionary.md](docs/data-dictionary.md) + `app/schemas/` (Room **v15**).
 
 Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) (single canonical file). Optional FCM notify triggers are included and no-op until `app.settings` are set — see [docs/fcm-setup.md](docs/fcm-setup.md).
 
@@ -58,7 +58,7 @@ Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the 
 | Balances                 | `BalanceCalculator`, `DebtSimplifier`, `BalanceInteractor`                                                                                                                               |           |          |
 | Settlements / recurring  | `PaymentInteractor`, `RecurrenceScheduler`, `RecurringExpenseWorker`                                                                                                                     |           |          |
 | Search / spending / sync | `SyncInteractor`, `SpendingTotalsCalculator`, `presentation/search\                                                                                                                      | spending\ | account` |
-| Stretch                  | `PaymentDeepLinks`, `CsvTransactionParser`, `SpendingCategoryChart`                                                                                                                      |           |          |
+| Stretch                  | `PaymentDeepLinks`, `CsvTransactionParser`, `SpendingCategoryChart`, `ExchangeRateCurrencyService`                                                                                         |           |          |
 | Pin Board                | `PinBoardInteractor`, `PinBoardRemoteDataSource`, `presentation/pinboard`                                                                                                                |           |          |
 | Settings                 | `AppSettingsRepository` (currency, theme, locale, biometric lock, pending invite token, welcome-mail flags)                                                                                |           |          |
 

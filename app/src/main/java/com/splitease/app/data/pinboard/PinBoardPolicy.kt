@@ -11,7 +11,8 @@ package com.splitease.app.data.pinboard
  * | Local cache | Room | Room |
  * | Sync queue | [com.splitease.app.data.sync.SyncInteractor] | [com.splitease.app.data.sync.SyncInteractor] PENDING flush |
  * | Realtime | Not subscribed | Group detail Realtime for ledger |
- * | Persistence | Debounced auto-save to Room | Flush-then-pull |
+ * | Persistence | Debounced auto-save to Room, then sync | Flush-then-pull |
+ * | Remote read | Fetch on open, resume, and idle poll | Group detail Realtime |
  *
  * @see docs/phase-11-group-pin-board.md
  */

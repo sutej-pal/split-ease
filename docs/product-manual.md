@@ -2,7 +2,7 @@
 
 **App:** SplitEase (`com.splitease.app`)  
 **Platform:** Android (Kotlin, Jetpack Compose)  
-**Last updated:** 18 August 2026  
+**Last updated:** 2 September 2026  
 **Audience:** product, support, and engineering  
 
 This is the full-app manual. Phase history, SQL, and schema details stay in the linked docs; this file describes **what the product does today** and **how the system is put together**.
@@ -34,7 +34,7 @@ Inspired by Splitwise’s feature set; architecture and UI are original.
 - Roommates tracking rent, utilities, and groceries  
 - Trip groups pooling travel spend  
 
-It is **not** a bank, payment processor, or accounting suite. UPI / PayPal / Venmo actions open those apps with an amount; SplitEase does not move money itself. There is no live foreign-exchange conversion: each currency stays in its own bucket.
+It is **not** a bank, payment processor, or accounting suite. UPI / PayPal / Venmo actions open those apps with an amount; SplitEase does not move money itself. Add-expense can convert INR↔USD at save time (live rate or a custom rate, stored as a snapshot). Balances use the stored amount; they are not revalued as rates move.
 
 ---
 
@@ -62,7 +62,7 @@ Supabase Auth Send Email hook  ──►  same server
 | **SplitEase Server** (`C:\splitease\server`) | OTP / welcome / recovery mail, `/invite/{token}` App Links bridge, privacy/terms |
 | **Firebase Cloud Messaging** | Background notifications after cloud sync |
 
-The Android app never holds the database **service role** key. It uses `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.properties`. Mail uses `MAIL_SERVICE_BASE_URL` + `MAIL_SERVICE_API_KEY`. Optional `GOOGLE_WEB_CLIENT_ID` (Google Cloud Web OAuth client ID) for native Google Sign-In. Firebase client config is `app/google-services.json` (also gitignored).
+The Android app never holds the database **service role** key. It uses `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.properties`. Mail uses `MAIL_SERVICE_BASE_URL` + `MAIL_SERVICE_API_KEY`. Optional `GOOGLE_WEB_CLIENT_ID` (Google Cloud Web OAuth client ID) for native Google Sign-In. Optional `EXCHANGE_RATE_API_KEY` for add-expense FX. Firebase client config is `app/google-services.json` (also gitignored).
 
 ---
 
@@ -82,7 +82,7 @@ The Android app never holds the database **service role** key. It uses `SUPABASE
 
 **Payment / settle up.** A recorded transfer between two people that reduces balances. Optional group context. Pay links can open UPI, PayPal, or Venmo with the amount.
 
-**Pin board.** One shared plain-text notepad per group. Auto-saves (debounced); Room cache + `SyncInteractor` flush. No live collaborative cursor.
+**Pin board.** One shared plain-text notepad per group. **Save** in the top bar; also autosaves after 2 seconds. Writes go to Room first, then sync to Supabase. Opening or returning to the board fetches the server copy (unless you have unsaved typing). No live cursor.
 
 **Activity.** A local feed of what you did on this device. It is **not** a cloud-synced social feed of other people’s actions. Remote changes arrive via sync, Realtime, or push.
 
@@ -140,7 +140,7 @@ Search, spending totals, CSV import, and settings are reached from Account / too
 
 Invitee flow: open link → preview → sign up or log in with the invited email → `accept_invite_by_token` joins the group/friendship and remaps placeholder splits to the real user id.
 
-Automated invite email send is still TODO; sharing is via the system share sheet.
+Automated invite email is sent via SplitEase Server when the contact has an email. Phone contacts still fall back to the system share sheet. Generic **Invite via link** stays copy/share (no mail).
 
 ### 5.4 Friends
 
@@ -156,7 +156,7 @@ From a group or friend ledger, **Add expense**:
 | ----- | ----- |
 | With you and | Group (“All of {name}”) or chosen friends |
 | Description | Required for a useful ledger line |
-| Amount + currency | Currency catalog (100+ ISO codes); default from Settings / group |
+| Amount + currency | Tap the symbol to pick **INR** or **USD**. If that differs from the group default, a live rate (ExchangeRate-API) or a custom rate converts the amount at save; the ledger stores the converted amount plus a local FX snapshot |
 | Date and time | Editable |
 | Category | Built-in defaults (`cat_general`, `cat_food`, …) plus device-local custom categories |
 | Paid by | One member |
@@ -173,13 +173,13 @@ Tap an expense for **detail**: comments/photos where implemented, edit, delete. 
 
 **Simplify debts** (per-group preference): when on, the app minimizes the number of suggested transfers. When off, it keeps expense-level pairwise debts.
 
-**Totals** / spending: aggregates by category and period, with charts (Vico) on the spending screens.
+**Totals** / spending: aggregates by category and period in the **group default currency**, with charts (Vico) on the spending screens. Expenses still in another currency are flagged as mixed; they are not merged into that total.
 
-No live FX: INR and USD balances do not convert into each other.
+Add-expense FX is a **snapshot**: INR↔USD can convert when you save. Historical balances are not recomputed when market rates change.
 
 ### 5.7 Settle up and pay apps
 
-**Settle up** records that A paid B an amount (optional group). That **payment** is applied after expense nets when computing balances.
+**Settle up** first opens a person picker (`SettleSelectionScreen`) when more than one debt exists, then records that A paid B an amount (optional group). That **payment** is applied after expense nets when computing balances.
 
 From settle / remind flows you can open **UPI, PayPal, or Venmo** with the amount. Usernames / VPAs are not stored yet; the deep link carries amount (and region-aware app choice), not a saved handle.
 
@@ -189,7 +189,7 @@ Mark an expense as recurring (`WEEKLY` / `MONTHLY` / `YEARLY`). A WorkManager da
 
 ### 5.9 Pin Board
 
-On group detail, **Pin Board** is a shared plain-text notepad. All members can read and edit. There is no formatting toolbar (bold, italic, checklist) and no in-editor image insert. Content auto-saves after a short pause and on leaving the screen. A Room copy supports offline edits until sync; there is no live collaborative cursor — reopen to see another device’s latest save.
+On group detail, **Pin Board** is a shared plain-text notepad. All members can read and edit. There is no formatting toolbar (bold, italic, checklist) and no in-editor image insert. Tap **Save**, or wait ~2 seconds after typing — the app stores the draft on-device then uploads it. Opening the board, returning to it, or leaving it idle also pulls the latest server copy so you see what someone else already wrote. Unsaved typing on this device is not overwritten by that refresh. There is no live collaborative cursor.
 
 ### 5.10 Activity, search, spending, import
 
@@ -233,7 +233,7 @@ Android channel: `group_updates`.
 
 You can create and edit groups, expenses, and payments offline. Rows stay `PENDING` until `SyncInteractor.syncForUser` flushes them (login, cold start, Account Sync, group resume). Conflict policy: last-write-wins on `updatedAtEpochMs`. A local `PENDING` / `LOCAL_ONLY` row is never overwritten by an equal-or-older remote snapshot.
 
-Pin Board drafts can be edited offline (Room) and flush with the rest of sync. There is no live co-edit; reopen the board to pick up another member’s save.
+Pin Board drafts save on the phone first, then sync. Offline edits upload later. The board also fetches the server copy on open/resume so you can see another member’s save; it will not replace text you are still editing. There is no live co-edit.
 
 ---
 
@@ -293,7 +293,7 @@ Living detail: [ARCHITECTURE.md](../ARCHITECTURE.md). Schema: [data-dictionary.m
 | Auth / OTP | `AuthRepository`, `presentation/auth` (email OTP + Google ID token), `presentation/onboarding` |
 | Invites | `InviteLinks`, `InstallReferrerInviteBootstrap`, `get_invite_preview` / `accept_invite_by_token` |
 | Friends & groups | `SocialInteractor`, `presentation/friends`, `presentation/groups` |
-| Expenses | `ExpenseInteractor`, `SplitCalculator`, `presentation/expenses` |
+| Expenses | `ExpenseInteractor`, `SplitCalculator`, `ExchangeRateCurrencyService`, `presentation/expenses` |
 | Balances | `BalanceCalculator`, `DebtSimplifier`, `BalanceInteractor` |
 | Payments / recurring | `PaymentInteractor`, `RecurrenceScheduler`, `RecurringExpenseWorker` |
 | Sync | `SyncInteractor`, `SyncConflictPolicy` |
@@ -386,9 +386,10 @@ Treat these as honest product caveats, not bugs unless noted:
 | ----- | ------ |
 | Phone signup / SMS OTP | Not started |
 | Full i18n | Locale files exist; UI still English |
-| Live FX | Deferred; per-currency buckets only |
+| Live FX revaluation | Snapshot only at add-expense (INR/USD); balances are not marked to market |
+| Extra ISO currencies | Catalog is INR + USD; expanding `AppCurrencies.OPTIONS` is still open |
 | Stored payment handles (UPI VPA, PayPal, Venmo) | Not stored; amount-only deep links |
-| Invite email automation | Share sheet only |
+| Invite email | Sent for email contacts; phone + generic share links use the share sheet |
 | Pin Board live co-edit | Out of scope by design |
 | Activity badges for remote events | TODO |
 | Play feature graphic / screenshots | TODO |
@@ -410,7 +411,7 @@ Fixed in the tap-navigation path: pending group id must navigate before it is cl
 Names are not unique. Membership is by group UUID. Invite or add the person to the same group id.
 
 **“Pin Board is empty / won’t save.”**  
-Check membership and sync (Account → Sync). Offline drafts stay in Room until flush. There is no live cursor — reopen the board to see another device’s save.
+Check membership and sync (Account → Sync). Drafts save on-device first, then upload. Offline drafts flush later. Open or return to the board to pull someone else’s save. There is no live cursor.
 
 **“Balances don’t match after a delete.”**  
 Confirm both devices pulled; `PENDING` local copies are not deleted by remote prune. Account → Sync, or leave and reopen the group.

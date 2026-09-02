@@ -22,7 +22,7 @@ data class PinBoardDto(
 /**
  * Thin PostgREST access for the per-group pin board.
  *
- * Intentionally **outside** offline sync — see [PinBoardPolicy].
+ * PostgREST fetch/upsert used after Room writes — see [PinBoardPolicy].
  */
 @Singleton
 class PinBoardRemoteDataSource

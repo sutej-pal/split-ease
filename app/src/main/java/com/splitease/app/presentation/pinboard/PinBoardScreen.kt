@@ -20,12 +20,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -60,8 +56,8 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeSystemBars
+import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
-import com.splitease.app.presentation.ui.SeTopBarActionButton
 import com.splitease.app.presentation.ui.seScreenSubtitleStyle
 
 @Composable
@@ -80,8 +76,10 @@ fun PinBoardScreen(
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) {
-                viewModel.saveImmediately()
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.refreshFromRemote()
+                Lifecycle.Event.ON_PAUSE -> viewModel.saveImmediately()
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -101,14 +99,22 @@ fun PinBoardScreen(
     var seededForGroup by remember(groupId) { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(groupId, state.isLoading) {
-        if (!state.isLoading && !seededForGroup) {
+    LaunchedEffect(groupId, state.isLoading, state.contentRevision) {
+        if (state.isLoading) return@LaunchedEffect
+        if (!seededForGroup) {
             textValue = TextFieldValue(state.content, TextRange(state.content.length))
             seededForGroup = true
             if (state.content.isBlank()) {
                 runCatching { focusRequester.requestFocus() }
                 keyboardController?.show()
             }
+            return@LaunchedEffect
+        }
+        if (state.saveState == SaveState.PENDING || state.saveState == SaveState.SAVING) {
+            return@LaunchedEffect
+        }
+        if (textValue.text != state.content) {
+            textValue = TextFieldValue(state.content, TextRange(state.content.length))
         }
     }
 
@@ -120,39 +126,19 @@ fun PinBoardScreen(
                 onBack = onBack,
                 actions = {
                     val saveState = state.saveState
-                    SeTopBarActionButton(
+                    SeTextButton(
+                        text = stringResource(R.string.action_save),
                         onClick = { viewModel.saveImmediately() },
                         enabled = saveState == SaveState.PENDING || saveState == SaveState.ERROR,
-                    ) {
-                        when (saveState) {
-                            SaveState.SAVING -> {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
-                                    color = SplitEaseColors.Primary,
-                                )
-                            }
-                            SaveState.ERROR -> {
-                                Icon(
-                                    Icons.Filled.Warning,
-                                    contentDescription = stringResource(R.string.action_save),
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                            else -> {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = stringResource(R.string.action_save),
-                                    tint =
-                                        if (saveState == SaveState.SAVED || saveState == SaveState.IDLE) {
-                                            SplitEaseColors.Primary
-                                        } else {
-                                            SplitEaseColors.OutlineStrong
-                                        },
-                                )
-                            }
-                        }
-                    }
+                        isLoading = saveState == SaveState.SAVING,
+                        emphasized = true,
+                        color =
+                            if (saveState == SaveState.ERROR) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                null
+                            },
+                    )
                 },
             )
         },

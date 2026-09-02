@@ -14,8 +14,8 @@ import javax.inject.Singleton
 /**
  * Orchestrates pin board load / save.
  *
- * **Online-only** — see [PinBoardPolicy]. No Room cache, no [com.splitease.app.data.sync.SyncInteractor]
- * flush path. Each [load] / [save] hits PostgREST directly.
+ * Offline-first — see [PinBoardPolicy]. Writes go to Room then PostgREST;
+ * [load] always tries the server so another member’s save is picked up.
  */
 @Singleton
 class PinBoardInteractor
@@ -26,35 +26,32 @@ class PinBoardInteractor
         private val imageStorage: PinBoardImageStorage,
         private val pinBoardDao: PinBoardDao,
     ) {
+        /** Cached board for [groupId], or null when this device has never opened it. */
+        suspend fun peekLocal(groupId: String): PinBoardDto? = pinBoardDao.getPinBoard(groupId)?.toPinBoardDto()
+
         /**
-         * Loads the board content and metadata for [groupId].
+         * Loads the board for [groupId].
          *
-         * Hits Room first, then refreshes from remote.
-         *
-         * @return The DTO, or a blank board stub when none exists yet.
+         * Fetches Supabase when possible and caches it. Pending local edits win over
+         * remote so an in-progress draft is not discarded. Falls back to Room offline.
          */
         suspend fun load(groupId: String): PinBoardDto {
             val local = pinBoardDao.getPinBoard(groupId)
-            if (local != null) {
-                return PinBoardDto(
-                    groupId = local.groupId,
-                    content = local.content,
-                    updatedBy = local.updatedByUserId,
-                    updatedAt = local.updatedAtEpochMs.toString(), // Simplify for now
+            val remoteDto = runCatching { remote.fetch(groupId) }.getOrNull()
+            val decision = resolvePinBoardLoad(groupId, local, remoteDto)
+            if (decision.writeRemoteToCache) {
+                val dto = decision.dto
+                pinBoardDao.upsert(
+                    PinBoardEntity(
+                        groupId = dto.groupId,
+                        content = dto.content,
+                        updatedByUserId = dto.updatedBy,
+                        updatedAtEpochMs = parsePinBoardUpdatedAtEpochMs(dto.updatedAt) ?: System.currentTimeMillis(),
+                        syncStatus = SyncStatus.SYNCED,
+                    ),
                 )
             }
-            val dto = remote.fetch(groupId) ?: PinBoardDto(groupId = groupId, content = "")
-            // Seed Room with cloud content
-            pinBoardDao.upsert(
-                PinBoardEntity(
-                    groupId = dto.groupId,
-                    content = dto.content,
-                    updatedByUserId = dto.updatedBy,
-                    updatedAtEpochMs = System.currentTimeMillis(), // We don't have a reliable long from DTO
-                    syncStatus = SyncStatus.SYNCED,
-                ),
-            )
-            return dto
+            return decision.dto
         }
 
         /** Saves locally and enqueues a sync. */

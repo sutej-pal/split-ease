@@ -19,7 +19,7 @@ Product feature list mapped onto development phases. Implement only the **curren
 | Cloud sync (full queue + conflicts) | **7**                                                    | Done²       |
 | Spending totals                     | **7**                                                    | Done        |
 | Categorize expenses                 | **7**                                                    | Done        |
-| 100+ currencies                     | **7**                                                    | Done        |
+| 100+ currencies                     | **7**                                                    | Partial (INR+USD; expansion open) |
 | Payment integrations                | **8** — Stretch / Pro-like Features                      | Done        |
 | Transaction import                  | **8**                                                    | Done        |
 | 7+ languages                        | **9** — Polish, Testing, and Release Prep                | Not started |
@@ -72,13 +72,13 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | Generated instances feed Phase 4 expense model       |                                      |
 
 ### Phase 7 — Search, Categories, Multi-Currency, Offline Sync *(done)*
-**Covers:** Offline mode · Cloud sync · Spending totals · Categorize expenses · 100+ currencies  
+**Covers:** Offline mode · Cloud sync · Spending totals · Categorize expenses · Currencies (INR/USD today)  
 
 | In                                                              | Out                                       |
 | --------------------------------------------------------------- | ----------------------------------------- |
 | Expense search; category pickers + custom categories            | i18n strings pack (Phase 9)               |
 | Spending totals by category / period (list + simple aggregates) | Rich charts (Phase 8 / Vico)              |
-| Currency catalog (100+), per-expense/group currency display     | Live FX rates may be stubbed then refined |
+| Currency catalog (INR/USD in `AppCurrencies`), per-expense picker + FX snapshot | 100+ ISO list still open |
 | Durable offline write queue, pull sync, conflict policy         | Payment integrations (Phase 8)            |
 
 ### Phase 8 — Stretch / Pro-like Features *(done)*
@@ -109,7 +109,7 @@ Features shipped or requested after Phase 9. Track in:
 - [phase-12-forgot-password-email-otp.md](./phase-12-forgot-password-email-otp.md) — recovery OTP
 - [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify group members on expense/payment changes; open group > latest cloud entries
 - **TODO(auth-mobile-onboarding)** — onboard with mobile phone number (SMS OTP / phone auth) in addition to email ([PROGRESS.md](../PROGRESS.md))
-- **TODO(mixed-currency-ux)** — per-expense currency picker, group totals per currency, expand `AppCurrencies`; no FX ([TODO.md](../TODO.md))
+- **TODO(mixed-currency-ux)** — group totals still default-currency only; expand `AppCurrencies` beyond INR/USD. Picker + snapshot FX shipped ([TODO.md](../TODO.md))
 - **OTP operations** — keep signup/recovery OTP delivery healthy (SMTP/provider + templates with `{{ .Token }}`)
 
 ## Dependency order

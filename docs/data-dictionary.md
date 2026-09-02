@@ -1,6 +1,8 @@
 # Data Dictionary
 
-Canonical schema reference for Room entities and Firestore collections. Updated whenever a schema changes.
+Canonical schema reference for Room entities and Supabase tables. Updated whenever a schema changes.
+
+Room version: **15** (`app/schemas/`). v14 added `pin_boards`; v15 added expense FX snapshot columns.
 
 ## Room Entities
 
@@ -12,7 +14,7 @@ Canonical schema reference for Room entities and Firestore collections. Updated 
 | email            | TEXT (unique) | no       | Login / invite identity             |
 | displayName      | TEXT          | no       | Display name                        |
 | photoUrl         | TEXT          | yes      | Avatar URL or local path            |
-| remoteId         | TEXT          | yes      | Firestore doc id when synced        |
+| remoteId         | TEXT          | yes      | Cloud id when synced                |
 | createdAtEpochMs | INTEGER       | no       | Created-at UTC millis               |
 | updatedAtEpochMs | INTEGER       | no       | Last local mutation UTC millis      |
 | syncStatus       | TEXT          | no       | `LOCAL_ONLY` / `PENDING` / `SYNCED` |
@@ -122,6 +124,10 @@ Unique index: `(groupId, userId)`.
 | createdAtEpochMs      | INTEGER                          | no       | Created-at UTC millis                         |
 | updatedAtEpochMs      | INTEGER                          | no       | Last mutation UTC millis                      |
 | syncStatus            | TEXT                             | no       | Sync bookmark                                 |
+| originalAmount        | TEXT                             | yes      | Amount as entered, before FX (Room v15)       |
+| originalCurrencyCode  | TEXT                             | yes      | Currency picked at create (Room v15)          |
+| rateToDefaultCurrency | TEXT                             | yes      | `1 original = X stored` snapshot (Room v15)   |
+| rateSource            | TEXT                             | yes      | `LIVE` / `CUSTOM` (Room v15; not on Supabase) |
 
 ### `expense_splits`
 | Column     | Type                          | Nullable | Description                            |
@@ -138,7 +144,7 @@ Unique index: `(expenseId, userId)`.
 
 **Derived balances (Phase 5+6):** Not stored. Nets and simplified debts are computed in
 `domain.balance` from `expenses` + `expense_splits`, then [Payment] settlements are applied
-(`fromUser` +amount, `toUser` −amount) before simplification. Per-currency only (no FX).
+(`fromUser` +amount, `toUser` −amount) before simplification. After add-expense FX, stored `amount` is usually the group default currency; leftover mixed `currencyCode` values stay in separate buckets.
 
 ### `payments`
 
@@ -157,7 +163,7 @@ Unique index: `(expenseId, userId)`.
 | updatedAtEpochMs | INTEGER                     | no       | Last mutation UTC millis  |
 | syncStatus       | TEXT                        | no       | Sync bookmark             |
 
-## Firestore / Supabase remote tables
+## Supabase remote tables
 
 | Collection / Table            | Field                 | Type      | Nullable | Description                                                                                |
 | ----------------------------- | --------------------- | --------- | -------- | ------------------------------------------------------------------------------------------ |

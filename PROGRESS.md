@@ -17,7 +17,7 @@ Track development phases. Always check this file at the start of a session to de
 | 8     | Stretch / Pro-like Features                      | Payment integrations; transaction import; charts                               | Done   | [phase-8-payments-csv-import-and-charts.md](docs/phase-8-payments-csv-import-and-charts.md)                   |
 | 9     | Polish, Testing, and Release Prep                | 7+ languages; release hardening                                                | Done   | [phase-9-i18n-migrations-and-release-prep.md](docs/phase-9-i18n-migrations-and-release-prep.md)               |
 | 10    | Post-MVP Product Hardening                       | Expense details + Activity; onboarding; invite join; welcome mail              | Done   | [phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md) |
-| 11    | Group Pin Board                                  | Shared per-group notepad (plain text, auto-save)                               | Done   | [phase-11-group-pin-board.md](docs/phase-11-group-pin-board.md)                                               |
+| 11    | Group Pin Board                                  | Shared per-group notepad (plain text, Save + autosave)                         | Done   | [phase-11-group-pin-board.md](docs/phase-11-group-pin-board.md)                                               |
 | 12    | Forgot Password OTP                              | Reset password via email OTP + set new password in-app                         | Done   | [phase-12-forgot-password-email-otp.md](docs/phase-12-forgot-password-email-otp.md)                           |
 
 **Current phase:** Complete through Phase 12 (2026-08-04)
@@ -38,15 +38,15 @@ Track development phases. Always check this file at the start of a session to de
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
 - **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0](docs/phase-0-project-setup-and-brand-theme.md)).
 - **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run (includes share-link heal, expense RLS, phone RPC, reciprocal friends, optional FCM notify triggers).
-- **Invite email delivery** — MVP uses the system share sheet; automated send via mail-service is still TODO.
+- **Invite email delivery** — Email contacts get invite mail via mail-service; phone contacts and generic share links use the system share sheet.
 - **SplitEase Server (separate repo)** — lives at `C:\splitease\server` beside the Android app at `C:\splitease\app` ([docs/splitease-server-repo.md](docs/splitease-server-repo.md)). Deployed on Vercel; uses Brevo HTTPS when `BREVO_API_KEY` is set, otherwise Nodemailer SMTP locally.
 - **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md)).
 - **App Links / invite https** — share links use `MAIL_SERVICE_BASE_URL/invite/{token}` when set, else `splitease.app`. Host [docs/assetlinks.json](docs/assetlinks.json) for verified Open-by-default links ([app-links-setup.md](docs/app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification.
 - **Group live updates & push notifications (extra)** — Realtime + FCM path live: Edge Function deployed, `notification_prefs` applied, expenses/payments webhooks wired ([docs/fcm-setup.md](docs/fcm-setup.md), [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)).
 - **Category sync** — stable default ids (`cat_*`) on the wire; Room v12 remaps legacy random defaults; custom categories remain device-local ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md) #3).
-- **TODO(mixed-currency-ux)** — Per-expense currency picker, group totals per currency, expand `AppCurrencies` (~20–30 codes). No FX conversion. See [TODO.md](TODO.md).
-- **FX rates** — multi-currency remains per-bucket; live FX is still deferred.
+- **TODO(mixed-currency-ux)** — Remaining: group totals still roll up in the group default currency (mixed flagged, not per-currency rows); expand `AppCurrencies` beyond INR/USD. Per-expense picker + snapshot FX already shipped. See [TODO.md](TODO.md).
+- **FX rates** — Add-expense can convert INR↔USD at save (live API or custom snapshot on the Room row). No mark-to-market of old balances.
 - **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
-- **Social PENDING flush** — groups/members are now flushed in `SyncInteractor` before expenses (still verify Supabase SQL is applied).
+- **Social PENDING flush** — Groups/members/invites flush in `SyncInteractor` before expenses (confirm SQL is applied on each environment).
 - **Store assets** — feature graphic, phone screenshots, privacy policy URL (`docs/store-listing.md`).
 - **TODO(i18n-last)** — Localization is deferred until the end of the product. Locale overlays (`values-de/es/fr/hi/it/ja/pt`) currently fall back to English; restore and expand full translations last.

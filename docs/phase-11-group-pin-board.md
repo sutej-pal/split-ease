@@ -2,7 +2,7 @@
 
 Added a shared per-group pin board: one notepad (auto-save, last-edited footer) readable and editable by all members.
 
-**Current editor:** plain text. The formatting toolbar (bold, italic, checklist) and in-editor image insert were removed after the original phase; content is still a single `content` string per group.
+**Current editor:** plain text with a **Save** label in the top bar. Typing autosaves after ~2 seconds (Room first, then Supabase). Opening, returning to, or idling on the board fetches the server copy so another member’s work shows up; unsaved typing on this device is kept. No live cursor.
 
 ## Phase Goal
 
@@ -31,7 +31,7 @@ Add a shared per-group "Pin Board" — a single rich-text notepad visible and ed
 - **Single board per group:** `pin_boards.group_id` is the PK — one document, not a collection of notes.
 - **Explicit Save:** User taps Save to persist (no debounced auto-save queue).
 
-Later the UI dropped the Markdown toolbar; the field is a plain `BasicTextField`. Persistence is Room + debounced auto-save with `SyncInteractor` flush (see [PinBoardPolicy.kt](../app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt)).
+Later the UI dropped the Markdown toolbar; the field is a plain `BasicTextField`. Persistence is Room first, then cloud sync, with a 2s autosave plus **Save**. Load fetches Supabase on open/resume/idle poll (see [PinBoardPolicy.kt](../app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt)).
 
 ## Data Model Changes
 
@@ -40,7 +40,7 @@ Later the UI dropped the Markdown toolbar; the field is a plain `BasicTextField`
 | Column     | Type                                      | Notes               |
 | ---------- | ----------------------------------------- | ------------------- |
 | group_id   | uuid PK, FK → groups.id ON DELETE CASCADE | One board per group |
-| content    | text, default ''                          | Markdown content    |
+| content    | text, default ''                          | Plain-text notepad  |
 | updated_by | uuid FK → auth.users, ON DELETE SET NULL  | Last editor         |
 | updated_at | timestamptz, default now()                | Last edit timestamp |
 
@@ -65,7 +65,7 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 ## Screens / UI Added
 
 - **PinBoardScreen** — full-screen notepad with:
-  - `SeTopBar` with back arrow
+  - `SeTopBar` with back arrow and **Save** text action
   - `BasicTextField` for plain-text editing
   - Footer showing saving state or last editor name
 
@@ -74,13 +74,13 @@ RLS: SELECT / INSERT / UPDATE allowed when user is a member of the group.
 1. Run `docs/sql/migration_db.sql` in Supabase SQL Editor.
 2. Open a group with 2+ members (both signed in on separate devices).
 3. Tap the "Pin Board" chip on the group detail screen.
-4. Type content; it auto-saves after a short pause (or leave the screen).  
-5. Open the same group's pin board on the second device — content should appear after open.
-6. Edit on device 2, wait for save, reopen on device 1 — latest content visible.
+4. Type content; **Save** or wait ~2 seconds (or leave the screen).  
+5. Open the same group's pin board on the second device — content should appear after open (server fetch).
+6. Edit on device 2, wait for save; on device 1 return to the board or wait for the idle refresh — latest content visible without a live cursor.
 
 ## Known Issues / TODOs
 
-- No real-time push — second device sees updates only on (re-)open, not live.
+- No live collaborative cursor — updates arrive on open, resume, or idle poll (~15s), not keystroke-by-keystroke.
 - Content is plain text (no formatting toolbar). Existing `![](…)` image markdown in stored content is shown as source, not rendered.
 
 ## Screenshots
