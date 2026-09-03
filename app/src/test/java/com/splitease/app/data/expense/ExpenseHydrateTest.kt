@@ -80,7 +80,6 @@ class ExpenseHydrateTest {
                 receiptStorage = mockk<ExpenseReceiptStorage>(relaxed = true),
                 mediaStorageCleanup = mockk<MediaStorageCleanup>(relaxed = true),
                 socialRemote = mockk<SocialRemoteDataSource>(relaxed = true),
-                mailRepository = mockk(relaxed = true),
                 syncInteractor = mockk<Provider<SyncInteractor>>(relaxed = true),
             )
     }

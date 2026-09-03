@@ -263,8 +263,11 @@ class ExpensesViewModel
                             source = ExchangeRateSource.LIVE,
                             manualRateText = rate?.toPlainString().orEmpty(),
                             fetchError =
-                                rate?.let { null }
-                                    ?: appContext.getString(R.string.error_exchange_rate_fetch),
+                                if (rate != null) {
+                                    null
+                                } else {
+                                    appContext.getString(R.string.error_exchange_rate_fetch)
+                                },
                         )
                     } else {
                         state

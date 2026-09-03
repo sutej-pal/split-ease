@@ -738,10 +738,9 @@ fun AddExpenseScreen(
                     placeholder = "0.00",
                     leadingLabel = currencySymbol(selectedCurrencyCode),
                     onIconClick = if (isEdit) null else { { showCurrencyPicker = true } },
-                    iconBoxSize = 56.dp,
                     leadingTextStyle =
                         MaterialTheme.typography.headlineMedium.copy(
-                            color = SplitEaseColors.Navy,
+                            color = SplitEaseColors.NavyMuted,
                             fontWeight = FontWeight.SemiBold,
                         ),
                     enabled = !uiState.isSubmitting,
@@ -1087,7 +1086,7 @@ private fun ExpenseUnderlineField(
                             leadingTextStyle
                                 ?: MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = SplitEaseColors.Navy,
+                        color = SplitEaseColors.NavyMuted,
                     )
                 icon != null ->
                     Icon(
@@ -1477,10 +1476,9 @@ private fun AddExpenseScreenPreview() {
                             onValueChange = { amount = it },
                             placeholder = "0.00",
                             leadingLabel = currencySymbol(currencyCode),
-                            iconBoxSize = 56.dp,
                             leadingTextStyle =
                                 MaterialTheme.typography.headlineMedium.copy(
-                                    color = SplitEaseColors.Navy,
+                                    color = SplitEaseColors.NavyMuted,
                                     fontWeight = FontWeight.SemiBold,
                                 ),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
