@@ -30,7 +30,7 @@ import com.splitease.app.data.local.entity.PinBoardEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (version 15 — expense FX snapshot columns).
+ * Offline-first Room database for SplitEase (Room v15; v14 pin_boards, v15 expense FX snapshots).
  */
 @Database(
     entities = [

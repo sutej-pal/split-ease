@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.pinboard
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.core.ErrorMessages
@@ -109,12 +110,13 @@ class PinBoardViewModel
                     initialLoadDone = true
                     startRemoteRefreshLoop()
                 } catch (e: Exception) {
-                    initialLoadDone = cached != null
+                    initialLoadDone = true
                     _uiState.value =
                         _uiState.value.copy(
                             isLoading = false,
                             errorMessage = ErrorMessages.message(appContext, TAG, e),
                         )
+                    startRemoteRefreshLoop()
                 }
             }
         }
@@ -131,6 +133,8 @@ class PinBoardViewModel
                 runCatching {
                     val dto = interactor.load(gid)
                     applyLoadedDto(dto, groupName = state.groupName, isLoading = false)
+                }.onFailure { error ->
+                    Log.w(TAG, "Background pin board refresh failed for $gid", error)
                 }
             }
         }
@@ -215,7 +219,12 @@ class PinBoardViewModel
                     lastEditedAt = dto.updatedAt,
                     errorMessage = null,
                     contentRevision = if (contentChanged) prev.contentRevision + 1 else prev.contentRevision,
-                    saveState = if (contentChanged) SaveState.IDLE else prev.saveState,
+                    saveState =
+                        when {
+                            !contentChanged -> prev.saveState
+                            prev.saveState == SaveState.SAVED -> SaveState.SAVED
+                            else -> SaveState.IDLE
+                        },
                 )
         }
 
@@ -230,7 +239,7 @@ class PinBoardViewModel
                 }
         }
 
-        override fun onCleared() {
+        public override fun onCleared() {
             refreshJob?.cancel()
             viewModelScope.launch(NonCancellable) {
                 val gid = loadedGroupId ?: return@launch
