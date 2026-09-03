@@ -6,11 +6,13 @@ package com.splitease.app.domain.model
  * @property userId Supabase auth user UUID.
  * @property email Account email.
  * @property displayName Preferred display name when available.
+ * @property emailConfirmed True when Supabase has confirmed the email address.
  */
 data class AuthUser(
     val userId: String,
     val email: String,
     val displayName: String,
+    val emailConfirmed: Boolean = true,
 )
 
 /**
@@ -28,5 +30,7 @@ sealed interface AuthSession {
      *
      * @property user Session user.
      */
-    data class SignedIn(val user: AuthUser) : AuthSession
+    data class SignedIn(
+        val user: AuthUser
+    ) : AuthSession
 }

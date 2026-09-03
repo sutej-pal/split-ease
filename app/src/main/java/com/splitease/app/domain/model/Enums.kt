@@ -15,6 +15,9 @@ enum class SplitType {
 
     /** Each participant owes proportional to integer shares. */
     SHARES,
+
+    /** Extra owed amounts; remainder is split equally. */
+    ADJUSTMENT,
 }
 
 /**
@@ -23,6 +26,15 @@ enum class SplitType {
 enum class MemberRole {
     OWNER,
     MEMBER,
+}
+
+/**
+ * Category / vibe for a group (UI + local icon).
+ */
+enum class GroupType {
+    FRIENDS,
+    HOME,
+    OTHER,
 }
 
 /**

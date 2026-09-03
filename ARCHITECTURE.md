@@ -4,9 +4,7 @@ Living design document. Update (do not recreate) when a new architectural layer 
 
 ## Overview
 
-SplitEase is a native Android expense-sharing app (Kotlin, Jetpack Compose) that follows **MVVM + Clean Architecture** with an offline-first Room cache and **Supabase** as the cloud backend (Auth now; PostgREST/Storage in later phases). Original plans mentioned Firebase; Phase 2 switched to Supabase per project credentials.
-
-## Layers
+SplitEase is a native Android expense-sharing app (Kotlin, Jetpack Compose) using **MVVM + Clean Architecture**, an offline-first Room cache, and **Supabase** (Auth + PostgREST). Package: `com.splitease.app`.
 
 ```
 presentation/   # Compose UI, ViewModels, Navigation
@@ -14,80 +12,75 @@ domain/         # Models, repository interfaces, pure business logic
 data/           # Room, Supabase, repository implementations, DTOs
 ```
 
-Package root: `com.splitease.app`
+Single Gradle module `:app`. Money uses `java.math.BigDecimal` only (never `Float`/`Double`).
 
-## Module Structure
+## Tech stack
 
-- Single Gradle module `:app` for MVP speed.
-- Layer packages live under `com.splitease.app.{presentation,domain,data}`.
-- Multi-module split may be reconsidered after Phase 5 if build times or boundaries warrant it.
+| Concern    | Choice                      |
+| ---------- | --------------------------- |
+| UI         | Jetpack Compose, Material 3 |
+| DI         | Hilt                        |
+| Local DB   | Room (offline-first)        |
+| Async      | Coroutines + Flow           |
+| Navigation | Navigation Compose          |
+| Backend    | Supabase Auth + PostgREST   |
+| Charts     | Vico                        |
+| Work       | WorkManager (+ HiltWorker)  |
+| Money math | `BigDecimal`                |
 
-## Offline-first data layer (Phase 1)
+Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_BASE_URL`, `MAIL_SERVICE_API_KEY`) from gitignored `local.properties` → `BuildConfig`. Optional `GOOGLE_WEB_CLIENT_ID` (Google Cloud **Web** OAuth client ID; not a secret) for native Google Sign-In. Optional `EXCHANGE_RATE_API_KEY` for add-expense FX snapshots. Never ship database/service-role secrets or the Google client secret in the app. Supabase HTTP uses Ktor **OkHttp** (`httpEngine = OkHttp.create()` in `SupabaseModule`).
 
-```
-domain/model          # User, Friend, Group, Expense, …
-domain/repository     # Interfaces only (no Android deps)
-data/local/entity     # Room rows
-data/local/dao        # Queries + @Transaction helpers
-data/local/db         # SplitEaseDatabase (v1)
-data/repository       # Room*Repository implementations
-data/di               # DatabaseModule + RepositoryModule (Hilt)
-```
+## Data & sync
 
-**Money:** domain and Room entities use `java.math.BigDecimal`; persisted as TEXT plain strings via `SplitEaseTypeConverters`.
+- **IDs:** string UUIDs locally; `remoteId` stores the cloud id when synced.
+- **Sync bookmarks:** `syncStatus` (`LOCAL_ONLY` \| `PENDING` \| `SYNCED`) + `updatedAtEpochMs`.
+- **Flush then pull:** `SyncInteractor.syncForUser` flushes PENDING groups/members/invites/expenses/payments/pin boards, then pulls friends/groups/expenses/payments. Also runs on login / cold start / Account Sync / group resume.
+- **Conflict policy (pull):** Last-write-wins on `updatedAtEpochMs` via `SyncConflictPolicy`. A local `PENDING` / `LOCAL_ONLY` row is never replaced by an equal-or-older remote snapshot; `SYNCED` skips strictly older remote.
+- **Categories (cloud):** Built-in defaults use stable ids (`cat_general`, `cat_food`, …) on `expenses.category_id`. No Supabase `categories` table; pull auto-seeds missing defaults; push omits custom/local-only ids. Room v12 remaps legacy random default ids.
+- **Pin board:** Shared plain-text notepad per group. Room `pin_boards` cache (write locally, then flush). Debounced autosave (~2s) plus an explicit **Save** action. [PinBoardInteractor.load](app/src/main/java/com/splitease/app/data/pinboard/PinBoardInteractor.kt) fetches Supabase on open, resume, and idle poll so another member’s save is applied unless this device has a PENDING draft. No live collaborative cursor. See [PinBoardPolicy](app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt).
+- **Remote deletes:** After a successful group (or 1:1 involving-user) pull, local `SYNCED` expenses/payments absent from the remote id set are removed from Room. `PENDING` / `LOCAL_ONLY` are never pruned. Soft-delete / `deleted_at` is not used (cloud rows are hard-deleted).
+- **Balances:** derived from Room expenses/splits/payments (no balance tables). Stored `amount`/`currencyCode` after optional add-expense FX snapshot (INR↔USD via ExchangeRate-API or a custom rate; original amount kept on the Room row). Balances are not revalued as market rates move.
+- **Activity events:** local `activity_events` (Room); not cloud-synced.
+- **Schema SoT:** [docs/data-dictionary.md](docs/data-dictionary.md) + `app/schemas/` (Room **v15**).
 
-**IDs:** string UUIDs locally; `remoteId` stores the Supabase auth user id when synced.
+Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) (single canonical file). Optional FCM notify triggers are included and no-op until `app.settings` are set — see [docs/fcm-setup.md](docs/fcm-setup.md).
 
-**Sync bookmarks:** `syncStatus` (`LOCAL_ONLY` | `PENDING` | `SYNCED`) + `updatedAtEpochMs` — write path only for now; conflict/queue logic in Phase 7.
+Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured. Mute-all / mute-group live in `notification_prefs` (Settings + Group settings).
 
-**Schema source of truth:** `docs/data-dictionary.md` and exported JSON under `app/schemas/`.
+## Feature map (packages)
 
-## Tech Stack
+| Area                     | Key packages / types                                                                                                                                                                     |           |          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
+| Auth                     | `AuthRepository`, `SupabaseAuthRepository`, `presentation/auth` (signup + password-reset OTP + Google ID token), `presentation/onboarding` (welcome-email side effect; no setup UI)      |           |          |
+| Invites                  | `InviteLinks`, `InstallReferrerInviteBootstrap` (Play deferred deep link), `presentation/invite` (deep-link landing + join signup), `get_invite_preview` / `accept_invite_by_token` RPCs |           |          |
+| Friends & groups         | `SocialInteractor`, `SocialRemoteDataSource`, `presentation/friends\                                                                                                                     | groups\   | home`    |
+| Expenses                 | `SplitCalculator`, `ExpenseInteractor`, `presentation/expenses`                                                                                                                          |           |          |
+| Balances                 | `BalanceCalculator`, `DebtSimplifier`, `BalanceInteractor`                                                                                                                               |           |          |
+| Settlements / recurring  | `PaymentInteractor`, `RecurrenceScheduler`, `RecurringExpenseWorker`                                                                                                                     |           |          |
+| Search / spending / sync | `SyncInteractor`, `SpendingTotalsCalculator`, `presentation/search\                                                                                                                      | spending\ | account` |
+| Stretch                  | `PaymentDeepLinks`, `CsvTransactionParser`, `SpendingCategoryChart`, `ExchangeRateCurrencyService`                                                                                         |           |          |
+| Pin Board                | `PinBoardInteractor`, `PinBoardRemoteDataSource`, `presentation/pinboard`                                                                                                                |           |          |
+| Settings                 | `AppSettingsRepository` (currency, theme, locale, biometric lock, pending invite token, welcome-mail flags)                                                                                |           |          |
 
-| Concern | Choice |
-|---|---|
-| UI | Jetpack Compose, Material 3 |
-| DI | Hilt |
-| Local DB | Room (offline-first source of truth from Phase 1) |
-| Async | Coroutines + Flow |
-| Navigation | Navigation Compose |
-| Backend | **Supabase** (Auth Phase 2; PostgREST/Storage later) |
-| Images | Coil + Supabase Storage (later) |
-| Charts | Vico (Phase 8) |
-| Money math | `BigDecimal` only (never Float/Double) |
+Phase write-ups (historical Plan + Outcome): [docs/README.md](docs/README.md).
+
+## Theming & UI kit
+
+Hand-authored Material 3 schemes from the app icon (indigo + amber). No Material You dynamic color by default.
+
+Canonical tokens: [docs/design-tokens.md](docs/design-tokens.md) · code: `presentation/theme/` · phase: [docs/phase-0-project-setup-and-brand-theme.md](docs/phase-0-project-setup-and-brand-theme.md).
+
+Reusable `Se*` components in `presentation/ui/` wrap Material 3 with brand tokens. Prefer `Se*` / `MaterialTheme.colorScheme` over raw hex.
+
+Secondary screens with back + title use **one** chrome: `SeScreen` → `SeTopBar` → `SeScreenTitleText` (`SeScreenTitleStyle` / `titleLarge`). Spacing rhythm: `SeLayout` (see [design-tokens.md](docs/design-tokens.md#screen-chrome-back--title)).
+
+## Release size
+
+- Release: R8 minify + `shrinkResources` + optimized resource shrinking.
+- Keep rules: `app/proguard-rules.pro` (Hilt, Room, Kotlin serialization / Supabase DTOs).
 
 ## Conventions
 
 - Domain and data public APIs carry KDoc.
 - Financial calculations are pure Kotlin in `domain`, unit-tested with rounding edge cases.
-- Documentation for each phase lives under `docs/phase-<N>-*.md`; schema in `docs/data-dictionary.md`.
-
-## Phase 0 Notes
-
-Foundations only: Gradle/Compose/Hilt/Room classpath, theme, Welcome screen. No domain entities or cloud wiring yet.
-
-**As shipped (0.1.0):**
-- Single `:app` module; packages under `com.splitease.app.{presentation,domain,data}`
-- Entry: `SplitEaseApplication` (`@HiltAndroidApp`) → `MainActivity` → `SplitEaseNavHost` → `WelcomeScreen`
-- Style gate: ktlint (`./gradlew ktlintCheck`); Compose function naming allowed via `.editorconfig`
-- SDKs: min 26 / target & compile 36
-
-## Phase 1 Notes
-
-Local persistence is live: repositories inject Room DAOs. Auth (Phase 2) upserts the signed-in user and calls `CategoryRepository.ensureDefaults()` after sign-in/sign-up.
-
-## Authentication (Phase 2)
-
-```
-domain/repository/AuthRepository
-data/repository/SupabaseAuthRepository
-data/di/SupabaseModule          # createSupabaseClient + Auth plugin
-presentation/auth/*             # screens + AuthViewModel
-```
-
-- Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` from gitignored `local.properties` → `BuildConfig`.
-- **Never** ship the database password in the Android app.
-- Session Flow from `supabase.auth.sessionStatus` gates Welcome/auth vs Home.
-- Google OAuth is stubbed pending Supabase provider + deep-link setup.
-- **MVP: email confirmation skipped** — keep Confirm email disabled in Supabase Dashboard.  
-  **TODO (pre-production):** re-enable confirmation + in-app verify-email flow before release.
+- Documentation for each phase lives under `docs/phase-<N>-*.md`; keep Outcome sections; do not delete prior phase docs.

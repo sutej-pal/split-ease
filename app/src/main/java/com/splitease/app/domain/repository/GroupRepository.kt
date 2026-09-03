@@ -9,6 +9,14 @@ import kotlinx.coroutines.flow.Flow
  */
 interface GroupRepository {
     /**
+     * Observes groups the given user belongs to.
+     *
+     * @param userId Member user id.
+     * @return Cold [Flow] of groups ordered by name.
+     */
+    fun observeGroupsForUser(userId: String): Flow<List<Group>>
+
+    /**
      * Observes all locally cached groups.
      *
      * @return Cold [Flow] of groups ordered by name.
@@ -22,6 +30,14 @@ interface GroupRepository {
      * @return The group, or null.
      */
     suspend fun getGroupById(id: String): Group?
+
+    /**
+     * Observes a single group by id.
+     *
+     * @param id Local UUID.
+     * @return Cold [Flow] emitting the group or null when missing.
+     */
+    fun observeGroupById(id: String): Flow<Group?>
 
     /**
      * Inserts or replaces a group.
@@ -58,4 +74,35 @@ interface GroupRepository {
      * @param memberId Local UUID of the membership row.
      */
     suspend fun deleteMemberById(memberId: String)
+
+    /**
+     * Remaps membership user ids after invite accept.
+     *
+     * @param fromUserId Placeholder id.
+     * @param toUserId Real user id.
+     */
+    suspend fun remapMemberUserId(fromUserId: String, toUserId: String)
+
+    /**
+     * Loads a membership if present.
+     *
+     * @param groupId Group id.
+     * @param userId Member user id.
+     * @return Membership or null.
+     */
+    suspend fun getMember(groupId: String, userId: String): GroupMember?
+
+    /**
+     * Groups that still need a cloud upsert.
+     *
+     * @return Pending / local-only groups, oldest first.
+     */
+    suspend fun getPendingGroups(): List<Group>
+
+    /**
+     * Memberships that still need a cloud upsert.
+     *
+     * @return Pending / local-only members, oldest first.
+     */
+    suspend fun getPendingMembers(): List<GroupMember>
 }

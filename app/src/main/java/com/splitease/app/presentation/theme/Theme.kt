@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,62 +9,121 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-
-// Brand palette: teal/emerald — distinct from purple-on-white AI defaults and Splitwise green clone.
-private val BrandPrimary = Color(0xFF0F766E)
-private val BrandOnPrimary = Color(0xFFFFFFFF)
-private val BrandPrimaryContainer = Color(0xFFCCFBF1)
-private val BrandOnPrimaryContainer = Color(0xFF134E4A)
-private val BrandSecondary = Color(0xFF0E7490)
-private val BrandOnSecondary = Color(0xFFFFFFFF)
-private val BrandTertiary = Color(0xFF047857)
-private val BrandBackgroundLight = Color(0xFFF0FDFA)
-private val BrandSurfaceLight = Color(0xFFFAFFFE)
-private val BrandBackgroundDark = Color(0xFF042F2E)
-private val BrandSurfaceDark = Color(0xFF0A3D3B)
-
-private val LightColorScheme = lightColorScheme(
-    primary = BrandPrimary,
-    onPrimary = BrandOnPrimary,
-    primaryContainer = BrandPrimaryContainer,
-    onPrimaryContainer = BrandOnPrimaryContainer,
-    secondary = BrandSecondary,
-    onSecondary = BrandOnSecondary,
-    tertiary = BrandTertiary,
-    background = BrandBackgroundLight,
-    surface = BrandSurfaceLight,
-)
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF5EEAD4),
-    onPrimary = Color(0xFF134E4A),
-    primaryContainer = Color(0xFF0F766E),
-    onPrimaryContainer = Color(0xFFCCFBF1),
-    secondary = Color(0xFF67E8F9),
-    onSecondary = Color(0xFF083344),
-    tertiary = Color(0xFF6EE7B7),
-    background = BrandBackgroundDark,
-    surface = BrandSurfaceDark,
-)
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /**
- * SplitEase Material 3 theme with dynamic color on API 31+ and a teal brand fallback.
+ * Hand-authored light scheme from brand tokens in [Color.kt].
+ * Dynamic / tonal Material You generation is intentionally not used for brand roles.
+ */
+private val LightColorScheme =
+    lightColorScheme(
+        primary = IndigoLight,
+        onPrimary = Color.White,
+        primaryContainer = PrimaryContainerLight,
+        onPrimaryContainer = TextPrimaryLight,
+        secondary = IndigoLight,
+        onSecondary = Color.White,
+        secondaryContainer = PrimaryContainerLight,
+        onSecondaryContainer = TextPrimaryLight,
+        tertiary = AmberLight,
+        onTertiary = TextPrimaryLight,
+        tertiaryContainer = BannerHomeLight,
+        onTertiaryContainer = TextPrimaryLight,
+        background = BackgroundLight,
+        onBackground = TextPrimaryLight,
+        surface = SurfaceLight,
+        onSurface = TextPrimaryLight,
+        surfaceVariant = SurfaceMutedLight,
+        onSurfaceVariant = TextSecondaryLight,
+        outline = OutlineLight,
+        outlineVariant = OutlineVariantLight,
+        error = ErrorPlaceholder,
+        onError = Color.White,
+        errorContainer = ErrorContainerPlaceholder,
+        onErrorContainer = ErrorPlaceholder,
+        inverseSurface = TextPrimaryLight,
+        inverseOnSurface = BackgroundLight,
+        inversePrimary = IndigoDark,
+        surfaceTint = IndigoLight,
+    )
+
+/**
+ * Hand-authored dark scheme from brand tokens in [Color.kt].
+ */
+private val DarkColorScheme =
+    darkColorScheme(
+        primary = IndigoDark,
+        onPrimary = BackgroundDark,
+        primaryContainer = SurfaceDark,
+        onPrimaryContainer = TextPrimaryDark,
+        secondary = IndigoDark,
+        onSecondary = BackgroundDark,
+        secondaryContainer = SurfaceDark,
+        onSecondaryContainer = TextPrimaryDark,
+        tertiary = AmberDark,
+        onTertiary = BackgroundDark,
+        tertiaryContainer = Color(0xFF4A3400),
+        onTertiaryContainer = AmberDark,
+        background = BackgroundDark,
+        onBackground = TextPrimaryDark,
+        surface = SurfaceDark,
+        onSurface = TextPrimaryDark,
+        surfaceVariant = SurfaceDark,
+        onSurfaceVariant = TextSecondaryDark,
+        outline = Color(0xFF4B465C),
+        outlineVariant = Color(0xFF3A3552),
+        error = ErrorPlaceholder,
+        onError = Color.White,
+        errorContainer = Color(0xFF8C1D18),
+        onErrorContainer = ErrorContainerPlaceholder,
+    )
+
+/**
+ * SplitEase Material 3 theme using the icon-derived indigo/amber brand palette.
+ *
+ * Dynamic color is **off by default** so brand identity stays consistent; pass
+ * [dynamicColor] = true only if an explicit settings opt-in is added later.
+ *
+ * @param darkTheme When true, uses the dark brand scheme.
+ * @param dynamicColor Android 12+ Material You (opt-in only; not the default).
  */
 @Composable
 fun SplitEaseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme =
+        when {
+            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                val context = LocalContext.current
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            }
+            darkTheme -> DarkColorScheme
+            else -> LightColorScheme
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            // Match system bars to the theme background. With edge-to-edge
+            // (MainActivity.enableEdgeToEdge), these may be translucent; icon
+            // contrast is still controlled via WindowInsetsController.
+            @Suppress("DEPRECATION")
+            window.statusBarColor = colorScheme.background.toArgb()
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
     }
 
     MaterialTheme(

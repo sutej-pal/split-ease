@@ -12,6 +12,17 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface GroupDao {
+    /** @param userId Member user id. @return Flow of groups the user belongs to. */
+    @Query(
+        """
+        SELECT g.* FROM groups g
+        INNER JOIN group_members m ON m.groupId = g.id
+        WHERE m.userId = :userId
+        ORDER BY g.name ASC
+        """,
+    )
+    fun observeGroupsForUser(userId: String): Flow<List<GroupEntity>>
+
     /** @return Flow of all groups ordered by name. */
     @Query("SELECT * FROM groups ORDER BY name ASC")
     fun observeAll(): Flow<List<GroupEntity>>
@@ -19,6 +30,10 @@ interface GroupDao {
     /** @param id Local UUID. @return Group or null. */
     @Query("SELECT * FROM groups WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): GroupEntity?
+
+    /** @param id Local UUID. @return Flow of matching rows (0 or 1). */
+    @Query("SELECT * FROM groups WHERE id = :id LIMIT 1")
+    fun observeById(id: String): Flow<List<GroupEntity>>
 
     /** Inserts or replaces [group]. */
     @Upsert
@@ -39,4 +54,43 @@ interface GroupDao {
     /** Deletes membership [memberId]. */
     @Query("DELETE FROM group_members WHERE id = :memberId")
     suspend fun deleteMemberById(memberId: String)
+
+    /**
+     * Remaps membership user ids after invite accept.
+     *
+     * @param fromUserId Old placeholder id.
+     * @param toUserId Real user id.
+     */
+    @Query("UPDATE group_members SET userId = :toUserId WHERE userId = :fromUserId")
+    suspend fun remapMemberUserId(fromUserId: String, toUserId: String)
+
+    /** @param groupId Group. @param userId Member. @return Membership or null. */
+    @Query(
+        """
+        SELECT * FROM group_members
+        WHERE groupId = :groupId AND userId = :userId
+        LIMIT 1
+        """,
+    )
+    suspend fun getMember(groupId: String, userId: String): GroupMemberEntity?
+
+    /** @return Groups awaiting cloud upload. */
+    @Query(
+        """
+        SELECT * FROM groups
+        WHERE syncStatus IN ('PENDING', 'LOCAL_ONLY')
+        ORDER BY updatedAtEpochMs ASC
+        """,
+    )
+    suspend fun getPendingGroups(): List<GroupEntity>
+
+    /** @return Memberships awaiting cloud upload. */
+    @Query(
+        """
+        SELECT * FROM group_members
+        WHERE syncStatus IN ('PENDING', 'LOCAL_ONLY')
+        ORDER BY joinedAtEpochMs ASC
+        """,
+    )
+    suspend fun getPendingMembers(): List<GroupMemberEntity>
 }

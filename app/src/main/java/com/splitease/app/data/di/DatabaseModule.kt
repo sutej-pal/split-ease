@@ -2,13 +2,19 @@ package com.splitease.app.data.di
 
 import android.content.Context
 import androidx.room.Room
+import com.splitease.app.data.local.dao.ActivityEventDao
 import com.splitease.app.data.local.dao.CategoryDao
+import com.splitease.app.data.local.dao.ExpenseCommentDao
 import com.splitease.app.data.local.dao.ExpenseDao
+import com.splitease.app.data.local.dao.ExpensePhotoDao
 import com.splitease.app.data.local.dao.FriendDao
 import com.splitease.app.data.local.dao.GroupDao
+import com.splitease.app.data.local.dao.InviteDao
 import com.splitease.app.data.local.dao.PaymentDao
+import com.splitease.app.data.local.dao.PinBoardDao
 import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.db.SplitEaseDatabase
+import com.splitease.app.data.local.db.SplitEaseMigrations
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,11 +39,12 @@ object DatabaseModule {
     fun provideDatabase(
         @ApplicationContext context: Context,
     ): SplitEaseDatabase =
-        Room.databaseBuilder(
+        Room
+            .databaseBuilder(
             context,
             SplitEaseDatabase::class.java,
             SplitEaseDatabase.NAME,
-        ).fallbackToDestructiveMigration(dropAllTables = true)
+        ).addMigrations(*SplitEaseMigrations.ALL)
             .build()
 
     /** @param db Database. @return [UserDao]. */
@@ -60,7 +67,27 @@ object DatabaseModule {
     @Provides
     fun provideExpenseDao(db: SplitEaseDatabase): ExpenseDao = db.expenseDao()
 
+    /** @param db Database. @return [ExpenseCommentDao]. */
+    @Provides
+    fun provideExpenseCommentDao(db: SplitEaseDatabase): ExpenseCommentDao = db.expenseCommentDao()
+
+    /** @param db Database. @return [ExpensePhotoDao]. */
+    @Provides
+    fun provideExpensePhotoDao(db: SplitEaseDatabase): ExpensePhotoDao = db.expensePhotoDao()
+
     /** @param db Database. @return [PaymentDao]. */
     @Provides
     fun providePaymentDao(db: SplitEaseDatabase): PaymentDao = db.paymentDao()
+
+    /** @param db Database. @return [InviteDao]. */
+    @Provides
+    fun provideInviteDao(db: SplitEaseDatabase): InviteDao = db.inviteDao()
+
+    /** @param db Database. @return [PinBoardDao]. */
+    @Provides
+    fun providePinBoardDao(db: SplitEaseDatabase): PinBoardDao = db.pinBoardDao()
+
+    /** @param db Database. @return [ActivityEventDao]. */
+    @Provides
+    fun provideActivityEventDao(db: SplitEaseDatabase): ActivityEventDao = db.activityEventDao()
 }

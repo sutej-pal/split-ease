@@ -12,16 +12,38 @@ captures/
 *.ap_
 *.dex
 *.class
+*.dm
 .cxx/
 .externalNativeBuild/
 .kotlin/
+build-install.log
+*.log
+compile_out*.txt
+compile_rebuild.txt
+compile_navfix.txt
+.tmp-debug/
+.tmp-ui-*.xml
+
+# assembleRelease / bundle outputs (not source)
+/release/
+/app/release/
+/app/standard/
+**/output-metadata.json
+
+# Nested clone of the separate mail-service repo (lives in ../server)
+/mail-service/
+
+# Supabase CLI local link state
+supabase/.temp/
 
 # Secrets
 google-services.json
 **/google-services.json
 *.jks
 *.keystore
-
+keystore/*.jks
+keystore/*.keystore
+secret/*.json
 # Docs screenshots may be large; keep placeholders
 # docs/screenshots/*.png are intentional once captured
 

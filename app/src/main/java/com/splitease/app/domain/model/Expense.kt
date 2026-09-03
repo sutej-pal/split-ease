@@ -18,6 +18,8 @@ import java.math.BigDecimal
  * @property splitType How participant shares were computed.
  * @property isRecurring Whether a recurrence rule applies.
  * @property recurrenceFrequency Cadence when [isRecurring] is true.
+ * @property nextOccurrenceEpochMs Next generate-at for templates; null when not recurring.
+ * @property recurringTemplateId Parent template id for generated instances.
  * @property notes Optional free-form note.
  * @property remoteId Cloud id when synced.
  * @property createdAtEpochMs Creation timestamp.
@@ -36,12 +38,32 @@ data class Expense(
     val splitType: SplitType,
     val isRecurring: Boolean = false,
     val recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
+    val nextOccurrenceEpochMs: Long? = null,
+    val recurringTemplateId: String? = null,
     val notes: String? = null,
     val remoteId: String? = null,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    /** Amount in the currency it was originally entered (before conversion). */
+    val originalAmount: BigDecimal? = null,
+    /** Currency code selected at creation. */
+    val originalCurrencyCode: String? = null,
+    /** Captured exchange rate: 1 [originalCurrencyCode] = X [currencyCode]. */
+    val rateToDefaultCurrency: BigDecimal? = null,
+    /** Source of the exchange rate. */
+    val rateSource: ExchangeRateSource? = null,
 )
+
+/**
+ * Source of the exchange rate for an expense.
+ */
+enum class ExchangeRateSource {
+    /** Rate fetched from a live API (e.g. ExchangeRate-API). */
+    LIVE,
+    /** Rate entered manually by the user. */
+    CUSTOM,
+}
 
 /**
  * One participant's share of an [Expense].
@@ -52,6 +74,8 @@ data class Expense(
  * @property owedAmount Exact amount owed toward this expense (currency of parent).
  * @property percentage Optional percent used when [SplitType.PERCENTAGE].
  * @property shares Optional share weight used when [SplitType.SHARES].
+ * @property paidAmount Optional multi-payer paid amount.
+ * @property adjustmentAmount Optional extra owed when [SplitType.ADJUSTMENT].
  * @property syncStatus Offline-first sync bookmark.
  */
 data class ExpenseSplit(
@@ -61,5 +85,15 @@ data class ExpenseSplit(
     val owedAmount: BigDecimal,
     val percentage: BigDecimal? = null,
     val shares: Int? = null,
+    /**
+     * Amount this participant paid toward the expense.
+     *
+     * Null means legacy single-payer mode: only [Expense.paidByUserId] is credited the full
+     * expense amount. When any split has a non-null value, balances credit each
+     * [paidAmount] instead.
+     */
+    val paidAmount: BigDecimal? = null,
+    /** Extra owed beyond equal remainder when [SplitType.ADJUSTMENT]. */
+    val adjustmentAmount: BigDecimal? = null,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
 )

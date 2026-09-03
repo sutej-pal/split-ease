@@ -1,0 +1,23 @@
+---
+description: Stick to existing SplitEase UI theme unless the user explicitly requests otherwise
+alwaysApply: true
+---
+
+# UI theme — follow existing design
+
+## Default
+
+Always match the **existing SplitEase UI theme** (icon-derived indigo/amber brand, light + dark Material 3 schemes, `Se*` components, `SplitEaseColors` / `Color.kt`, Material 3 typography).
+
+Do **not** invent alternate looks (custom accent schemes, one-off dialog skins) unless the user **explicitly** asks for a different theme or visual direction.
+
+## Concrete rules
+
+- Prefer `presentation/ui/Se*` building blocks (`SeScreen`, `SeModal`, `SePrimaryButton`, `SeTextButton`, `SeListRow`, etc.) over raw Material widgets with custom colors.
+- New modals/dialogs → use `SeModal` / `SeModalTitle` / `SeModalBody`.
+- Colors → brand vals in `presentation/theme/Color.kt`, `MaterialTheme.colorScheme` via `SplitEaseTheme`, and `SplitEaseColors` aliases. Do not hardcode hex outside theme files.
+- Screenshots or third-party UI mocks are **content/layout references** only; restyle them to the app theme unless the user says otherwise.
+
+## Exception
+
+Only deviate when the user clearly requests a different theme, palette, or a pixel-matched custom look.

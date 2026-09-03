@@ -32,7 +32,7 @@ For each phase:
 1. Create `docs/phase-<N>-<short-name>.md` **before** implementation with a Plan section.
 2. Update with Outcome at phase end. Never delete prior phase docs.
 3. Required sections: Phase Goal, Scope (In/Out), Architecture Decisions, Data Model Changes, Files Added/Modified, Screens/UI Added, How to Test, Known Issues/TODOs, Screenshots placeholder.
-4. Keep `PROGRESS.md`, `CHANGELOG.md` (Keep a Changelog), `ARCHITECTURE.md`, and `docs/data-dictionary.md` current.
+4. Keep `PROGRESS.md`, `CHANGELOG.md` (Keep a Changelog), `RELEASES.md` (build counter), `ARCHITECTURE.md`, and `docs/data-dictionary.md` current.
 5. KDoc on public `domain` and `data` APIs.
 
 ## Money & libraries
@@ -44,3 +44,7 @@ For each phase:
 ## Commits
 
 Prefer small reviewable diffs; suggest a commit message per logical unit. Do not commit unless the user asks.
+
+## Releases
+
+When the user asks to create a release / ship a Play build, **do not** hand-edit `versionCode`. Run `./gradlew newRelease` (optional `-Pbump=minor|major`, `-Pnotes="..."`). That increments the build counter, bumps SemVer in `version.properties`, prepends `RELEASES.md`, and cuts `CHANGELOG.md` `[Unreleased]`.
