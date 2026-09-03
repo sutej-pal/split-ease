@@ -22,9 +22,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -80,14 +81,28 @@ class PinBoardViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * Runs [body] then cancels the ViewModel's perpetual refresh loop before [runTest] performs its
+     * own end-of-body scheduler drain. Without this, the shared test scheduler would spin forever on
+     * the periodic refresh `delay` loop. Cleanup runs in `finally` so a failing assertion still frees it.
+     */
+    private fun vmTest(body: suspend TestScope.() -> Unit) =
+        runTest {
+            try {
+                body()
+            } finally {
+                viewModel.onCleared()
+            }
+        }
+
     @Test
     fun load_shows_cached_content_before_remote_completes() =
-        runTest {
+        vmTest {
             coEvery { interactor.peekLocal("g1") } returns dto(content = "cached draft")
             coEvery { interactor.load("g1") } returns dto(content = "from server")
 
             viewModel.load("g1")
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("from server", viewModel.uiState.value.content)
             assertEquals(false, viewModel.uiState.value.isLoading)
@@ -95,17 +110,17 @@ class PinBoardViewModelTest {
 
     @Test
     fun load_failure_with_no_cache_retries_on_refresh_loop() =
-        runTest {
+        vmTest {
             coEvery { interactor.peekLocal("g1") } returns null
             coEvery { interactor.load("g1") } throws RuntimeException("offline") andThen dto(content = "recovered")
 
             viewModel.load("g1")
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("Something went wrong.", viewModel.uiState.value.errorMessage)
 
-            advanceTimeBy(15_000)
-            advanceUntilIdle()
+            advanceTimeBy(15_001)
+            runCurrent()
 
             coVerify(atLeast = 2) { interactor.load("g1") }
             assertEquals("recovered", viewModel.uiState.value.content)
@@ -113,16 +128,16 @@ class PinBoardViewModelTest {
 
     @Test
     fun refreshFromRemote_does_not_overwrite_pending_draft() =
-        runTest {
+        vmTest {
             coEvery { interactor.peekLocal("g1") } returns null
             coEvery { interactor.load("g1") } returns dto(content = "server copy")
 
             viewModel.load("g1")
-            advanceUntilIdle()
+            runCurrent()
 
             viewModel.onContentChanged("my unsaved draft")
             viewModel.refreshFromRemote()
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("my unsaved draft", viewModel.uiState.value.content)
             assertEquals(SaveState.PENDING, viewModel.uiState.value.saveState)
@@ -130,28 +145,28 @@ class PinBoardViewModelTest {
 
     @Test
     fun refreshFromRemote_preserves_saved_state_when_remote_unchanged() =
-        runTest {
+        vmTest {
             coEvery { interactor.peekLocal("g1") } returns null
             coEvery { interactor.load("g1") } returns dto(content = "hello")
             coEvery { interactor.saveLocal("g1", "hello", "u1") } returns Unit
             coEvery { interactor.sync("g1") } returns "hello"
 
             viewModel.load("g1")
-            advanceUntilIdle()
+            runCurrent()
             viewModel.saveImmediately()
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(SaveState.SAVED, viewModel.uiState.value.saveState)
 
             viewModel.refreshFromRemote()
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(SaveState.SAVED, viewModel.uiState.value.saveState)
         }
 
     @Test
     fun refreshFromRemote_resets_saved_state_when_remote_content_changes() =
-        runTest {
+        vmTest {
             coEvery { interactor.peekLocal("g1") } returns null
             coEvery { interactor.load("g1") } returnsMany
                 listOf(
@@ -162,13 +177,13 @@ class PinBoardViewModelTest {
             coEvery { interactor.sync("g1") } returns "hello"
 
             viewModel.load("g1")
-            advanceUntilIdle()
+            runCurrent()
             viewModel.saveImmediately()
-            advanceUntilIdle()
+            runCurrent()
             assertEquals(SaveState.SAVED, viewModel.uiState.value.saveState)
 
             viewModel.refreshFromRemote()
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("someone else edited", viewModel.uiState.value.content)
             assertEquals(SaveState.IDLE, viewModel.uiState.value.saveState)
@@ -177,12 +192,12 @@ class PinBoardViewModelTest {
 
     @Test
     fun load_with_cache_shows_content_even_when_initial_fetch_fails() =
-        runTest {
+        vmTest {
             coEvery { interactor.peekLocal("g1") } returns dto(content = "offline draft")
             coEvery { interactor.load("g1") } throws RuntimeException("offline")
 
             viewModel.load("g1")
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("offline draft", viewModel.uiState.value.content)
             assertNotNull(viewModel.uiState.value.errorMessage)
@@ -190,16 +205,16 @@ class PinBoardViewModelTest {
 
     @Test
     fun load_with_no_cache_clears_error_after_successful_refresh() =
-        runTest {
+        vmTest {
             coEvery { interactor.peekLocal("g1") } returns null
             coEvery { interactor.load("g1") } throws RuntimeException("offline") andThen dto(content = "loaded")
 
             viewModel.load("g1")
-            advanceUntilIdle()
+            runCurrent()
             assertNotNull(viewModel.uiState.value.errorMessage)
 
-            advanceTimeBy(15_000)
-            advanceUntilIdle()
+            advanceTimeBy(15_001)
+            runCurrent()
 
             assertEquals("loaded", viewModel.uiState.value.content)
             assertNull(viewModel.uiState.value.errorMessage)

@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.settings
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -71,6 +72,14 @@ import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
+
+private fun openSystemNotificationSettings(context: Context) {
+    val intent =
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+    context.startActivity(intent)
+}
 
 @Composable
 fun SettingsScreen(
@@ -149,7 +158,7 @@ fun SettingsScreen(
                             tint = SplitEaseColors.NavyMuted,
                         )
                     },
-                    onClick = onOpenNotifications,
+                    onClick = { openSystemNotificationSettings(context) },
                     showDivider = true,
                 )
                 SeListRow(
@@ -286,10 +295,34 @@ fun NotificationsSettingsScreen(
                     )
                     SeTextButton(
                         text = stringResource(R.string.settings_notifications_open_system),
-                        onClick = { openSystemNotificationSettings() },
+                        onClick = { openSystemNotificationSettings(context) },
                         emphasized = true,
                     )
                 }
+                HorizontalDivider(
+                    color = SplitEaseColors.Outline,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                )
+                SeListRow(
+                    title = stringResource(R.string.settings_notifications_item),
+                    subtitle = stringResource(R.string.settings_notifications_open_system),
+                    leading = {
+                        SeIconTile(
+                            icon = Icons.Filled.Notifications,
+                            tint = SplitEaseColors.IconFriends,
+                            size = 40,
+                        )
+                    },
+                    trailing = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = SplitEaseColors.NavyMuted,
+                        )
+                    },
+                    onClick = { openSystemNotificationSettings(context) },
+                    showDivider = false,
+                )
             }
         },
     )

@@ -219,12 +219,7 @@ class PinBoardViewModel
                     lastEditedAt = dto.updatedAt,
                     errorMessage = null,
                     contentRevision = if (contentChanged) prev.contentRevision + 1 else prev.contentRevision,
-                    saveState =
-                        when {
-                            !contentChanged -> prev.saveState
-                            prev.saveState == SaveState.SAVED -> SaveState.SAVED
-                            else -> SaveState.IDLE
-                        },
+                    saveState = if (contentChanged) SaveState.IDLE else prev.saveState,
                 )
         }
 

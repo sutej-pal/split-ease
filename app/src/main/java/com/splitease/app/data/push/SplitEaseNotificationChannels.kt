@@ -25,7 +25,9 @@ object SplitEaseNotificationChannels {
                 GROUP_UPDATES,
                 context.getString(R.string.notification_channel_group_updates),
                 NotificationManager.IMPORTANCE_HIGH,
-            )
+            ).apply {
+                setShowBadge(true)
+            }
         manager.createNotificationChannel(channel)
     }
 }
