@@ -110,6 +110,11 @@ class AuthViewModel
         /** Form loading / error / info for auth screens. */
         val formState: StateFlow<AuthFormState> = _formState.asStateFlow()
 
+        private val _isSigningOut = MutableStateFlow(false)
+
+        /** True while Account sign-out is flushing pending writes and wiping local data. */
+        val isSigningOut: StateFlow<Boolean> = _isSigningOut.asStateFlow()
+
         /** Pending invite token from a deep link (null when none). */
         val pendingInviteToken: StateFlow<String?> =
             appSettingsRepository
@@ -877,6 +882,8 @@ class AuthViewModel
 
         /** Signs out the current user and clears local session data. */
         fun signOut() {
+            if (_isSigningOut.value) return
+            _isSigningOut.value = true
             _formState.update {
                 it.copy(
                     pendingConfirmationEmail = null,
@@ -886,8 +893,12 @@ class AuthViewModel
                 )
             }
             pendingFriendReviewStore.clear()
-            submit {
-                authRepository.signOut()
+            viewModelScope.launch {
+                try {
+                    authRepository.signOut()
+                } finally {
+                    _isSigningOut.value = false
+                }
             }
         }
 

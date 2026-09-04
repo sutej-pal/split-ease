@@ -326,6 +326,7 @@ fun SplitEaseNavHost(
 ) {
     val session by authViewModel.session.collectAsStateWithLifecycle()
     val formState by authViewModel.formState.collectAsStateWithLifecycle()
+    val isSigningOut by authViewModel.isSigningOut.collectAsStateWithLifecycle()
     val pendingInviteToken by authViewModel.pendingInviteToken.collectAsStateWithLifecycle()
     val onContinueWithGoogle = rememberContinueWithGoogle(authViewModel)
 
@@ -516,6 +517,7 @@ fun SplitEaseNavHost(
             SignedInNavHost(
                 userId = current.user.userId,
                 onSignOut = authViewModel::signOut,
+                isSigningOut = isSigningOut,
                 pendingInviteToken = pendingInviteToken,
                 claimInviteAndConsumeOpenTarget = authViewModel::claimInviteAndConsumeOpenTarget,
                 observePendingNotificationGroupId = {
@@ -531,6 +533,7 @@ fun SplitEaseNavHost(
 private fun SignedInNavHost(
     userId: String,
     onSignOut: () -> Unit,
+    isSigningOut: Boolean,
     pendingInviteToken: String?,
     claimInviteAndConsumeOpenTarget: suspend () -> String?,
     observePendingNotificationGroupId: () -> kotlinx.coroutines.flow.Flow<String?>,
@@ -668,6 +671,7 @@ private fun SignedInNavHost(
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
                     onOpenImport = { navController.navigate(Routes.IMPORT) },
                     onSignOut = onSignOut,
+                    isSigningOut = isSigningOut,
                 )
             }
             composable(Routes.ACCOUNT_PROFILE_SETTINGS) {

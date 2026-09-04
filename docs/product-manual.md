@@ -193,7 +193,7 @@ On group detail, **Pin Board** is a shared plain-text notepad. All members can r
 
 ### 5.10 Activity, search, spending, import
 
-- **Activity:** local `activity_events` (your actions on this device).  
+- **Activity:** local `activity_events` (your actions on this device), **newest first**. Create a group then add an expense in the same minute: the expense is on top (it happened last) and “you created the group” is next. Clock labels may match because they hide seconds.  
 - **Search:** find expenses.  
 - **Spending:** category/period totals and charts.  
 - **Import:** CSV with header `date, description, amount`, optional `currency`, optional `category`. Dates `yyyy-MM-dd` or `dd/MM/yyyy`.

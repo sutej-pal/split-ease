@@ -26,6 +26,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -129,6 +130,39 @@ class SyncInteractor
         fun resetSession() {
             lastSyncCompletedAtMs = 0L
             hydrateGate.reset()
+        }
+
+        /**
+         * Invalidates in-flight expense Room writes so a late cloud callback cannot
+         * re-insert rows after sign-out wipe.
+         */
+        fun discardLocalWrites() {
+            expenseInteractor.get().invalidateSession()
+        }
+
+        /**
+         * Waits for in-flight local expense writes, then pushes PENDING rows while
+         * the session is still valid. Call this **before** auth sign-out / Room wipe.
+         *
+         * Each step has its own timeout so a hung push cannot skip the Room flush,
+         * and a hung flush cannot block sign-out forever. Remaining PENDING rows
+         * are then discarded with the rest of local data.
+         */
+        suspend fun flushBeforeSignOut() {
+            // Local create may still be in cloudScope; wait, but do not skip the
+            // Room flush if that wait times out (row may already be PENDING).
+            withTimeoutOrNull(SIGN_OUT_FLUSH_TIMEOUT_MS) {
+                expenseInteractor.get().awaitInFlightWork()
+            }
+            withTimeoutOrNull(SIGN_OUT_FLUSH_TIMEOUT_MS) {
+                val result = flushPending()
+                if (result.failures.isNotEmpty()) {
+                    android.util.Log.w(
+                        "SignOutSync",
+                        "Flush before sign-out had failures: ${result.failures}",
+                    )
+                }
+            }
         }
 
         /**
@@ -385,6 +419,7 @@ class SyncInteractor
 
         private companion object {
             const val MIN_SYNC_GAP_MS = 8_000L
+            const val SIGN_OUT_FLUSH_TIMEOUT_MS = 10_000L
             const val HYDRATE_PREFS_NAME = "splitease_sync"
             const val KEY_HYDRATE_COMPLETED_USER_ID = "initial_hydrate_completed_user_id"
         }

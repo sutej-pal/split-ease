@@ -112,6 +112,22 @@ class AuthViewModelTest {
         }
 
     @Test
+    fun `account signOut does not use form loading and ignores a second tap`() =
+        runTest {
+            coEvery { repository.signOut() } coAnswers {
+                assertTrue(viewModel.isSigningOut.value)
+                assertFalse(viewModel.formState.value.isLoading)
+                Result.success(Unit)
+            }
+            viewModel.signOut()
+            viewModel.signOut()
+            advanceUntilIdle()
+            assertFalse(viewModel.isSigningOut.value)
+            assertFalse(viewModel.formState.value.isLoading)
+            coVerify(exactly = 1) { repository.signOut() }
+        }
+
+    @Test
     fun `signIn blank fields skips api and asks to fill values`() =
         runTest {
             viewModel.signIn("", "")

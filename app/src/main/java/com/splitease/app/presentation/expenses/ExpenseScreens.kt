@@ -155,6 +155,7 @@ fun AddExpenseScreen(
     var expenseDateMs by rememberSaveable(expenseId) {
         mutableLongStateOf(System.currentTimeMillis())
     }
+    var customDatePicked by rememberSaveable(expenseId) { mutableStateOf(false) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var closingAfterSave by remember { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
@@ -214,6 +215,7 @@ fun AddExpenseScreen(
         // so a quick save cannot overwrite the original added/expense date with "now".
         if (!prefilled) {
             expenseDateMs = detail.expense.expenseDateEpochMs
+            customDatePicked = true
         }
     }
 
@@ -458,6 +460,8 @@ fun AddExpenseScreen(
             } else {
                 emptyMap()
             }
+        val finalExpenseDateMs =
+            if (isEdit || customDatePicked) expenseDateMs else System.currentTimeMillis()
         if (isEdit) {
             viewModel.updateExpense(
                 expenseId = expenseId,
@@ -474,7 +478,7 @@ fun AddExpenseScreen(
                 paidAmounts = multiPaidAmounts,
                 categoryId = selectedCategoryId,
                 notes = notes.trim().ifBlank { null },
-                expenseDateEpochMs = expenseDateMs,
+                expenseDateEpochMs = finalExpenseDateMs,
                 onSuccess = onDone,
             )
         } else {
@@ -497,7 +501,7 @@ fun AddExpenseScreen(
                 recurrenceFrequency = RecurrenceFrequency.NONE,
                 categoryId = selectedCategoryId,
                 notes = notes.trim().ifBlank { null },
-                expenseDateEpochMs = expenseDateMs,
+                expenseDateEpochMs = finalExpenseDateMs,
             )
         }
     }
@@ -852,6 +856,7 @@ fun AddExpenseScreen(
                     onClick = {
                         dateState.selectedDateMillis?.let { utcDay ->
                             expenseDateMs = mergeUtcDateWithLocalTime(utcDay, expenseDateMs)
+                            customDatePicked = true
                         }
                         showDatePicker = false
                         showTimePicker = true
@@ -887,6 +892,7 @@ fun AddExpenseScreen(
             onConfirm = {
                 expenseDateMs =
                     applyLocalTime(expenseDateMs, timeState.hour, timeState.minute)
+                customDatePicked = true
                 showTimePicker = false
             },
         ) {

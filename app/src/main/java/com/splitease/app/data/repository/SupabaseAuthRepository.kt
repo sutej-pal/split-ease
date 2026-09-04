@@ -345,6 +345,10 @@ class SupabaseAuthRepository
 
         override suspend fun signOut(): Result<Unit> =
             runCatching {
+                // Push local PENDING rows while the session still has a token.
+                runCatching { syncInteractor.get().flushBeforeSignOut() }
+                // Drop in-flight persist callbacks before wipe (and before auth token is gone).
+                runCatching { syncInteractor.get().discardLocalWrites() }
                 supabase.auth.signOut()
                 lastProfileUpsertUserId = null
                 lastProfileUpsertAtMs = 0L

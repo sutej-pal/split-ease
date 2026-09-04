@@ -165,6 +165,9 @@ interface AuthRepository {
     /**
      * Signs out the current user and clears the local session.
      *
+     * Best-effort: flushes PENDING local writes to the server before the
+     * auth session is dropped and Room is wiped.
+     *
      * @return [Result] success or failure with message.
      */
     suspend fun signOut(): Result<Unit>

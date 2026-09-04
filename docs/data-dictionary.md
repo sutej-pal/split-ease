@@ -121,7 +121,7 @@ Unique index: `(groupId, userId)`.
 | recurringTemplateId   | TEXT                             | yes      | Parent template id for generated instances    |
 | notes                 | TEXT                             | yes      | Free-form note                                |
 | remoteId              | TEXT                             | yes      | Cloud id when synced                          |
-| createdAtEpochMs      | INTEGER                          | no       | Created-at UTC millis                         |
+| createdAtEpochMs      | INTEGER                          | no       | Created-at UTC millis. Cloud `expenses` has no `created_at`; first hydrate uses `updated_at_epoch_ms` (else expense date). |
 | updatedAtEpochMs      | INTEGER                          | no       | Last mutation UTC millis                      |
 | syncStatus            | TEXT                             | no       | Sync bookmark                                 |
 | originalAmount        | TEXT                             | yes      | Amount as entered, before FX (Room v15)       |
@@ -232,7 +232,7 @@ Share-link burn heal + multi-use token accept: included in [sql/migration_db.sql
 | expenses | group_id | UUID | yes | Group or null for 1:1 |
 | expenses | expense_date_epoch_ms | BIGINT | no | Business date |
 | expenses | split_type | TEXT | no | EQUAL / UNEQUAL / PERCENTAGE / SHARES |
-| expenses | updated_at_epoch_ms | BIGINT | no | Last update |
+| expenses | updated_at_epoch_ms | BIGINT | no | Last update (also used as recorded time on first hydrate; no `created_at`) |
 | expense_splits | id | UUID (PK) | no | Split id |
 | expense_splits | expense_id | UUID | no | Parent expense |
 | expense_splits | user_id | UUID | no | Participant (no auth FK — placeholders allowed) |

@@ -14,6 +14,7 @@ import com.splitease.app.data.remote.dto.ExpensePhotoDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
 import com.splitease.app.data.remote.mapper.toDto
 import com.splitease.app.data.sync.ExpensePushPolicy
+import com.splitease.app.data.sync.InFlightWorkGate
 import com.splitease.app.data.sync.REMOTE_FETCH_ROW_CAP
 import com.splitease.app.data.sync.SyncConflictPolicy
 import com.splitease.app.data.sync.SyncInteractor
@@ -59,6 +60,7 @@ import java.text.DateFormat
 import java.util.Date
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -143,6 +145,8 @@ class ExpenseInteractor
         private val cloudScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val cloudPushMutex = Mutex()
         private val pushingExpenseIds = ConcurrentHashMap.newKeySet<String>()
+        private val inFlightWork = InFlightWorkGate()
+        private val sessionEpoch = AtomicLong(0)
 
         /**
          * Pushes one PENDING expense using the latest Room snapshot.
@@ -154,13 +158,15 @@ class ExpenseInteractor
          * @return true when the local row is [SyncStatus.SYNCED] after this attempt.
          */
         suspend fun flushPendingExpense(expenseId: String): Boolean {
+            val epoch = sessionEpoch.get()
             if (!pushingExpenseIds.add(expenseId)) return false
             try {
+                if (!isCurrentSession(epoch)) return false
                 val expense = expenseRepository.getExpenseById(expenseId) ?: return false
                 if (expense.syncStatus == SyncStatus.SYNCED) return true
-                runCatching { ensureGroupOnCloud(expense.groupId) }
+                runCatching { ensureGroupOnCloud(epoch, expense.groupId) }
                 val splits = expenseRepository.getSplits(expenseId)
-                val after = pushLatestSnapshot(expense.id, expense, splits)
+                val after = pushLatestSnapshot(epoch, expense.id, expense, splits)
                 return after.syncStatus == SyncStatus.SYNCED
             } finally {
                 pushingExpenseIds.remove(expenseId)
@@ -179,7 +185,9 @@ class ExpenseInteractor
             actorUserId: String? = null,
         ): Result<Expense> =
             runCatching {
+                val epoch = sessionEpoch.get()
                 val built = buildExpenseAndSplits(input = input, existing = null)
+                if (!isCurrentSession(epoch)) error("Session ended.")
                 expenseRepository.upsertExpenseWithSplits(built.expense, built.splits)
                 val actor = actorUserId?.takeIf { it.isNotBlank() } ?: built.expense.paidByUserId
                 recordExpenseActivity(
@@ -199,11 +207,33 @@ class ExpenseInteractor
             input: CreateExpenseInput,
             actorUserId: String? = null,
         ) {
+            inFlightWork.begin()
             cloudScope.launch {
-                runCatching { categoryRepository.ensureDefaults() }
-                createExpense(input, actorUserId)
+                try {
+                    runCatching { categoryRepository.ensureDefaults() }
+                    createExpense(input, actorUserId)
+                } finally {
+                    inFlightWork.end()
+                }
             }
         }
+
+        /**
+         * Waits until local creates and their background cloud pushes have finished
+         * (or failed). Used so sign-out can flush before wiping Room.
+         */
+        suspend fun awaitInFlightWork() {
+            inFlightWork.awaitIdle()
+        }
+
+        /**
+         * Drops in-flight cloud callbacks so they cannot write Room after sign-out wipe.
+         */
+        fun invalidateSession() {
+            sessionEpoch.incrementAndGet()
+        }
+
+        private fun isCurrentSession(epoch: Long): Boolean = sessionEpoch.get() == epoch
 
         /**
          * Updates an existing expense locally (Room `PENDING`) and schedules a background cloud push.
@@ -699,7 +729,9 @@ class ExpenseInteractor
                     expense.paidByUserId == userId || splits.any { it.userId == userId }
                 if (!involves) return@forEach
                 runCatching {
+                    val epoch = sessionEpoch.get()
                     pushAndPersistSynced(
+                        epoch = epoch,
                         expense = expense.copy(syncStatus = SyncStatus.PENDING),
                         splits = splits.map { it.copy(syncStatus = SyncStatus.PENDING) },
                     )
@@ -854,38 +886,48 @@ class ExpenseInteractor
          * the row is still PENDING after this attempt (process-death net).
          */
         private fun scheduleCloudPush(expenseId: String) {
+            val epoch = sessionEpoch.get()
+            inFlightWork.begin()
             cloudScope.launch {
-                if (pushingExpenseIds.add(expenseId)) {
-                    try {
-                        cloudPushMutex.withLock {
-                            val expense = expenseRepository.getExpenseById(expenseId) ?: return@withLock
-                            if (expense.syncStatus == SyncStatus.SYNCED) return@withLock
-                            val splits = expenseRepository.getSplits(expenseId)
-                            runCatching { pushAndPersistSynced(expense, splits) }
+                try {
+                    if (!isCurrentSession(epoch)) return@launch
+                    if (pushingExpenseIds.add(expenseId)) {
+                        try {
+                            cloudPushMutex.withLock {
+                                val expense = expenseRepository.getExpenseById(expenseId) ?: return@withLock
+                                if (expense.syncStatus == SyncStatus.SYNCED) return@withLock
+                                val splits = expenseRepository.getSplits(expenseId)
+                                runCatching { pushAndPersistSynced(epoch, expense, splits) }
+                            }
+                        } finally {
+                            pushingExpenseIds.remove(expenseId)
                         }
-                    } finally {
-                        pushingExpenseIds.remove(expenseId)
                     }
-                }
-                val stillPending =
-                    expenseRepository.getExpenseById(expenseId)?.syncStatus == SyncStatus.PENDING
-                if (stillPending) {
-                    SyncWorker.enqueueFollowUp(appContext)
+                    if (!isCurrentSession(epoch)) return@launch
+                    val stillPending =
+                        expenseRepository.getExpenseById(expenseId)?.syncStatus == SyncStatus.PENDING
+                    if (stillPending) {
+                        SyncWorker.enqueueFollowUp(appContext)
+                    }
+                } finally {
+                    inFlightWork.end()
                 }
             }
         }
 
         private suspend fun pushAndPersistSynced(
+            epoch: Long,
             expense: Expense,
             splits: List<ExpenseSplit>,
         ): Expense {
+            if (!isCurrentSession(epoch)) return expense
             // Ensure group/member rows exist remotely before expense FK upsert.
             runCatching { syncInteractor.get().flushPending() }
-            runCatching { ensureGroupOnCloud(expense.groupId) }
+            runCatching { ensureGroupOnCloud(epoch, expense.groupId) }
 
             val pushError =
                 runCatching {
-                    pushLatestSnapshot(expense.id, expense, splits)
+                    pushLatestSnapshot(epoch, expense.id, expense, splits)
                 }.exceptionOrNull()
 
             if (pushError == null) {
@@ -894,10 +936,10 @@ class ExpenseInteractor
 
             // Retry once after another social flush (group may have been PENDING / stale SYNCED).
             runCatching { syncInteractor.get().flushPending() }
-            runCatching { ensureGroupOnCloud(expense.groupId) }
+            runCatching { ensureGroupOnCloud(epoch, expense.groupId) }
             val retryError =
                 runCatching {
-                    pushLatestSnapshot(expense.id, expense, splits)
+                    pushLatestSnapshot(epoch, expense.id, expense, splits)
                 }.exceptionOrNull()
 
             if (retryError == null) {
@@ -919,12 +961,15 @@ class ExpenseInteractor
          * pushes again (up to [PUSH_LATEST_ATTEMPTS]) instead of marking a stale row SYNCED.
          */
         private suspend fun pushLatestSnapshot(
+            epoch: Long,
             expenseId: String,
             fallbackExpense: Expense,
             fallbackSplits: List<ExpenseSplit>,
         ): Expense {
+            if (!isCurrentSession(epoch)) return fallbackExpense
             var snapshot = latestLocalExpense(expenseId, fallbackExpense, fallbackSplits)
             repeat(PUSH_LATEST_ATTEMPTS) {
+                if (!isCurrentSession(epoch)) return snapshot.expense
                 if (snapshot.expense.syncStatus == SyncStatus.SYNCED) {
                     return snapshot.expense
                 }
@@ -933,10 +978,10 @@ class ExpenseInteractor
                 if (latest.expense.updatedAtEpochMs > snapshot.expense.updatedAtEpochMs) {
                     snapshot = latest
                 } else {
-                    return persistSyncedIfUnchanged(snapshot.expense, snapshot.splits)
+                    return persistSyncedIfUnchanged(epoch, snapshot.expense, snapshot.splits)
                 }
             }
-            return persistSyncedIfUnchanged(snapshot.expense, snapshot.splits)
+            return persistSyncedIfUnchanged(epoch, snapshot.expense, snapshot.splits)
         }
 
         private suspend fun latestLocalExpense(
@@ -957,25 +1002,29 @@ class ExpenseInteractor
          * A newer local edit stays PENDING for the next flush.
          */
         private suspend fun persistSyncedIfUnchanged(
+            epoch: Long,
             pushed: Expense,
             splits: List<ExpenseSplit>,
         ): Expense {
+            if (!isCurrentSession(epoch)) return pushed
             val current = expenseRepository.getExpenseById(pushed.id)
             if (!ExpensePushPolicy.shouldMarkSynced(current?.updatedAtEpochMs, pushed.updatedAtEpochMs)) {
                 return current ?: pushed
             }
-            return persistSyncedExpense(pushed, splits)
+            return persistSyncedExpense(epoch, pushed, splits)
         }
 
         /**
          * Re-upserts the group (and owner membership) even when local status is SYNCED.
          * Local SYNCED can be stale if a prior cloud write was rolled back.
          */
-        private suspend fun ensureGroupOnCloud(groupId: String?) {
+        private suspend fun ensureGroupOnCloud(epoch: Long, groupId: String?) {
             if (groupId.isNullOrBlank()) return
+            if (!isCurrentSession(epoch)) return
             val group = groupRepository.getGroupById(groupId) ?: return
             val now = System.currentTimeMillis()
             socialRemote.upsertGroup(group.toDto(updatedAtEpochMs = now))
+            if (!isCurrentSession(epoch)) return
             groupRepository.upsertGroup(
                 group.copy(
                     remoteId = group.id,
@@ -986,14 +1035,17 @@ class ExpenseInteractor
             val owner = groupRepository.getMember(groupId, group.createdByUserId)
             if (owner != null) {
                 socialRemote.upsertGroupMember(owner.toDto())
+                if (!isCurrentSession(epoch)) return
                 groupRepository.upsertMember(owner.copy(syncStatus = SyncStatus.SYNCED))
             }
         }
 
         private suspend fun persistSyncedExpense(
+            epoch: Long,
             expense: Expense,
             splits: List<ExpenseSplit>,
         ): Expense {
+            if (!isCurrentSession(epoch)) return expense
             val synced = expense.copy(remoteId = expense.id, syncStatus = SyncStatus.SYNCED)
             expenseRepository.upsertExpenseWithSplits(
                 synced,
@@ -1103,8 +1155,8 @@ class ExpenseInteractor
                     val categoryId = categoryRepository.resolveCategoryForRemotePull(dto.categoryId)
                     val createdAt =
                         existing?.createdAtEpochMs
-                            ?: dto.expenseDateEpochMs.takeIf { it > 0L }
-                            ?: dto.updatedAtEpochMs
+                            ?: dto.updatedAtEpochMs.takeIf { it > 0L }
+                            ?: dto.expenseDateEpochMs
                     val expense =
                         Expense(
                             id = dto.id,

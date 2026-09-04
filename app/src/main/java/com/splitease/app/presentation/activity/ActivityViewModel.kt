@@ -83,6 +83,11 @@ data class ActivityUiItem(
     val title: String,
     val subtitle: String,
     val amountLabel: String,
+    /**
+     * Newest-first sort key. May be bumped 1ms past the parent group's created
+     * time so an expense cannot sort as if it predates the group; [timeLabel]
+     * still uses the real event time.
+     */
     val sortEpochMs: Long,
     /** Pre-formatted time shown at the end of each row. */
     val timeLabel: String,
@@ -383,6 +388,7 @@ class ActivityViewModel
                             ?: id.take(8)
                 }
 
+            val groupCreatedEpochs = sources.groups.associate { it.id to it.createdAtEpochMs }
             val expenseIdsWithEvents =
                 events.mapNotNull { it.relatedExpenseId }.toSet()
             val legacyExpenseItems =
@@ -392,6 +398,7 @@ class ActivityViewModel
                         expense.toUi(
                             me = me,
                             groupNames = groupNames,
+                            groupCreatedEpochs = groupCreatedEpochs,
                             nameOf = ::nameOf,
                             splits = splitsByExpenseId[expense.id].orEmpty(),
                         )
@@ -401,6 +408,7 @@ class ActivityViewModel
                     event.toUi(
                         me = me,
                         groupNames = groupNames,
+                        groupCreatedEpochs = groupCreatedEpochs,
                         expensesById = expensesById,
                         splitsByExpenseId = splitsByExpenseId,
                         nameOf = ::nameOf,
@@ -417,12 +425,16 @@ class ActivityViewModel
                     .take(FeedQueryLimits.UI_FEED)
                     .map { it.toCreatedUi() }
             return (legacyExpenseItems + eventItems + paymentItems + groupCreatedItems)
-                .sortedByDescending { it.sortEpochMs }
+                .sortedWith(
+                    compareByDescending<ActivityUiItem> { it.sortEpochMs }
+                        .thenByDescending { if (it.kind == ActivityKind.GROUP_CREATED) 0 else 1 },
+                )
         }
 
         private fun ActivityEvent.toUi(
             me: String,
             groupNames: Map<String, String>,
+            groupCreatedEpochs: Map<String, Long>,
             expensesById: Map<String, Expense>,
             splitsByExpenseId: Map<String, List<ExpenseSplit>>,
             nameOf: (String) -> String,
@@ -461,16 +473,20 @@ class ActivityViewModel
                 } else {
                     null to null
                 }
+            val groupCreatedAt = liveExpense?.groupId?.let { groupCreatedEpochs[it] } ?: 0L
+            val displayEpochMs = sortEpochMs
+            val effectiveSortMs =
+                if (groupCreatedAt > 0L) maxOf(sortEpochMs, groupCreatedAt + 1L) else sortEpochMs
             return ActivityUiItem(
                 id = "event-$id",
                 kind = uiKind,
                 title = titleLine,
-                subtitle = formatDateTime(sortEpochMs),
+                subtitle = formatDateTime(displayEpochMs),
                 amountLabel = "",
-                timeLabel = formatTimeLabel(sortEpochMs),
+                timeLabel = formatTimeLabel(displayEpochMs),
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
-                sortEpochMs = sortEpochMs,
+                sortEpochMs = effectiveSortMs,
                 relatedExpenseId =
                     relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
                 expenseTitle = description,
@@ -491,13 +507,18 @@ class ActivityViewModel
         private fun Expense.toUi(
             me: String,
             groupNames: Map<String, String>,
+            groupCreatedEpochs: Map<String, Long>,
             nameOf: (String) -> String,
             splits: List<ExpenseSplit>,
         ): ActivityUiItem {
             val contextLabel =
                 groupId?.let { groupNames[it] } ?: appContext.getString(R.string.non_group_expenses)
             val actorName = nameOf(paidByUserId)
-            val displayEpochMs = expenseDateEpochMs.takeIf { it > 0L } ?: createdAtEpochMs
+            val groupCreatedAt = groupId?.let { groupCreatedEpochs[it] } ?: 0L
+            val baseEpochMs = createdAtEpochMs.takeIf { it > 0L } ?: expenseDateEpochMs
+            val displayEpochMs = baseEpochMs
+            val effectiveSortMs =
+                if (groupCreatedAt > 0L) maxOf(baseEpochMs, groupCreatedAt + 1L) else baseEpochMs
             val (balanceLabel, balanceTone) = balanceLine(me, this, splits)
             return ActivityUiItem(
                 id = "expense-$id",
@@ -514,7 +535,7 @@ class ActivityViewModel
                 timeLabel = formatTimeLabel(displayEpochMs),
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
-                sortEpochMs = displayEpochMs,
+                sortEpochMs = effectiveSortMs,
                 relatedExpenseId = id,
                 expenseTitle = description,
             )
