@@ -1,7 +1,10 @@
 package com.splitease.app.domain.model
 
 /**
- * Local activity-feed event (create / update / delete of expenses, etc.).
+ * Activity-feed event (create / update / delete of expenses).
+ *
+ * Synced to Supabase when [syncStatus] is [SyncStatus.PENDING]. Pre-v16 rows stay
+ * [SyncStatus.LOCAL_ONLY] and are not uploaded. [isSeen] is device-local.
  *
  * @property id Event id.
  * @property kind Event kind string (see [ActivityEventKind]).
@@ -12,6 +15,9 @@ package com.splitease.app.domain.model
  * @property relatedExpenseId Linked expense id when applicable.
  * @property involvedUserIds Comma-wrapped user ids for feed filtering (`,id1,id2,`).
  * @property sortEpochMs Sort / display time.
+ * @property remoteId Cloud id when synced; null if local-only.
+ * @property syncStatus Offline-first sync bookmark.
+ * @property isSeen True if the user has viewed this event.
  */
 data class ActivityEvent(
     val id: String,
@@ -23,6 +29,9 @@ data class ActivityEvent(
     val relatedExpenseId: String? = null,
     val involvedUserIds: String,
     val sortEpochMs: Long,
+    val remoteId: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    val isSeen: Boolean = false,
 )
 
 /**

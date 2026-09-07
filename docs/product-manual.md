@@ -156,7 +156,7 @@ From a group or friend ledger, **Add expense**:
 | ----- | ----- |
 | With you and | Group (“All of {name}”) or chosen friends |
 | Description | Required for a useful ledger line |
-| Amount + currency | Tap the symbol to pick **INR** or **USD**. If that differs from the group default, a live rate (ExchangeRate-API) or a custom rate converts the amount at save; the ledger stores the converted amount plus a local FX snapshot |
+| Amount + currency | Tap the symbol to pick from the in-app ISO catalog. If that differs from the group default, a live rate (ExchangeRate-API) or a custom rate converts the amount at save; the ledger stores the converted amount plus a local FX snapshot |
 | Date and time | Editable |
 | Category | Built-in defaults (`cat_general`, `cat_food`, …) plus device-local custom categories |
 | Paid by | One member |
@@ -193,7 +193,7 @@ On group detail, **Pin Board** is a shared plain-text notepad. All members can r
 
 ### 5.10 Activity, search, spending, import
 
-- **Activity:** local `activity_events` (your actions on this device).  
+- **Activity:** synced `activity_events` (your actions and events you’re involved in, across devices). An unread badge on the Activity tab clears when you leave the feed.  
 - **Search:** find expenses.  
 - **Spending:** category/period totals and charts.  
 - **Import:** CSV with header `date, description, amount`, optional `currency`, optional `category`. Dates `yyyy-MM-dd` or `dd/MM/yyyy`.
@@ -281,7 +281,7 @@ data/           Room, Supabase, DTOs, SyncInteractor, FCM
 **Sync bookmarks:** `LOCAL_ONLY` \| `PENDING` \| `SYNCED` + `updatedAtEpochMs`.  
 **Remote deletes:** hard delete in cloud; after a successful group/1:1 pull, local `SYNCED` expenses/payments missing from the remote id set are removed.  
 **Categories:** default ids `cat_*` on `expenses.category_id`. No `categories` table. Custom categories stay device-local.  
-**Activity events:** Room only.  
+**Activity events:** Room + Supabase `activity_events` (`isSeen` stays on-device).  
 **Release:** R8 minify + resource shrinking; keep rules in `app/proguard-rules.pro`.
 
 Living detail: [ARCHITECTURE.md](../ARCHITECTURE.md). Schema: [data-dictionary.md](data-dictionary.md). SQL: [sql/migration_db.sql](sql/migration_db.sql).
@@ -386,12 +386,12 @@ Treat these as honest product caveats, not bugs unless noted:
 | ----- | ------ |
 | Phone signup / SMS OTP | Not started |
 | Full i18n | Locale files exist; UI still English |
-| Live FX revaluation | Snapshot only at add-expense (INR/USD); balances are not marked to market |
-| Extra ISO currencies | Catalog is INR + USD; expanding `AppCurrencies.OPTIONS` is still open |
+| Live FX revaluation | Snapshot only at add-expense; balances are not marked to market |
+| Extra ISO currencies | Common ~30 ISO set in `AppCurrencies`; not a 100+ list |
 | Stored payment handles (UPI VPA, PayPal, Venmo) | Not stored; amount-only deep links |
 | Invite email | Sent for email contacts; phone + generic share links use the share sheet |
 | Pin Board live co-edit | Out of scope by design |
-| Activity badges for remote events | TODO |
+| Activity badges for remote events | Unread badge on the Activity tab; `isSeen` is device-local |
 | Play feature graphic / screenshots | TODO |
 | Realtime + Edge Function cost | Watch Supabase free-tier connection and invocation limits |
 

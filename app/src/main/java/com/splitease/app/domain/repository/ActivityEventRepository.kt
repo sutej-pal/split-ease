@@ -4,7 +4,7 @@ import com.splitease.app.domain.model.ActivityEvent
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Local activity-feed events.
+ * Activity-feed events (local Room cache, flushed to Supabase).
  */
 interface ActivityEventRepository {
     /**
@@ -28,4 +28,16 @@ interface ActivityEventRepository {
         userId: String,
         limit: Int = FeedQueryLimits.UI_FEED,
     ): Flow<List<ActivityEvent>>
+
+    /** Marks all events for [userId] as seen. */
+    suspend fun markAllAsSeen(userId: String)
+
+    /** Observes the count of unseen events for [userId]. */
+    fun observeUnseenCount(userId: String): Flow<Int>
+
+    /** Returns events that have not been synced to the cloud yet. */
+    suspend fun getPendingSync(): List<ActivityEvent>
+
+    /** Returns an event by id, or null if not found. */
+    suspend fun getById(id: String): ActivityEvent?
 }

@@ -41,7 +41,7 @@ object SupabaseModule {
      * Builds a singleton Supabase client using BuildConfig credentials.
      *
      * @return Configured [SupabaseClient].
-     * @throws IllegalStateException if URL or anon key is missing from `local.properties`.
+     * @throws IllegalStateException if URL or anon key is missing.
      */
     @Provides
     @Singleton
@@ -49,7 +49,7 @@ object SupabaseModule {
         val url = BuildConfig.SUPABASE_URL
         val key = BuildConfig.SUPABASE_ANON_KEY
         require(url.isNotBlank() && key.isNotBlank()) {
-            "Missing SUPABASE_URL / SUPABASE_ANON_KEY in local.properties"
+            "Critical configuration missing"
         }
         return createSupabaseClient(
             supabaseUrl = url,

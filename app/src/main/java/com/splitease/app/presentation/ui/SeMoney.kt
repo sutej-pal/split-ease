@@ -33,8 +33,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
-import com.splitease.app.presentation.theme.ErrorContainerPlaceholder
-import com.splitease.app.presentation.theme.PositiveContainerPlaceholder
+import com.splitease.app.presentation.theme.OweContainer
+import com.splitease.app.presentation.theme.OwedContainer
 import com.splitease.app.presentation.theme.SplitEaseColors
 import java.math.BigDecimal
 
@@ -245,8 +245,8 @@ private fun SeHeroTile(
         when {
             settled || amount == null || amount.compareTo(BigDecimal.ZERO) == 0 ->
                 SplitEaseColors.SurfaceMuted
-            tone == SeMoneyTone.YOU_OWE -> ErrorContainerPlaceholder
-            else -> PositiveContainerPlaceholder
+            tone == SeMoneyTone.YOU_OWE -> OweContainer
+            else -> OwedContainer
         }
     val pip =
         when {

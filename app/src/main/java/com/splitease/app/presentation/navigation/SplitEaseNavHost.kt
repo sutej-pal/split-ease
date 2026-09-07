@@ -40,6 +40,7 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
 import com.splitease.app.presentation.account.AccountScreen
+import com.splitease.app.presentation.account.DeleteAccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.auth.ForgotPasswordScreen
@@ -52,14 +53,9 @@ import com.splitease.app.presentation.auth.rememberContinueWithGoogle
 import com.splitease.app.presentation.expenses.AddExpensePickerScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.CurrencyConversionScreen
-import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.expenses.ExpenseAttachmentsGalleryScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
-import com.splitease.app.presentation.settlements.SettlePayerPickerScreen
-import com.splitease.app.presentation.settlements.SettleRecipientPickerScreen
-import com.splitease.app.presentation.settlements.SettleSelectionScreen
-import com.splitease.app.presentation.settlements.SettleUpScreen
 import com.splitease.app.presentation.friends.EditContactScreen
 import com.splitease.app.presentation.friends.FindPeopleScreen
 import com.splitease.app.presentation.friends.FriendSettingsScreen
@@ -69,8 +65,8 @@ import com.splitease.app.presentation.groups.CreateGroupScreen
 import com.splitease.app.presentation.groups.GroupBalancesScreen
 import com.splitease.app.presentation.groups.GroupDetailScreen
 import com.splitease.app.presentation.groups.GroupInviteLinkScreen
-import com.splitease.app.presentation.groups.GroupTotalsScreen
 import com.splitease.app.presentation.groups.GroupSettingsScreen
+import com.splitease.app.presentation.groups.GroupTotalsScreen
 import com.splitease.app.presentation.groups.NonGroupExpensesScreen
 import com.splitease.app.presentation.home.GroupsHomeScreen
 import com.splitease.app.presentation.imports.ImportTransactionsScreen
@@ -87,8 +83,12 @@ import com.splitease.app.presentation.settings.NotificationsSettingsScreen
 import com.splitease.app.presentation.settings.SecuritySettingsScreen
 import com.splitease.app.presentation.settings.SettingsScreen
 import com.splitease.app.presentation.settlements.SendReminderScreen
+import com.splitease.app.presentation.settlements.SettlePayerPickerScreen
+import com.splitease.app.presentation.settlements.SettleRecipientPickerScreen
+import com.splitease.app.presentation.settlements.SettleSelectionScreen
 import com.splitease.app.presentation.settlements.SettleUpScreen
 import com.splitease.app.presentation.spending.SpendingTotalsScreen
+import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.welcome.WelcomeScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -109,6 +109,7 @@ object Routes {
 
     const val SETTINGS = "settings"
     const val ACCOUNT_PROFILE_SETTINGS = "account_profile_settings"
+    const val DELETE_ACCOUNT = "delete_account"
     const val APPEARANCE_SETTINGS = "appearance_settings"
     const val SECURITY_SETTINGS = "security_settings"
     const val NOTIFICATIONS_SETTINGS = "notifications_settings"
@@ -535,12 +536,14 @@ private fun SignedInNavHost(
     claimInviteAndConsumeOpenTarget: suspend () -> String?,
     observePendingNotificationGroupId: () -> kotlinx.coroutines.flow.Flow<String?>,
     consumePendingNotificationGroupId: suspend () -> String?,
+    tabsViewModel: MainTabsViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomBarRoutes
     val bottomBarSelectedRoute = selectedTabRoute(currentRoute)
+    val activityUnreadCount by tabsViewModel.activityUnreadCount.collectAsStateWithLifecycle()
     // Keep the last tab highlighted while the bar animates away, otherwise the icons
     // flash to their unselected colour on the way out.
     var lastSelectedTabRoute by remember { mutableStateOf(Routes.TAB_GROUPS) }
@@ -602,6 +605,7 @@ private fun SignedInNavHost(
             ) {
                 SplitEaseBottomBar(
                     currentRoute = bottomBarSelectedRoute ?: lastSelectedTabRoute,
+                    activityUnreadCount = activityUnreadCount,
                     onTabSelected = { tab ->
                         navController.navigate(tab.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -675,11 +679,16 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onOpenCurrency = { navController.navigate(Routes.CURRENCY_SETTINGS) },
                     onOpenLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
+                    onOpenDeleteAccount = { navController.navigate(Routes.DELETE_ACCOUNT) },
                 )
+            }
+            composable(Routes.DELETE_ACCOUNT) {
+                DeleteAccountScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
+                    onOpenAccountProfile = { navController.navigate(Routes.ACCOUNT_PROFILE_SETTINGS) },
                     onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
                     onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS_SETTINGS) },
                     onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },

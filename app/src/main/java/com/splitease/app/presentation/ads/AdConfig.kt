@@ -6,7 +6,7 @@ import com.splitease.app.BuildConfig
  * Resolves AdMob identifiers from [BuildConfig].
  *
  * Debug builds always use Google test IDs. Release builds read optional
- * unit IDs from `local.properties`.
+ * unit IDs from build configuration.
  */
 object AdConfig {
     val groupDetailBannerUnitId: String

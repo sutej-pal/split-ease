@@ -47,4 +47,8 @@ Use the **Web** client ID, not the Android one. Rebuild so `BuildConfig.GOOGLE_W
 4. Sign out and repeat — returning users skip welcome mail.
 5. First-time Google users get the one-time welcome email (same path as signup OTP).
 
-If the button shows “isn't configured on this build”, `GOOGLE_WEB_CLIENT_ID` is missing. If Google returns no accounts, add a Google account on the device.
+If the button shows “isn't available on this build”, `GOOGLE_WEB_CLIENT_ID` is missing. Set it in gitignored `local.properties` and rebuild. If Google returns no accounts, add a Google account on the device. If it says Sign-In needs an internet connection, the device is offline (or Play Services returned a network error).
+
+## 5. After account deletion
+
+`delete_own_account()` bans the old `auth.users` row (kept for expense FKs), scrambles its email, and **deletes `auth.identities`**. The next **Continue with Google** with the same Google account should create a **new** user, not revive the banned one. Historical expenses still show “Deleted user” on the old UUID.

@@ -315,6 +315,35 @@ class AuthViewModelTest {
         }
 
     @Test
+    fun `onGoogleSignInFailed offline shows connection message`() =
+        runTest {
+            viewModel.onGoogleSignInFailed(GoogleIdTokenOutcome.Offline)
+            advanceUntilIdle()
+            assertEquals(
+                msg(AuthMessages.GOOGLE_OFFLINE),
+                viewModel.formState.value.errorMessage,
+            )
+            assertFalse(viewModel.formState.value.isLoading)
+        }
+
+    @Test
+    fun `signInWithGoogle network failure shows google offline message`() =
+        runTest {
+            coEvery { repository.signInWithGoogle(any(), any()) } returns
+                Result.failure(java.net.UnknownHostException("Unable to resolve host accounts.google.com"))
+            coEvery { repository.signOut() } returns Result.success(Unit)
+            viewModel.signInWithGoogle("id-token", "raw-nonce")
+            advanceUntilIdle()
+            assertEquals(
+                msg(AuthMessages.GOOGLE_OFFLINE),
+                viewModel.formState.value.errorMessage,
+            )
+            assertFalse(viewModel.formState.value.isLoading)
+            coVerify(exactly = 1) { repository.signOut() }
+            coVerify(exactly = 0) { repository.ensureLocalProfile() }
+        }
+
+    @Test
     fun `signUp locks after repeated already-registered email`() =
         runTest {
             coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
@@ -725,9 +754,10 @@ class AuthViewModelTest {
                 R.string.error_login_fields_required to "Enter your email and password.",
                 R.string.error_invalid_credentials to "Invalid email or password. Try again.",
                 R.string.error_not_registered to "You're not registered with us. Please sign up.",
-                R.string.error_google_not_configured to "Google Sign-In isn't configured on this build. Add GOOGLE_WEB_CLIENT_ID in local.properties.",
+                R.string.error_google_not_configured to "Google Sign-In isn't available on this build. Try email instead.",
                 R.string.error_google_no_account to "No Google account found on this device.",
                 R.string.error_google_sign_in_failed to "Google Sign-In didn't complete. Try again.",
+                R.string.error_google_offline to "Google Sign-In needs an internet connection. Connect and try again.",
                 R.string.signup_error_name_required to "Enter your full name.",
                 R.string.signup_error_password_short to "Password must be at least 8 characters.",
                 R.string.error_email_already_registered to "This email is already registered. Please log in.",

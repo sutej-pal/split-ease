@@ -1035,10 +1035,11 @@ class ExpenseInteractor
                     relatedExpenseId = expense.id,
                     involvedUserIds = involved,
                     sortEpochMs = System.currentTimeMillis(),
+                    syncStatus = SyncStatus.PENDING,
+                    isSeen = true,
                 ),
             )
         }
-
 
         private suspend fun persistRemoteExpenseBatch(dtos: List<ExpenseDto>) {
             if (dtos.isEmpty()) return

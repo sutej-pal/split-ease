@@ -36,6 +36,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.sync.SyncState
@@ -89,6 +93,21 @@ fun ActivityScreen(
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     val showSearch = searchVisible || query.isNotBlank()
     val listState = rememberLazyListState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_PAUSE) {
+                    viewModel.markFeedSeen()
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.markFeedSeen()
+        }
+    }
 
     val emptyMessage =
         if (!feed.hasAnyItems && !feed.isFiltered) {
@@ -403,7 +422,19 @@ private fun ActivityRow(
             SeIconTile(icon = icon, tint = tint, size = 44)
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                ActivityRowTitle(item = item)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!item.isSeen) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .padding(end = 8.dp)
+                                    .size(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(SplitEaseColors.Primary),
+                        )
+                    }
+                    ActivityRowTitle(item = item, modifier = Modifier.weight(1f, fill = false))
+                }
                 if (showsBalanceSlot) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -437,7 +468,10 @@ private fun ActivityRow(
 }
 
 @Composable
-private fun ActivityRowTitle(item: ActivityUiItem) {
+private fun ActivityRowTitle(
+    item: ActivityUiItem,
+    modifier: Modifier = Modifier,
+) {
     val expenseTitle = item.expenseTitle
     if (expenseTitle.isNullOrBlank()) {
         Text(
@@ -446,6 +480,7 @@ private fun ActivityRowTitle(item: ActivityUiItem) {
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            modifier = modifier,
         )
     } else {
         val titleText =
@@ -458,6 +493,7 @@ private fun ActivityRowTitle(item: ActivityUiItem) {
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            modifier = modifier,
         )
     }
 }

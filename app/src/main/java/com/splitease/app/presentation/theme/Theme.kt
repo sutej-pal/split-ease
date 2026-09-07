@@ -42,10 +42,10 @@ private val LightColorScheme =
         onSurfaceVariant = TextSecondaryLight,
         outline = OutlineLight,
         outlineVariant = OutlineVariantLight,
-        error = ErrorPlaceholder,
+        error = OweRed,
         onError = Color.White,
-        errorContainer = ErrorContainerPlaceholder,
-        onErrorContainer = ErrorPlaceholder,
+        errorContainer = OweContainer,
+        onErrorContainer = OweRed,
         inverseSurface = TextPrimaryLight,
         inverseOnSurface = BackgroundLight,
         inversePrimary = IndigoDark,
@@ -77,10 +77,10 @@ private val DarkColorScheme =
         onSurfaceVariant = TextSecondaryDark,
         outline = Color(0xFF4B465C),
         outlineVariant = Color(0xFF3A3552),
-        error = ErrorPlaceholder,
+        error = OweRed,
         onError = Color.White,
         errorContainer = Color(0xFF8C1D18),
-        onErrorContainer = ErrorContainerPlaceholder,
+        onErrorContainer = OweContainer,
     )
 
 /**

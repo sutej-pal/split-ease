@@ -7,6 +7,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,13 +19,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -42,17 +45,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.app.NotificationManagerCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.settings.AppCurrencies
@@ -84,6 +88,7 @@ private fun openSystemNotificationSettings(context: Context) {
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenAccountProfile: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenSecurity: () -> Unit,
@@ -91,6 +96,7 @@ fun SettingsScreen(
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val biometricLock by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    val authTimeout by viewModel.authTimeout.collectAsStateWithLifecycle()
     val muteAll by viewModel.notificationsMutedAll.collectAsStateWithLifecycle()
     val privacyOptionsRequired by AdConsentManager.privacyOptionsRequired
     val context = LocalContext.current
@@ -115,78 +121,108 @@ fun SettingsScreen(
                         .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp),
             ) {
+                SeSectionHeader(text = stringResource(R.string.settings_account_section))
+                SettingsGroupCard {
+                    SeListRow(
+                        title = stringResource(R.string.account_profile_settings_title),
+                        subtitle = stringResource(R.string.settings_account_item_subtitle),
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Filled.Person,
+                                tint = SplitEaseColors.Primary,
+                                size = 40,
+                            )
+                        },
+                        trailing = { SettingsChevron() },
+                        onClick = onOpenAccountProfile,
+                        showDivider = false,
+                    )
+                }
+
                 SeSectionHeader(text = stringResource(R.string.settings_preferences_section))
-                SeListRow(
-                    title = stringResource(R.string.settings_appearance),
-                    subtitle = themeModeLabel(themeMode),
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.DarkMode,
-                            tint = SplitEaseColors.IconOther,
-                            size = 40,
-                        )
-                    },
-                    trailing = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
-                        )
-                    },
-                    onClick = onOpenAppearance,
-                    showDivider = true,
-                )
-                SeListRow(
-                    title = stringResource(R.string.settings_notifications_item),
-                    subtitle =
-                        if (notificationsOn) {
-                            stringResource(R.string.settings_notifications_on)
-                        } else {
-                            stringResource(R.string.settings_notifications_off)
+                SettingsGroupCard {
+                    SeListRow(
+                        title = stringResource(R.string.settings_appearance),
+                        subtitle = themeModeLabel(themeMode),
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Filled.DarkMode,
+                                tint = SplitEaseColors.IconOther,
+                                size = 40,
+                            )
                         },
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Notifications,
-                            tint = SplitEaseColors.IconFriends,
-                            size = 40,
-                        )
-                    },
-                    trailing = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
-                        )
-                    },
-                    onClick = { openSystemNotificationSettings(context) },
-                    showDivider = true,
-                )
-                SeListRow(
-                    title = stringResource(R.string.settings_security),
-                    subtitle =
-                        if (biometricLock) {
-                            stringResource(R.string.settings_security_on)
-                        } else {
-                            stringResource(R.string.settings_security_off)
+                        trailing = { SettingsChevron() },
+                        onClick = onOpenAppearance,
+                        showDivider = false,
+                    )
+                    SettingsCardDivider()
+                    SeListRow(
+                        title = stringResource(R.string.settings_notifications),
+                        subtitle =
+                            if (notificationsOn) {
+                                stringResource(R.string.settings_notifications_on)
+                            } else {
+                                stringResource(R.string.settings_notifications_off)
+                            },
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Filled.Notifications,
+                                tint = SplitEaseColors.IconFriends,
+                                size = 40,
+                            )
                         },
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Security,
-                            tint = SplitEaseColors.IconHome,
-                            size = 40,
-                        )
-                    },
-                    trailing = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
-                        )
-                    },
-                    onClick = onOpenSecurity,
-                    showDivider = privacyOptionsRequired,
+                        trailing = { SettingsChevron() },
+                        onClick = onOpenNotifications,
+                        showDivider = false,
+                    )
+                }
+
+                SeSectionHeader(text = stringResource(R.string.settings_security))
+                SettingsGroupCard {
+                    SeListRow(
+                        title = stringResource(R.string.settings_biometric_lock),
+                        subtitle =
+                            if (biometricLock) {
+                                stringResource(R.string.settings_security_on)
+                            } else {
+                                stringResource(R.string.settings_security_off)
+                            },
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Filled.Fingerprint,
+                                tint = SplitEaseColors.IconHome,
+                                size = 40,
+                            )
+                        },
+                        trailing = { SettingsChevron() },
+                        onClick = onOpenSecurity,
+                        showDivider = false,
+                    )
+                    SettingsCardDivider()
+                    SeListRow(
+                        title = stringResource(R.string.settings_autolock_timeout),
+                        subtitle = authTimeoutLabel(authTimeout),
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Filled.Timer,
+                                tint = SplitEaseColors.IconHome,
+                                size = 40,
+                            )
+                        },
+                        trailing = { SettingsChevron() },
+                        onClick = onOpenSecurity,
+                        showDivider = false,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_autolock_timeout_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
+                    modifier = Modifier.padding(top = 8.dp, start = 4.dp, end = 4.dp),
                 )
+
                 if (privacyOptionsRequired) {
+                    Spacer(modifier = Modifier.height(16.dp))
                     SeListRow(
                         title = stringResource(R.string.settings_ad_privacy_choices),
                         onClick = {
@@ -220,14 +256,6 @@ fun NotificationsSettingsScreen(
             osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
     val enabled = osNotificationsEnabled && !muteAll
-
-    fun openSystemNotificationSettings() {
-        val intent =
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-            }
-        context.startActivity(intent)
-    }
 
     SeScreen(
         title = stringResource(R.string.settings_notifications),
@@ -265,7 +293,7 @@ fun NotificationsSettingsScreen(
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     } else {
-                                        openSystemNotificationSettings()
+                                        openSystemNotificationSettings(context)
                                     }
                                 }
                                 viewModel.setNotificationsMutedAll(false)
@@ -299,30 +327,6 @@ fun NotificationsSettingsScreen(
                         emphasized = true,
                     )
                 }
-                HorizontalDivider(
-                    color = SplitEaseColors.Outline,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
-                SeListRow(
-                    title = stringResource(R.string.settings_notifications_item),
-                    subtitle = stringResource(R.string.settings_notifications_open_system),
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Notifications,
-                            tint = SplitEaseColors.IconFriends,
-                            size = 40,
-                        )
-                    },
-                    trailing = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
-                        )
-                    },
-                    onClick = { openSystemNotificationSettings(context) },
-                    showDivider = false,
-                )
             }
         },
     )
@@ -661,6 +665,34 @@ fun CurrencySettingsScreen(
 }
 
 @Composable
+private fun SettingsGroupCard(content: @Composable () -> Unit) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(SplitEaseColors.Surface)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun SettingsCardDivider() {
+    HorizontalDivider(thickness = 1.dp, color = SplitEaseColors.Outline)
+}
+
+@Composable
+private fun SettingsChevron() {
+    Icon(
+        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        contentDescription = null,
+        tint = SplitEaseColors.NavyMuted,
+    )
+}
+
+@Composable
 private fun ThemeModeRow(
     mode: ThemeMode,
     selected: Boolean,
@@ -709,9 +741,14 @@ private fun authTimeoutLabel(timeout: AuthTimeout): String =
 private fun SettingsScreenPreview() {
     SePreview {
         Column(modifier = Modifier.padding(20.dp)) {
+            SeSectionHeader(text = "Account")
+            SeListRow(title = "Account settings", subtitle = "Profile, currency, language", onClick = {})
             SeSectionHeader(text = "Preferences")
             SeListRow(title = "Appearance", subtitle = "System default", onClick = {})
-            SeListRow(title = "Security", subtitle = "Off", onClick = {})
+            SeListRow(title = "Notifications", subtitle = "On", onClick = {})
+            SeSectionHeader(text = "Security")
+            SeListRow(title = "Biometric lock", subtitle = "Off", onClick = {})
+            SeListRow(title = "Auto-lock timeout", subtitle = "Immediately", onClick = {})
         }
     }
 }

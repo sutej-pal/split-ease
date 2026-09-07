@@ -1,5 +1,8 @@
 package com.splitease.app.domain.settings
 
+import java.util.Currency
+import java.util.Locale
+
 /**
  * Supported app currencies (ISO 4217).
  *
@@ -18,6 +21,36 @@ object AppCurrencies {
         listOf(
             INR to "Indian Rupee",
             USD to "US Dollar",
+            "AED" to "United Arab Emirates Dirham",
+            "AUD" to "Australian Dollar",
+            "BRL" to "Brazilian Real",
+            "CAD" to "Canadian Dollar",
+            "CHF" to "Swiss Franc",
+            "CNY" to "Chinese Yuan",
+            "DKK" to "Danish Krone",
+            "EGP" to "Egyptian Pound",
+            "EUR" to "Euro",
+            "GBP" to "British Pound",
+            "HKD" to "Hong Kong Dollar",
+            "IDR" to "Indonesian Rupiah",
+            "ILS" to "Israeli New Shekel",
+            "JPY" to "Japanese Yen",
+            "KRW" to "South Korean Won",
+            "MXN" to "Mexican Peso",
+            "MYR" to "Malaysian Ringgit",
+            "NOK" to "Norwegian Krone",
+            "NZD" to "New Zealand Dollar",
+            "PHP" to "Philippine Peso",
+            "PLN" to "Polish Zloty",
+            "RUB" to "Russian Ruble",
+            "SAR" to "Saudi Riyal",
+            "SEK" to "Swedish Krona",
+            "SGD" to "Singapore Dollar",
+            "THB" to "Thai Baht",
+            "TRY" to "Turkish Lira",
+            "TWD" to "New Taiwan Dollar",
+            "VND" to "Vietnamese Dong",
+            "ZAR" to "South African Rand",
         )
 
     private val supportedCodes: Set<String> = OPTIONS.map { it.first }.toSet()
@@ -53,5 +86,18 @@ object AppCurrencies {
         return OPTIONS.filter { (code, name) ->
             code.contains(q, ignoreCase = true) || name.contains(q, ignoreCase = true)
         }
+    }
+
+    /**
+     * Currency symbol for [code], or the code itself when the JDK has no symbol.
+     */
+    fun symbol(
+        code: String,
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        val normalized = code.trim().uppercase()
+        if (normalized.isEmpty()) return DEFAULT
+        return runCatching { Currency.getInstance(normalized).getSymbol(locale) }
+            .getOrElse { normalized }
     }
 }

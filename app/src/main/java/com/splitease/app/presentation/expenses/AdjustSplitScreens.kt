@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.domain.model.SplitType
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.split.SplitCalculator
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -748,12 +749,7 @@ private fun filterDecimalInput(raw: String): String {
 
 private fun filterIntInput(raw: String): String = raw.filter { it.isDigit() }.take(6)
 
-private fun currencySymbolForCode(code: String): String =
-    runCatching {
-        java.util.Currency
-            .getInstance(code)
-            .getSymbol(java.util.Locale.getDefault())
-    }.getOrElse { code }
+private fun currencySymbolForCode(code: String): String = AppCurrencies.symbol(code)
 
 private fun canConfirmSplit(
     tab: SplitType,

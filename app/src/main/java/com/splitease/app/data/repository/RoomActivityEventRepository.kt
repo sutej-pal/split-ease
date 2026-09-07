@@ -4,6 +4,7 @@ import com.splitease.app.data.local.dao.ActivityEventDao
 import com.splitease.app.data.local.entity.ActivityEventEntity
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.ActivityEventKind
+import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.repository.ActivityEventRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -39,6 +40,19 @@ class RoomActivityEventRepository
                     limit = limit,
                 ).map { rows -> rows.map { it.toDomain() } }
 
+        override suspend fun markAllAsSeen(userId: String) {
+            activityEventDao.markAllAsSeen(userId, ",$userId,")
+        }
+
+        override fun observeUnseenCount(userId: String): Flow<Int> =
+            activityEventDao.observeUnseenCount(userId, ",$userId,")
+
+        override suspend fun getPendingSync(): List<ActivityEvent> =
+            activityEventDao.getPendingSync().map { it.toDomain() }
+
+        override suspend fun getById(id: String): ActivityEvent? =
+            activityEventDao.getById(id)?.toDomain()
+
         private fun ActivityEvent.toEntity(): ActivityEventEntity =
             ActivityEventEntity(
                 id = id,
@@ -50,6 +64,9 @@ class RoomActivityEventRepository
                 relatedExpenseId = relatedExpenseId,
                 involvedUserIds = involvedUserIds,
                 sortEpochMs = sortEpochMs,
+                remoteId = remoteId,
+                syncStatus = syncStatus.name,
+                isSeen = isSeen,
             )
 
         private fun ActivityEventEntity.toDomain(): ActivityEvent =
@@ -65,5 +82,10 @@ class RoomActivityEventRepository
                 relatedExpenseId = relatedExpenseId,
                 involvedUserIds = involvedUserIds,
                 sortEpochMs = sortEpochMs,
+                remoteId = remoteId,
+                syncStatus =
+                    runCatching { SyncStatus.valueOf(syncStatus) }
+                        .getOrDefault(SyncStatus.LOCAL_ONLY),
+                isSeen = isSeen,
             )
     }

@@ -100,6 +100,8 @@ fun SeModal(
     confirmLabel: String? = null,
     onConfirm: (() -> Unit)? = null,
     confirmEnabled: Boolean = true,
+    /** When true, confirm shows a spinner and dismiss/confirm cannot be pressed. */
+    confirmBusy: Boolean = false,
     confirmTone: SeConfirmTone? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -153,6 +155,7 @@ fun SeModal(
                 confirmLabel = confirmLabel,
                 onConfirm = onConfirm,
                 confirmEnabled = confirmEnabled,
+                confirmBusy = confirmBusy,
                 confirmColor = confirmColor,
             )
         }
@@ -257,6 +260,7 @@ fun SeDialogActions(
     confirmLabel: String? = null,
     onConfirm: (() -> Unit)? = null,
     confirmEnabled: Boolean = true,
+    confirmBusy: Boolean = false,
     confirmColor: Color = SplitEaseColors.Primary,
 ) {
     val showConfirm = !confirmLabel.isNullOrBlank() && onConfirm != null
@@ -273,6 +277,7 @@ fun SeDialogActions(
             SeTextButton(
                 text = dismissLabel,
                 onClick = onDismissClick,
+                enabled = !confirmBusy,
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             )
         }
@@ -281,6 +286,7 @@ fun SeDialogActions(
                 text = confirmLabel,
                 onClick = onConfirm,
                 enabled = confirmEnabled,
+                isLoading = confirmBusy,
                 color = confirmColor,
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             )

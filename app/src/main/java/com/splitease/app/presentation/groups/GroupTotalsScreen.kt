@@ -18,13 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
@@ -60,6 +58,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.splitease.app.R
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.spending.GroupMonthSpending
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.expenses.ExpensesViewModel
@@ -68,7 +67,6 @@ import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMixedCurrencyBanner
 import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.seDetailHorizontal
@@ -219,6 +217,20 @@ fun GroupTotalsScreen(
                             stringResource(R.string.totals_share_percent, it)
                         } ?: stringResource(R.string.totals_share_percent_unknown),
                 )
+
+                if (ui.totalsByCurrency.size > 1) {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Text(
+                        text = stringResource(R.string.totals_currency_breakdown),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SplitEaseColors.Navy,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ui.totalsByCurrency.forEach { cTotal ->
+                        TotalsCurrencyRow(cTotal)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
             }
         }
     }
@@ -548,4 +560,59 @@ private fun formatMonthYear(year: Int, month: Int): String {
     val symbols = DateFormatSymbols.getInstance(Locale.getDefault())
     val name = symbols.months.getOrNull(month).orEmpty()
     return "$name $year"
+}
+
+@Composable
+private fun TotalsCurrencyRow(total: CurrencyTotal) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(SplitEaseColors.SurfaceMuted)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = AppCurrencies.labelOf(total.currencyCode),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = SplitEaseColors.Navy,
+        )
+        Text(
+            text = total.currencyCode,
+            style = MaterialTheme.typography.bodySmall,
+            color = SplitEaseColors.NavyMuted,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = stringResource(R.string.totals_total_spent),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
+                )
+                Text(
+                    text = MoneyFormat.format(total.totalSpent, total.currencyCode),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Secondary,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = stringResource(R.string.totals_your_share),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
+                )
+                Text(
+                    text = MoneyFormat.format(total.yourShare, total.currencyCode),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                )
+            }
+        }
+    }
 }

@@ -83,15 +83,51 @@ class GroupSpendingCalculatorTest {
         )
     }
 
+    @Test
+    fun period_totals_by_currency_keep_iso_buckets() {
+        val augStart = GroupSpendingCalculator.monthBounds(2026, Calendar.AUGUST, tz).first
+        val inr = expense("e1", "100.00", augStart + 1, currency = "INR")
+        val usd = expense("e2", "40.00", augStart + 2, currency = "USD")
+        val splits =
+            mapOf(
+                "e1" to listOf(split("e1", "me", "40.00")),
+                "e2" to listOf(split("e2", "me", "20.00")),
+            )
+        val byCurrency =
+            GroupSpendingCalculator.periodTotalsByCurrency(
+                viewerUserId = "me",
+                expenses = listOf(inr, usd),
+                splitsByExpenseId = splits,
+                fromEpochMs = augStart,
+                toEpochMs = GroupSpendingCalculator.monthBounds(2026, Calendar.AUGUST, tz).second,
+            )
+        assertEquals(BigDecimal("100.00"), byCurrency.getValue("INR").first)
+        assertEquals(BigDecimal("40.00"), byCurrency.getValue("INR").second)
+        assertEquals(BigDecimal("40.00"), byCurrency.getValue("USD").first)
+        assertEquals(BigDecimal("20.00"), byCurrency.getValue("USD").second)
+        val inrOnly =
+            GroupSpendingCalculator.periodTotals(
+                viewerUserId = "me",
+                expenses = listOf(inr, usd),
+                splitsByExpenseId = splits,
+                currencyCode = "INR",
+                fromEpochMs = augStart,
+                toEpochMs = GroupSpendingCalculator.monthBounds(2026, Calendar.AUGUST, tz).second,
+            )
+        assertEquals(BigDecimal("100.00"), inrOnly.first)
+        assertEquals(BigDecimal("40.00"), inrOnly.second)
+    }
+
     private fun expense(
         id: String,
         amount: String,
         dateMs: Long,
+        currency: String = "INR",
     ) = Expense(
         id = id,
         description = id,
         amount = BigDecimal(amount),
-        currencyCode = "INR",
+        currencyCode = currency,
         paidByUserId = "me",
         groupId = "g1",
         expenseDateEpochMs = dateMs,

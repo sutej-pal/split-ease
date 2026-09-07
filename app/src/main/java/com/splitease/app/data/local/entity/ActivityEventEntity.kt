@@ -25,4 +25,7 @@ data class ActivityEventEntity(
     val relatedExpenseId: String?,
     val involvedUserIds: String,
     val sortEpochMs: Long,
+    val remoteId: String?,
+    val syncStatus: String,
+    val isSeen: Boolean,
 )

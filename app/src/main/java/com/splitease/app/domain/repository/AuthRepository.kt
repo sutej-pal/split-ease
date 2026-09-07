@@ -170,6 +170,20 @@ interface AuthRepository {
     suspend fun signOut(): Result<Unit>
 
     /**
+     * Soft-deletes the signed-in account via the `delete_own_account` RPC, then signs
+     * this device out and wipes local Room data.
+     *
+     * Not queued offline — the RPC must succeed on the server (including an independent
+     * non-zero-balance check). Historical expenses/payments are kept; the profile is
+     * anonymized in place.
+     *
+     * @return [Result] success, [com.splitease.app.domain.account.AccountDeletionBlockedException]
+     * when any group net is non-zero, [com.splitease.app.domain.account.AccountDeletionOfflineException]
+     * when the device cannot reach Supabase, or another failure.
+     */
+    suspend fun deleteOwnAccount(): Result<Unit>
+
+    /**
      * Updates the signed-in user's display name in Supabase metadata, local Room, and
      * the remote `profiles` table (best-effort).
      *

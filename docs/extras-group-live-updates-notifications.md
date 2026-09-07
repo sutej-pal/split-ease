@@ -44,7 +44,7 @@ Use this list as the implementation backlog. Mark items when done.
 | B3  | On expense/payment insert/update/delete, notify other **group members** (exclude actor)     | **Done** | Edge Function + webhook/trigger ([sql/migration_db.sql](sql/migration_db.sql)) |
 | B4  | Notification copy: actor, group name, action ("Ada added "Dinner" · ₹1,200")                | **Done** | Built in `notify-group-members`                                                |
 | B5  | Tap notification > open `group_detail/{groupId}` (App Links / intent extras)                | **Done** | Intent extra + `pending_notification_group_id`                                 |
-| B6  | In-app Activity feed already lists own activity — extend or badge when remote events arrive | TODO     | Optional if push is delayed                                                    |
+| B6  | In-app Activity feed already lists own activity — extend or badge when remote events arrive | Done     | Unread badge + `isSeen`; remote events start unseen                            |
 | B7  | Supabase Realtime channel while group detail is open (live list without leaving screen)     | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/migration_db.sql](sql/migration_db.sql)  |
 | B8  | Notification preferences (mute group / mute all)                                            | **Done** | Settings → Notifications; Group settings mute; `notification_prefs` |
 

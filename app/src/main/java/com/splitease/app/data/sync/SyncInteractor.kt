@@ -2,6 +2,7 @@ package com.splitease.app.data.sync
 
 import android.content.Context
 import androidx.core.content.edit
+import com.splitease.app.data.activity.ActivityInteractor
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.pinboard.PinBoardInteractor
@@ -21,9 +22,9 @@ import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
@@ -39,6 +40,8 @@ import kotlin.coroutines.cancellation.CancellationException
  * @property invitesSynced Count of invites pushed.
  * @property expensesSynced Count of expenses pushed.
  * @property paymentsSynced Count of payments pushed.
+ * @property pinBoardsSynced Count of pin boards pushed.
+ * @property activityEventsSynced Count of activity events pushed.
  * @property failures Error messages for failed rows.
  */
 data class SyncFlushResult(
@@ -48,16 +51,17 @@ data class SyncFlushResult(
     val expensesSynced: Int = 0,
     val paymentsSynced: Int = 0,
     val pinBoardsSynced: Int = 0,
+    val activityEventsSynced: Int = 0,
     val failures: List<String> = emptyList(),
 )
 
 /**
  * Offline write queue + remote hydrate for multi-device sync.
  *
- * Flush order: groups → members → invites → expenses → payments → pin boards (FK-safe).
- * Hydrate pulls friends/groups/expenses/payments into Room.
+ * Flush order: groups → members → invites → expenses → payments → activity events → pin boards (FK-safe).
+ * Hydrate pulls friends/groups/expenses/payments/activity events into Room.
  *
- * Activity events stay local-only. Pin boards use Room + [PinBoardInteractor.flushPending].
+ * Pin boards use Room + [PinBoardInteractor.flushPending].
  */
 @Singleton
 class SyncInteractor
@@ -75,6 +79,7 @@ class SyncInteractor
         private val expenseInteractor: Provider<ExpenseInteractor>,
         private val paymentInteractor: Provider<PaymentInteractor>,
         private val pinBoardInteractor: Provider<PinBoardInteractor>,
+        private val activityInteractor: Provider<ActivityInteractor>,
         private val appSettingsRepository: AppSettingsRepository,
     ) {
         private val hydratePrefs =
@@ -132,7 +137,7 @@ class SyncInteractor
         }
 
         /**
-         * Pushes pending groups, members, invites, expenses, and payments to Supabase.
+         * Pushes pending groups, members, invites, expenses, payments, activity events, and pin boards to Supabase.
          *
          * Failed rows stay PENDING for the next retry.
          *
@@ -145,6 +150,7 @@ class SyncInteractor
             var expensesSynced = 0
             var paymentsSynced = 0
             var pinBoardsSynced = 0
+            var activityEventsSynced = 0
             val failures = mutableListOf<String>()
 
             groupRepository.getPendingGroups().forEach { group ->
@@ -227,6 +233,12 @@ class SyncInteractor
             }
 
             runCatching {
+                activityEventsSynced = activityInteractor.get().flushPending()
+            }.onFailure { err ->
+                failures += "Activity: ${err.message ?: "failed"}"
+            }
+
+            runCatching {
                 pinBoardsSynced = pinBoardInteractor.get().flushPending()
             }.onFailure { err ->
                 failures += "Pin boards: ${err.message ?: "failed"}"
@@ -241,6 +253,7 @@ class SyncInteractor
                 expensesSynced = expensesSynced,
                 paymentsSynced = paymentsSynced,
                 pinBoardsSynced = pinBoardsSynced,
+                activityEventsSynced = activityEventsSynced,
                 failures = failures,
             )
         }
@@ -374,6 +387,9 @@ class SyncInteractor
             }
             maybeHard {
                 SyncNetworkLog.phase("payments") { paymentInteractor.get().refreshPaymentsForUser(uid) }
+            }
+            soft {
+                SyncNetworkLog.phase("activity") { activityInteractor.get().refreshForUser(uid) }
             }
             // Invitee may already have shared expenses/groups but no A←B friendship row.
             soft {

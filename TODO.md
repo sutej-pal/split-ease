@@ -8,6 +8,7 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 - [x] **OTP ops checklist** — App + mail-service hook + `{{ .Token }}` templates are in place. Live Confirm email / OTP length 6 / SMTP (Brevo) remain a pre-ship check in [docs/release-checklist.md](docs/release-checklist.md). How-to: [docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md).
 - [x] **Resend domain** — Superseded. Production OTP uses SplitEase Server + Brevo HTTPS (`BREVO_API_KEY` / `MAIL_FROM`), not Resend SMTP.
 - [x] **Google Sign-In** — Credential Manager ID token → Supabase (`signInWith(IDToken)`). Ops: [docs/google-sign-in.md](docs/google-sign-in.md).
+- [x] **In-app account deletion** — Settings → Account settings → Delete account. Typed `DELETE` confirm; blocked while any group (or non-group) net is non-zero (`BigDecimal.compareTo`); server RPC `delete_own_account()` re-checks and anonymizes in place (no hard-delete). SQL: [docs/sql/phase-account-deletion.sql](docs/sql/phase-account-deletion.sql). **Legal copy still says email support@splitease.app** in [privacy-policy.md](docs/legal/privacy-policy.md) / [terms-of-service.md](docs/legal/terms-of-service.md) — keep that as a fallback for edge cases until a human updates the public HTML.
 - [x] **Password reset UX** — In-app 6-digit recovery OTP + set-new-password screen ([phase-12](docs/phase-12-forgot-password-email-otp.md)). Email links are not the primary path.
 - [x] **Onboarding-complete cloud flag** — Not needed. The post-signup setup wizard was removed; users go straight to the app after OTP. The unused local `onboarding_complete` preference was dropped.
 - [x] **Profile photo in onboarding** — Optional avatar on Sign up (crop + 512px JPEG). Compressed into app storage at signup, uploaded after OTP. Google photos are compressed into `user-avatars` on first hydrate.
@@ -27,16 +28,16 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 - [x] **A5 — Remote delete tombstones** — Pull prunes local `SYNCED` expenses/payments missing from the remote group (or 1:1) set. See architecture TODO **1**.
 - [x] **Conflict policy** — Pull LWW on `updatedAtEpochMs`; never overwrite local `PENDING` / `LOCAL_ONLY` with equal-or-older remote (`SyncConflictPolicy`). See architecture TODO **2**.
 - [x] **A6 — Pull-to-refresh** — Won't do. Group ledger stays current via open/resume pull + Realtime (`GroupLiveSync`); gesture removed from group detail.
-- [ ] **B6 — Activity badges** — Extend Activity feed / badge when remote events arrive.
+- [x] **B6 — Activity badges** — Unread badge on the Activity tab from `isSeen`; remote events start unseen; opening then leaving the feed marks them seen.
 - [x] **B8 — Notification preferences** — Mute all (Settings → Notifications) and mute group (Group settings); synced via `notification_prefs`.
 - [x] **Category sync** — Stable default ids (`cat_*`) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
-- [x] **Add Expense currency picker** — Amount symbol opens `CurrencyPickerDialog` (INR / USD). Default is the group `defaultCurrencyCode` (app setting for 1:1).
-- [ ] **Group totals per currency** — `GroupTotalsViewModel` still totals in the group default; `hasMixedCurrencies` is only a flag. Per-currency rows/tabs are not built.
-- [ ] **Expand `AppCurrencies.OPTIONS`** beyond INR and USD (common ~20–30 ISO 4217 set). Keep `isSupported` / `normalizeOrDefault` / `labelOf` / `filter` working on the expanded list.
+- [x] **Add Expense currency picker** — Amount symbol opens `CurrencyPickerDialog` (~30 ISO currencies in `AppCurrencies`). Default is the group `defaultCurrencyCode` (app setting for 1:1).
+- [x] **Group totals per currency** — `GroupSpendingCalculator.periodTotalsByCurrency` + Group Totals breakdown rows when a period has more than one code. Headline still uses the group default; mixed banner remains.
+- [x] **Expand `AppCurrencies.OPTIONS`** beyond INR and USD (common ~30 ISO 4217 set). Keep `isSupported` / `normalizeOrDefault` / `labelOf` / `filter` working on the expanded list.
 - [x] **FX snapshot on add expense** — When the picked currency differs from the group default, a live rate (`ExchangeRateCurrencyService` / ExchangeRate-API) or a custom rate converts the amount. Room stores `originalAmount`, `originalCurrencyCode`, `rateToDefaultCurrency`, `rateSource` (v15). Cloud `expenses.amount` / `currency_code` are the converted values. Balances are not revalued later.
 - [ ] **FX mark-to-market** — No live re-conversion of historical expenses into one display currency.
 - [x] **Social PENDING flush** — Groups/members/invites flush in `SyncInteractor` before expenses.
-- [ ] **Activity events cross-device** — Activity events do not sync to other devices.
+- [x] **Activity events cross-device** — New expense create/update/delete events flush via `SyncInteractor` to `public.activity_events`. Pre-v16 local history stays `LOCAL_ONLY` (not uploaded). SQL: [docs/sql/phase-activity-sync.sql](docs/sql/phase-activity-sync.sql).
 - [x] **Pin board offline cache / server refresh** — Room + flush; load/resume/idle poll fetch Supabase. Unsaved local drafts are not overwritten. No live co-edit (architecture TODO **4** — done).
 
 ## Payments & stretch
@@ -46,7 +47,7 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 
 ## Design / theme
 
-- [ ] **TODO(design) — Semantic balance colors** — Confirm "you owe" / "you're owed" / pending colors before shipping (`Color.kt`, `Theme.kt`, `SplitEaseColors.kt`).
+- [x] **TODO(design) — Semantic balance colors** — Brand-permanent `OweRed` / `OwedTeal` (and containers) in `Color.kt`; `SplitEaseColors.YouOwe` / `OwedToYou` are role aliases.
 - [ ] **Light text-secondary token** — Interim `#5C5878` for `onSurfaceVariant` / `NavyMuted`; confirm or add a brand muted token.
 - [ ] **Hardcoded colors outside theme** — e.g. invite chip in `GroupSettingsScreen.kt`, pastel avatars in `LedgerEntryUi.kt`.
 - [ ] **Migrate `Se*` / screens to `MaterialTheme.colorScheme`** — Many components still use light `SplitEaseColors` aliases under dark theme.
@@ -69,10 +70,10 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 
 ## Ops / SQL (existing projects)
 
-- [ ] **Apply SQL on fresh DB** — Use [docs/sql/migration_db.sql](docs/sql/migration_db.sql) for full setup in one run.
+- [ ] **Apply SQL on fresh DB** — Use [docs/sql/migration_db.sql](docs/sql/migration_db.sql) for full setup in one run, then [docs/sql/phase-account-deletion.sql](docs/sql/phase-account-deletion.sql) and [docs/sql/phase-activity-sync.sql](docs/sql/phase-activity-sync.sql) on existing projects (both are inlined in the canonical file).
 - [ ] **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP. See [docs/phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md).
 - [ ] **SplitEase Server** — Lives at `C:\splitease\server`; prefer Nodemailer SMTP locally. See [docs/splitease-server-repo.md](docs/splitease-server-repo.md).
 
 ## In-code markers
 
-Theme `TODO(design)` comments were removed from `Color.kt` / `Theme.kt` / `SplitEaseColors.kt`. Semantic balance-color confirmation is still an open design item above. The only remaining source `TODO` is in SplitEase Server (`server.js` mail API key).
+Theme `TODO(design)` comments were removed from `Color.kt` / `Theme.kt` / `SplitEaseColors.kt`. Semantic balance colors now use `OweRed` / `OwedTeal`. The only remaining source `TODO` is in SplitEase Server (`server.js` mail API key).

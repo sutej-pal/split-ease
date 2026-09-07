@@ -24,6 +24,8 @@ Track development phases. Always check this file at the start of a session to de
 
 **Last completed:** Phase 12 — Forgot Password OTP (email recovery code + in-app new password)
 
+**Post-phase:** In-app account deletion (2026-09-07) — Account settings → Delete account; `delete_own_account()` RPC in [phase-account-deletion.sql](docs/sql/phase-account-deletion.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
+
 ### Docs map
 - Index: [docs/README.md](docs/README.md)
 - Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)
@@ -36,15 +38,15 @@ Track development phases. Always check this file at the start of a session to de
 - **OTP ops** — App OTP flows shipped; live Confirm email / templates / SMTP stay on [release-checklist.md](docs/release-checklist.md) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
 - **Redeploy mail-service** — Recovery password-reset template lives in the mail-service; redeploy Vercel so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-email-otp.md)).
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
-- **Semantic balance colors** — confirm "you owe" / "you're owed" / pending before shipping ([phase-0](docs/phase-0-project-setup-and-brand-theme.md)).
-- **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run (includes share-link heal, expense RLS, phone RPC, reciprocal friends, optional FCM notify triggers).
+- **Semantic balance colors** — `OweRed` / `OwedTeal` brand tokens ([phase-0](docs/phase-0-project-setup-and-brand-theme.md)).
+- **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run, then [phase-account-deletion.sql](docs/sql/phase-account-deletion.sql) and [phase-activity-sync.sql](docs/sql/phase-activity-sync.sql) (includes share-link heal, expense RLS, phone RPC, reciprocal friends, optional FCM notify triggers, activity feed).
 - **Invite email delivery** — Email contacts get invite mail via mail-service; phone contacts and generic share links use the system share sheet.
 - **SplitEase Server (separate repo)** — lives at `C:\splitease\server` beside the Android app at `C:\splitease\app` ([docs/splitease-server-repo.md](docs/splitease-server-repo.md)). Deployed on Vercel; uses Brevo HTTPS when `BREVO_API_KEY` is set, otherwise Nodemailer SMTP locally.
 - **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md)).
 - **App Links / invite https** — share links use `MAIL_SERVICE_BASE_URL/invite/{token}` when set, else `splitease.app`. Host [docs/assetlinks.json](docs/assetlinks.json) for verified Open-by-default links ([app-links-setup.md](docs/app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification.
 - **Group live updates & push notifications (extra)** — Realtime + FCM path live: Edge Function deployed, `notification_prefs` applied, expenses/payments webhooks wired ([docs/fcm-setup.md](docs/fcm-setup.md), [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)).
 - **Category sync** — stable default ids (`cat_*`) on the wire; Room v12 remaps legacy random defaults; custom categories remain device-local ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md) #3).
-- **TODO(mixed-currency-ux)** — Remaining: group totals still roll up in the group default currency (mixed flagged, not per-currency rows); expand `AppCurrencies` beyond INR/USD. Per-expense picker + snapshot FX already shipped. See [TODO.md](TODO.md).
+- **TODO(mixed-currency-ux)** — Group totals show per-currency rows; `AppCurrencies` is a common ~30 ISO set. Snapshot FX already shipped. See [TODO.md](TODO.md).
 - **FX rates** — Add-expense can convert INR↔USD at save (live API or custom snapshot on the Room row). No mark-to-market of old balances.
 - **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
 - **Social PENDING flush** — Groups/members/invites flush in `SyncInteractor` before expenses (confirm SQL is applied on each environment).

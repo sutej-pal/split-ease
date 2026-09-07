@@ -3,6 +3,8 @@ package com.splitease.app.presentation.auth
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -10,12 +12,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.splitease.app.BuildConfig
+import com.splitease.app.core.ErrorMessages
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.util.UUID
@@ -41,6 +42,9 @@ sealed interface GoogleIdTokenOutcome {
 
     /** Picker or token parse failed for another reason. */
     data object Failed : GoogleIdTokenOutcome
+
+    /** Device is offline, or Google/Play Services failed because of the network. */
+    data object Offline : GoogleIdTokenOutcome
 }
 
 /**
@@ -58,6 +62,7 @@ suspend fun requestGoogleIdToken(
 ): GoogleIdTokenOutcome {
     val serverClientId = webClientId.trim()
     if (serverClientId.isEmpty()) return GoogleIdTokenOutcome.NotConfigured
+    if (!deviceHasInternet(activity)) return GoogleIdTokenOutcome.Offline
 
     val rawNonce = UUID.randomUUID().toString()
     val hashedNonce = sha256Hex(rawNonce)
@@ -87,12 +92,48 @@ suspend fun requestGoogleIdToken(
         }
     } catch (_: GetCredentialCancellationException) {
         GoogleIdTokenOutcome.Cancelled
-    } catch (_: NoCredentialException) {
-        GoogleIdTokenOutcome.NoAccount
-    } catch (_: GoogleIdTokenParsingException) {
-        GoogleIdTokenOutcome.Failed
-    } catch (_: GetCredentialException) {
-        GoogleIdTokenOutcome.Failed
+    } catch (error: Throwable) {
+        ErrorMessages.log(TAG, error)
+        classifyGoogleCredentialFailure(
+            error = error,
+            deviceOffline = !deviceHasInternet(activity),
+        )
+    }
+}
+
+private const val TAG = "GoogleSignIn"
+
+/**
+ * Maps Credential Manager / Play Services failures after the user taps Continue with Google.
+ *
+ * Cancellation always wins. Network failures (or a dead link while Google reports
+ * "no accounts") become [GoogleIdTokenOutcome.Offline] so the form does not claim
+ * the device has no Google account.
+ */
+internal fun classifyGoogleCredentialFailure(
+    error: Throwable,
+    deviceOffline: Boolean,
+): GoogleIdTokenOutcome {
+    if (error is GetCredentialCancellationException) return GoogleIdTokenOutcome.Cancelled
+    if (ErrorMessages.isNetworkError(error) || deviceOffline) {
+        return GoogleIdTokenOutcome.Offline
+    }
+    if (error is NoCredentialException) return GoogleIdTokenOutcome.NoAccount
+    return GoogleIdTokenOutcome.Failed
+}
+
+/** True when the device has a validated internet network (Wi-Fi or cellular). */
+internal fun deviceHasInternet(context: Context): Boolean {
+    val connectivity =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return true
+    return try {
+        val network = connectivity.activeNetwork ?: return false
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
+        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    } catch (_: SecurityException) {
+        true
     }
 }
 
@@ -118,30 +159,31 @@ fun rememberContinueWithGoogle(authViewModel: AuthViewModel): () -> Unit {
     val scope = rememberCoroutineScope()
     return remember(authViewModel, context, scope) {
         {
-            val webClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
-            if (webClientId.isBlank()) {
+            val activity = context.findActivity()
+            if (activity == null) {
+                authViewModel.onGoogleSignInFailed(GoogleIdTokenOutcome.Failed)
+            } else if (!deviceHasInternet(activity)) {
+                authViewModel.onGoogleSignInFailed(GoogleIdTokenOutcome.Offline)
+            } else if (BuildConfig.GOOGLE_WEB_CLIENT_ID.isBlank()) {
                 authViewModel.onGoogleSignInFailed(GoogleIdTokenOutcome.NotConfigured)
             } else {
-                val activity = context.findActivity()
-                if (activity == null) {
-                    authViewModel.onGoogleSignInFailed(GoogleIdTokenOutcome.Failed)
-                } else {
-                    scope.launch {
-                        authViewModel.onGoogleSignInStarted()
-                        when (val outcome = requestGoogleIdToken(activity, webClientId)) {
-                            GoogleIdTokenOutcome.Cancelled ->
-                                authViewModel.onGoogleSignInCancelled()
-                            is GoogleIdTokenOutcome.Success ->
-                                authViewModel.signInWithGoogle(
-                                    idToken = outcome.idToken,
-                                    rawNonce = outcome.rawNonce,
-                                )
-                            GoogleIdTokenOutcome.NotConfigured,
-                            GoogleIdTokenOutcome.NoAccount,
-                            GoogleIdTokenOutcome.Failed,
-                            ->
-                                authViewModel.onGoogleSignInFailed(outcome)
-                        }
+                val webClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
+                scope.launch {
+                    authViewModel.onGoogleSignInStarted()
+                    when (val outcome = requestGoogleIdToken(activity, webClientId)) {
+                        GoogleIdTokenOutcome.Cancelled ->
+                            authViewModel.onGoogleSignInCancelled()
+                        is GoogleIdTokenOutcome.Success ->
+                            authViewModel.signInWithGoogle(
+                                idToken = outcome.idToken,
+                                rawNonce = outcome.rawNonce,
+                            )
+                        GoogleIdTokenOutcome.NotConfigured,
+                        GoogleIdTokenOutcome.NoAccount,
+                        GoogleIdTokenOutcome.Failed,
+                        GoogleIdTokenOutcome.Offline,
+                        ->
+                            authViewModel.onGoogleSignInFailed(outcome)
                     }
                 }
             }

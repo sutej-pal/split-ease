@@ -2,7 +2,7 @@
 
 Canonical schema reference for Room entities and Supabase tables. Updated whenever a schema changes.
 
-Room version: **15** (`app/schemas/`). v14 added `pin_boards`; v15 added expense FX snapshot columns.
+Room version: **16** (`app/schemas/`). v14 added `pin_boards`; v15 added expense FX snapshot columns; v16 added `activity_events.remoteId` / `syncStatus` / `isSeen`.
 
 ## Room Entities
 
@@ -163,6 +163,23 @@ Unique index: `(expenseId, userId)`.
 | updatedAtEpochMs | INTEGER                     | no       | Last mutation UTC millis  |
 | syncStatus       | TEXT                        | no       | Sync bookmark             |
 
+### `activity_events`
+
+| Column           | Type      | Nullable | Description                                              |
+| ---------------- | --------- | -------- | -------------------------------------------------------- |
+| id               | TEXT (PK) | no       | Local UUID (same id on the wire when flushed)            |
+| kind             | TEXT      | no       | `EXPENSE_ADDED` / `EXPENSE_UPDATED` / `EXPENSE_DELETED`  |
+| title            | TEXT      | no       | Primary label                                            |
+| subtitle         | TEXT      | no       | Secondary label                                          |
+| amountLabel      | TEXT      | no       | Amount text snapshot                                     |
+| actorUserId      | TEXT      | no       | User who performed the action                            |
+| relatedExpenseId | TEXT      | yes      | Linked expense id when applicable; omitted on flush for `EXPENSE_DELETED` |
+| involvedUserIds  | TEXT      | no       | Comma-wrapped participant ids (`,id1,id2,`)              |
+| sortEpochMs      | INTEGER   | no       | Sort / display time                                      |
+| remoteId         | TEXT      | yes      | Cloud id when synced (Room v16)                          |
+| syncStatus       | TEXT      | no       | Sync bookmark. Pre-v16 rows stay `LOCAL_ONLY` (not pushed) |
+| isSeen           | INTEGER   | no       | Device-local unread flag (Room v16; not stored in cloud) |
+
 ## Supabase remote tables
 
 | Collection / Table            | Field                 | Type      | Nullable | Description                                                                                |
@@ -177,6 +194,7 @@ Unique index: `(expenseId, userId)`.
 | profiles                      | phone_number          | TEXT      | yes      | National phone number                                                                      |
 | profiles                      | preferred_currency    | TEXT      | yes      | ISO 4217 from signup                                                                       |
 | profiles                      | updated_at_epoch_ms   | BIGINT    | no       | Last update                                                                                |
+| profiles                      | deleted_at            | TIMESTAMPTZ | yes    | Set by `delete_own_account()`; null while the account is active                            |
 | friends                       | id                    | UUID (PK) | no       | Friendship id                                                                              |
 | friends                       | owner_user_id         | UUID      | no       | Owner                                                                                      |
 | friends                       | friend_user_id        | UUID      | no       | Friend user                                                                                |
@@ -212,6 +230,16 @@ Unique index: `(expenseId, userId)`.
 | invites                       | friend_row_id         | UUID      | yes      | Related friends row                                                                        |
 | invites                       | status                | TEXT      | no       | PENDING / ACCEPTED / CANCELLED                                                             |
 | invites                       | created_at_epoch_ms   | BIGINT    | no       | Created time                                                                               |
+| activity_events               | id                    | UUID (PK) | no       | Same as Room id when flushed                                                               |
+| activity_events               | kind / title / subtitle / amount_label | TEXT | no | Event copy                                                                                 |
+| activity_events               | actor_user_id         | UUID      | no       | Actor (`auth.users`)                                                                       |
+| activity_events               | related_expense_id    | UUID      | yes      | Expense FK; `ON DELETE SET NULL`. Delete-event upserts send null (parent row already gone) |
+| activity_events               | involved_user_ids     | TEXT      | no       | Comma-wrapped participant ids                                                              |
+| activity_events               | sort_epoch_ms         | BIGINT    | no       | Sort time                                                                                  |
+
+**Activity event RLS** (see [sql/phase-activity-sync.sql](sql/phase-activity-sync.sql)):
+- SELECT: actor or listed in `involved_user_ids`
+- INSERT / UPDATE: actor only (`isSeen` is not a cloud column)
 
 **Invite join RPCs** (see [sql/migration_db.sql](sql/migration_db.sql)):
 - `get_invite_preview(p_token)` — public (anon) preview for landing UI
@@ -219,8 +247,13 @@ Unique index: `(expenseId, userId)`.
 - `accept_pending_invites()` — email-based accept for person invites only (`friend_row_id` required; skips generic share links)
 
 **Auth lookup RPCs** (anon + authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
-- `auth_email_registered(p_email)` — whether `auth.users` already has that email
-- `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number
+- `auth_email_registered(p_email)` — whether `auth.users` already has that email (skips banned / deleted Auth rows)
+- `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number (skips `profiles.deleted_at` rows and banned Auth users)
+
+**Account deletion RPC** (authenticated; see [sql/phase-account-deletion.sql](sql/phase-account-deletion.sql)):
+- `delete_own_account()` — caller only (`auth.uid()`). Recomputes per-group nets at scale 2; raises `ACCOUNT_HAS_BALANCE` with `{id, name}` groups when any net is non-zero (includes the non-group ledger). Otherwise anonymizes `profiles` in place (`display_name` → `Deleted user`, email scrambled, phone/photo cleared, `deleted_at` set), bans Auth (`banned_until = infinity`, identities/sessions dropped), and does **not** delete `profiles` / `auth.users` or cascade expenses/splits/payments. Dropping `auth.identities` is what lets the same Google account sign up again as a new user.
+- `can_see_profile(p_profile_id)` — RLS helper: active profiles stay directory-visible; deleted profiles are readable only by people who share a group, expense, payment, or friendship so history still resolves as “Deleted user”.
+- `account_deletion_blocking_groups(p_user_id)` — internal helper used by the RPC (not granted to clients).
 
 Share-link burn heal + multi-use token accept: included in [sql/migration_db.sql](sql/migration_db.sql)
 

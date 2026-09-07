@@ -31,7 +31,7 @@ class ExchangeRateCurrencyService @Inject constructor() {
 
                 val apiKey = BuildConfig.EXCHANGE_RATE_API_KEY.trim()
                 require(apiKey.isNotEmpty()) {
-                    "Missing EXCHANGE_RATE_API_KEY in local.properties"
+                    "Exchange rate service not configured"
                 }
 
                 val url =

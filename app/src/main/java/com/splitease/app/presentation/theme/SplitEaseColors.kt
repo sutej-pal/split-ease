@@ -77,10 +77,10 @@ object SplitEaseColors {
         get() = MaterialTheme.colorScheme.outline
 
     /** "You owe". */
-    val YouOwe = ErrorPlaceholder
+    val YouOwe = OweRed
 
     /** "You're owed" / positive. */
-    val OwedToYou = PositivePlaceholder
+    val OwedToYou = OwedTeal
 
     @get:Composable
     @get:ReadOnlyComposable
@@ -102,5 +102,5 @@ object SplitEaseColors {
     val ShellSurface = SurfaceDark
 
     /** Positive fill. */
-    val Positive = PositivePlaceholder
+    val Positive = OwedTeal
 }

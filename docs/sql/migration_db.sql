@@ -4,9 +4,10 @@
 --
 -- Includes: profiles/friends/groups, invites, RLS helpers, expenses/splits,
 -- expense comments/photos, payments/recurring columns, realtime publication,
--- device_tokens, notification_prefs, pin_boards, Storage buckets (avatars, group photos, receipts, pin board),
+-- device_tokens, notification_prefs, pin_boards, activity_events, Storage buckets (avatars, group photos, receipts, pin board),
 -- auth_email_registered / auth_phone_registered, reciprocal-friend + remap RPCs,
 -- share-link invite heal, optional FCM notify triggers (no-op until app.settings set).
+-- Account deletion (soft-delete RPC): also apply docs/sql/phase-account-deletion.sql
 -- Ops: FCM Edge Function + webhooks — see docs/fcm-setup.md
 
 -- ============================================
@@ -1252,6 +1253,48 @@ create policy "pin_boards_update_member"
       where gm.group_id = pin_boards.group_id and gm.user_id = auth.uid()
     )
   );
+
+-- ============================================
+-- Activity events (cross-device feed)
+-- ============================================
+create table if not exists public.activity_events (
+  id uuid primary key,
+  kind text not null,
+  title text not null,
+  subtitle text not null,
+  amount_label text not null,
+  actor_user_id uuid not null references auth.users (id) on delete cascade,
+  -- App sends null here for EXPENSE_DELETED upserts (parent expense is already gone).
+  related_expense_id uuid references public.expenses (id) on delete set null,
+  involved_user_ids text not null,
+  sort_epoch_ms bigint not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists activity_events_sort_idx on public.activity_events (sort_epoch_ms);
+create index if not exists activity_events_actor_idx on public.activity_events (actor_user_id);
+
+alter table public.activity_events enable row level security;
+
+drop policy if exists "activity_events_select" on public.activity_events;
+drop policy if exists "activity_events_insert" on public.activity_events;
+drop policy if exists "activity_events_update" on public.activity_events;
+
+create policy "activity_events_select"
+  on public.activity_events for select to authenticated
+  using (
+    actor_user_id = auth.uid()
+    or involved_user_ids like '%,' || auth.uid()::text || ',%'
+  );
+
+create policy "activity_events_insert"
+  on public.activity_events for insert to authenticated
+  with check (actor_user_id = auth.uid());
+
+create policy "activity_events_update"
+  on public.activity_events for update to authenticated
+  using (actor_user_id = auth.uid())
+  with check (actor_user_id = auth.uid());
 
 -- ============================================
 -- Storage: profile avatars, group photos, pin board images

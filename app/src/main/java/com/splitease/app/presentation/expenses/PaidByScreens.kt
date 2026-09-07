@@ -44,6 +44,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
+import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
@@ -401,9 +402,4 @@ private fun filterMoneyInput(raw: String): String {
     }
 }
 
-private fun currencySymbolFor(code: String): String =
-    runCatching {
-        java.util.Currency
-            .getInstance(code)
-            .getSymbol(java.util.Locale.getDefault())
-    }.getOrElse { code }
+private fun currencySymbolFor(code: String): String = AppCurrencies.symbol(code)

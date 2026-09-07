@@ -316,7 +316,7 @@ class AuthViewModel
                     _formState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
+                            errorMessage = googleSignInError(result.exceptionOrNull()),
                             holdSignedInForOtp = false,
                             pendingConfirmationEmail = null,
                             pendingOtpPurpose = null,
@@ -351,6 +351,7 @@ class AuthViewModel
                 when (outcome) {
                     GoogleIdTokenOutcome.NotConfigured -> msg(AuthMessages.GOOGLE_NOT_CONFIGURED)
                     GoogleIdTokenOutcome.NoAccount -> msg(AuthMessages.GOOGLE_NO_ACCOUNT)
+                    GoogleIdTokenOutcome.Offline -> msg(AuthMessages.GOOGLE_OFFLINE)
                     GoogleIdTokenOutcome.Failed,
                     GoogleIdTokenOutcome.Cancelled,
                     is GoogleIdTokenOutcome.Success,
@@ -935,6 +936,19 @@ class AuthViewModel
                     }
                 }
             }
+        }
+
+        /**
+         * Maps Google ID-token exchange failures. Offline/DNS/timeouts get a
+         * Google-specific connection message; identity conflicts still use the
+         * shared auth copy.
+         */
+        private fun googleSignInError(throwable: Throwable?): String {
+            if (ErrorMessages.isNetworkError(throwable)) {
+                ErrorMessages.log(TAG, throwable)
+                return msg(AuthMessages.GOOGLE_OFFLINE)
+            }
+            return friendlyAuthError(throwable)
         }
 
         /**

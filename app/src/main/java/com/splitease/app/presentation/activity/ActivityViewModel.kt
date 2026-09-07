@@ -93,6 +93,8 @@ data class ActivityUiItem(
     val relatedExpenseId: String? = null,
     /** Expense description to render semibold inside [title]. */
     val expenseTitle: String? = null,
+    /** False when this row is an unseen synced activity event. */
+    val isSeen: Boolean = true,
 )
 
 @Immutable
@@ -236,6 +238,16 @@ class ActivityViewModel
                     syncInteractor.markInitialHydrateStarted(id)
                     runCatching { syncInteractor.syncForUser(id, force = true) }
                 }
+            }
+        }
+
+        /**
+         * Marks the signed-in user's activity events as seen (clears the unread badge).
+         */
+        fun markFeedSeen() {
+            val id = userId.value ?: return
+            viewModelScope.launch(Dispatchers.IO) {
+                activityEventRepository.markAllAsSeen(id)
             }
         }
 
@@ -474,6 +486,7 @@ class ActivityViewModel
                 relatedExpenseId =
                     relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
                 expenseTitle = description,
+                isSeen = isSeen,
             )
         }
 
@@ -669,6 +682,7 @@ private fun ActivityFeedInputs.rebuildKey(splitsByExpenseId: Map<String, List<Ex
             .append(event.relatedExpenseId)
             .append(event.title)
             .append(event.subtitle)
+            .append(event.isSeen)
     }
     sources.groups.forEach { group ->
         sb.append('G')
@@ -760,5 +774,7 @@ private fun List<ActivityUiItem>.contentSignature(): List<String> =
             append(item.balanceLabel.orEmpty())
             append('|')
             append(item.timeLabel)
+            append('|')
+            append(item.isSeen)
         }
     }

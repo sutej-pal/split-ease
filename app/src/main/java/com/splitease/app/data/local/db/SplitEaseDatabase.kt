@@ -30,7 +30,7 @@ import com.splitease.app.data.local.entity.PinBoardEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (Room v15; v14 pin_boards, v15 expense FX snapshots).
+ * Offline-first Room database for SplitEase (Room v16; v16 activity_events sync).
  */
 @Database(
     entities = [
@@ -48,7 +48,7 @@ import com.splitease.app.data.local.entity.UserEntity
         ActivityEventEntity::class,
         PinBoardEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 @TypeConverters(SplitEaseTypeConverters::class)

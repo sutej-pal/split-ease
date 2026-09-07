@@ -145,3 +145,19 @@ data class ExpensePhotoDto(
     @SerialName("remote_url") val remoteUrl: String? = null,
     @SerialName("created_at_epoch_ms") val createdAtEpochMs: Long,
 )
+
+/**
+ * Supabase `activity_events` row. Seen/unread is device-local and is not stored here.
+ */
+@Serializable
+data class ActivityEventDto(
+    val id: String,
+    val kind: String,
+    val title: String,
+    val subtitle: String,
+    @SerialName("amount_label") val amountLabel: String,
+    @SerialName("actor_user_id") val actorUserId: String,
+    @SerialName("related_expense_id") val relatedExpenseId: String? = null,
+    @SerialName("involved_user_ids") val involvedUserIds: String,
+    @SerialName("sort_epoch_ms") val sortEpochMs: Long,
+)

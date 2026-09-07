@@ -52,4 +52,32 @@ interface ActivityEventDao {
         userIdToken: String,
         limit: Int,
     ): Flow<List<ActivityEventEntity>>
+
+    /** Fetches a single event by id. */
+    @Query("SELECT * FROM activity_events WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): ActivityEventEntity?
+
+    /** Gets events that are waiting to be flushed to the cloud. */
+    @Query("SELECT * FROM activity_events WHERE syncStatus = 'PENDING'")
+    suspend fun getPendingSync(): List<ActivityEventEntity>
+
+    /** Marks all events for a user as seen. */
+    @Query(
+        """
+        UPDATE activity_events SET isSeen = 1
+        WHERE (actorUserId = :userId OR involvedUserIds LIKE '%' || :userIdToken || '%')
+          AND isSeen = 0
+        """
+    )
+    suspend fun markAllAsSeen(userId: String, userIdToken: String)
+
+    /** Number of unseen events for a user. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM activity_events
+        WHERE (actorUserId = :userId OR involvedUserIds LIKE '%' || :userIdToken || '%')
+          AND isSeen = 0
+        """
+    )
+    fun observeUnseenCount(userId: String, userIdToken: String): Flow<Int>
 }

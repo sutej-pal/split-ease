@@ -319,6 +319,21 @@ object SplitEaseMigrations {
             }
         }
 
+    /** Adds sync and seen status to activity_events without rewriting existing rows. */
+    val MIGRATION_15_16 =
+        object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `remoteId` TEXT")
+                db.execSQL(
+                    "ALTER TABLE `activity_events` ADD COLUMN `syncStatus` TEXT NOT NULL DEFAULT 'LOCAL_ONLY'",
+                )
+                // Existing rows are already known to this device — do not badge history.
+                db.execSQL(
+                    "ALTER TABLE `activity_events` ADD COLUMN `isSeen` INTEGER NOT NULL DEFAULT 1",
+                )
+            }
+        }
+
     private val STABLE_DEFAULT_CATEGORIES =
         listOf(
             Triple("cat_general", "General", "category_general"),
@@ -329,7 +344,7 @@ object SplitEaseMigrations {
             Triple("cat_entertainment", "Entertainment", "category_entertainment"),
         )
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 13. */
+    /** All migrations from version 1 through [SplitEaseDatabase] version 16. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
@@ -346,5 +361,6 @@ object SplitEaseMigrations {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
+            MIGRATION_15_16,
         )
 }

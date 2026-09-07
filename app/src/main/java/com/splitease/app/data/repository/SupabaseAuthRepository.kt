@@ -2,9 +2,9 @@ package com.splitease.app.data.repository
 
 import android.content.Context
 import com.splitease.app.data.media.AvatarImageIO
-import com.splitease.app.data.media.SupabaseImageAuth
 import com.splitease.app.data.media.LocalMediaCleanup
 import com.splitease.app.data.media.MediaStorageCleanup
+import com.splitease.app.data.media.SupabaseImageAuth
 import com.splitease.app.data.remote.ProfilePhotoStorage
 import com.splitease.app.data.remote.SocialRemoteDataSource
 import com.splitease.app.data.remote.StorageObjectPaths
@@ -12,6 +12,7 @@ import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
 import com.splitease.app.data.session.LocalUserDataCleanup
 import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.domain.account.AccountDeletionErrors
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SignUpResult
@@ -34,6 +35,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -74,6 +76,7 @@ class SupabaseAuthRepository
 
         @Volatile
         private var lastProfileUpsertAtMs: Long = 0L
+
         override suspend fun getSignedInUserOrNull(): AuthUser? =
             supabase.auth.currentUserOrNull()?.toAuthUser()
 
@@ -350,6 +353,28 @@ class SupabaseAuthRepository
                 lastProfileUpsertAtMs = 0L
                 // Drop Room + media + user prefs so the next account cannot see leftovers.
                 localUserDataCleanup.clearAll()
+            }
+
+        override suspend fun deleteOwnAccount(): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    check(supabase.auth.currentUserOrNull() != null) { "Not signed in." }
+                    runCatching {
+                        supabase.postgrest.rpc("delete_own_account")
+                    }.getOrElse { err ->
+                        throw AccountDeletionErrors.map(err)
+                    }
+                    withContext(NonCancellable) {
+                        lastProfileUpsertUserId = null
+                        lastProfileUpsertAtMs = 0L
+                        // RPC already banned the user and dropped sessions — signOut may fail.
+                        runCatching { supabase.auth.signOut() }
+                        runCatching { supabase.auth.clearSession() }
+                        localUserDataCleanup.clearAll()
+                    }
+                }
+            }.recoverCatching { err ->
+                throw AccountDeletionErrors.map(err)
             }
 
         override suspend fun ensureLocalProfile(): Result<Unit> =

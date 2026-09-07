@@ -42,14 +42,31 @@ object GroupSpendingCalculator {
         fromEpochMs: Long,
         toEpochMs: Long,
     ): Pair<BigDecimal, BigDecimal> {
-        var total = ZERO
-        var share = ZERO
+        val byCurrency = periodTotalsByCurrency(viewerUserId, expenses, splitsByExpenseId, fromEpochMs, toEpochMs)
+        return byCurrency[currencyCode] ?: (ZERO to ZERO)
+    }
+
+    /**
+     * Sums total spent and the viewer’s share for expenses in [fromEpochMs]..[toEpochMs]
+     * grouped by currency code.
+     *
+     * @return Map of currencyCode to Pair(totalSpent, yourShare).
+     */
+    fun periodTotalsByCurrency(
+        viewerUserId: String,
+        expenses: List<Expense>,
+        splitsByExpenseId: Map<String, List<ExpenseSplit>>,
+        fromEpochMs: Long,
+        toEpochMs: Long,
+    ): Map<String, Pair<BigDecimal, BigDecimal>> {
+        val results = mutableMapOf<String, Pair<BigDecimal, BigDecimal>>()
         expenses.forEach { expense ->
-            if (expense.currencyCode != currencyCode) return@forEach
             if (expense.expenseDateEpochMs < fromEpochMs || expense.expenseDateEpochMs > toEpochMs) {
                 return@forEach
             }
-            total = total.add(expense.amount.setScale(2, RoundingMode.HALF_UP))
+            val currencyCode = expense.currencyCode
+            val (currentTotal, currentShare) = results.getOrDefault(currencyCode, ZERO to ZERO)
+            val newTotal = currentTotal.add(expense.amount.setScale(2, RoundingMode.HALF_UP))
             val owed =
                 splitsByExpenseId[expense.id]
                     .orEmpty()
@@ -57,9 +74,10 @@ object GroupSpendingCalculator {
                     ?.owedAmount
                     ?.setScale(2, RoundingMode.HALF_UP)
                     ?: ZERO
-            share = share.add(owed)
+            val newShare = currentShare.add(owed)
+            results[currencyCode] = newTotal to newShare
         }
-        return total to share
+        return results
     }
 
     /**

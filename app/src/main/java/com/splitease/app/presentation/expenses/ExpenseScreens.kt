@@ -1342,12 +1342,7 @@ private fun isValidExpenseAmount(amount: String): Boolean {
     return parsed > BigDecimal.ZERO
 }
 
-private fun currencySymbol(code: String): String =
-    when (AppCurrencies.normalizeOrDefault(code)) {
-        AppCurrencies.INR -> "₹"
-        AppCurrencies.USD -> "$"
-        else -> code
-    }
+private fun currencySymbol(code: String): String = AppCurrencies.symbol(code)
 
 /** Material DatePicker uses UTC midnight; convert local calendar day to that form. */
 private fun localDateToUtcMillis(localEpochMs: Long): Long {

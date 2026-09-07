@@ -27,6 +27,13 @@ import java.util.Calendar
 import java.util.TimeZone
 import javax.inject.Inject
 
+data class CurrencyTotal(
+    val currencyCode: String,
+    val totalSpent: BigDecimal,
+    val yourShare: BigDecimal,
+    val sharePercent: Int?,
+)
+
 data class GroupTotalsUi(
     val groupId: String = "",
     val groupName: String = "",
@@ -37,6 +44,7 @@ data class GroupTotalsUi(
     val totalSpent: BigDecimal = BigDecimal.ZERO.setScale(2),
     val yourShare: BigDecimal = BigDecimal.ZERO.setScale(2),
     val sharePercent: Int? = null,
+    val totalsByCurrency: List<CurrencyTotal> = emptyList(),
     val chartBars: List<GroupMonthSpending> = emptyList(),
     val hasMixedCurrencies: Boolean = false,
     val isLoading: Boolean = true,
@@ -113,19 +121,36 @@ class GroupTotalsViewModel
                     fromMs = bounds.first
                     toMs = bounds.second
                 }
-                val (total, share) =
+                val totalsByCurrencyMap =
                     if (me == null) {
-                        BigDecimal.ZERO.setScale(2) to BigDecimal.ZERO.setScale(2)
+                        emptyMap()
                     } else {
-                        GroupSpendingCalculator.periodTotals(
+                        GroupSpendingCalculator.periodTotalsByCurrency(
                             viewerUserId = me,
                             expenses = expenses,
                             splitsByExpenseId = splits,
-                            currencyCode = currency,
                             fromEpochMs = fromMs,
                             toEpochMs = toMs,
                         )
                     }
+                val defaultTotalPair = totalsByCurrencyMap[currency] ?: (BigDecimal.ZERO.setScale(2) to BigDecimal.ZERO.setScale(2))
+                val total = defaultTotalPair.first
+                val share = defaultTotalPair.second
+                val totalsByCurrency =
+                    totalsByCurrencyMap
+                        .map { (code, pair) ->
+                            CurrencyTotal(
+                                currencyCode = code,
+                                totalSpent = pair.first,
+                                yourShare = pair.second,
+                                sharePercent =
+                                    GroupSpendingCalculator.sharePercent(pair.first, pair.second),
+                            )
+                        }.sortedWith(
+                            compareBy<CurrencyTotal> { if (it.currencyCode == currency) 0 else 1 }
+                                .thenByDescending { it.totalSpent },
+                        )
+
                 val bars =
                     if (me == null) {
                         emptyList()
@@ -151,6 +176,7 @@ class GroupTotalsViewModel
                     totalSpent = total,
                     yourShare = share,
                     sharePercent = GroupSpendingCalculator.sharePercent(total, share),
+                    totalsByCurrency = totalsByCurrency,
                     chartBars = bars,
                     hasMixedCurrencies = expenses.any { it.currencyCode != currency },
                     isLoading = group == null && groupId.isNotBlank(),

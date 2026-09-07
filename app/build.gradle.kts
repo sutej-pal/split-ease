@@ -118,6 +118,21 @@ android {
             require(!releaseHasAdUnits || admobAppIdRelease.isNotEmpty()) {
                 "Set ADMOB_APP_ID in local.properties (or env) when release AdMob unit IDs are configured."
             }
+
+            // Ensure critical backend keys are present for production builds.
+            val supabaseUrl = localProp("SUPABASE_URL").trim()
+            val supabaseKey = localProp("SUPABASE_ANON_KEY").trim()
+            val fxApiKey = localProp("EXCHANGE_RATE_API_KEY").trim()
+
+            require(supabaseUrl.isNotEmpty() && supabaseKey.isNotEmpty()) {
+                "Missing SUPABASE_URL / SUPABASE_ANON_KEY in local.properties (or env). " +
+                    "Production builds require these to be set."
+            }
+            require(fxApiKey.isNotEmpty()) {
+                "Missing EXCHANGE_RATE_API_KEY in local.properties (or env). " +
+                    "Production builds require this for currency conversion."
+            }
+
             // Never embed Google's public test App ID in release APKs. When ads are unconfigured,
             // unit IDs stay empty (AdConfig.isEnabled == false) and MobileAds is never initialized.
             manifestPlaceholders["admobAppId"] =

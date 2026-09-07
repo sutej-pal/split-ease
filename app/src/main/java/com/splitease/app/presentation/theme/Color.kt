@@ -78,13 +78,13 @@ val TextSecondaryDark = IndigoLight.wash(0.68f)
 // --- Semantic balance ---
 
 /** "You owe" / error — rose that stays readable on pale fills. */
-val ErrorPlaceholder = Color(0xFFC43D5A)
+val OweRed = Color(0xFFC43D5A)
 
 /** Error / you-owe container. */
-val ErrorContainerPlaceholder = Color(0xFFFDE8EC)
+val OweContainer = Color(0xFFFDE8EC)
 
 /** "You're owed" / positive — teal. */
-val PositivePlaceholder = Color(0xFF1B8A6B)
+val OwedTeal = Color(0xFF1B8A6B)
 
 /** Positive container. */
-val PositiveContainerPlaceholder = Color(0xFFDDF6EE)
+val OwedContainer = Color(0xFFDDF6EE)

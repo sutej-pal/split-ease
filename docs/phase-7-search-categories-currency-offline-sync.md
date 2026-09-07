@@ -2,7 +2,7 @@
 
 Hardened offline-first sync (durable PENDING queue), expense search, categories, a currency picker, and simple spending totals. Payment deep links and CSV import are stretch work in Phase 8.
 
-**Current catalog:** INR and USD in `AppCurrencies.OPTIONS` (a 100+ ISO list was in the original plan and is still open).
+**Current catalog:** common ~30 ISO 4217 codes in `AppCurrencies.OPTIONS` (a 100+ ISO list was in the original plan and is still open).
 
 ## Phase Goal
 

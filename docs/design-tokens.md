@@ -38,12 +38,12 @@ Source of truth in code: `presentation/theme/Color.kt` → `Theme.kt` `ColorSche
 | `surface`                        | SurfaceLight                                   | SurfaceDark       |
 | `onBackground` / `onSurface`     | TextPrimaryLight                               | TextPrimaryDark   |
 | `onSurfaceVariant`               | soft indigo-gray (interim)                     | TextSecondaryDark |
-| `error` / `errorContainer`       | PLACEHOLDER ("you owe")                        | PLACEHOLDER       |
-| `positive` / `positiveContainer` | PLACEHOLDER custom vals (not in `ColorScheme`) | same              |
+| `error` / `errorContainer`       | `OweRed` / `OweContainer`                      | `OweRed`          |
+| `positive` / `positiveContainer` | `OwedTeal` / `OwedContainer` (custom vals)     | same              |
 
-## Semantic balance colors (not finalized)
+## Semantic balance colors
 
-`error` / `ErrorPlaceholder` and `PositivePlaceholder` / `PositiveContainerPlaceholder` are **labeled placeholders** only. Confirm before shipping.
+Brand-permanent tokens in `Color.kt`: **OweRed** (`#C43D5A`) for "you owe" / error, **OwedTeal** (`#1B8A6B`) for "you're owed" / positive. Role aliases `SplitEaseColors.YouOwe` / `OwedToYou` map to those seeds.
 
 ## Screen chrome (back + title)
 
