@@ -29,6 +29,7 @@ class LocalUserDataCleanup
     ) {
         /** Best-effort full local wipe for the signed-out account. */
         suspend fun clearAll() {
+            runCatching { syncInteractor.discardLocalWrites() }
             withContext(Dispatchers.IO) {
                 runCatching { database.clearAllTables() }
                 runCatching { LocalMediaCleanup.deleteAllUserMedia(context) }

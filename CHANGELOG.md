@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug-only `clone` product flavor (and `standard` flavor dimension) used for side-by-side twin installs
 
 ### Fixed
+- Sign-out no longer races a background save: wait for in-flight expense writes, flush PENDING rows while the session is valid, then discard late Room callbacks after wipe
+- Activity feed is newest-first; creating a group then an expense in the same minute lists the expense on top (clock still shows the real event time)
 - Expense-delete activity events never reached other devices: flush omits `related_expense_id` so PostgREST no longer hits the expenses FK after the expense row is gone
 - Signup profile photo now survives OTP: cropped image is compressed to a 512px JPEG in app storage at sign-up (not a cache URI in Auth metadata) and uploaded after verify; Google avatars are compressed into `user-avatars` on first hydrate
 - Co-member expense categories were lost on pull when devices used different default UUIDs: stable `cat_*` ids on the wire, Room v12 remaps legacy defaults, pull auto-seeds missing builtins ([supabase-architecture-todos](docs/supabase-architecture-todos.md) #3)

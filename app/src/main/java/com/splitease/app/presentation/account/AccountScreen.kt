@@ -59,6 +59,7 @@ fun AccountScreen(
     onOpenSpending: () -> Unit,
     onOpenImport: () -> Unit,
     onSignOut: () -> Unit,
+    isSigningOut: Boolean = false,
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
@@ -141,7 +142,11 @@ fun AccountScreen(
                 )
             }
             Spacer(modifier = Modifier.height(28.dp))
-            SeOutlinedButton(text = stringResource(R.string.action_sign_out), onClick = onSignOut)
+            SeOutlinedButton(
+                text = stringResource(R.string.action_sign_out),
+                onClick = onSignOut,
+                isLoading = isSigningOut,
+            )
         }
     }
 }
