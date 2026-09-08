@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -154,6 +155,7 @@ fun SeOutlinedButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
+    contentColor: Color = SplitEaseColors.Primary,
 ) {
     val interactive = enabled && !isLoading
     OutlinedButton(
@@ -163,15 +165,18 @@ fun SeOutlinedButton(
         shape = ButtonShape,
         colors =
             ButtonDefaults.outlinedButtonColors(
-                contentColor = SplitEaseColors.Primary,
-                disabledContentColor = SplitEaseColors.Primary,
+                contentColor = contentColor,
+                disabledContentColor = if (isLoading) contentColor else contentColor.copy(alpha = 0.38f),
             ),
-        border = ButtonDefaults.outlinedButtonBorder(enabled = interactive || isLoading),
+        border = BorderStroke(
+            1.dp,
+            if (interactive || isLoading) contentColor else contentColor.copy(alpha = 0.38f),
+        ),
     ) {
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(22.dp),
-                color = SplitEaseColors.Primary,
+                color = contentColor,
                 strokeWidth = 2.dp,
             )
         } else {

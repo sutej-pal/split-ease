@@ -4,7 +4,6 @@
     <string name="notification_channel_group_updates">Group updates</string>
     <string name="notification_group_update_body">Something changed in your group.</string>
     <string name="settings_notifications">Notifications</string>
-    <string name="settings_notifications_item">Device and push notification settings</string>
     <string name="settings_notifications_on">On</string>
     <string name="settings_notifications_off">Off</string>
     <string name="settings_notifications_section">Push notifications</string>
@@ -40,7 +39,6 @@
     <string name="cd_remove_review_friend">Remove from list</string>
     <string name="msg_review_empty">Select at least one person to add.</string>
     <string name="msg_review_contact_required">Add a phone or email for %1$s.</string>
-    <string name="msg_friend_add_failed">Couldn\'t add friend. Try again.</string>
     <string name="edit_contact_title">Edit contact</string>
     <string name="edit_contact_enter_phone">Enter a new phone number</string>
     <string name="edit_contact_enter_email">Enter a new email address</string>
@@ -107,7 +105,6 @@
     <string name="remind_template_third_party_no_group">Hello %1$s and %2$s,\n\nThis is a reminder that %1$s owes %2$s %3$s for shared expenses on SplitEase. Please open SplitEase to review and settle up.\n\nThank you,\n%4$s</string>
     <string name="msg_reminder_sent">Reminder email sent.</string>
     <string name="msg_reminder_no_email">Couldn\'t find email addresses for both people.</string>
-    <string name="msg_reminder_failed">Couldn\'t send the reminder. Try again.</string>
     <string name="cd_share_remind">Share payment reminder</string>
     <string name="action_charts">Charts</string>
     <string name="action_convert_currency">Convert to…</string>
@@ -154,8 +151,6 @@
     <string name="settings_title">Settings</string>
     <string name="ad_preview_placeholder">Advertisement</string>
     <string name="settings_ad_privacy_choices">Ad privacy choices</string>
-    <string name="settings_hub_subtitle">Appearance, notifications, and security</string>
-    <string name="settings_account_section">Account</string>
     <string name="settings_account_item_subtitle">Profile, currency, language</string>
     <string name="settings_preferences_section">Preferences</string>
     <string name="settings_appearance">Appearance</string>
@@ -164,11 +159,7 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_system">System default</string>
     <string name="settings_security">Security</string>
-    <string name="settings_security_off">Off</string>
-    <string name="settings_security_on">On</string>
-    <string name="settings_biometric_lock">Biometric lock</string>
-    <string name="settings_autolock_timeout">Auto-lock timeout</string>
-    <string name="settings_autolock_timeout_hint">Choose how long the app stays unlocked in the background before requiring biometric verification again.</string>
+    <string name="settings_security_item_subtitle">Biometric lock, auto-lock timeout</string>
     <string name="settings_biometrics_title">Authenticate with biometrics</string>
     <string name="settings_biometrics_body">Require device passcode or biometrics to open SplitEase</string>
     <string name="settings_timeout_title">Timeout</string>
@@ -320,13 +311,9 @@
     <string name="nav_activity">Activity</string>
     <string name="nav_account">Account</string>
     <string name="cd_search">Search</string>
-    <string name="overall_you_owe_prefix">Overall, you owe</string>
-    <string name="overall_owed_to_you_prefix">Overall, you are owed</string>
-    <string name="overall_settled">Overall, you are settled up</string>
     <string name="non_group_expenses">Non-group expenses</string>
     <string name="non_group_expenses_info">These are expenses shared with friends outside any group. Settle up here the same way you would in a group.</string>
     <string name="non_group_ledger_empty">No non-group expenses yet. Add one with a friend to get started.</string>
-    <string name="pick_friend_for_expense">Choose a friend</string>
     <string name="cd_non_group_info">About non-group expenses</string>
     <string name="groups_empty_home">No groups yet. Create one to start splitting.</string>
     <string name="groups_fetching">Fetching groups…</string>
@@ -414,7 +401,6 @@
     <string name="settle_you_paid">You paid %1$s</string>
     <string name="settle_paid_other">%1$s paid %2$s</string>
     <string name="settle_outside_note">You are recording a payment that happened outside SplitEase. No money will be moved.</string>
-    <string name="cd_edit_amount">Edit amount</string>
     <string name="friends_title">Friends</string>
     <string name="friends_empty">No friends yet. Tap + to add or invite someone by email.</string>
     <string name="cd_filter_friends">Filter friends</string>
@@ -454,7 +440,6 @@
     <string name="invite_signup_password_label">And here\'s my password:</string>
     <string name="invite_signup_cta">Sign me up!</string>
     <string name="invite_not_found">This invite link is invalid or has already been used.</string>
-    <string name="invite_preview_failed">Couldn\'t load this invite. Check your connection and try again.</string>
     <string name="action_back">Back</string>
     <string name="action_back_to_welcome">Back to welcome</string>
     <string name="action_add_expense">Add expense</string>
@@ -589,14 +574,6 @@
     <string name="action_share_payment">Share payment request</string>
     <string name="pay_invalid_amount">Enter a valid amount first.</string>
     <string name="pay_app_missing">No app found to handle this payment link.</string>
-    <string name="import_title">Import transactions</string>
-    <string name="import_hint">CSV header: date, description, amount, optional currency, optional category. Dates as yyyy-MM-dd or dd/MM/yyyy.</string>
-    <string name="action_pick_csv">Choose CSV file</string>
-    <string name="import_preview">Preview</string>
-    <string name="import_preview_empty">Pick a CSV to preview rows.</string>
-    <string name="import_in_progress">Importing…</string>
-    <string name="action_confirm_import">Import as expenses</string>
-    <string name="import_hub_subtitle">Bring in a bank CSV</string>
     <string name="action_continue_google">Continue with Google</string>
     <string name="action_back_to_login">Back to login</string>
     <string name="action_wrong_email">Wrong email?</string>
@@ -654,7 +631,6 @@
     <string name="expense_attachments_section">Attachments</string>
     <string name="cd_expense_attachment">Expense attachment</string>
     <string name="msg_comment_empty">Write a comment first.</string>
-    <string name="msg_comment_failed">Could not add comment.</string>
     <string name="expense_attaching_photos">Adding attachments…</string>
     <string name="msg_photo_failed">Could not add attachment.</string>
     <string name="msg_attachments_partial">Saved %1$d of %2$d attachments.</string>
@@ -677,13 +653,7 @@
     <string name="msg_expense_split_percent">Percentages must add up to 100%.</string>
     <string name="msg_expense_split_shares">Enter at least one share.</string>
     <string name="msg_expense_split_adjustment">Adjustments cannot exceed the total.</string>
-    <string name="msg_could_not_refresh_friends">Could not refresh friends.</string>
-    <string name="msg_could_not_refresh_expenses">Could not refresh expenses.</string>
     <string name="msg_wait_for_account">Wait for your account to load, then try again.</string>
-    <string name="msg_could_not_read_file">Could not read file.</string>
-    <string name="msg_could_not_parse_csv">Could not parse CSV.</string>
-    <string name="msg_import_failed">Import failed.</string>
-    <string name="msg_imported_count">Imported %1$d</string>
     <plurals name="msg_synced_partial">
         <item quantity="one">Synced %1$s; %2$d failed</item>
         <item quantity="other">Synced %1$s; %2$d failed</item>
@@ -712,11 +682,4 @@
     <string name="pin_board_saving">Saving…</string>
     <string name="pin_board_last_edited">Last edited by %1$s</string>
     <string name="action_open_pin_board">Pin Board</string>
-    <string name="filter_all">All</string>
-    <string name="filter_outstanding">Open</string>
-    <string name="filter_you_owe">You owe</string>
-    <string name="filter_owed_to_you">Owed to you</string>
-    <string name="activity_filter_chip_expense">Expenses</string>
-    <string name="activity_filter_chip_settlements">Settlements</string>
-    <string name="activity_filter_chip_groups">Groups</string>
 </resources>

@@ -33,7 +33,7 @@ Current `versionName` / sideload APKs are **testing only**. First production Pla
 - [ ] Password reset: Forgot password → OTP email (recovery copy) → enter code + new password → signed in / can log in with new password
 - [ ] Language switch (Settings → Language) updates UI for at least 2 locales
 - [ ] Offline create expense → go online and verify auto-sync uploads within worker window
-- [ ] Settle-up pay intents + CSV import + Spending chart smoke
+- [ ] Settle-up pay intents + Spending chart smoke
 - [ ] Biometric lock timeout smoke
 - [ ] Room upgrade from a prior installation does **not** wipe data (migrations 1→4)
 

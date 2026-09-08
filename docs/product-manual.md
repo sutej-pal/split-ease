@@ -116,9 +116,9 @@ Android 13+ may prompt once after sign-in for **Notifications** permission.
 | **Groups** | Your groups, overall you-owe / you-are-owed, settled groups can be hidden |
 | **Friends** | Friend list and 1:1 ledgers |
 | **Activity** | Local activity events |
-| **Account** | Profile, **Sync**, settings hub, sign out |
+| **Account** | Profile, spending totals, appearance / notifications / security, sign out |
 
-Search, spending totals, CSV import, and settings are reached from Account / toolbars as implemented in the current navigation (Settings hub: appearance, currency, language, security, notifications).
+Search, spending totals, and settings are reached from the Account tab (profile, currency, language, appearance, notifications, security).
 
 ### 5.3 Groups
 

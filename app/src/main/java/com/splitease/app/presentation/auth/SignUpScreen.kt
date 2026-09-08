@@ -126,6 +126,9 @@ fun SignUpScreen(
     var showCurrencyPicker by rememberSaveable { mutableStateOf(false) }
     var showDialPicker by rememberSaveable { mutableStateOf(false) }
     var showValidation by rememberSaveable { mutableStateOf(false) }
+    val isBusy = formState.isLoading
+    val isGoogleLoading = formState.isGoogleLoading
+    val isEmailLoading = isBusy && !isGoogleLoading
     val nameError = showValidation && displayName.isBlank()
     val emailError = showValidation && email.isBlank()
     val passwordError =
@@ -268,14 +271,15 @@ fun SignUpScreen(
                     photoUri,
                 )
             },
-            enabled = !formState.isLoading,
-            isLoading = formState.isLoading,
+            enabled = !isBusy,
+            isLoading = isEmailLoading,
         )
         Spacer(modifier = Modifier.height(8.dp))
         SeOutlinedButton(
             text = stringResource(R.string.action_continue_google),
             onClick = onContinueWithGoogle,
-            enabled = !formState.isLoading,
+            enabled = !isBusy,
+            isLoading = isGoogleLoading,
         )
     }
 

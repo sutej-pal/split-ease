@@ -1,7 +1,7 @@
 # SplitEase Terms of Service
 
 **Effective date:** August 10, 2026  
-**Last updated:** August 10, 2026  
+**Last updated:** September 8, 2026  
 
 **Public URL:** https://splitease-server-eight.vercel.app/terms  
 
@@ -15,7 +15,7 @@ By creating an account, signing in, or using the Service, you agree to these Ter
 
 ## 1. The Service
 
-SplitEase helps users track shared expenses, splits, balances, and settlements among friends and groups. Features may include groups and invites, offline use with later sync, CSV import helpers, spending summaries, pin boards, and links that open third-party payment apps.
+SplitEase helps users track shared expenses, splits, balances, and settlements among friends and groups. Features may include groups and invites, offline use with later sync, spending summaries, pin boards, and links that open third-party payment apps.
 
 SplitEase is a recordkeeping and coordination tool. It is **not** a bank, payment institution, money transmitter, wallet, tax advisor, or financial advisor. We do not hold user funds and do not complete UPI, PayPal, Venmo, or other money transfers inside the app.
 

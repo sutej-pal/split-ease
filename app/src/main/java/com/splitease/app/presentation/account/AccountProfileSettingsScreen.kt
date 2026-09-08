@@ -22,7 +22,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -64,6 +63,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
@@ -161,8 +161,9 @@ fun AccountProfileSettingsScreen(
                     leading = { CurrencyLeading(code = currency) },
                     trailing = { AccountSettingsChevron() },
                     onClick = onOpenCurrency,
-                    showDivider = true,
+                    showDivider = false,
                 )
+                HorizontalDivider(thickness = 1.dp, color = SplitEaseColors.Outline)
                 SeListRow(
                     title = stringResource(R.string.settings_language),
                     subtitle = accountLocaleLabel(locale),
@@ -179,40 +180,11 @@ fun AccountProfileSettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(thickness = 1.dp, color = SplitEaseColors.Outline)
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onOpenDeleteAccount)
-                        .padding(vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = stringResource(R.string.account_delete_title),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                )
-            }
-            Text(
-                text = stringResource(R.string.account_delete_settle_caption),
-                style = MaterialTheme.typography.bodySmall,
-                color = SplitEaseColors.NavyMuted,
+            Spacer(modifier = Modifier.height(28.dp))
+            SeOutlinedButton(
+                text = stringResource(R.string.account_delete_title),
+                onClick = onOpenDeleteAccount,
+                contentColor = SplitEaseColors.YouOwe,
             )
         }
     }

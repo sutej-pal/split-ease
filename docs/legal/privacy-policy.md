@@ -1,7 +1,7 @@
 # SplitEase Privacy Policy
 
 **Effective date:** August 10, 2026  
-**Last updated:** August 10, 2026  
+**Last updated:** September 8, 2026  
 
 **Public URL:** https://splitease-server-eight.vercel.app/privacy  
 
@@ -40,7 +40,6 @@ Contact for privacy requests: **support@splitease.app**
 
 - Expense details you enter (amounts, dates, descriptions, categories, split method, participants)
 - Settlement/payment records you log in the app (who paid whom, amount, currency, date, optional group)
-- Optional bank/CSV transaction rows you import for expense creation
 - Pin-board notes and images you add within a group
 
 **Important:** SplitEase tracks shared expenses and settlement records. We do not process card payments, bank transfers, UPI, PayPal, or Venmo transactions inside SplitEase. Payment buttons open third-party apps or links; those providers have their own privacy policies.
@@ -54,7 +53,7 @@ Contact for privacy requests: **support@splitease.app**
 
 ### 2.5 Information we do not collect
 
-- Bank login credentials or full bank account numbers from CSV import
+- Bank login credentials or full bank account numbers
 - Payment card numbers for processing charges (we are not a payment processor)
 - Precise continuous location tracking
 - Advertising IDs for third-party ad networks (we do not run ads in the Service as of the effective date)

@@ -42,6 +42,8 @@ fun LoginScreen(
     var password by rememberSaveable { mutableStateOf("") }
     var showValidation by rememberSaveable { mutableStateOf(false) }
     val isBusy = formState.isLoading
+    val isGoogleLoading = formState.isGoogleLoading
+    val isEmailLoading = isBusy && !isGoogleLoading
     val focusManager = LocalFocusManager.current
     val emailError = showValidation && email.isBlank()
     val passwordError = showValidation && password.isBlank()
@@ -109,14 +111,14 @@ fun LoginScreen(
                 onSignIn(email.trim(), password)
             },
             enabled = !isBusy,
-            isLoading = isBusy,
+            isLoading = isEmailLoading,
         )
         Spacer(modifier = Modifier.height(8.dp))
         SeOutlinedButton(
             text = stringResource(R.string.action_continue_google),
             onClick = onContinueWithGoogle,
             enabled = !isBusy,
-            modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
+            isLoading = isGoogleLoading,
         )
         // Full-width center slot so the link stays aligned with Log in / Google
         // whether a press ripple is visible.

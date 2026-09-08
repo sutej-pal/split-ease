@@ -28,11 +28,8 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -455,18 +452,15 @@ private fun FriendDetailActions(
         SeActionChip(
             label = stringResource(R.string.action_remind),
             onClick = { },
-            icon = Icons.Filled.Notifications,
         )
         SeActionChip(
             label = stringResource(R.string.action_charts),
             onClick = { },
-            icon = Icons.AutoMirrored.Filled.ShowChart,
         )
         SeActionChip(
             label = stringResource(R.string.action_convert_currency),
             onClick = { },
             enabled = false,
-            icon = Icons.Filled.SwapHoriz,
         )
     }
 }

@@ -187,6 +187,10 @@ fun InviteJoinSignUpScreen(
                     }
                 },
             )
+            val isBusy = formState.isLoading
+            val isGoogleLoading = formState.isGoogleLoading
+            val isEmailLoading = isBusy && !isGoogleLoading
+
             Spacer(modifier = Modifier.height(24.dp))
             SePrimaryButton(
                 text = stringResource(R.string.invite_signup_cta),
@@ -200,14 +204,15 @@ fun InviteJoinSignUpScreen(
                     }
                     onSignUp(email.trim(), password, displayName.trim())
                 },
-                enabled = !formState.isLoading,
-                isLoading = formState.isLoading,
+                enabled = !isBusy,
+                isLoading = isEmailLoading,
             )
             Spacer(modifier = Modifier.height(8.dp))
             SeOutlinedButton(
                 text = stringResource(R.string.action_continue_google),
                 onClick = onContinueWithGoogle,
-                enabled = !formState.isLoading,
+                enabled = !isBusy,
+                isLoading = isGoogleLoading,
             )
             Spacer(modifier = Modifier.height(8.dp))
             SeTextButton(

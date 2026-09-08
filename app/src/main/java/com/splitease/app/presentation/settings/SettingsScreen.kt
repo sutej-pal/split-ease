@@ -21,13 +21,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -63,14 +65,17 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
+import com.splitease.app.presentation.account.AccountViewModel
 import com.splitease.app.presentation.ads.AdConsentManager
 import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
@@ -87,16 +92,19 @@ private fun openSystemNotificationSettings(context: Context) {
 
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     onOpenAccountProfile: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenSecurity: () -> Unit,
+    onOpenSpending: () -> Unit,
+    onSignOut: () -> Unit = {},
+    isSigningOut: Boolean = false,
     viewModel: SettingsViewModel = hiltViewModel(),
+    accountViewModel: AccountViewModel = hiltViewModel(),
 ) {
+    val profile by accountViewModel.profile.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-    val biometricLock by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
-    val authTimeout by viewModel.authTimeout.collectAsStateWithLifecycle()
     val muteAll by viewModel.notificationsMutedAll.collectAsStateWithLifecycle()
     val privacyOptionsRequired by AdConsentManager.privacyOptionsRequired
     val context = LocalContext.current
@@ -109,7 +117,7 @@ fun SettingsScreen(
     val notificationsOn = osNotificationsEnabled && !muteAll
 
     SeScreen(
-        title = stringResource(R.string.settings_title),
+        title = stringResource(R.string.nav_account),
         onBack = onBack,
         content = { padding ->
             Column(
@@ -121,20 +129,45 @@ fun SettingsScreen(
                         .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp),
             ) {
-                SeSectionHeader(text = stringResource(R.string.settings_account_section))
                 SettingsGroupCard {
                     SeListRow(
                         title = stringResource(R.string.account_profile_settings_title),
                         subtitle = stringResource(R.string.settings_account_item_subtitle),
                         leading = {
+                            SeAvatarBadge(
+                                name = profile.displayName.ifBlank { stringResource(R.string.account_name_fallback) },
+                                photoUrl = profile.photoUrl,
+                                size = 36.dp,
+                                borderWidth = 0.dp,
+                            )
+                        },
+                        trailing = {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = null,
+                                tint = SplitEaseColors.NavyMuted,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        },
+                        onClick = onOpenAccountProfile,
+                        showDivider = false,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                SettingsGroupCard {
+                    SeListRow(
+                        title = stringResource(R.string.spending_title),
+                        subtitle = stringResource(R.string.spending_hub_subtitle),
+                        leading = {
                             SeIconTile(
-                                icon = Icons.Filled.Person,
-                                tint = SplitEaseColors.Primary,
+                                icon = Icons.AutoMirrored.Filled.ShowChart,
+                                tint = SplitEaseColors.OwedToYou,
                                 size = 40,
                             )
                         },
                         trailing = { SettingsChevron() },
-                        onClick = onOpenAccountProfile,
+                        onClick = onOpenSpending,
                         showDivider = false,
                     )
                 }
@@ -180,31 +213,11 @@ fun SettingsScreen(
                 SeSectionHeader(text = stringResource(R.string.settings_security))
                 SettingsGroupCard {
                     SeListRow(
-                        title = stringResource(R.string.settings_biometric_lock),
-                        subtitle =
-                            if (biometricLock) {
-                                stringResource(R.string.settings_security_on)
-                            } else {
-                                stringResource(R.string.settings_security_off)
-                            },
+                        title = stringResource(R.string.settings_security),
+                        subtitle = stringResource(R.string.settings_security_item_subtitle),
                         leading = {
                             SeIconTile(
-                                icon = Icons.Filled.Fingerprint,
-                                tint = SplitEaseColors.IconHome,
-                                size = 40,
-                            )
-                        },
-                        trailing = { SettingsChevron() },
-                        onClick = onOpenSecurity,
-                        showDivider = false,
-                    )
-                    SettingsCardDivider()
-                    SeListRow(
-                        title = stringResource(R.string.settings_autolock_timeout),
-                        subtitle = authTimeoutLabel(authTimeout),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Timer,
+                                icon = Icons.Filled.Lock,
                                 tint = SplitEaseColors.IconHome,
                                 size = 40,
                             )
@@ -214,12 +227,6 @@ fun SettingsScreen(
                         showDivider = false,
                     )
                 }
-                Text(
-                    text = stringResource(R.string.settings_autolock_timeout_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(top = 8.dp, start = 4.dp, end = 4.dp),
-                )
 
                 if (privacyOptionsRequired) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -233,6 +240,13 @@ fun SettingsScreen(
                         showDivider = false,
                     )
                 }
+
+                Spacer(modifier = Modifier.height(28.dp))
+                SeOutlinedButton(
+                    text = stringResource(R.string.action_sign_out),
+                    onClick = onSignOut,
+                    isLoading = isSigningOut,
+                )
             }
         },
     )
@@ -355,7 +369,10 @@ fun LanguageSettingsScreen(
                     LanguageRow(
                         locale = locale,
                         selected = selected == locale,
-                        onSelect = { viewModel.setAppLocale(locale) },
+                        onSelect = {
+                            viewModel.setAppLocale(locale)
+                            onBack()
+                        },
                         showDivider = index < AppLocale.entries.lastIndex,
                     )
                 }
@@ -631,17 +648,21 @@ fun CurrencySettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(options, key = { it.first }) { (code, label) ->
+                        val onSelect = {
+                            viewModel.setCurrency(code)
+                            onBack()
+                        }
                         Row(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable { viewModel.setCurrency(code) }
+                                    .clickable(onClick = onSelect)
                                     .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(
                                 selected = selected == code,
-                                onClick = { viewModel.setCurrency(code) },
+                                onClick = onSelect,
                                 colors =
                                     RadioButtonDefaults.colors(
                                         selectedColor = SplitEaseColors.Primary,
@@ -741,14 +762,13 @@ private fun authTimeoutLabel(timeout: AuthTimeout): String =
 private fun SettingsScreenPreview() {
     SePreview {
         Column(modifier = Modifier.padding(20.dp)) {
-            SeSectionHeader(text = "Account")
             SeListRow(title = "Account settings", subtitle = "Profile, currency, language", onClick = {})
+            SeListRow(title = "Spending", subtitle = "Your share by category", onClick = {})
             SeSectionHeader(text = "Preferences")
             SeListRow(title = "Appearance", subtitle = "System default", onClick = {})
             SeListRow(title = "Notifications", subtitle = "On", onClick = {})
             SeSectionHeader(text = "Security")
-            SeListRow(title = "Biometric lock", subtitle = "Off", onClick = {})
-            SeListRow(title = "Auto-lock timeout", subtitle = "Immediately", onClick = {})
+            SeListRow(title = "Security", subtitle = "Biometric lock, auto-lock timeout", onClick = {})
         }
     }
 }

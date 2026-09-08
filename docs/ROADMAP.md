@@ -110,7 +110,7 @@ Features shipped or requested after Phase 9. Track in:
 - [extras-group-live-updates-notifications.md](./extras-group-live-updates-notifications.md) — notify group members on expense/payment changes; open group > latest cloud entries
 - **TODO(auth-mobile-onboarding)** — onboard with mobile phone number (SMS OTP / phone auth) in addition to email ([PROGRESS.md](../PROGRESS.md))
 - **TODO(mixed-currency-ux)** — group totals show per-currency rows; `AppCurrencies` is a common ~30 ISO set. Picker + snapshot FX shipped ([TODO.md](../TODO.md))
-- **OTP operations** — keep signup/recovery OTP delivery healthy (SMTP/provider + templates with `{{ .Token }}`)
+- **CSV import** — Removed from the product. Account no longer offers bank CSV import.
 
 ## Dependency order
 

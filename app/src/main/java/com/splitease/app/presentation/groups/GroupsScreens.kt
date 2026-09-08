@@ -1,7 +1,6 @@
 package com.splitease.app.presentation.groups
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,8 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -41,13 +38,10 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -178,12 +172,12 @@ fun CreateGroupScreen(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                // Bottom-align so the photo tracks the outlined box (not the float-label inset).
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = Alignment.Top,
             ) {
                 Box(
                     modifier =
                         Modifier
+                            .padding(top = 8.dp)
                             .size(56.dp)
                             .clip(RoundedCornerShape(14.dp))
                             .border(
@@ -519,22 +513,18 @@ fun GroupDetailScreen(
                         SeActionChip(
                             label = stringResource(R.string.action_settle_up),
                             onClick = { openSettle() },
-                            icon = Icons.Filled.Payments,
                         )
                         SeActionChip(
                             label = stringResource(R.string.group_chip_balances),
                             onClick = onOpenBalances,
-                            icon = Icons.Filled.AccountBalance,
                         )
                         SeActionChip(
                             label = stringResource(R.string.group_chip_totals),
                             onClick = onOpenTotals,
-                            icon = Icons.AutoMirrored.Filled.ShowChart,
                         )
                         SeActionChip(
                             label = stringResource(R.string.action_open_pin_board),
                             onClick = onOpenPinBoard,
-                            icon = Icons.Filled.PushPin,
                         )
                     }
                 }
@@ -1220,22 +1210,18 @@ private fun GroupExpenseListPreview() {
                             SeActionChip(
                                 label = stringResource(R.string.action_settle_up),
                                 onClick = {},
-                                icon = Icons.Filled.Payments,
                             )
                             SeActionChip(
                                 label = stringResource(R.string.group_chip_balances),
                                 onClick = {},
-                                icon = Icons.Filled.AccountBalance,
                             )
                             SeActionChip(
                                 label = stringResource(R.string.group_chip_totals),
                                 onClick = {},
-                                icon = Icons.AutoMirrored.Filled.ShowChart,
                             )
                             SeActionChip(
                                 label = stringResource(R.string.action_open_pin_board),
                                 onClick = {},
-                                icon = Icons.Filled.PushPin,
                             )
                         }
                     }

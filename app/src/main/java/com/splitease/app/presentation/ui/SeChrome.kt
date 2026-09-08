@@ -331,18 +331,26 @@ fun SeScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            SeTopBar(
-                title = title,
-                onBack = onBack,
-                onClose = onClose,
-                centered = centeredTitle,
-                actions = actions,
-            )
+            if ((onBack == null) && (onClose == null) && (!centeredTitle)) {
+                SePageHeader(
+                    title = title,
+                    subtitle = subtitle,
+                    actions = actions,
+                )
+            } else {
+                SeTopBar(
+                    title = title,
+                    onBack = onBack,
+                    onClose = onClose,
+                    centered = centeredTitle,
+                    actions = actions,
+                )
+            }
         },
         floatingActionButton = floatingActionButton,
         snackbarHost = snackbarHost,
     ) { padding ->
-        if (subtitle != null) {
+        if (subtitle != null && (onBack != null || onClose != null || centeredTitle)) {
             Column(
                 modifier =
                     Modifier

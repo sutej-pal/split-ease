@@ -19,12 +19,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -169,18 +166,15 @@ fun NonGroupExpensesScreen(
                 SeActionChip(
                     label = stringResource(R.string.action_settle_up),
                     onClick = { openSettle() },
-                    icon = Icons.Filled.Payments,
                 )
                 SeActionChip(
                     label = stringResource(R.string.group_chip_balances),
                     selected = pane == NonGroupDetailPane.Balances,
                     onClick = { paneName = NonGroupDetailPane.Balances.name },
-                    icon = Icons.Filled.AccountBalance,
                 )
                 SeActionChip(
                     label = stringResource(R.string.group_chip_totals),
                     onClick = onOpenSpending,
-                    icon = Icons.AutoMirrored.Filled.ShowChart,
                 )
             }
 

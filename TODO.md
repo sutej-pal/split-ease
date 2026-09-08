@@ -43,7 +43,7 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 ## Payments & stretch
 
 - [ ] **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
-- [ ] **CSV import** — Creates viewer-only equal-split expenses (not auto-assigned to a group).
+- [x] ~~**CSV import**~~ — Removed. The Account tab no longer offers bank CSV import (viewer-only equal-split expenses).
 
 ## Design / theme
 

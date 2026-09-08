@@ -39,7 +39,6 @@ import androidx.navigation.navArgument
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
-import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.account.DeleteAccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
@@ -69,7 +68,6 @@ import com.splitease.app.presentation.groups.GroupSettingsScreen
 import com.splitease.app.presentation.groups.GroupTotalsScreen
 import com.splitease.app.presentation.groups.NonGroupExpensesScreen
 import com.splitease.app.presentation.home.GroupsHomeScreen
-import com.splitease.app.presentation.imports.ImportTransactionsScreen
 import com.splitease.app.presentation.invite.InviteJoinSignUpScreen
 import com.splitease.app.presentation.invite.InviteLandingScreen
 import com.splitease.app.presentation.onboarding.OnboardingViewModel
@@ -107,7 +105,6 @@ object Routes {
     const val TAB_ACTIVITY = "tab_activity"
     const val TAB_ACCOUNT = "tab_account"
 
-    const val SETTINGS = "settings"
     const val ACCOUNT_PROFILE_SETTINGS = "account_profile_settings"
     const val DELETE_ACCOUNT = "delete_account"
     const val APPEARANCE_SETTINGS = "appearance_settings"
@@ -119,7 +116,6 @@ object Routes {
         "currency_conversion?groupId={groupId}&friendUserId={friendUserId}"
     const val SEARCH = "search"
     const val SPENDING = "spending"
-    const val IMPORT = "import_transactions"
     const val ADD_FRIEND =
         "add_friend?groupId={groupId}&name={name}&contact={contact}"
     const val EDIT_CONTACT =
@@ -669,11 +665,13 @@ private fun SignedInNavHost(
                 )
             }
             composable(Routes.TAB_ACCOUNT) {
-                AccountScreen(
-                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                SettingsScreen(
+                    onBack = null,
                     onOpenAccountProfile = { navController.navigate(Routes.ACCOUNT_PROFILE_SETTINGS) },
+                    onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
+                    onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS_SETTINGS) },
+                    onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
-                    onOpenImport = { navController.navigate(Routes.IMPORT) },
                     onSignOut = onSignOut,
                     isSigningOut = isSigningOut,
                 )
@@ -688,15 +686,6 @@ private fun SignedInNavHost(
             }
             composable(Routes.DELETE_ACCOUNT) {
                 DeleteAccountScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.SETTINGS) {
-                SettingsScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenAccountProfile = { navController.navigate(Routes.ACCOUNT_PROFILE_SETTINGS) },
-                    onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
-                    onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS_SETTINGS) },
-                    onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
-                )
             }
             composable(Routes.APPEARANCE_SETTINGS) {
                 AppearanceSettingsScreen(onBack = { navController.popBackStack() })
@@ -721,12 +710,6 @@ private fun SignedInNavHost(
             }
             composable(Routes.SPENDING) {
                 SpendingTotalsScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.IMPORT) {
-                ImportTransactionsScreen(
-                    onBack = { navController.popBackStack() },
-                    onDone = { navController.popBackStack() },
-                )
             }
             composable(
                 route = Routes.FIND_PEOPLE,

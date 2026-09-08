@@ -60,6 +60,7 @@ enum class PendingOtpPurpose {
  */
 data class AuthFormState(
     val isLoading: Boolean = false,
+    val isGoogleLoading: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingConfirmationEmail: String? = null,
@@ -298,6 +299,7 @@ class AuthViewModel
                 _formState.update {
                     it.copy(
                         isLoading = false,
+                        isGoogleLoading = false,
                         errorMessage = msg(AuthMessages.GOOGLE_FAILED),
                         infoMessage = null,
                     )
@@ -308,6 +310,7 @@ class AuthViewModel
                 _formState.update {
                     it.copy(
                         isLoading = true,
+                        isGoogleLoading = true,
                         errorMessage = null,
                         infoMessage = null,
                         pendingConfirmationEmail = null,
@@ -321,6 +324,7 @@ class AuthViewModel
                     _formState.update {
                         it.copy(
                             isLoading = false,
+                            isGoogleLoading = false,
                             errorMessage = googleSignInError(result.exceptionOrNull()),
                             holdSignedInForOtp = false,
                             pendingConfirmationEmail = null,
@@ -334,7 +338,7 @@ class AuthViewModel
                         appSettingsRepository.setPendingWelcomeEmailUserId(userId)
                     }
                 }
-                _formState.update { AuthFormState(isLoading = false) }
+                _formState.update { AuthFormState(isLoading = false, isGoogleLoading = false) }
                 launch {
                     runCatching { authRepository.ensureLocalProfile() }
                 }
@@ -343,7 +347,7 @@ class AuthViewModel
 
         /** Clears loading after the Google account picker is dismissed. */
         fun onGoogleSignInCancelled() {
-            _formState.update { it.copy(isLoading = false) }
+            _formState.update { it.copy(isLoading = false, isGoogleLoading = false) }
         }
 
         /**
@@ -365,6 +369,7 @@ class AuthViewModel
             _formState.update {
                 it.copy(
                     isLoading = false,
+                    isGoogleLoading = false,
                     errorMessage = message,
                     infoMessage = null,
                 )
@@ -374,7 +379,7 @@ class AuthViewModel
         /** Greys the auth form while the Google account picker is visible. */
         fun onGoogleSignInStarted() {
             _formState.update {
-                it.copy(isLoading = true, errorMessage = null, infoMessage = null)
+                it.copy(isLoading = true, isGoogleLoading = true, errorMessage = null, infoMessage = null)
             }
         }
 
