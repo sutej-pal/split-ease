@@ -16,7 +16,6 @@ SplitEase helps friends, roommates, and trip groups share expenses without the s
 • Split equally, by amount, percent, or shares.
 • See who owes whom with simplified balances.
 • Record settlements and pay via UPI, PayPal, or Venmo links.
-• Import bank CSV transactions.
 • Works offline and syncs when you're back online.
 • Available in multiple languages.
 

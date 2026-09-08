@@ -65,7 +65,7 @@ Phase 8 delivered region-aware settle-up payment deep links (UPI / PayPal / Venm
 ## Known Issues / TODOs
 
 - UPI requires a payee VPA; without a stored handle we prefill amount/currency only.
-- CSV import creates viewer-only equal-split expenses (not auto-assigned to a group).
+- **Later (2026-09-08):** Bank CSV import was removed from Account. The import screen and interactor are gone. Group settings **Export CSV** remains. `CsvTransactionParser` still exists for CSV line splitting (used by export tests).
 - Capture a local screenshot for this phase when needed.
 
 ## Screenshots placeholder

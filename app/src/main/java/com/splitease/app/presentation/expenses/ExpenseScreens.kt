@@ -924,6 +924,7 @@ private fun ParticipantChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
+        modifier = Modifier.heightIn(min = 40.dp),
         shape = RoundedCornerShape(20.dp),
         colors =
             FilterChipDefaults.filterChipColors(
@@ -1172,6 +1173,7 @@ private fun CategoryPickerDialog(
                     selected = selected,
                     onClick = { onSelect(category.id) },
                     label = { Text(category.name) },
+                    modifier = Modifier.heightIn(min = 40.dp),
                     leadingIcon = {
                         Icon(
                             imageVector = categoryIcon(category.iconKey),

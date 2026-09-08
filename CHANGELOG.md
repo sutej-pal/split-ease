@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Delete-account blocked-balance rows are tappable: they open the group (or Non-group expenses) so you can settle before retrying. Checking balances shows a shimmer list and “Checking balances…” status.
 - **Activity cross-device sync** — expense create/update/delete events flush to Supabase `activity_events` and pull onto other devices. Room v16 adds `remoteId` / `syncStatus` / `isSeen` without uploading pre-existing local history. SQL: [phase-activity-sync.sql](docs/sql/phase-activity-sync.sql). Unread badge on the Activity tab; leaving the feed marks events seen.
 - **Common ISO currency catalog** (~30 codes in `AppCurrencies`) and **Group Totals per-currency breakdown** when a period mixes currencies.
 - **In-app account deletion** from Account settings: typed `DELETE` confirmation stays open until the RPC finishes (local wipe is `NonCancellable`); local + RPC balance checks (`BigDecimal` scale 2) after a force sync; soft-delete/anonymize via `delete_own_account()` ([phase-account-deletion.sql](docs/sql/phase-account-deletion.sql)). Not queued offline. Legal privacy/terms wording still says email support@splitease.app (fallback until a human updates the public copy).
@@ -15,11 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release history + SemVer/`versionCode` counter: `version.properties`, [RELEASES.md](RELEASES.md), `./gradlew newRelease` (or `scripts/new-release.ps1`). Current builds are testing-only; production Play ship is [TODO(release)](TODO.md)
 - Forgot-password via **6-digit email OTP** + in-app set-new-password screen (`OtpType.Email.RECOVERY`); recovery mail uses a dedicated template in mail-service ([phase-12](docs/phase-12-forgot-password-email-otp.md), [reset-password.html](../server/mail-templates/supabase/reset-password.html))
 - Signup blocks duplicate email/phone with clear `already registered` messaging (`auth_email_registered` + `auth_phone_registered`)
-- Push notifications for group ledger changes: Android 13 permission prompt, Settings → Notifications (mute all), Group settings mute, tap opens the group; Edge Function honors `notification_prefs` and drops stale FCM tokens ([fcm-setup.md](docs/fcm-setup.md))
+- Push notifications for group ledger changes: Android 13 permission prompt, Account → Notifications (mute all), Group settings mute, tap opens the group; Edge Function honors `notification_prefs` and drops stale FCM tokens ([fcm-setup.md](docs/fcm-setup.md))
 
 ### Changed
+- **Account tab** is the settings hub (`AccountScreen`): profile, spending, appearance, notifications, security, and sign out. The nested Settings hub composable is gone; currency and language stay on Account settings. Bottom-bar tab remains Account.
+- **Continue with Google** uses `isGoogleLoading` so the email Log in button does not spin while the Google picker is open (Sign up / invite-join likewise).
+- Typography scale in `Type.kt` raised ~2sp per Material role. `SePrimaryButton` / secondary / outlined height is **56dp**; `SeTopBar` content height **64dp**; `SeActionChip` 44dp; `SeListRow` has 16dp horizontal inset. `SeLayout.iconTile` (46) / `iconTileGap` (14dp) share one leading-icon rhythm on Activity and ledger rows.
+- Activity titles are annotated in the ViewModel (expense name bold); the feed combines with a 150ms debounce.
 - Semantic balance colors are brand-permanent `OweRed` / `OwedTeal` (role aliases `YouOwe` / `OwedToYou` remain)
-- Settings → Notifications opens the in-app mute screen again; system settings stay on that screen when OS permission is off
+- Account → Notifications opens the in-app mute screen again; system settings stay on that screen when OS permission is off
 - Google Sign-In missing-client copy no longer mentions `local.properties` (that hint stays in [google-sign-in.md](docs/google-sign-in.md))
 - Forgot-password copy asks for a reset **code** (not a link); mail-service `buildOtpMail` treats `recovery` / `reset` separately from signup OTP
 - Supabase HTTP client engine: **OkHttp** replaces `ktor-client-android` (Realtime WebSockets + safer cancel on navigation)
@@ -31,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settle up opens a person-selection screen when more than one outstanding debt exists
 
 ### Removed
+- Bank **CSV import** from Account (`ImportTransactionsScreen` / import interactor). Group settings **Export CSV** is unchanged.
 - Group cover / header photo (banner image on group detail, `groups.cover_url`, and `cover.jpg` uploads)
 - Unused local `onboarding_complete` preference (setup wizard no longer exists; OTP lands on Groups)
 - Pull-to-refresh on the group ledger (open/resume + Realtime already keep the list current)

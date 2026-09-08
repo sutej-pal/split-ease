@@ -28,12 +28,13 @@ Current `versionName` / sideload APKs are **testing only**. First production Pla
 
 ## App QA
 - [ ] Sign up → verify-email OTP screen when confirmation required → enter 6-digit code → signed in on Home
-- [ ] Continue with Google (new + returning) lands on Groups without OTP; first-time Google user gets welcome mail
+- [ ] Continue with Google (new + returning) lands on Groups without OTP; first-time Google user gets welcome mail; email Log in does not spin while the Google picker is open
 - [ ] Resend code works
 - [ ] Password reset: Forgot password → OTP email (recovery copy) → enter code + new password → signed in / can log in with new password
-- [ ] Language switch (Settings → Language) updates UI for at least 2 locales
+- [ ] Language switch (Account → Account settings → Language) updates UI for at least 2 locales
 - [ ] Offline create expense → go online and verify auto-sync uploads within worker window
 - [ ] Settle-up pay intents + Spending chart smoke
+- [ ] Account → Account settings → Delete account: blocked groups are tappable when balances remain; typed DELETE works when nets are zero
 - [ ] Biometric lock timeout smoke
 - [ ] Room upgrade from a prior installation does **not** wipe data (migrations 1→4)
 

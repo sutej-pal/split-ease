@@ -51,6 +51,20 @@ object SeLayout {
     /** Tighter gap between related rows (list items, chips). */
     val itemGap: Dp = 8.dp
 
+    /**
+     * Leading [SeIconTile] edge length on activity / ledger-style rows.
+     * Pass as [SeIconTile] `size` (Int dp).
+     */
+    const val iconTile: Int = 46
+
+    val iconTileSize: Dp = iconTile.dp
+
+    /** Gap between a leading icon tile and the row text. */
+    val iconTileGap: Dp = 14.dp
+
+    /** Inset from the row’s start to text after a leading icon tile (tile + gap). */
+    val afterIconTile: Dp = iconTileSize + iconTileGap
+
     /** Extra space above primary CTAs at the bottom of a form. */
     val ctaTopGap: Dp = 20.dp
 

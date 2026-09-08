@@ -46,4 +46,14 @@ internal object ActivityPerfLog {
                 "prevTop=$previousTopId newTop=$newTopId",
         )
     }
+
+    fun scroll(action: String, detail: String) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, "scroll action=$action $detail")
+    }
+
+    fun interaction(action: String, detail: String) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, "interaction action=$action $detail")
+    }
 }

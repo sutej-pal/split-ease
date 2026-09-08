@@ -336,7 +336,7 @@ fun SeLedgerRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (leading != null) {
                 leading()
-                Spacer(modifier = Modifier.width(14.dp))
+                Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -391,12 +391,12 @@ fun SeListRow(
                 Modifier
                     .fillMaxWidth()
                     .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                    .padding(vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (leading != null) {
                 leading()
-                Spacer(modifier = Modifier.width(14.dp))
+                Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -510,7 +510,7 @@ fun SeActionChip(
     Row(
         modifier =
             modifier
-                .height(40.dp)
+                .height(44.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(bg)
                 .border(1.dp, border, RoundedCornerShape(20.dp))

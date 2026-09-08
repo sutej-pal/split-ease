@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -94,6 +95,11 @@ fun ActivityScreen(
     val showSearch = searchVisible || query.isNotBlank()
     val listState = rememberLazyListState()
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(listState) {
+        ActivityPerfLog.scroll("list-state", "initialized")
+        onDispose {}
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer =
@@ -216,14 +222,21 @@ fun ActivityScreen(
                                     when (entry) {
                                         is ActivityListEntry.DayHeader ->
                                             ActivityDayHeader(day = entry.day)
-                                        is ActivityListEntry.Row ->
+                                        is ActivityListEntry.Row -> {
+                                            val expenseId = entry.item.relatedExpenseId
+                                            val onClick = remember(expenseId, onOpenExpense) {
+                                                expenseId?.let { id ->
+                                                    {
+                                                        ActivityPerfLog.interaction("row-click", "expenseId=$id")
+                                                        onOpenExpense(id)
+                                                    }
+                                                }
+                                            }
                                             ActivityRow(
                                                 item = entry.item,
-                                                onClick =
-                                                    entry.item.relatedExpenseId?.let { expenseId ->
-                                                        { onOpenExpense(expenseId) }
-                                                    },
+                                                onClick = onClick,
                                             )
+                                        }
                                     }
                                 }
                             }
@@ -272,11 +285,11 @@ private fun ActivityRowSkeleton() {
             Box(
                 modifier =
                     Modifier
-                        .size(44.dp)
+                        .size(SeLayout.iconTileSize)
                         .clip(RoundedCornerShape(16.dp))
                         .background(SplitEaseColors.SurfaceMuted),
             )
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
             Column(modifier = Modifier.weight(1f)) {
                 SeLineSkeleton(widthFraction = 0.86f)
                 Spacer(modifier = Modifier.height(10.dp))
@@ -288,11 +301,13 @@ private fun ActivityRowSkeleton() {
             }
         }
         HorizontalDivider(
-            modifier = Modifier.padding(start = SeLayout.detailHorizontal + 58.dp),
+            modifier = Modifier.padding(start = activityDividerStart),
             color = SplitEaseColors.Outline,
         )
     }
 }
+
+private val activityDividerStart = SeLayout.detailHorizontal + SeLayout.afterIconTile
 
 @Composable
 private fun ActivitySyncError(
@@ -419,8 +434,8 @@ private fun ActivityRow(
                     .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            SeIconTile(icon = icon, tint = tint, size = 44)
-            Spacer(modifier = Modifier.width(14.dp))
+            SeIconTile(icon = icon, tint = tint, size = SeLayout.iconTile)
+            Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (!item.isSeen) {
@@ -461,7 +476,7 @@ private fun ActivityRow(
             )
         }
         HorizontalDivider(
-            modifier = Modifier.padding(start = SeLayout.detailHorizontal + 58.dp),
+            modifier = Modifier.padding(start = activityDividerStart),
             color = SplitEaseColors.Outline,
         )
     }
@@ -472,46 +487,14 @@ private fun ActivityRowTitle(
     item: ActivityUiItem,
     modifier: Modifier = Modifier,
 ) {
-    val expenseTitle = item.expenseTitle
-    if (expenseTitle.isNullOrBlank()) {
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = modifier,
-        )
-    } else {
-        val titleText =
-            remember(item.title, expenseTitle) {
-                activityTitleText(item.title, expenseTitle)
-            }
-        Text(
-            text = titleText,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = modifier,
-        )
-    }
-}
-
-private fun activityTitleText(
-    title: String,
-    expenseTitle: String,
-) = buildAnnotatedString {
-    val start = title.indexOf(expenseTitle)
-    if (start < 0) {
-        append(title)
-        return@buildAnnotatedString
-    }
-    append(title.substring(0, start))
-    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-        append(expenseTitle)
-    }
-    append(title.substring(start + expenseTitle.length))
+    Text(
+        text = item.annotatedTitle,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
 }
 
 @Preview(showBackground = true, heightDp = 400)
@@ -532,6 +515,7 @@ private fun ActivityScreenPreview() {
                     balanceLabel = "You get back ₹100.00",
                     balanceTone = ActivityBalanceTone.POSITIVE,
                     expenseTitle = "exp3",
+                    annotatedTitle = AnnotatedString("Sutej Pal Hotmail added exp3 in Noida room"),
                 ),
             )
             ActivityRow(
@@ -546,6 +530,7 @@ private fun ActivityScreenPreview() {
                     balanceLabel = "you owe ₹250.00",
                     balanceTone = ActivityBalanceTone.NEGATIVE,
                     expenseTitle = "exp2",
+                    annotatedTitle = AnnotatedString("You added exp2 in Noida room"),
                 ),
             )
             ActivityDayHeader(day = LocalDate.now().minusDays(1))
@@ -558,6 +543,7 @@ private fun ActivityScreenPreview() {
                     amountLabel = "",
                     sortEpochMs = System.currentTimeMillis() - 86_400_000L,
                     timeLabel = "3:15 PM",
+                    annotatedTitle = AnnotatedString("You created \"Trip\""),
                 ),
             )
         }

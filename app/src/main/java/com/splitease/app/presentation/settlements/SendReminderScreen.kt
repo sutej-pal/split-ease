@@ -23,9 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
@@ -112,10 +110,8 @@ fun SendReminderScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                     textStyle =
-                        TextStyle(
+                        MaterialTheme.typography.bodyLarge.copy(
                             color = SplitEaseColors.Navy,
-                            fontSize = 17.sp,
-                            lineHeight = 24.sp,
                         ),
                     cursorBrush = SolidColor(SplitEaseColors.Primary),
                     enabled = uiState.isReady && !uiState.isSending,

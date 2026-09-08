@@ -55,6 +55,12 @@ Do not invent per-screen title sizes (`headlineMedium` vs `titleMedium` vs `titl
 | --------------------- | --------------------------- | -------------------------------------- |
 | Screen title          | `SeScreenTitleStyle()`      | `titleLarge` + SemiBold + Navy (~22sp) |
 | Screen subtitle       | `SeScreenSubtitleStyle()`   | `bodyMedium` + `onSurfaceVariant`      |
+| Top bar height        | `SeTopBar`                  | 64.dp content height below status bar   |
+| Full-width buttons    | `SePrimaryButton` etc.      | 56.dp                                  |
+| Action chips          | `SeActionChip`              | 44.dp                                  |
+| Leading icon tile     | `SeLayout.iconTile`         | 46 dp                                  |
+| Icon → text gap       | `SeLayout.iconTileGap`      | 14.dp                                  |
+| After icon tile       | `SeLayout.afterIconTile`    | tile + gap (60.dp)                     |
 | Horizontal inset      | `SeLayout.screenHorizontal` | 24.dp                                  |
 | Below top bar         | `SeLayout.screenTop`        | 8.dp                                   |
 | Bottom of scroll body | `SeLayout.screenBottom`     | 24.dp                                  |
@@ -75,3 +81,24 @@ Do not invent per-screen title sizes (`headlineMedium` vs `titleMedium` vs `titl
 ### Exceptions (not app-bar titles)
 
 Hero / banner titles on colored group headers, ledger amount lines, and in-list row titles may use `headlineMedium` / `titleLarge` as **content** typography. Those are not navigation chrome.
+
+## Typography (`Type.kt`)
+
+`SplitEaseTypography` is the Material 3 type scale. Prefer these styles over per-screen `copy(fontSize = …)`.
+
+| Role | Size / line | Weight |
+| ---- | ----------- | ------ |
+| `displayLarge` | 46 / 54 sp | Bold |
+| `displayMedium` | 36 / 42 sp | Bold |
+| `headlineLarge` | 32 / 38 sp | Bold (tab page titles via `SePageHeader`) |
+| `headlineMedium` | 28 / 34 sp | Bold |
+| `headlineSmall` | 24 / 30 sp | SemiBold |
+| `titleLarge` | 22 / 28 sp | SemiBold (secondary screen titles) |
+| `titleMedium` | 18 / 24 sp | SemiBold |
+| `titleSmall` | 16 / 22 sp | SemiBold |
+| `bodyLarge` | 18 / 26 sp | Normal |
+| `bodyMedium` | 16 / 22 sp | Normal |
+| `bodySmall` | 14 / 18 sp | Normal |
+| `labelLarge` | 16 / 22 sp | SemiBold (buttons) |
+| `labelMedium` | 14 / 18 sp | Medium |
+| `labelSmall` | 13 / 16 sp | Medium |

@@ -131,7 +131,7 @@ fun GroupsHomeScreen(
         return
     }
 
-    val freezeBalances = ui.syncState.shouldFreezeBalances
+    val freezeBalances = ui.syncState.shouldFreezeBalances || ui.isRefreshing
     val balances = ui.balances
     val groupRows =
         remember(ui.allGroups, balances, freezeBalances) {
@@ -229,23 +229,21 @@ fun GroupsHomeScreen(
                 ) {
                     item {
                         Crossfade(
-                            targetState = ui.syncState,
+                            targetState = freezeBalances,
                             label = "groups-hero-balances",
                             modifier = Modifier.fillMaxWidth(),
-                        ) { sync ->
-                            when (sync) {
-                                SyncState.IN_PROGRESS ->
+                        ) { frozen ->
+                            when {
+                                frozen ->
                                     SeHeroBalancePairSkeleton(
                                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                                     )
-                                SyncState.FAILED ->
+                                ui.syncState == SyncState.FAILED ->
                                     GroupsBalancesSyncError(
                                         onRetry = viewModel::retryInitialHydrate,
                                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                                     )
-                                SyncState.IDLE,
-                                SyncState.COMPLETE,
-                                ->
+                                else ->
                                     SeHeroBalancePair(
                                         iOwe = balances?.totalIOweByCurrency.orEmpty(),
                                         owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
@@ -456,6 +454,7 @@ private fun GroupBalanceListItem(
                         indication = null,
                         onClick = onIconClick,
                     ),
+            size = 60
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -496,7 +495,7 @@ private fun NonGroupListItem(
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        SeIconTile(icon = Icons.AutoMirrored.Filled.List, tint = SplitEaseColors.IconOther)
+        SeIconTile(icon = Icons.AutoMirrored.Filled.List, tint = SplitEaseColors.IconOther, size = 60)
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

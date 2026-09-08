@@ -2,7 +2,7 @@
 
 **App:** SplitEase (`com.splitease.app`)  
 **Platform:** Android (Kotlin, Jetpack Compose)  
-**Last updated:** 2 September 2026  
+**Last updated:** 8 September 2026  
 **Audience:** product, support, and engineering  
 
 This is the full-app manual. Phase history, SQL, and schema details stay in the linked docs; this file describes **what the product does today** and **how the system is put together**.
@@ -84,7 +84,7 @@ The Android app never holds the database **service role** key. It uses `SUPABASE
 
 **Pin board.** One shared plain-text notepad per group. **Save** in the top bar; also autosaves after 2 seconds. Writes go to Room first, then sync to Supabase. Opening or returning to the board fetches the server copy (unless you have unsaved typing). No live cursor.
 
-**Activity.** A local feed of what you did on this device. It is **not** a cloud-synced social feed of other people’s actions. Remote changes arrive via sync, Realtime, or push.
+**Activity.** A newest-first feed of expense and group events you are involved in. New events sync across your devices via `activity_events`. Unread is device-local (`isSeen`); the Activity tab shows a badge until you leave the feed. Remote ledger changes still arrive via sync, Realtime, or push.
 
 ---
 
@@ -97,7 +97,7 @@ The Android app never holds the database **service role** key. It uses `SUPABASE
 3. Enter the 6-digit code from email. Resend if needed.  
 4. After verify, the app hydrates a local profile and you land on **Groups**. A welcome email is sent once after signup OTP (not on every login).
 
-**Log in** uses email + password, or **Continue with Google** (same button on Sign up and invite-join). Google skips the email OTP step. First-time Google users still get the one-time welcome email.
+**Log in** uses email + password, or **Continue with Google** (same button on Sign up and invite-join). Google skips the email OTP step. First-time Google users still get the one-time welcome email. The Google button has its own loading spinner so email **Log in** does not spin while the account picker is open.
 
 **Forgot password?**
 
@@ -115,14 +115,14 @@ Android 13+ may prompt once after sign-in for **Notifications** permission.
 | --- | ------------ |
 | **Groups** | Your groups, overall you-owe / you-are-owed, settled groups can be hidden |
 | **Friends** | Friend list and 1:1 ledgers |
-| **Activity** | Local activity events |
-| **Account** | Profile, spending totals, appearance / notifications / security, sign out |
+| **Activity** | Synced activity events (newest first); unread badge until you leave the feed |
+| **Account** | Settings hub: profile, spending, appearance, notifications, security, sign out |
 
-Search, spending totals, and settings are reached from the Account tab (profile, currency, language, appearance, notifications, security).
+Search and spending totals are reached from Groups (search) and the Account tab. Currency and language live under Account settings (profile). There is no nested Settings screen and no CSV import.
 
 ### 5.3 Groups
 
-**Create a group** from Groups (create-group action). Set a name, type (friends / home / other), and default currency (from Settings currency unless you change it). Optional group photo.
+**Create a group** from Groups (create-group action). Set a name, type (friends / home / other), and default currency (from Account settings unless you change it). Optional group photo.
 
 **Open a group** to see:
 
@@ -191,27 +191,30 @@ Mark an expense as recurring (`WEEKLY` / `MONTHLY` / `YEARLY`). A WorkManager da
 
 On group detail, **Pin Board** is a shared plain-text notepad. All members can read and edit. There is no formatting toolbar (bold, italic, checklist) and no in-editor image insert. Tap **Save**, or wait ~2 seconds after typing — the app stores the draft on-device then uploads it. Opening the board, returning to it, or leaving it idle also pulls the latest server copy so you see what someone else already wrote. Unsaved typing on this device is not overwritten by that refresh. There is no live collaborative cursor.
 
-### 5.10 Activity, search, spending, import
+### 5.10 Activity, search, spending
 
-- **Activity:** synced `activity_events` (your actions and events you’re involved in, across devices), **newest first**. An unread badge on the Activity tab clears when you leave the feed. Create a group then add an expense in the same minute: the expense is on top (it happened last) and “you created the group” is next. Clock labels may match because they hide seconds.
-- **Search:** find expenses.  
-- **Spending:** category/period totals and charts.  
-- **Import:** CSV with header `date, description, amount`, optional `currency`, optional `category`. Dates `yyyy-MM-dd` or `dd/MM/yyyy`.
+- **Activity:** synced `activity_events` (your actions and events you’re involved in, across devices), **newest first**. Expense names in the title are emphasized. An unread badge on the Activity tab clears when you leave the feed. Create a group then add an expense in the same minute: the expense is on top (it happened last) and “you created the group” is next. Clock labels may match because they hide seconds. Tap an expense event to open detail.
+- **Search:** find expenses (Groups toolbar).  
+- **Spending:** category/period totals and charts (Account → Spending).  
+
+Bank CSV **import** is not in the product. Group settings can still **export** a ledger CSV.
 
 ### 5.11 Settings
 
-Reached from Account → Settings.
+The **Account** tab is the settings hub (`AccountScreen`). There is no separate Settings screen.
 
 | Setting | Behavior |
 | ------- | -------- |
+| **Account settings** | Display name, photo, default currency, language, delete account |
+| **Spending** | Category/period totals and charts |
 | **Appearance** | Light, dark, or system. Brand indigo/amber Material 3; dynamic color off by default |
-| **Currency** | Default for new expenses and groups |
-| **Language** | Locale preference. Overlays exist (`de`, `es`, `fr`, `hi`, `it`, `ja`, `pt`) but currently fall back to English until i18n is finished |
+| **Notifications** | Mute all group updates; OS permission; open system notification settings |
 | **Security** | Biometric / device credential lock; timeout from immediate to 1 hour |
-| **Device and push notification settings** | Mute all group updates; OS permission; open system notification settings |
-| **Ad privacy choices** | When ads are enabled in the build |
+| **Ad privacy choices** | Shown on Account when ads consent requires it |
 
 **Group settings → Mute notifications** mutes one group. Prefs sync to `notification_prefs` (last-write-wins).
+
+**Delete account** (Account → Account settings → Delete account): the app force-syncs and checks balances. While it checks, the blocked-groups list shows placeholders. If any group (or non-group) net is non-zero, those rows are listed and tappable — they open that group or Non-group expenses so you can settle first. Type `DELETE` to confirm. Needs a network connection (not queued offline). The server RPC `delete_own_account()` re-checks, then anonymizes the profile in place.
 
 ### 5.12 Notifications (what users should expect)
 
@@ -231,7 +234,7 @@ Android channel: `group_updates`.
 
 ### 5.13 Offline
 
-You can create and edit groups, expenses, and payments offline. Rows stay `PENDING` until `SyncInteractor.syncForUser` flushes them (login, cold start, Account Sync, group resume). Conflict policy: last-write-wins on `updatedAtEpochMs`. A local `PENDING` / `LOCAL_ONLY` row is never overwritten by an equal-or-older remote snapshot.
+You can create and edit groups, expenses, and payments offline. Rows stay `PENDING` until `SyncInteractor.syncForUser` flushes them (login, cold start, group resume, and background workers). There is no manual Cloud sync action on Account. Conflict policy: last-write-wins on `updatedAtEpochMs`. A local `PENDING` / `LOCAL_ONLY` row is never overwritten by an equal-or-older remote snapshot.
 
 Pin Board drafts save on the phone first, then sync. Offline edits upload later. The board also fetches the server copy on open/resume so you can see another member’s save; it will not replace text you are still editing. There is no live co-edit.
 
@@ -299,7 +302,7 @@ Living detail: [ARCHITECTURE.md](../ARCHITECTURE.md). Schema: [data-dictionary.m
 | Sync | `SyncInteractor`, `SyncConflictPolicy` |
 | Pin Board | `PinBoardInteractor`, Room `pin_boards`, `SyncInteractor.flushPending` |
 | Push | `PushTokenRegistrar`, `SplitEaseMessagingService`, `notification_prefs` |
-| Settings | `AppSettingsRepository` |
+| Settings | `AppSettingsRepository`; Account-tab hub `presentation/account/AccountScreen` |
 
 ---
 
@@ -389,6 +392,7 @@ Treat these as honest product caveats, not bugs unless noted:
 | Live FX revaluation | Snapshot only at add-expense; balances are not marked to market |
 | Extra ISO currencies | Common ~30 ISO set in `AppCurrencies`; not a 100+ list |
 | Stored payment handles (UPI VPA, PayPal, Venmo) | Not stored; amount-only deep links |
+| Bank CSV import | Removed; Group settings can still export a ledger CSV |
 | Invite email | Sent for email contacts; phone + generic share links use the share sheet |
 | Pin Board live co-edit | Out of scope by design |
 | Activity badges for remote events | Unread badge on the Activity tab; `isSeen` is device-local |
@@ -402,7 +406,7 @@ OTP delivery depends on Confirm email, `{{ .Token }}` in templates / hook, and S
 ## 13. Support playbook (short)
 
 **“I added an expense but my roommate didn’t get a notification.”**  
-Confirm both are **members of the same cloud group**, roommate is not muted, notifications permission is on, the expense actually synced (Account → Sync; check it appears after reopen), and FCM webhooks/function are deployed. Push fires after **cloud** insert, not local-only save.
+Confirm both are **members of the same cloud group**, roommate is not muted, notifications permission is on, the expense actually synced (reopen the group or wait for background sync; check it appears after reopen), and FCM webhooks/function are deployed. Push fires after **cloud** insert, not local-only save.
 
 **“Tap on the notification opened Groups, not the room.”**  
 Fixed in the tap-navigation path: pending group id must navigate before it is cleared; FCM is data-only so the app owns the tap intent. Rebuild if an old APK is installed.
@@ -411,10 +415,10 @@ Fixed in the tap-navigation path: pending group id must navigate before it is cl
 Names are not unique. Membership is by group UUID. Invite or add the person to the same group id.
 
 **“Pin Board is empty / won’t save.”**  
-Check membership and sync (Account → Sync). Drafts save on-device first, then upload. Offline drafts flush later. Open or return to the board to pull someone else’s save. There is no live cursor.
+Check membership and sync (reopen the group or wait for background sync). Drafts save on-device first, then upload. Offline drafts flush later. Open or return to the board to pull someone else’s save. There is no live cursor.
 
 **“Balances don’t match after a delete.”**  
-Confirm both devices pulled; `PENDING` local copies are not deleted by remote prune. Account → Sync, or leave and reopen the group.
+Confirm both devices pulled; `PENDING` local copies are not deleted by remote prune. Leave and reopen the group, or wait for background sync.
 
 **“Reset password email looks like signup.”**  
 Recovery template must be deployed on SplitEase Server (dedicated recovery copy).

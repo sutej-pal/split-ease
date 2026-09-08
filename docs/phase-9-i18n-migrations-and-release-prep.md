@@ -87,7 +87,7 @@ Phase 8 was already complete (payments / CSV / Vico). Phase 9 delivered i18n (8 
 ### Known Issues / TODOs
 
 - Not every string is deeply localized yet (many locale files still share English body copy with translated chrome).
-- Some ViewModel messages still need Context extraction (Groups/Account/Import/Activity partially outstanding).
+- Some ViewModel messages still need Context extraction (Groups/Account/Activity partially outstanding).
 - Play feature graphic / screenshots / privacy policy URL still TODO (`docs/store-listing.md`).
 - Invite email Edge Function + payment handles remain deferred (carried from earlier phases).
 

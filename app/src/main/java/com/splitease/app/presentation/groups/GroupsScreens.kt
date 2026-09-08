@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -708,8 +709,8 @@ private val GroupDetailTitleShadow =
 /** Expanded height for the group detail header banner (includes status-bar inset). */
 private val GroupDetailBannerHeight = 180.dp
 
-/** Collapsed toolbar content height below the status bar (8 + 40 + 8). */
-private val GroupDetailBannerToolbarHeight = 56.dp
+/** Collapsed toolbar content height below the status bar (matches [SeTopBar] 64.dp). */
+private val GroupDetailBannerToolbarHeight = 64.dp
 
 /** Minimum shrink distance so the banner always has room to collapse. */
 private val GroupDetailBannerCollapseRange = 96.dp
@@ -720,13 +721,14 @@ internal fun BannerCircleIconButton(
     imageVector: ImageVector,
     contentDescription: String,
 ) {
+    val isDark = isSystemInDarkTheme()
     Box(
         modifier =
             Modifier
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.White)
-                .border(1.dp, SplitEaseColors.Outline, CircleShape)
+                .then(if (isDark) Modifier else Modifier.border(1.dp, SplitEaseColors.Outline, CircleShape))
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -889,7 +891,7 @@ private fun GroupOverallDebtTreeRow(
             stringResource(R.string.balances_person_owes_you, otherLabel)
         }
     val money = MoneyFormat.format(debt.amount, debt.currencyCode)
-    val rowHeight = 32.dp
+    val rowHeight = 40.dp
     val gutterWidth = 28.dp
     val avatarSize = 24.dp
 

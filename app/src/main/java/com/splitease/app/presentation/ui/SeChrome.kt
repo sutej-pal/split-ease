@@ -112,7 +112,7 @@ fun SeSystemBars(
 }
 
 /** Toolbar content height below the status bar. */
-private val SeTopBarContentHeight = 56.dp
+private val SeTopBarContentHeight = 64.dp
 
 /**
  * Large editorial page title for tab roots (Groups, Friends, Activity).

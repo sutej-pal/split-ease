@@ -46,7 +46,7 @@ Use this list as the implementation backlog. Mark items when done.
 | B5  | Tap notification > open `group_detail/{groupId}` (App Links / intent extras)                | **Done** | Intent extra + `pending_notification_group_id`                                 |
 | B6  | In-app Activity feed already lists own activity — extend or badge when remote events arrive | Done     | Unread badge + `isSeen`; remote events start unseen                            |
 | B7  | Supabase Realtime channel while group detail is open (live list without leaving screen)     | **Done** | `GroupLiveSync` + `realtime-kt`; [sql/migration_db.sql](sql/migration_db.sql)  |
-| B8  | Notification preferences (mute group / mute all)                                            | **Done** | Settings → Notifications; Group settings mute; `notification_prefs` |
+| B8  | Notification preferences (mute group / mute all)                                            | **Done** | Account → Notifications; Group settings mute; `notification_prefs` |
 
 ### C. Docs / ops
 

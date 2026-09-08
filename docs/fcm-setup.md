@@ -46,10 +46,10 @@ with header `Authorization: Bearer <SERVICE_ROLE_KEY>` and body including `type`
 
 ### Android behavior
 
-- Grant **Notifications** permission on Android 13+ (prompted once after sign-in; also Settings → Notifications).
+- Grant **Notifications** permission on Android 13+ (prompted once after sign-in; also Account → Notifications).
 - On sign-in, the app registers the FCM token into `device_tokens` and hydrates mute prefs from `notification_prefs`.
 - Incoming pushes are **data-only** FCM messages. The app posts the tray notification so tap always includes the group id (`open_group_id` / `groupId`) and opens that group (sync-on-open + Realtime take over).
-- Settings → Notifications mutes all groups. Group settings can mute one group. The Edge Function skips muted recipients.
+- Account → Notifications mutes all groups. Group settings can mute one group. The Edge Function skips muted recipients.
 
 ### Verify
 

@@ -25,6 +25,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -41,7 +42,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.splitease.app.presentation.theme.SplitEaseColors
 
 private val ButtonShape = RoundedCornerShape(16.dp)
@@ -54,11 +54,12 @@ fun SePrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
+    leadingIcon: ImageVector? = null,
 ) {
     val interactive = enabled && !isLoading
     Button(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        modifier = modifier.fillMaxWidth().height(56.dp),
         enabled = interactive,
         shape = ButtonShape,
         colors =
@@ -94,22 +95,28 @@ fun SePrimaryButton(
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text,
-                    style =
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontSize = 16.sp,
-                            lineHeight = 22.sp,
-                        ),
+                    style = MaterialTheme.typography.labelLarge,
                 )
             }
         } else {
-            Text(
-                text,
-                style =
-                    MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 16.sp,
-                        lineHeight = 22.sp,
-                    ),
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                if (leadingIcon != null) {
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(15.dp),
+                        tint = LocalContentColor.current,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(
+                    text,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         }
     }
 }
@@ -125,7 +132,7 @@ fun SeSecondaryButton(
     val interactive = enabled && !isLoading
     FilledTonalButton(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        modifier = modifier.fillMaxWidth().height(56.dp),
         enabled = interactive,
         shape = ButtonShape,
         colors =
@@ -160,7 +167,7 @@ fun SeOutlinedButton(
     val interactive = enabled && !isLoading
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        modifier = modifier.fillMaxWidth().height(56.dp),
         enabled = interactive,
         shape = ButtonShape,
         colors =

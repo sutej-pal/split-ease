@@ -4,15 +4,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.LocalAutofillHighlightBrush
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,62 +40,63 @@ fun SeTextField(
     supportingText: String? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        // Clip so password-manager autofill highlight (e.g. Bitwarden yellow)
-        // respects the same rounded corners as the outline.
-        modifier = modifier.fillMaxWidth().clip(SeTextFieldShape),
-        label = label?.let { text -> { Text(text) } },
-        placeholder =
-            placeholder?.let { text ->
-                {
-                    Text(text = text, color = SplitEaseColors.NavyMuted)
-                }
-            },
-        enabled = enabled,
-        singleLine = singleLine,
-        isError = isError,
-        keyboardOptions = keyboardOptions,
-        visualTransformation = visualTransformation,
-        supportingText =
-            supportingText?.let { hint ->
-                {
-                    Text(
-                        text = hint,
-                        color =
-                            if (isError) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
-                }
-            },
-        trailingIcon = trailingIcon,
-        shape = SeTextFieldShape,
-        colors =
-            OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = SplitEaseColors.Primary,
-                unfocusedBorderColor = SplitEaseColors.OutlineStrong,
-                disabledBorderColor = SplitEaseColors.OutlineStrong.copy(alpha = 0.5f),
-                errorBorderColor = MaterialTheme.colorScheme.error,
-                focusedLabelColor = SplitEaseColors.Primary,
-                unfocusedLabelColor = SplitEaseColors.NavyMuted,
-                disabledLabelColor = SplitEaseColors.NavyMuted.copy(alpha = 0.6f),
-                errorLabelColor = MaterialTheme.colorScheme.error,
-                cursorColor = SplitEaseColors.Primary,
-                errorCursorColor = MaterialTheme.colorScheme.error,
-                focusedTextColor = SplitEaseColors.Navy,
-                unfocusedTextColor = SplitEaseColors.Navy,
-                disabledTextColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
-                focusedContainerColor = SplitEaseColors.Surface,
-                unfocusedContainerColor = SplitEaseColors.SurfaceMuted,
-                disabledContainerColor = SplitEaseColors.SurfaceMuted,
-                errorContainerColor = SplitEaseColors.Surface,
-                errorSupportingTextColor = MaterialTheme.colorScheme.error,
-            ),
-    )
+    CompositionLocalProvider(LocalAutofillHighlightBrush provides SolidColor(Color.Transparent)) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            // Clip so password-manager autofill highlight respects rounded corners.
+            modifier = modifier.fillMaxWidth().heightIn(min = 64.dp).clip(SeTextFieldShape),
+            label = label?.let { text -> { Text(text) } },
+            placeholder =
+                placeholder?.let { text ->
+                    {
+                        Text(text = text, color = SplitEaseColors.NavyMuted)
+                    }
+                },
+            enabled = enabled,
+            singleLine = singleLine,
+            isError = isError,
+            keyboardOptions = keyboardOptions,
+            visualTransformation = visualTransformation,
+            supportingText =
+                supportingText?.let { hint ->
+                    {
+                        Text(
+                            text = hint,
+                            color =
+                                if (isError) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                        )
+                    }
+                },
+            trailingIcon = trailingIcon,
+            shape = SeTextFieldShape,
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = SplitEaseColors.Primary,
+                    unfocusedBorderColor = SplitEaseColors.OutlineStrong,
+                    disabledBorderColor = SplitEaseColors.OutlineStrong.copy(alpha = 0.5f),
+                    errorBorderColor = MaterialTheme.colorScheme.error,
+                    focusedLabelColor = SplitEaseColors.Primary,
+                    unfocusedLabelColor = SplitEaseColors.NavyMuted,
+                    disabledLabelColor = SplitEaseColors.NavyMuted.copy(alpha = 0.6f),
+                    errorLabelColor = MaterialTheme.colorScheme.error,
+                    cursorColor = SplitEaseColors.Primary,
+                    errorCursorColor = MaterialTheme.colorScheme.error,
+                    focusedTextColor = SplitEaseColors.Navy,
+                    unfocusedTextColor = SplitEaseColors.Navy,
+                    disabledTextColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
+                    focusedContainerColor = SplitEaseColors.Surface,
+                    unfocusedContainerColor = SplitEaseColors.SurfaceMuted,
+                    disabledContainerColor = SplitEaseColors.SurfaceMuted,
+                    errorContainerColor = SplitEaseColors.Surface,
+                    errorSupportingTextColor = MaterialTheme.colorScheme.error,
+                ),
+        )
+    }
 }
 
 @Preview(name = "Text fields", showBackground = true)

@@ -86,7 +86,7 @@ fun SplitEaseBottomBar(
                     )
                     .clip(shape)
                     .background(SplitEaseColors.Surface)
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                    .padding(horizontal = 4.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -136,7 +136,7 @@ private fun BottomBarTab(
                     role = Role.Tab,
                     onClick = onClick,
                 )
-                .padding(vertical = 2.dp),
+                .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

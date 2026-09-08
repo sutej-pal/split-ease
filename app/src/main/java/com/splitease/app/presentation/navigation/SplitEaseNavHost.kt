@@ -39,6 +39,7 @@ import androidx.navigation.navArgument
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
+import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.account.DeleteAccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
@@ -79,7 +80,6 @@ import com.splitease.app.presentation.settings.CurrencySettingsScreen
 import com.splitease.app.presentation.settings.LanguageSettingsScreen
 import com.splitease.app.presentation.settings.NotificationsSettingsScreen
 import com.splitease.app.presentation.settings.SecuritySettingsScreen
-import com.splitease.app.presentation.settings.SettingsScreen
 import com.splitease.app.presentation.settlements.SendReminderScreen
 import com.splitease.app.presentation.settlements.SettlePayerPickerScreen
 import com.splitease.app.presentation.settlements.SettleRecipientPickerScreen
@@ -665,7 +665,7 @@ private fun SignedInNavHost(
                 )
             }
             composable(Routes.TAB_ACCOUNT) {
-                SettingsScreen(
+                AccountScreen(
                     onBack = null,
                     onOpenAccountProfile = { navController.navigate(Routes.ACCOUNT_PROFILE_SETTINGS) },
                     onOpenAppearance = { navController.navigate(Routes.APPEARANCE_SETTINGS) },
@@ -685,7 +685,11 @@ private fun SignedInNavHost(
                 )
             }
             composable(Routes.DELETE_ACCOUNT) {
-                DeleteAccountScreen(onBack = { navController.popBackStack() })
+                DeleteAccountScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenGroup = { groupId -> navController.navigate(Routes.groupDetail(groupId)) },
+                    onOpenNonGroupExpenses = { navController.navigate(Routes.NON_GROUP_EXPENSES) },
+                )
             }
             composable(Routes.APPEARANCE_SETTINGS) {
                 AppearanceSettingsScreen(onBack = { navController.popBackStack() })

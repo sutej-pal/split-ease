@@ -87,7 +87,7 @@ Friend list, groups, members, invites, Room + Supabase sync for social graph.
 | In                                                                  | Out                                    |
 | ------------------------------------------------------------------- | -------------------------------------- |
 | Deep links / share to UPI, PayPal, Venmo-style "pay" (region-aware) | Full banking Open Banking (out of MVP) |
-| Import transactions (CSV / statement parse)                         | Store listing assets (Phase 9)         |
+| Import transactions (CSV / statement parse)                         | **Removed 2026-09-08** (Account no longer imports bank CSV). Store listing assets (Phase 9) |
 | Vico charts for spending totals enhancement                         |                                        |
 
 ### Phase 9 — Polish, Testing, and Release Prep *(done)*

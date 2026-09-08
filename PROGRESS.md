@@ -24,7 +24,7 @@ Track development phases. Always check this file at the start of a session to de
 
 **Last completed:** Phase 12 — Forgot Password OTP (email recovery code + in-app new password)
 
-**Post-phase:** In-app account deletion (2026-09-07) — Account settings → Delete account; `delete_own_account()` RPC in [phase-account-deletion.sql](docs/sql/phase-account-deletion.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
+**Post-phase:** Account hub + CSV import removed (2026-09-08) — Account tab is the settings hub (`AccountScreen`); bank CSV import is gone. In-app account deletion (2026-09-07, UX 2026-09-08) — Account settings → Delete account; blocked groups are tappable; `delete_own_account()` RPC in [phase-account-deletion.sql](docs/sql/phase-account-deletion.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
 
 ### Docs map
 - Index: [docs/README.md](docs/README.md)

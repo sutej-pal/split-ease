@@ -373,7 +373,6 @@
     <string name="account_delete_hub_subtitle">Close your account after settling balances</string>
     <string name="account_delete_intro">Deleting your account signs you out on this device and removes your personal details from SplitEase (name, email, phone, and photo).</string>
     <string name="account_delete_retained">Expense, split, and payment history in groups you shared is kept so other people\'s balances still add up. Your name is shown as “Deleted user” there. Backups and security logs may also remain for a limited time, as described in the privacy policy.</string>
-    <string name="account_delete_requires_network">This step needs an internet connection. It is not saved to retry later if you are offline.</string>
     <string name="account_delete_blocked_section">Settle these first</string>
     <string name="account_delete_blocked_body">You still have a non-zero balance in the groups below. Settle up (or record the matching payments) until each one is zero, then try again.</string>
     <string name="account_delete_blocked_named">Settle up in %1$s before deleting your account.</string>
@@ -381,7 +380,7 @@
     <string name="account_delete_typed_body">This cannot be undone from the app. Type %1$s to confirm you want to delete your account.</string>
     <string name="account_delete_confirm_phrase">DELETE</string>
     <string name="account_delete_error_offline">Account deletion needs an internet connection. Connect and try again — this is not queued while you are offline.</string>
-    <string name="account_delete_refreshing">Updating balances…</string>
+    <string name="account_delete_refreshing">Checking balances…</string>
     <string name="confirm_type_phrase_label">Type %1$s to confirm</string>
     <string name="msg_camera_permission_denied">Camera permission is needed to take a photo.</string>
     <string name="balances_title">Balances</string>

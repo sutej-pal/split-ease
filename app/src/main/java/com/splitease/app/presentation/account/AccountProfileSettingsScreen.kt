@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -68,6 +67,7 @@ import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.seEntityHeaderStyle
 
 @Composable
 fun AccountProfileSettingsScreen(
@@ -163,7 +163,11 @@ fun AccountProfileSettingsScreen(
                     onClick = onOpenCurrency,
                     showDivider = false,
                 )
-                HorizontalDivider(thickness = 1.dp, color = SplitEaseColors.Outline)
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 1.dp,
+                    color = SplitEaseColors.Outline,
+                )
                 SeListRow(
                     title = stringResource(R.string.settings_language),
                     subtitle = accountLocaleLabel(locale),
@@ -265,10 +269,8 @@ private fun AccountProfileHero(
                     enabled = enabled,
                     singleLine = true,
                     textStyle =
-                        TextStyle(
-                            fontSize = 18.sp,
+                        seEntityHeaderStyle().copy(
                             fontWeight = FontWeight.Medium,
-                            color = SplitEaseColors.Navy,
                             textAlign = TextAlign.Center,
                         ),
                     cursorBrush = SolidColor(SplitEaseColors.Primary),
@@ -322,7 +324,7 @@ private fun AccountSettingsCard(content: @Composable () -> Unit) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp))
                 .background(SplitEaseColors.Surface)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(vertical = 4.dp),
     ) {
         content()
     }

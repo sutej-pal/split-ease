@@ -31,7 +31,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -100,6 +107,7 @@ data class ActivityUiItem(
     val expenseTitle: String? = null,
     /** False when this row is an unseen synced activity event. */
     val isSeen: Boolean = true,
+    val annotatedTitle: AnnotatedString,
 )
 
 @Immutable
@@ -182,7 +190,7 @@ class ActivityViewModel
                     savedStateHandle.get<String>(KEY_SEARCH_QUERY).orEmpty(),
                 )
 
-        @OptIn(ExperimentalCoroutinesApi::class)
+        @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
         private val items: StateFlow<List<ActivityUiItem>> =
             userId
                 .flatMapLatest { me ->
@@ -198,6 +206,7 @@ class ActivityViewModel
                         }
                     }
                 }.flowOn(Dispatchers.Default)
+                .debounce(150.milliseconds)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         val feed: StateFlow<ActivityFeedState> =
@@ -211,13 +220,16 @@ class ActivityViewModel
                     allItems.filter { item ->
                         item.matches(filter) && item.matchesQuery(query)
                     }
-                ActivityFeedState(
+                val feedState = ActivityFeedState(
                     entries = buildActivityListEntries(visible),
                     hasAnyItems = allItems.isNotEmpty(),
                     isFiltered = filter != ActivityListFilter.ALL || query.isNotBlank(),
                     syncState = sync,
                 )
+                ActivityPerfLog.emit("feed-state", "entries=${feedState.entries.size} filter=$filter query='$query' sync=$sync")
+                feedState
             }.flowOn(Dispatchers.Default)
+                .distinctUntilChanged()
                 .stateIn(
                     viewModelScope,
                     SharingStarted.WhileSubscribed(5_000),
@@ -225,10 +237,12 @@ class ActivityViewModel
                 )
 
         fun setListFilter(filter: ActivityListFilter) {
+            ActivityPerfLog.interaction("set-filter", "filter=$filter")
             savedStateHandle[KEY_LIST_FILTER] = filter.name
         }
 
         fun setSearchQuery(query: String) {
+            ActivityPerfLog.interaction("set-query", "length=${query.length}")
             savedStateHandle[KEY_SEARCH_QUERY] = query
         }
 
@@ -503,19 +517,23 @@ class ActivityViewModel
                     relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
                 expenseTitle = description,
                 isSeen = isSeen,
+                annotatedTitle = activityTitleText(titleLine, description),
             )
         }
 
-        private fun Group.toCreatedUi(): ActivityUiItem =
-            ActivityUiItem(
+        private fun Group.toCreatedUi(): ActivityUiItem {
+            val titleText = appContext.getString(R.string.activity_you_created, name)
+            return ActivityUiItem(
                 id = "group-created-$id",
                 kind = ActivityKind.GROUP_CREATED,
-                title = appContext.getString(R.string.activity_you_created, name),
+                title = titleText,
                 subtitle = formatDateTime(createdAtEpochMs),
                 amountLabel = "",
                 timeLabel = formatTimeLabel(createdAtEpochMs),
                 sortEpochMs = createdAtEpochMs,
+                annotatedTitle = AnnotatedString(titleText),
             )
+        }
 
         private fun Expense.toUi(
             me: String,
@@ -533,16 +551,17 @@ class ActivityViewModel
             val effectiveSortMs =
                 if (groupCreatedAt > 0L) maxOf(baseEpochMs, groupCreatedAt + 1L) else baseEpochMs
             val (balanceLabel, balanceTone) = balanceLine(me, this, splits)
+            val titleText =
+                appContext.getString(
+                    R.string.activity_added_in,
+                    actorName,
+                    description,
+                    contextLabel,
+                )
             return ActivityUiItem(
                 id = "expense-$id",
                 kind = ActivityKind.EXPENSE,
-                title =
-                    appContext.getString(
-                        R.string.activity_added_in,
-                        actorName,
-                        description,
-                        contextLabel,
-                    ),
+                title = titleText,
                 subtitle = formatDateTime(displayEpochMs),
                 amountLabel = "",
                 timeLabel = formatTimeLabel(displayEpochMs),
@@ -551,6 +570,7 @@ class ActivityViewModel
                 sortEpochMs = effectiveSortMs,
                 relatedExpenseId = id,
                 expenseTitle = description,
+                annotatedTitle = activityTitleText(titleText, description),
             )
         }
 
@@ -608,7 +628,28 @@ class ActivityViewModel
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
                 sortEpochMs = sortMs,
+                annotatedTitle = AnnotatedString(title),
             )
+        }
+
+        private fun activityTitleText(
+            title: String,
+            expenseTitle: String?,
+        ): AnnotatedString {
+            if (expenseTitle.isNullOrBlank()) {
+                return AnnotatedString(title)
+            }
+            val start = title.indexOf(expenseTitle)
+            if (start < 0) {
+                return AnnotatedString(title)
+            }
+            return buildAnnotatedString {
+                append(title.substring(0, start))
+                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                    append(expenseTitle)
+                }
+                append(title.substring(start + expenseTitle.length))
+            }
         }
 
         private fun formatDateTime(epochMs: Long): String =

@@ -49,6 +49,8 @@ Use the **Web** client ID, not the Android one. Rebuild so `BuildConfig.GOOGLE_W
 
 If the button shows “isn't available on this build”, `GOOGLE_WEB_CLIENT_ID` is missing. Set it in gitignored `local.properties` and rebuild. If Google returns no accounts, add a Google account on the device. If it says Sign-In needs an internet connection, the device is offline (or Play Services returned a network error).
 
+The Google button uses a dedicated loading flag (`isGoogleLoading`). Email **Log in** / **Sign up** does not show a spinner while the Google account picker is open.
+
 ## 5. After account deletion
 
 `delete_own_account()` bans the old `auth.users` row (kept for expense FKs), scrambles its email, and **deletes `auth.identities`**. The next **Continue with Google** with the same Google account should create a **new** user, not revive the banned one. Historical expenses still show “Deleted user” on the old UUID.

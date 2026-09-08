@@ -8,7 +8,7 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 - [x] **OTP ops checklist** — App + mail-service hook + `{{ .Token }}` templates are in place. Live Confirm email / OTP length 6 / SMTP (Brevo) remain a pre-ship check in [docs/release-checklist.md](docs/release-checklist.md). How-to: [docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md).
 - [x] **Resend domain** — Superseded. Production OTP uses SplitEase Server + Brevo HTTPS (`BREVO_API_KEY` / `MAIL_FROM`), not Resend SMTP.
 - [x] **Google Sign-In** — Credential Manager ID token → Supabase (`signInWith(IDToken)`). Ops: [docs/google-sign-in.md](docs/google-sign-in.md).
-- [x] **In-app account deletion** — Settings → Account settings → Delete account. Typed `DELETE` confirm; blocked while any group (or non-group) net is non-zero (`BigDecimal.compareTo`); server RPC `delete_own_account()` re-checks and anonymizes in place (no hard-delete). SQL: [docs/sql/phase-account-deletion.sql](docs/sql/phase-account-deletion.sql). **Legal copy still says email support@splitease.app** in [privacy-policy.md](docs/legal/privacy-policy.md) / [terms-of-service.md](docs/legal/terms-of-service.md) — keep that as a fallback for edge cases until a human updates the public HTML.
+- [x] **In-app account deletion** — Account → Account settings → Delete account. Typed `DELETE` confirm; blocked while any group (or non-group) net is non-zero (`BigDecimal.compareTo`); blocked rows open that group or Non-group expenses; server RPC `delete_own_account()` re-checks and anonymizes in place (no hard-delete). SQL: [docs/sql/phase-account-deletion.sql](docs/sql/phase-account-deletion.sql). **Legal copy still says email support@splitease.app** in [privacy-policy.md](docs/legal/privacy-policy.md) / [terms-of-service.md](docs/legal/terms-of-service.md) — keep that as a fallback for edge cases until a human updates the public HTML.
 - [x] **Password reset UX** — In-app 6-digit recovery OTP + set-new-password screen ([phase-12](docs/phase-12-forgot-password-email-otp.md)). Email links are not the primary path.
 - [x] **Onboarding-complete cloud flag** — Not needed. The post-signup setup wizard was removed; users go straight to the app after OTP. The unused local `onboarding_complete` preference was dropped.
 - [x] **Profile photo in onboarding** — Optional avatar on Sign up (crop + 512px JPEG). Compressed into app storage at signup, uploaded after OTP. Google photos are compressed into `user-avatars` on first hydrate.
@@ -29,7 +29,7 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 - [x] **Conflict policy** — Pull LWW on `updatedAtEpochMs`; never overwrite local `PENDING` / `LOCAL_ONLY` with equal-or-older remote (`SyncConflictPolicy`). See architecture TODO **2**.
 - [x] **A6 — Pull-to-refresh** — Won't do. Group ledger stays current via open/resume pull + Realtime (`GroupLiveSync`); gesture removed from group detail.
 - [x] **B6 — Activity badges** — Unread badge on the Activity tab from `isSeen`; remote events start unseen; opening then leaving the feed marks them seen.
-- [x] **B8 — Notification preferences** — Mute all (Settings → Notifications) and mute group (Group settings); synced via `notification_prefs`.
+- [x] **B8 — Notification preferences** — Mute all (Account → Notifications) and mute group (Group settings); synced via `notification_prefs`.
 - [x] **Category sync** — Stable default ids (`cat_*`) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
 - [x] **Add Expense currency picker** — Amount symbol opens `CurrencyPickerDialog` (~30 ISO currencies in `AppCurrencies`). Default is the group `defaultCurrencyCode` (app setting for 1:1).
 - [x] **Group totals per currency** — `GroupSpendingCalculator.periodTotalsByCurrency` + Group Totals breakdown rows when a period has more than one code. Headline still uses the group default; mixed banner remains.
@@ -56,7 +56,7 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 ## i18n & polish
 
 - [ ] **TODO(i18n-last)** — Restore and expand full translations; locale overlays (`values-de/es/fr/hi/it/ja/pt`) currently fall back to English.
-- [ ] **ViewModel string Context extraction** — Groups / Account / Import / Activity partially outstanding.
+- [ ] **ViewModel string Context extraction** — Groups / Account / Activity partially outstanding.
 - [ ] **detekt** — Optional static analysis beyond ktlint (deferred from Phase 0).
 
 ## Store / release

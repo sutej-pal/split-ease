@@ -166,7 +166,9 @@ fun FriendDetailScreen(
             item {
                 FriendDetailActions(
                     canSettle = canSettle,
+                    hasExpenses = ledger.isNotEmpty(),
                     onSettleUp = { onNavigateSettleSelection(friendUserId) },
+                    hasMixed = hasMixed,
                 )
             }
             uiState.errorMessage?.let { msg ->
@@ -433,13 +435,15 @@ private fun FriendContextLine(
 @Composable
 private fun FriendDetailActions(
     canSettle: Boolean,
+    hasExpenses: Boolean = true,
     onSettleUp: () -> Unit,
+    hasMixed: Boolean = false,
 ) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .offset(y = (-28).dp)
+                .then(if (!hasMixed) Modifier.offset(y = (-28).dp) else Modifier.padding(top = 8.dp, bottom = 4.dp))
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -452,10 +456,12 @@ private fun FriendDetailActions(
         SeActionChip(
             label = stringResource(R.string.action_remind),
             onClick = { },
+            enabled = hasExpenses,
         )
         SeActionChip(
             label = stringResource(R.string.action_charts),
             onClick = { },
+            enabled = hasExpenses,
         )
         SeActionChip(
             label = stringResource(R.string.action_convert_currency),

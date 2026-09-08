@@ -34,7 +34,7 @@ Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_B
 
 - **IDs:** string UUIDs locally; `remoteId` stores the cloud id when synced.
 - **Sync bookmarks:** `syncStatus` (`LOCAL_ONLY` \| `PENDING` \| `SYNCED`) + `updatedAtEpochMs`.
-- **Flush then pull:** `SyncInteractor.syncForUser` flushes PENDING groups/members/invites/expenses/payments/activity events/pin boards, then pulls friends/groups/expenses/payments/activity. Also runs on login / cold start / Account Sync / group resume.
+- **Flush then pull:** `SyncInteractor.syncForUser` flushes PENDING groups/members/invites/expenses/payments/activity events/pin boards, then pulls friends/groups/expenses/payments/activity. Also runs on login / cold start / group resume (no manual Account Sync action).
 - **Conflict policy (pull):** Last-write-wins on `updatedAtEpochMs` via `SyncConflictPolicy`. A local `PENDING` / `LOCAL_ONLY` row is never replaced by an equal-or-older remote snapshot; `SYNCED` skips strictly older remote.
 - **Categories (cloud):** Built-in defaults use stable ids (`cat_general`, `cat_food`, …) on `expenses.category_id`. No Supabase `categories` table; pull auto-seeds missing defaults; push omits custom/local-only ids. Room v12 remaps legacy random default ids.
 - **Pin board:** Shared plain-text notepad per group. Room `pin_boards` cache (write locally, then flush). Debounced autosave (~2s) plus an explicit **Save** action. [PinBoardInteractor.load](app/src/main/java/com/splitease/app/data/pinboard/PinBoardInteractor.kt) fetches Supabase on open, resume, and idle poll so another member’s save is applied unless this device has a PENDING draft. No live collaborative cursor. See [PinBoardPolicy](app/src/main/java/com/splitease/app/data/pinboard/PinBoardPolicy.kt).
@@ -47,7 +47,7 @@ Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_B
 
 Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) (single canonical file), then [docs/sql/phase-account-deletion.sql](docs/sql/phase-account-deletion.sql) and [docs/sql/phase-activity-sync.sql](docs/sql/phase-activity-sync.sql) on existing projects (both are already inlined in the canonical file for fresh DBs). Optional FCM notify triggers are included and no-op until `app.settings` are set — see [docs/fcm-setup.md](docs/fcm-setup.md).
 
-Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured. Mute-all / mute-group live in `notification_prefs` (Settings + Group settings).
+Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured. Mute-all / mute-group live in `notification_prefs` (Account → Notifications + Group settings).
 
 ## Feature map (packages)
 
@@ -59,10 +59,10 @@ Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the 
 | Expenses                 | `SplitCalculator`, `ExpenseInteractor`, `presentation/expenses`                                                                                                                          |           |          |
 | Balances                 | `BalanceCalculator`, `DebtSimplifier`, `BalanceInteractor`                                                                                                                               |           |          |
 | Settlements / recurring  | `PaymentInteractor`, `RecurrenceScheduler`, `RecurringExpenseWorker`                                                                                                                     |           |          |
-| Search / spending / sync | `SyncInteractor`, `SpendingTotalsCalculator`, `presentation/search\                                                                                                                      | spending\ | account` |
-| Stretch                  | `PaymentDeepLinks`, `CsvTransactionParser`, `SpendingCategoryChart`, `ExchangeRateCurrencyService`                                                                                         |           |          |
+| Search / spending / account | `SyncInteractor`, `SpendingTotalsCalculator`, `presentation/search`, `spending`, `account` (`AccountScreen` is the Account-tab hub) |           |          |
+| Stretch                  | `PaymentDeepLinks`, `SpendingCategoryChart`, `ExchangeRateCurrencyService` (CSV import UI removed; `CsvTransactionParser` remains for CSV line splitting / export tests) |           |          |
 | Pin Board                | `PinBoardInteractor`, `PinBoardRemoteDataSource`, `presentation/pinboard`                                                                                                                |           |          |
-| Settings                 | `AppSettingsRepository` (currency, theme, locale, biometric lock, pending invite token, welcome-mail flags)                                                                                |           |          |
+| Settings                 | `AppSettingsRepository` (currency, theme, locale, biometric lock); Account-tab hub is `presentation/account/AccountScreen`                                                                |           |          |
 
 Phase write-ups (historical Plan + Outcome): [docs/README.md](docs/README.md).
 
@@ -74,7 +74,7 @@ Canonical tokens: [docs/design-tokens.md](docs/design-tokens.md) · code: `prese
 
 Reusable `Se*` components in `presentation/ui/` wrap Material 3 with brand tokens. Prefer `Se*` / `MaterialTheme.colorScheme` over raw hex.
 
-Secondary screens with back + title use **one** chrome: `SeScreen` → `SeTopBar` → `SeScreenTitleText` (`SeScreenTitleStyle` / `titleLarge`). Spacing rhythm: `SeLayout` (see [design-tokens.md](docs/design-tokens.md#screen-chrome-back--title)).
+Secondary screens with back + title use **one** chrome: `SeScreen` → `SeTopBar` → `SeScreenTitleText` (`SeScreenTitleStyle` / `titleLarge` ~22sp). `SeTopBar` content height is 64dp. Full-width buttons (`SePrimaryButton` / secondary / outlined) are 56dp. Spacing rhythm: `SeLayout` including `iconTile` / `iconTileGap` for leading tiles (see [design-tokens.md](docs/design-tokens.md#screen-chrome-back--title)).
 
 ## Release size
 

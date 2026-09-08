@@ -30,7 +30,7 @@ Docs: [phase-4-expense-creation-and-splits.md](phase-4-expense-creation-and-spli
 ## Bundle D — Scale, Sync, Release (`7`, `8`, `9`) + later (`11`, `12`)
 
 - Search, categories, currency catalog, durable sync.
-- Stretch features (payment deep links, CSV import, charts).
+- Stretch features (payment deep links, charts). CSV import shipped in Phase 8 and was **removed 2026-09-08**.
 - Release hardening, locales, pin board, forgot-password OTP.
 
 Use when changing sync, import/pay, i18n, release quality, pin board, or recovery OTP.  

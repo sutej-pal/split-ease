@@ -7,7 +7,6 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,17 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,12 +38,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.FragmentActivity
@@ -65,18 +54,12 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
-import com.splitease.app.presentation.account.AccountViewModel
-import com.splitease.app.presentation.ads.AdConsentManager
 import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeAvatarBadge
-import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
-import com.splitease.app.presentation.ui.SeOutlinedButton
-import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
@@ -88,168 +71,6 @@ private fun openSystemNotificationSettings(context: Context) {
             putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
         }
     context.startActivity(intent)
-}
-
-@Composable
-fun SettingsScreen(
-    onBack: (() -> Unit)? = null,
-    onOpenAccountProfile: () -> Unit,
-    onOpenAppearance: () -> Unit,
-    onOpenNotifications: () -> Unit,
-    onOpenSecurity: () -> Unit,
-    onOpenSpending: () -> Unit,
-    onSignOut: () -> Unit = {},
-    isSigningOut: Boolean = false,
-    viewModel: SettingsViewModel = hiltViewModel(),
-    accountViewModel: AccountViewModel = hiltViewModel(),
-) {
-    val profile by accountViewModel.profile.collectAsStateWithLifecycle()
-    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-    val muteAll by viewModel.notificationsMutedAll.collectAsStateWithLifecycle()
-    val privacyOptionsRequired by AdConsentManager.privacyOptionsRequired
-    val context = LocalContext.current
-    var osNotificationsEnabled by remember {
-        mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
-    }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
-    }
-    val notificationsOn = osNotificationsEnabled && !muteAll
-
-    SeScreen(
-        title = stringResource(R.string.nav_account),
-        onBack = onBack,
-        content = { padding ->
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding.values)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 24.dp),
-            ) {
-                SettingsGroupCard {
-                    SeListRow(
-                        title = stringResource(R.string.account_profile_settings_title),
-                        subtitle = stringResource(R.string.settings_account_item_subtitle),
-                        leading = {
-                            SeAvatarBadge(
-                                name = profile.displayName.ifBlank { stringResource(R.string.account_name_fallback) },
-                                photoUrl = profile.photoUrl,
-                                size = 36.dp,
-                                borderWidth = 0.dp,
-                            )
-                        },
-                        trailing = {
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = null,
-                                tint = SplitEaseColors.NavyMuted,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        },
-                        onClick = onOpenAccountProfile,
-                        showDivider = false,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                SettingsGroupCard {
-                    SeListRow(
-                        title = stringResource(R.string.spending_title),
-                        subtitle = stringResource(R.string.spending_hub_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.AutoMirrored.Filled.ShowChart,
-                                tint = SplitEaseColors.OwedToYou,
-                                size = 40,
-                            )
-                        },
-                        trailing = { SettingsChevron() },
-                        onClick = onOpenSpending,
-                        showDivider = false,
-                    )
-                }
-
-                SeSectionHeader(text = stringResource(R.string.settings_preferences_section))
-                SettingsGroupCard {
-                    SeListRow(
-                        title = stringResource(R.string.settings_appearance),
-                        subtitle = themeModeLabel(themeMode),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.DarkMode,
-                                tint = SplitEaseColors.IconOther,
-                                size = 40,
-                            )
-                        },
-                        trailing = { SettingsChevron() },
-                        onClick = onOpenAppearance,
-                        showDivider = false,
-                    )
-                    SettingsCardDivider()
-                    SeListRow(
-                        title = stringResource(R.string.settings_notifications),
-                        subtitle =
-                            if (notificationsOn) {
-                                stringResource(R.string.settings_notifications_on)
-                            } else {
-                                stringResource(R.string.settings_notifications_off)
-                            },
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Notifications,
-                                tint = SplitEaseColors.IconFriends,
-                                size = 40,
-                            )
-                        },
-                        trailing = { SettingsChevron() },
-                        onClick = onOpenNotifications,
-                        showDivider = false,
-                    )
-                }
-
-                SeSectionHeader(text = stringResource(R.string.settings_security))
-                SettingsGroupCard {
-                    SeListRow(
-                        title = stringResource(R.string.settings_security),
-                        subtitle = stringResource(R.string.settings_security_item_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Lock,
-                                tint = SplitEaseColors.IconHome,
-                                size = 40,
-                            )
-                        },
-                        trailing = { SettingsChevron() },
-                        onClick = onOpenSecurity,
-                        showDivider = false,
-                    )
-                }
-
-                if (privacyOptionsRequired) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SeListRow(
-                        title = stringResource(R.string.settings_ad_privacy_choices),
-                        onClick = {
-                            (context as? FragmentActivity)?.let { activity ->
-                                AdConsentManager.showPrivacyOptionsForm(activity)
-                            }
-                        },
-                        showDivider = false,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(28.dp))
-                SeOutlinedButton(
-                    text = stringResource(R.string.action_sign_out),
-                    onClick = onSignOut,
-                    isLoading = isSigningOut,
-                )
-            }
-        },
-    )
 }
 
 @Composable
@@ -686,34 +507,6 @@ fun CurrencySettingsScreen(
 }
 
 @Composable
-private fun SettingsGroupCard(content: @Composable () -> Unit) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(SplitEaseColors.Surface)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun SettingsCardDivider() {
-    HorizontalDivider(thickness = 1.dp, color = SplitEaseColors.Outline)
-}
-
-@Composable
-private fun SettingsChevron() {
-    Icon(
-        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = SplitEaseColors.NavyMuted,
-    )
-}
-
-@Composable
 private fun ThemeModeRow(
     mode: ThemeMode,
     selected: Boolean,
@@ -756,19 +549,3 @@ private fun authTimeoutLabel(timeout: AuthTimeout): String =
         AuthTimeout.FIFTEEN_MINUTES -> stringResource(R.string.settings_timeout_15_minutes)
         AuthTimeout.ONE_HOUR -> stringResource(R.string.settings_timeout_1_hour)
     }
-
-@Preview(name = "Settings hub", showBackground = true)
-@Composable
-private fun SettingsScreenPreview() {
-    SePreview {
-        Column(modifier = Modifier.padding(20.dp)) {
-            SeListRow(title = "Account settings", subtitle = "Profile, currency, language", onClick = {})
-            SeListRow(title = "Spending", subtitle = "Your share by category", onClick = {})
-            SeSectionHeader(text = "Preferences")
-            SeListRow(title = "Appearance", subtitle = "System default", onClick = {})
-            SeListRow(title = "Notifications", subtitle = "On", onClick = {})
-            SeSectionHeader(text = "Security")
-            SeListRow(title = "Security", subtitle = "Biometric lock, auto-lock timeout", onClick = {})
-        }
-    }
-}
