@@ -128,11 +128,47 @@ class ConvertMixedCurrenciesTest {
         }
 
     @Test
-    fun convertMixedCurrencies_friendship_path_uses_captured_original_when_amount_already_moved() =
+    fun convertMixedCurrencies_does_not_rescale_splits_when_amount_already_converted() =
         runTest {
             val usd =
                 expense(
                     id = "f1",
+                    amount = BigDecimal("800.00"),
+                    currencyCode = "USD",
+                    groupId = null,
+                    originalAmount = BigDecimal("10.00"),
+                    originalCurrencyCode = "USD",
+                    rate = BigDecimal("80"),
+                )
+            coEvery { expenseRepository.getFriendshipExpenses("me", "friend") } returns listOf(usd)
+            coEvery { expenseRepository.getSplits("f1") } returns
+                listOf(split("s1", "f1", "me", BigDecimal("800.00")))
+
+            val expenseSlot = slot<Expense>()
+            val splitsSlot = slot<List<ExpenseSplit>>()
+            coEvery { expenseRepository.upsertExpenseWithSplits(capture(expenseSlot), capture(splitsSlot)) } returns Unit
+
+            val result =
+                interactor.convertMixedCurrencies(
+                    friendUserId = "friend",
+                    targetCurrencyCode = "INR",
+                    actorUserId = "me",
+                )
+
+            assertEquals(1, result.getOrThrow())
+            assertEquals(BigDecimal("800.00"), expenseSlot.captured.amount)
+            assertEquals("INR", expenseSlot.captured.currencyCode)
+            assertEquals(BigDecimal("10.00"), expenseSlot.captured.originalAmount)
+            assertEquals("USD", expenseSlot.captured.originalCurrencyCode)
+            assertEquals(BigDecimal("800.00"), splitsSlot.captured.single().owedAmount)
+        }
+
+    @Test
+    fun convertMixedCurrencies_friendship_path_uses_amount_when_original_missing() =
+        runTest {
+            val usd =
+                expense(
+                    id = "f2",
                     amount = BigDecimal("10.00"),
                     currencyCode = "USD",
                     groupId = null,
@@ -141,8 +177,8 @@ class ConvertMixedCurrenciesTest {
                     rate = BigDecimal("80"),
                 )
             coEvery { expenseRepository.getFriendshipExpenses("me", "friend") } returns listOf(usd)
-            coEvery { expenseRepository.getSplits("f1") } returns
-                listOf(split("s1", "f1", "me", BigDecimal("10.00")))
+            coEvery { expenseRepository.getSplits("f2") } returns
+                listOf(split("s1", "f2", "me", BigDecimal("10.00")))
 
             val expenseSlot = slot<Expense>()
             coEvery { expenseRepository.upsertExpenseWithSplits(capture(expenseSlot), any()) } returns Unit

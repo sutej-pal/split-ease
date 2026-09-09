@@ -67,7 +67,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.sync.SyncState
-import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
+import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
@@ -128,6 +130,7 @@ fun ActivityScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = bottomBarContentWindowInsets(),
         topBar = {
             SePageHeader(
                 title = stringResource(R.string.nav_activity),
@@ -156,7 +159,7 @@ fun ActivityScreen(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
-                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
+                modifier = Modifier.paddingAboveBottomBar(),
             )
         },
     ) { padding ->
@@ -209,7 +212,7 @@ fun ActivityScreen(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding =
-                                PaddingValues(bottom = LocalBottomBarInset.current + 16.dp),
+                                PaddingValues(bottom = bottomBarScrollPadding(includeFab = true)),
                         ) {
                             if (feed.entries.isEmpty()) {
                                 item(key = "empty", contentType = "empty") {
@@ -267,7 +270,7 @@ private fun ActivityListSkeleton(modifier: Modifier = Modifier) {
                 modifier
                     .fillMaxSize()
                     .semantics { contentDescription = loadingCd }
-                    .padding(bottom = LocalBottomBarInset.current + 16.dp),
+                    .padding(bottom = bottomBarScrollPadding(includeFab = true)),
         ) {
             Column(
                 modifier =

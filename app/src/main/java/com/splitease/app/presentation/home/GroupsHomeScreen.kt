@@ -66,6 +66,9 @@ import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
+import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.navigation.Routes
 import com.splitease.app.presentation.navigation.SplitEaseBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -156,12 +159,14 @@ private fun GroupsHomeScreenContent(
     if (ui.isLoading) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = bottomBarContentWindowInsets(),
         ) { padding ->
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .padding(padding)
+                        .paddingAboveBottomBar(),
                 contentAlignment = Alignment.Center,
             ) {
                 SeInlineLoader(text = stringResource(R.string.groups_fetching))
@@ -228,6 +233,7 @@ private fun GroupsHomeScreenContent(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = bottomBarContentWindowInsets(),
         topBar = {
             SePageHeader(
                 title = stringResource(R.string.groups_title),
@@ -250,7 +256,7 @@ private fun GroupsHomeScreenContent(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
-                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
+                modifier = Modifier.paddingAboveBottomBar(),
             )
         },
     ) { padding ->
@@ -274,7 +280,7 @@ private fun GroupsHomeScreenContent(
                         PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
-                            bottom = LocalBottomBarInset.current + 16.dp,
+                            bottom = bottomBarScrollPadding(includeFab = true),
                         ),
                 ) {
                     item {

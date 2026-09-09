@@ -44,7 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.settings.ThemeMode
 import com.splitease.app.presentation.ads.AdConsentManager
-import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.settings.SettingsViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
@@ -125,6 +126,7 @@ private fun AccountScreenContent(
     SeScreen(
         title = stringResource(R.string.nav_account),
         onBack = onBack,
+        contentWindowInsets = bottomBarContentWindowInsets(),
         content = { padding ->
             val layoutDirection = LocalLayoutDirection.current
             Column(
@@ -138,7 +140,7 @@ private fun AccountScreenContent(
                         )
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp)
-                        .padding(bottom = LocalBottomBarInset.current + 16.dp),
+                        .padding(bottom = bottomBarScrollPadding(includeFab = false)),
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
                 AccountGroupCard(onClick = onOpenAccountProfile) {
@@ -254,12 +256,11 @@ private fun AccountScreenContent(
                     SeConfirmDialog(
                         title = stringResource(R.string.sign_out_confirm_title),
                         body = stringResource(R.string.sign_out_confirm_message),
-                        onDismissRequest = { showSignOutConfirm = false },
-                        confirmLabel = stringResource(R.string.action_sign_out),
-                        onConfirm = {
-                            showSignOutConfirm = false
-                            onSignOut()
+                        onDismissRequest = {
+                            if (!isSigningOut) showSignOutConfirm = false
                         },
+                        confirmLabel = stringResource(R.string.action_sign_out),
+                        onConfirm = onSignOut,
                         icon = Icons.AutoMirrored.Filled.ExitToApp,
                         tone = SeConfirmTone.Danger,
                         confirmBusy = isSigningOut,

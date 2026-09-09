@@ -819,10 +819,10 @@ class ExpensesViewModel
             categoryId: String? = null,
             notes: String? = null,
             expenseDateEpochMs: Long? = null,
-        ) {
-            if (paidByUserId.isBlank() || participantIds.isEmpty()) return
-            val amount = runCatching { BigDecimal(amountText.trim()) }.getOrNull() ?: return
-            if (!isFxReady(currencyCode, targetDefaultCurrency)) return
+        ): Boolean {
+            if (paidByUserId.isBlank() || participantIds.isEmpty()) return false
+            val amount = runCatching { BigDecimal(amountText.trim()) }.getOrNull() ?: return false
+            if (!isFxReady(currencyCode, targetDefaultCurrency)) return false
             val fx = fxSnapshot(currencyCode, amount)
             expenseInteractor.enqueueCreateExpense(
                 input =
@@ -850,6 +850,7 @@ class ExpensesViewModel
                     ),
                 actorUserId = userId.value,
             )
+            return true
         }
 
         /**

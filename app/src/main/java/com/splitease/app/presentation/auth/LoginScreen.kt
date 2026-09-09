@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -120,7 +121,14 @@ fun LoginScreen(
             text = stringResource(R.string.action_continue_google),
             onClick = onContinueWithGoogle,
             enabled = !isBusy,
-            modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
+            isLoading = isGoogleLoading,
+            leadingIcon = {
+                Image(
+                    painter = painterResource(R.drawable.ic_google),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+            },
         )
         // Full-width center slot so the link stays aligned with Log in / Google
         // whether a press ripple is visible.

@@ -64,7 +64,9 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.groups.BannerCircleIconButton
-import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
+import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
@@ -120,25 +122,26 @@ fun FriendDetailScreen(
     val lightIconsOnBars = bannerColor.luminance() > 0.5f
     SeSystemBars(
         statusBarColor = bannerColor,
-        navigationBarColor = MaterialTheme.colorScheme.background,
+        navigationBarColor = Color.Transparent,
         statusBarDarkIcons = lightIconsOnBars,
         navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
     )
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = bottomBarContentWindowInsets(),
         floatingActionButton = {
             SeExtendedFab(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
-                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
+                modifier = Modifier.paddingAboveBottomBar(),
             )
         },
     ) { _ ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + 16.dp),
+            contentPadding = PaddingValues(bottom = bottomBarScrollPadding(includeFab = true)),
         ) {
             item {
                 FriendDetailBanner(

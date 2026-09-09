@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.splitease.app.presentation.navigation.LocalBottomBarInset
 import com.splitease.app.presentation.theme.SplitEaseTheme
 
 /**
@@ -23,8 +25,10 @@ fun SePreview(
     content: @Composable () -> Unit,
 ) {
     SplitEaseTheme(darkTheme = darkTheme, dynamicColor = false) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            content()
+        CompositionLocalProvider(LocalBottomBarInset provides 0.dp) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                content()
+            }
         }
     }
 }

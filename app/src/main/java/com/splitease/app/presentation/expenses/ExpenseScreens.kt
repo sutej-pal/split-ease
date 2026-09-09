@@ -482,26 +482,31 @@ fun AddExpenseScreen(
             )
         } else {
             closingAfterSave = true
-            viewModel.createExpenseInBackground(
-                description = title,
-                amountText = amount,
-                currencyCode = selectedCurrencyCode,
-                targetDefaultCurrency = targetDefaultCurrency,
-                paidByUserId = paidBy,
-                participantIds = selected.toList(),
-                splitType = mode,
-                groupId = groupId,
-                unequalAmounts = unequal,
-                percentages = percents,
-                shares = sharesMap,
-                adjustments = adjustmentsMap,
-                paidAmounts = multiPaidAmounts,
-                recurrenceFrequency = RecurrenceFrequency.NONE,
-                categoryId = selectedCategoryId,
-                notes = notes.trim().ifBlank { null },
-                expenseDateEpochMs = finalExpenseDateMs,
-            )
-            onDone()
+            val enqueued =
+                viewModel.createExpenseInBackground(
+                    description = title,
+                    amountText = amount,
+                    currencyCode = selectedCurrencyCode,
+                    targetDefaultCurrency = targetDefaultCurrency,
+                    paidByUserId = paidBy,
+                    participantIds = selected.toList(),
+                    splitType = mode,
+                    groupId = groupId,
+                    unequalAmounts = unequal,
+                    percentages = percents,
+                    shares = sharesMap,
+                    adjustments = adjustmentsMap,
+                    paidAmounts = multiPaidAmounts,
+                    recurrenceFrequency = RecurrenceFrequency.NONE,
+                    categoryId = selectedCategoryId,
+                    notes = notes.trim().ifBlank { null },
+                    expenseDateEpochMs = finalExpenseDateMs,
+                )
+            if (enqueued) {
+                onDone()
+            } else {
+                closingAfterSave = false
+            }
         }
     }
 

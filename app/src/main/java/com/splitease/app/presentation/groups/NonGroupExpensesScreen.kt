@@ -54,7 +54,9 @@ import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.balances.GroupBalanceHeader
 import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.ledgerEntries
-import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
+import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.IndigoLight
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.TextPrimaryLight
@@ -130,19 +132,20 @@ fun NonGroupExpensesScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = bottomBarContentWindowInsets(),
         floatingActionButton = {
             SeExtendedFab(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
-                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
+                modifier = Modifier.paddingAboveBottomBar(),
             )
         },
     ) { _ ->
         SeSystemBars(
             statusBarColor = bannerColor,
             // Keep dark system-nav glyphs on the light content/FAB area at the bottom.
-            navigationBarColor = MaterialTheme.colorScheme.background,
+            navigationBarColor = Color.Transparent,
             statusBarDarkIcons = bannerColor.luminance() > 0.5f,
             navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
@@ -193,7 +196,7 @@ fun NonGroupExpensesScreen(
                             contentPadding =
                                 PaddingValues(
                                     top = 8.dp,
-                                    bottom = 8.dp + LocalBottomBarInset.current + 16.dp,
+                                    bottom = 8.dp + bottomBarScrollPadding(includeFab = true),
                                 ),
                         ) {
                             if (ledger.isEmpty()) {
@@ -237,7 +240,7 @@ fun NonGroupExpensesScreen(
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
                                     .padding(horizontal = 20.dp)
-                                    .padding(bottom = LocalBottomBarInset.current + 16.dp),
+                                    .padding(bottom = bottomBarScrollPadding(includeFab = true)),
                         ) {
                             SeSectionHeader(text = stringResource(R.string.balances_title))
                             GroupBalanceHeader(balance = balance)

@@ -110,7 +110,6 @@ object ExpenseCategoryMatcher {
                     "airbnb",
                     "hostel",
                     "lodging",
-                    "stay",
                     "inn",
                     "suites",
                     "motel",

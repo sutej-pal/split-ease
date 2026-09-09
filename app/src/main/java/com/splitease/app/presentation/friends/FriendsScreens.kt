@@ -68,7 +68,9 @@ import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.common.shortDisplayName
-import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
+import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeEmptyState
@@ -170,6 +172,7 @@ fun FriendsListScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = bottomBarContentWindowInsets(),
         topBar = {
             SePageHeader(
                 title = stringResource(R.string.friends_title),
@@ -192,7 +195,7 @@ fun FriendsListScreen(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
-                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
+                modifier = Modifier.paddingAboveBottomBar(),
             )
         },
     ) { padding ->
@@ -215,7 +218,7 @@ fun FriendsListScreen(
                     PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
-                        bottom = LocalBottomBarInset.current + 16.dp,
+                        bottom = bottomBarScrollPadding(includeFab = true),
                     ),
             ) {
                 uiState.errorMessage?.let { message ->

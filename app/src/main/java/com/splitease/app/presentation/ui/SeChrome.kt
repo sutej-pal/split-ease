@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ripple
@@ -324,13 +325,14 @@ fun SeScreen(
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
+    contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     content: @Composable (padding: PaddingValuesAware) -> Unit,
 ) {
     val bg = MaterialTheme.colorScheme.background
     val lightIconsOnBars = bg.luminance() > 0.5f
     SeSystemBars(
         statusBarColor = bg,
-        navigationBarColor = bg,
+        navigationBarColor = Color.Transparent,
         statusBarDarkIcons = lightIconsOnBars,
         navigationBarDarkIcons = lightIconsOnBars,
     )
@@ -356,6 +358,7 @@ fun SeScreen(
         },
         floatingActionButton = floatingActionButton,
         snackbarHost = snackbarHost,
+        contentWindowInsets = contentWindowInsets,
     ) { padding ->
         if (subtitle != null && (onBack != null || onClose != null || centeredTitle)) {
             Column(

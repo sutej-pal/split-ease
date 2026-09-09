@@ -16,16 +16,25 @@ fun ExpenseDto.toDomainExpense(
     categoryId: String?,
     createdAtEpochMs: Long,
 ): Expense {
+    val parsedAmount =
+        amount.toBigDecimalOrNull()
+            ?: throw IllegalArgumentException("Invalid expense amount: $amount")
     val remoteOriginalAmount = originalAmount.toBigDecimalOrNull()
     val remoteRate = rateToDefaultCurrency.toBigDecimalOrNull()
+    val remoteCode = originalCurrencyCode?.trim()?.takeIf { it.isNotEmpty() }
     val remoteSource =
         rateSource?.let { raw ->
             runCatching { ExchangeRateSource.valueOf(raw.trim().uppercase()) }.getOrNull()
         }
+    val remoteHasFx =
+        remoteOriginalAmount != null ||
+            remoteCode != null ||
+            remoteRate != null ||
+            remoteSource != null
     return Expense(
         id = id,
         description = description,
-        amount = amount.toBigDecimalOrNull() ?: BigDecimal.ZERO,
+        amount = parsedAmount,
         currencyCode = currencyCode,
         categoryId = categoryId,
         paidByUserId = paidByUserId,
@@ -37,11 +46,10 @@ fun ExpenseDto.toDomainExpense(
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
         syncStatus = SyncStatus.SYNCED,
-        originalAmount = remoteOriginalAmount ?: existing?.originalAmount,
-        originalCurrencyCode = originalCurrencyCode?.trim()?.takeIf { it.isNotEmpty() }
-            ?: existing?.originalCurrencyCode,
-        rateToDefaultCurrency = remoteRate ?: existing?.rateToDefaultCurrency,
-        rateSource = remoteSource ?: existing?.rateSource,
+        originalAmount = if (remoteHasFx) remoteOriginalAmount else existing?.originalAmount,
+        originalCurrencyCode = if (remoteHasFx) remoteCode else existing?.originalCurrencyCode,
+        rateToDefaultCurrency = if (remoteHasFx) remoteRate else existing?.rateToDefaultCurrency,
+        rateSource = if (remoteHasFx) remoteSource else existing?.rateSource,
     )
 }
 

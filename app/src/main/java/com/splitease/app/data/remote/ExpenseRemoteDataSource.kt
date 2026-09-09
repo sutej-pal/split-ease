@@ -228,13 +228,21 @@ class ExpenseRemoteDataSource
 internal fun isMissingFxColumn(error: Throwable): Boolean {
     val raw = generateSequence(error) { it.cause }.mapNotNull { it.message }.joinToString(" ")
     val lower = raw.lowercase()
-    return lower.contains("pgrst204") ||
-        lower.contains("original_amount") ||
-        lower.contains("original_currency_code") ||
-        lower.contains("rate_to_default_currency") ||
-        lower.contains("rate_source") ||
-        (lower.contains("schema cache") && lower.contains("column"))
+    val mentionsFxColumn =
+        FX_SNAPSHOT_COLUMNS.any { lower.contains(it) }
+    val isUnknownColumn =
+        lower.contains("pgrst204") ||
+            (lower.contains("schema cache") && lower.contains("column"))
+    return mentionsFxColumn && isUnknownColumn
 }
+
+private val FX_SNAPSHOT_COLUMNS =
+    listOf(
+        "original_amount",
+        "original_currency_code",
+        "rate_to_default_currency",
+        "rate_source",
+    )
 
 @kotlinx.serialization.Serializable
 private data class ExpenseSplitExpenseIdDto(

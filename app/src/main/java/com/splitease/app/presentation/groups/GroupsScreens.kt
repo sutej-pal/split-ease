@@ -105,7 +105,9 @@ import com.splitease.app.presentation.expenses.LedgerListItem
 import com.splitease.app.presentation.expenses.ledgerEntries
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
-import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
+import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeActionChipRow
@@ -457,12 +459,13 @@ fun GroupDetailScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = bottomBarContentWindowInsets(),
         floatingActionButton = {
             SeExtendedFab(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
-                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
+                modifier = Modifier.paddingAboveBottomBar(),
             )
         },
     ) { _ ->
@@ -471,7 +474,7 @@ fun GroupDetailScreen(
             // Bottom of the screen is light content / FAB — keep dark system-nav glyphs.
             // (Previously used bannerColor + light icons, which leaked white glyphs onto
             // the main tab bottom bar after pop.)
-            navigationBarColor = MaterialTheme.colorScheme.background,
+            navigationBarColor = Color.Transparent,
             statusBarDarkIcons = statusBarDarkIcons,
             navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
@@ -498,7 +501,7 @@ fun GroupDetailScreen(
                 contentPadding =
                     PaddingValues(
                         top = 8.dp,
-                        bottom = 8.dp + LocalBottomBarInset.current + 16.dp,
+                        bottom = 8.dp + bottomBarScrollPadding(includeFab = true),
                     ),
             ) {
                 if (!(isSolo && ledger.isEmpty())) {

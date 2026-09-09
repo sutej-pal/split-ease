@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -48,9 +47,6 @@ import androidx.compose.ui.unit.sp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SePreview
-
-/** Height of the main tab bar; scrollable tab screens add this as list content padding. */
-val LocalBottomBarInset = compositionLocalOf { 0.dp }
 
 enum class MainTab(
     val route: String,

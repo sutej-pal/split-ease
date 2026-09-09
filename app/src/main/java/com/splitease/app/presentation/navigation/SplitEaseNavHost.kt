@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -590,7 +591,7 @@ private fun SignedInNavHost(
                 val darkGlyphs = barBg.luminance() > 0.5f
                 SeSystemBars(
                     statusBarColor = MaterialTheme.colorScheme.background,
-                    navigationBarColor = barBg,
+                    navigationBarColor = Color.Transparent,
                     statusBarDarkIcons = darkGlyphs,
                     navigationBarDarkIcons = darkGlyphs,
                 )

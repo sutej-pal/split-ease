@@ -293,7 +293,12 @@ private fun DeleteAccountContent(
                 },
                 enabled = canRequestDelete,
                 isLoading = isDeleting,
-                leadingIcon = if (!canRequestDelete && !isDeleting) Icons.Filled.Lock else Icons.Filled.Delete,
+                leadingIcon =
+                    when {
+                        isDeleting -> null
+                        !canRequestDelete -> Icons.Filled.Lock
+                        else -> Icons.Filled.Delete
+                    },
             )
             if (errorMessage != null) {
                 Spacer(modifier = Modifier.height(12.dp))

@@ -61,6 +61,8 @@ create table if not exists public.groups (
 
 alter table public.groups drop column if exists cover_url;
 
+-- Leftover header-cover files from an old schema. Scoped to `{groupId}/cover.jpg`
+-- only; list/settings photos (`{groupId}/photo.jpg`) are kept. Idempotent.
 delete from storage.objects
 where bucket_id = 'group-covers'
   and name like '%/cover.jpg';
@@ -440,6 +442,8 @@ drop policy if exists "profiles_select_authenticated" on public.profiles;
 drop policy if exists "profiles_insert_own" on public.profiles;
 drop policy if exists "profiles_update_own" on public.profiles;
 
+-- Replaces the old `using (true)` directory-wide SELECT. Deleted/anonymized
+-- rows are only readable by people who share a ledger with that profile.
 create policy "profiles_select_authenticated"
   on public.profiles for select to authenticated
   using (public.can_see_profile(id));

@@ -7,6 +7,7 @@ import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 
@@ -47,6 +48,42 @@ class ExpenseDtoMappersTest {
 
         assertEquals(BigDecimal("110"), mapped.rateToDefaultCurrency)
         assertEquals(ExchangeRateSource.CUSTOM, mapped.rateSource)
+    }
+
+    @Test
+    fun toDomainExpense_takes_remote_fx_tuple_atomically() {
+        val mapped =
+            remoteDto(
+                originalAmount = "40.00",
+                originalCurrencyCode = "USD",
+            ).toDomainExpense(
+                existing = localExpense(),
+                categoryId = null,
+                createdAtEpochMs = 1_000L,
+            )
+
+        assertEquals(BigDecimal("40.00"), mapped.originalAmount)
+        assertEquals("USD", mapped.originalCurrencyCode)
+        assertNull(mapped.rateToDefaultCurrency)
+        assertNull(mapped.rateSource)
+    }
+
+    @Test
+    fun toDomainExpense_rejects_invalid_amount() {
+        assertThrows(IllegalArgumentException::class.java) {
+            remoteDto().copy(amount = "nope").toDomainExpense(
+                existing = null,
+                categoryId = null,
+                createdAtEpochMs = 1_000L,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            remoteDto().copy(amount = " ").toDomainExpense(
+                existing = null,
+                categoryId = null,
+                createdAtEpochMs = 1_000L,
+            )
+        }
     }
 
     @Test

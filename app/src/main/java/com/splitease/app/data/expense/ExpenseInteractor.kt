@@ -482,6 +482,14 @@ class ExpenseInteractor
                         val sourceAmount = expense.originalAmount ?: expense.amount
                         val sourceCurrency = expense.originalCurrencyCode ?: expense.currencyCode
                         val newAmount = sourceAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP)
+                        // Scale splits from current amounts so an already-converted
+                        // `amount` (same units as [newAmount]) is not applied twice.
+                        val splitFactor =
+                            if (expense.amount.signum() == 0) {
+                                rate
+                            } else {
+                                newAmount.divide(expense.amount, 16, RoundingMode.HALF_UP)
+                            }
 
                         val updatedExpense =
                             expense.copy(
@@ -496,9 +504,9 @@ class ExpenseInteractor
                         val splits =
                             expenseRepository.getSplits(expense.id).map { split ->
                                 split.copy(
-                                    owedAmount = split.owedAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP),
-                                    paidAmount = split.paidAmount?.multiply(rate)?.setScale(2, RoundingMode.HALF_UP),
-                                    adjustmentAmount = split.adjustmentAmount?.multiply(rate)?.setScale(2, RoundingMode.HALF_UP),
+                                    owedAmount = split.owedAmount.multiply(splitFactor).setScale(2, RoundingMode.HALF_UP),
+                                    paidAmount = split.paidAmount?.multiply(splitFactor)?.setScale(2, RoundingMode.HALF_UP),
+                                    adjustmentAmount = split.adjustmentAmount?.multiply(splitFactor)?.setScale(2, RoundingMode.HALF_UP),
                                     syncStatus = SyncStatus.PENDING,
                                 )
                             }
