@@ -273,18 +273,18 @@ fun SeExtendedFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Filled.Receipt,
+    expanded: Boolean = true,
 ) {
     ExtendedFloatingActionButton(
+        text = { Text(text, style = MaterialTheme.typography.labelLarge) },
+        icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp)) },
         onClick = onClick,
+        expanded = expanded,
         modifier = modifier,
         containerColor = SplitEaseColors.Primary,
         contentColor = MaterialTheme.colorScheme.onPrimary,
         shape = FabShape,
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
+    )
 }
 
 @Composable

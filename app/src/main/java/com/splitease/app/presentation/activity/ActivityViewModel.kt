@@ -261,6 +261,20 @@ class ActivityViewModel
         }
 
         /**
+         * Triggers a manual pull-to-refresh sync for the activity feed.
+         */
+        fun refreshFeed() {
+            val id = userId.value ?: return
+            if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
+            viewModelScope.launch {
+                ActivityPerfLog.interaction("pull-to-refresh", "userId=$id")
+                withContext(Dispatchers.IO) {
+                    runCatching { syncInteractor.syncForUser(id, force = true) }
+                }
+            }
+        }
+
+        /**
          * Marks the signed-in user's activity events as seen (clears the unread badge).
          */
         fun markFeedSeen() {
@@ -517,7 +531,7 @@ class ActivityViewModel
                     relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
                 expenseTitle = description,
                 isSeen = isSeen,
-                annotatedTitle = activityTitleText(titleLine, description),
+                annotatedTitle = formatActivityTitle(titleLine, actorName, description, contextLabel),
             )
         }
 
@@ -531,7 +545,7 @@ class ActivityViewModel
                 amountLabel = "",
                 timeLabel = formatTimeLabel(createdAtEpochMs),
                 sortEpochMs = createdAtEpochMs,
-                annotatedTitle = AnnotatedString(titleText),
+                annotatedTitle = formatGroupCreatedTitle(titleText, name),
             )
         }
 
@@ -570,7 +584,7 @@ class ActivityViewModel
                 sortEpochMs = effectiveSortMs,
                 relatedExpenseId = id,
                 expenseTitle = description,
-                annotatedTitle = activityTitleText(titleText, description),
+                annotatedTitle = formatActivityTitle(titleText, actorName, description, contextLabel),
             )
         }
 
@@ -597,11 +611,16 @@ class ActivityViewModel
             me: String,
             nameOf: (String) -> String,
         ): ActivityUiItem {
-            val title =
+            val fromName = nameOf(fromUserId)
+            val toName = nameOf(toUserId)
+            val (title, names) =
                 when {
-                    fromUserId == me -> appContext.getString(R.string.payment_completed_you_paid, nameOf(toUserId))
-                    toUserId == me -> appContext.getString(R.string.payment_completed_they_paid, nameOf(fromUserId))
-                    else -> appContext.getString(R.string.payment_completed_other, nameOf(fromUserId), nameOf(toUserId))
+                    fromUserId == me ->
+                        appContext.getString(R.string.payment_completed_you_paid, toName) to listOf("you", toName)
+                    toUserId == me ->
+                        appContext.getString(R.string.payment_completed_they_paid, fromName) to listOf(fromName, "you")
+                    else ->
+                        appContext.getString(R.string.payment_completed_other, fromName, toName) to listOf(fromName, toName)
                 }
             val money = MoneyFormat.format(amount, currencyCode)
             val balanceLabel =
@@ -628,27 +647,91 @@ class ActivityViewModel
                 balanceLabel = balanceLabel,
                 balanceTone = balanceTone,
                 sortEpochMs = sortMs,
-                annotatedTitle = AnnotatedString(title),
+                annotatedTitle = formatPaymentTitle(title, names),
             )
         }
 
-        private fun activityTitleText(
-            title: String,
+        private fun formatActivityTitle(
+            fullTitle: String,
+            actorName: String,
             expenseTitle: String?,
+            contextLabel: String,
         ): AnnotatedString {
-            if (expenseTitle.isNullOrBlank()) {
-                return AnnotatedString(title)
+            val highlights = mutableListOf<Pair<String, SpanStyle>>()
+            if (actorName.isNotBlank()) {
+                highlights.add(actorName to SpanStyle(fontWeight = FontWeight.Bold))
             }
-            val start = title.indexOf(expenseTitle)
-            if (start < 0) {
-                return AnnotatedString(title)
+            if (!expenseTitle.isNullOrBlank()) {
+                highlights.add(expenseTitle to SpanStyle(fontWeight = FontWeight.SemiBold))
             }
-            return buildAnnotatedString {
-                append(title.substring(0, start))
-                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                    append(expenseTitle)
+            if (contextLabel.isNotBlank()) {
+                highlights.add(contextLabel to SpanStyle(fontWeight = FontWeight.Bold))
+            }
+            return buildAnnotatedTitle(fullTitle, highlights)
+        }
+
+        private fun formatGroupCreatedTitle(
+            fullTitle: String,
+            groupName: String,
+        ): AnnotatedString {
+            val highlights = listOf(
+                "You" to SpanStyle(fontWeight = FontWeight.Bold),
+                groupName to SpanStyle(fontWeight = FontWeight.Bold),
+            )
+            return buildAnnotatedTitle(fullTitle, highlights)
+        }
+
+        private fun formatPaymentTitle(
+            fullTitle: String,
+            usernames: List<String>,
+        ): AnnotatedString {
+            val highlights = usernames
+                .filter { it.isNotBlank() }
+                .flatMap { name ->
+                    listOf(
+                        name to SpanStyle(fontWeight = FontWeight.Bold),
+                        name.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } to SpanStyle(fontWeight = FontWeight.Bold),
+                    )
                 }
-                append(title.substring(start + expenseTitle.length))
+            return buildAnnotatedTitle(fullTitle, highlights)
+        }
+
+        private fun buildAnnotatedTitle(
+            fullText: String,
+            highlights: List<Pair<String, SpanStyle>>,
+        ): AnnotatedString {
+            if (highlights.isEmpty()) return AnnotatedString(fullText)
+
+            val matches = mutableListOf<Triple<Int, Int, SpanStyle>>()
+            for ((substring, style) in highlights) {
+                if (substring.isBlank()) continue
+                var start = fullText.indexOf(substring, ignoreCase = true)
+                while (start >= 0) {
+                    val end = start + substring.length
+                    val overlaps = matches.any { (s, e, _) -> maxOf(s, start) < minOf(e, end) }
+                    if (!overlaps) {
+                        matches.add(Triple(start, end, style))
+                    }
+                    start = fullText.indexOf(substring, start + 1, ignoreCase = true)
+                }
+            }
+            if (matches.isEmpty()) return AnnotatedString(fullText)
+            matches.sortBy { it.first }
+
+            return buildAnnotatedString {
+                var currentIndex = 0
+                for ((start, end, style) in matches) {
+                    if (start > currentIndex) {
+                        append(fullText.substring(currentIndex, start))
+                    }
+                    withStyle(style) {
+                        append(fullText.substring(start, end))
+                    }
+                    currentIndex = end
+                }
+                if (currentIndex < fullText.length) {
+                    append(fullText.substring(currentIndex))
+                }
             }
         }
 

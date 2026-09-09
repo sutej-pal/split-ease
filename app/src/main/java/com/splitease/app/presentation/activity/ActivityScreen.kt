@@ -1,8 +1,14 @@
 package com.splitease.app.presentation.activity
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,7 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,6 +31,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
@@ -39,9 +46,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,16 +85,19 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
+import com.splitease.app.presentation.ui.SeFab
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeLineSkeleton
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeShimmerProvider
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.seDetailHorizontal
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -101,6 +115,26 @@ fun ActivityScreen(
     val showSearch = searchVisible || query.isNotBlank()
     val listState = rememberLazyListState()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val isScrollingUp = listState.isScrollingUp()
+    val isFabExpanded by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 || !listState.canScrollBackward || isScrollingUp
+        }
+    }
+    val showScrollToTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 4
+        }
+    }
+
+    LaunchedEffect(listFilter, query) {
+        if (listState.firstVisibleItemIndex > 0) {
+            ActivityPerfLog.scroll("filter-query-change", "animating scroll to top")
+            listState.animateScrollToItem(0)
+        }
+    }
 
     DisposableEffect(listState) {
         ActivityPerfLog.scroll("list-state", "initialized")
@@ -155,16 +189,40 @@ fun ActivityScreen(
             )
         },
         floatingActionButton = {
-            SeExtendedFab(
-                text = stringResource(R.string.action_add_expense),
-                onClick = onAddExpense,
-                icon = Icons.Filled.Receipt,
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.paddingAboveBottomBar(),
-            )
+            ) {
+                AnimatedVisibility(
+                    visible = showScrollToTop,
+                    enter = fadeIn() + slideInVertically { it / 2 },
+                    exit = fadeOut() + slideOutVertically { it / 2 },
+                ) {
+                    SeFab(
+                        onClick = {
+                            coroutineScope.launch {
+                                ActivityPerfLog.scroll("scroll-to-top", "animating scroll to top")
+                                listState.animateScrollToItem(0)
+                            }
+                        },
+                        contentDescription = stringResource(R.string.cd_scroll_to_top),
+                        icon = Icons.Filled.KeyboardArrowUp,
+                    )
+                }
+                SeExtendedFab(
+                    text = stringResource(R.string.action_add_expense),
+                    onClick = onAddExpense,
+                    icon = Icons.Filled.Receipt,
+                    expanded = isFabExpanded,
+                )
+            }
         },
     ) { padding ->
         val layoutDirection = LocalLayoutDirection.current
-        Column(
+        SePullRefreshBox(
+            isRefreshing = feed.syncState == SyncState.IN_PROGRESS,
+            onRefresh = viewModel::refreshFeed,
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -174,87 +232,93 @@ fun ActivityScreen(
                         end = padding.calculateEndPadding(layoutDirection),
                     ),
         ) {
-            if (showSearch) {
-                SeTextField(
-                    value = query,
-                    onValueChange = viewModel::setSearchQuery,
-                    placeholder = stringResource(R.string.activity_search_hint),
-                    modifier =
-                        Modifier
-                            .seDetailHorizontal()
-                            .padding(top = 4.dp, bottom = 4.dp),
-                )
-            }
-            Crossfade(
-                targetState =
-                    when (feed.syncState) {
-                        SyncState.IN_PROGRESS -> 0
-                        SyncState.FAILED -> 1
-                        SyncState.IDLE,
-                        SyncState.COMPLETE,
-                        -> 2
-                    },
-                label = "activity-feed",
+            Column(
                 modifier = Modifier.fillMaxSize(),
-            ) { phase ->
-                when (phase) {
-                    0 -> ActivityListSkeleton()
-                    1 ->
-                        ActivitySyncError(
-                            onRetry = viewModel::retryInitialHydrate,
-                            modifier =
-                                Modifier
-                                    .seDetailHorizontal()
-                                    .padding(top = 16.dp),
-                        )
-                    else ->
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding =
-                                PaddingValues(bottom = bottomBarScrollPadding(includeFab = true)),
-                        ) {
-                            if (feed.entries.isEmpty()) {
-                                item(key = "empty", contentType = "empty") {
-                                    SeEmptyState(
-                                        message = emptyMessage,
-                                        icon = Icons.Filled.Receipt,
-                                        modifier = Modifier.seDetailHorizontal(),
-                                    )
-                                }
-                            } else {
-                                items(
-                                    items = feed.entries,
-                                    key = { it.stableKey() },
-                                    contentType = { entry ->
+            ) {
+                if (showSearch) {
+                    SeTextField(
+                        value = query,
+                        onValueChange = viewModel::setSearchQuery,
+                        placeholder = stringResource(R.string.activity_search_hint),
+                        modifier =
+                            Modifier
+                                .seDetailHorizontal()
+                                .padding(top = 4.dp, bottom = 4.dp),
+                    )
+                }
+                Crossfade(
+                    targetState =
+                        when (feed.syncState) {
+                            SyncState.IN_PROGRESS -> 0
+                            SyncState.FAILED -> 1
+                            SyncState.IDLE,
+                            SyncState.COMPLETE,
+                            -> 2
+                        },
+                    label = "activity-feed",
+                    modifier = Modifier.fillMaxSize(),
+                ) { phase ->
+                    when (phase) {
+                        0 -> ActivityListSkeleton()
+                        1 ->
+                            ActivitySyncError(
+                                onRetry = viewModel::retryInitialHydrate,
+                                modifier =
+                                    Modifier
+                                        .seDetailHorizontal()
+                                        .padding(top = 16.dp),
+                            )
+                        else ->
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding =
+                                    PaddingValues(bottom = bottomBarScrollPadding(includeFab = true)),
+                            ) {
+                                if (feed.entries.isEmpty()) {
+                                    item(key = "empty", contentType = "empty") {
+                                        SeEmptyState(
+                                            message = emptyMessage,
+                                            icon = Icons.Filled.Receipt,
+                                            modifier = Modifier.seDetailHorizontal(),
+                                        )
+                                    }
+                                } else {
+                                    feed.entries.forEach { entry ->
                                         when (entry) {
-                                            is ActivityListEntry.DayHeader -> "header"
-                                            is ActivityListEntry.Row -> "row"
-                                        }
-                                    },
-                                ) { entry ->
-                                    when (entry) {
-                                        is ActivityListEntry.DayHeader ->
-                                            ActivityDayHeader(day = entry.day)
-                                        is ActivityListEntry.Row -> {
-                                            val expenseId = entry.item.relatedExpenseId
-                                            val onClick = remember(expenseId, onOpenExpense) {
-                                                expenseId?.let { id ->
-                                                    {
-                                                        ActivityPerfLog.interaction("row-click", "expenseId=$id")
-                                                        onOpenExpense(id)
-                                                    }
+                                            is ActivityListEntry.DayHeader -> {
+                                                stickyHeader(
+                                                    key = entry.stableKey(),
+                                                    contentType = "header",
+                                                ) {
+                                                    ActivityDayHeader(day = entry.day)
                                                 }
                                             }
-                                            ActivityRow(
-                                                item = entry.item,
-                                                onClick = onClick,
-                                            )
+                                            is ActivityListEntry.Row -> {
+                                                item(
+                                                    key = entry.stableKey(),
+                                                    contentType = "row",
+                                                ) {
+                                                    val expenseId = entry.item.relatedExpenseId
+                                                    val onClick = remember(expenseId, onOpenExpense) {
+                                                        expenseId?.let { id ->
+                                                            {
+                                                                ActivityPerfLog.interaction("row-click", "expenseId=$id")
+                                                                onOpenExpense(id)
+                                                            }
+                                                        }
+                                                    }
+                                                    ActivityRow(
+                                                        item = entry.item,
+                                                        onClick = onClick,
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
+                    }
                 }
             }
         }
@@ -390,6 +454,24 @@ private val ActivityListFilter.labelRes: Int
         }
 
 @Composable
+private fun LazyListState.isScrollingUp(): Boolean {
+    var previousIndex by remember(this) { mutableIntStateOf(firstVisibleItemIndex) }
+    var previousScrollOffset by remember(this) { mutableIntStateOf(firstVisibleItemScrollOffset) }
+    return remember(this) {
+        derivedStateOf {
+            if (previousIndex != firstVisibleItemIndex) {
+                previousIndex > firstVisibleItemIndex
+            } else {
+                previousScrollOffset >= firstVisibleItemScrollOffset
+            }.also {
+                previousIndex = firstVisibleItemIndex
+                previousScrollOffset = firstVisibleItemScrollOffset
+            }
+        }
+    }.value
+}
+
+@Composable
 private fun ActivityDayHeader(day: LocalDate) {
     val today = LocalDate.now()
     val formattedDay =
@@ -404,14 +486,15 @@ private fun ActivityDayHeader(day: LocalDate) {
         }
     Text(
         text = label,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
         color = SplitEaseColors.Navy,
         modifier =
             Modifier
                 .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = SeLayout.detailHorizontal)
-                .padding(top = 16.dp, bottom = 4.dp),
+                .padding(top = 14.dp, bottom = 6.dp),
     )
 }
 
@@ -420,19 +503,31 @@ private fun ActivityRow(
     item: ActivityUiItem,
     onClick: (() -> Unit)? = null,
 ) {
-    val (icon, tint) =
+    val icon =
+        remember(item.kind) {
+            when (item.kind) {
+                ActivityKind.EXPENSE -> Icons.Filled.Receipt
+                ActivityKind.EXPENSE_UPDATED -> Icons.Filled.Edit
+                ActivityKind.EXPENSE_DELETED -> Icons.Filled.Delete
+                ActivityKind.PAYMENT -> Icons.Filled.Payments
+                ActivityKind.GROUP_CREATED -> Icons.Filled.Group
+            }
+        }
+    val tint =
         when (item.kind) {
-            ActivityKind.EXPENSE -> Icons.Filled.Receipt to SplitEaseColors.Primary
-            ActivityKind.EXPENSE_UPDATED -> Icons.Filled.Edit to SplitEaseColors.Primary
-            ActivityKind.EXPENSE_DELETED -> Icons.Filled.Delete to SplitEaseColors.YouOwe
-            ActivityKind.PAYMENT -> Icons.Filled.Payments to SplitEaseColors.OwedToYou
-            ActivityKind.GROUP_CREATED -> Icons.Filled.Group to SplitEaseColors.IconFriends
+            ActivityKind.EXPENSE -> SplitEaseColors.Primary
+            ActivityKind.EXPENSE_UPDATED -> SplitEaseColors.Primary
+            ActivityKind.EXPENSE_DELETED -> SplitEaseColors.YouOwe
+            ActivityKind.PAYMENT -> SplitEaseColors.OwedToYou
+            ActivityKind.GROUP_CREATED -> SplitEaseColors.IconFriends
         }
     val showsBalanceSlot =
-        item.kind == ActivityKind.EXPENSE ||
-            item.kind == ActivityKind.EXPENSE_UPDATED ||
-            item.kind == ActivityKind.EXPENSE_DELETED ||
-            item.kind == ActivityKind.PAYMENT
+        remember(item.kind) {
+            item.kind == ActivityKind.EXPENSE ||
+                item.kind == ActivityKind.EXPENSE_UPDATED ||
+                item.kind == ActivityKind.EXPENSE_DELETED ||
+                item.kind == ActivityKind.PAYMENT
+        }
     val amountTone =
         when (item.balanceTone) {
             ActivityBalanceTone.POSITIVE -> SplitEaseColors.OwedToYou
@@ -485,7 +580,8 @@ private fun ActivityRow(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = item.timeLabel,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
                 color = SplitEaseColors.NavyMuted,
             )
         }

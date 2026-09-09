@@ -340,6 +340,7 @@
     <string name="activity_sync_failed">Couldn\'t load your activity. Check your connection and try again.</string>
     <string name="activity_search_hint">Search activity</string>
     <string name="cd_filter_activity">Filter activity</string>
+    <string name="cd_scroll_to_top">Scroll to top</string>
     <string name="activity_filter_all">All events</string>
     <string name="activity_filter_expense">Expense</string>
     <string name="activity_filter_settlements">Settlements</string>

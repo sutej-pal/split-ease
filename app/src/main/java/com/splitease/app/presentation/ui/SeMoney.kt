@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
@@ -133,31 +134,37 @@ fun SeHeroBalancePair(
     currencyCode: String,
     modifier: Modifier = Modifier,
 ) {
-    val oweEntry = iOwe.entries.firstOrNull()
-    val owedEntry = owedToMe.entries.firstOrNull()
-    val bothEmpty = oweEntry == null && owedEntry == null
+    val oweAmounts = iOwe.toHeroAmountList()
+    val owedAmounts = owedToMe.toHeroAmountList()
+    val bothEmpty = oweAmounts.isEmpty() && owedAmounts.isEmpty()
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SeHeroTile(
             label = stringResource(R.string.balances_you_owe_plain),
-            amount = oweEntry?.value,
-            currencyCode = oweEntry?.key?.ifBlank { currencyCode } ?: currencyCode,
+            amounts = oweAmounts,
+            currencyCode = currencyCode,
             tone = SeMoneyTone.YOU_OWE,
             modifier = Modifier.weight(1f),
             settled = bothEmpty,
         )
         SeHeroTile(
             label = stringResource(R.string.balances_you_are_owed_plain),
-            amount = owedEntry?.value,
-            currencyCode = owedEntry?.key?.ifBlank { currencyCode } ?: currencyCode,
+            amounts = owedAmounts,
+            currencyCode = currencyCode,
             tone = SeMoneyTone.OWED_TO_YOU,
             modifier = Modifier.weight(1f),
             settled = bothEmpty,
         )
     }
 }
+
+private fun Map<String, BigDecimal>.toHeroAmountList(): List<Pair<String, BigDecimal>> =
+    entries
+        .filter { it.value.compareTo(BigDecimal.ZERO) != 0 }
+        .sortedByDescending { it.value.abs() }
+        .map { it.key to it.value }
 
 /**
  * Shimmer stand-in for [SeHeroBalancePair] while the first-login full sync runs.
@@ -235,30 +242,36 @@ fun SeLineSkeleton(
 @Composable
 private fun SeHeroTile(
     label: String,
-    amount: BigDecimal?,
+    amounts: List<Pair<String, BigDecimal>>,
     currencyCode: String,
     tone: SeMoneyTone,
     modifier: Modifier = Modifier,
     settled: Boolean = false,
 ) {
+    val isZeroState = settled || amounts.isEmpty()
     val fill =
         when {
-            settled || amount == null || amount.compareTo(BigDecimal.ZERO) == 0 ->
-                SplitEaseColors.SurfaceMuted
+            isZeroState -> SplitEaseColors.SurfaceMuted
             tone == SeMoneyTone.YOU_OWE -> OweContainer
             else -> OwedContainer
         }
     val pip =
         when {
-            settled || amount == null || amount.compareTo(BigDecimal.ZERO) == 0 ->
-                SplitEaseColors.NavyMuted
+            isZeroState -> SplitEaseColors.NavyMuted
             else -> tone.color()
         }
-    val value =
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) == 0) {
-            MoneyFormat.format(BigDecimal.ZERO, currencyCode)
+    val amountStyle =
+        when {
+            amounts.size <= 1 -> MaterialTheme.typography.headlineMedium
+            amounts.size == 2 -> MaterialTheme.typography.titleLarge
+            else -> MaterialTheme.typography.titleMedium
+        }
+    val amountColor = if (isZeroState) SplitEaseColors.Navy else tone.color()
+    val lines =
+        if (amounts.isEmpty()) {
+            listOf(currencyCode to BigDecimal.ZERO)
         } else {
-            MoneyFormat.format(amount, currencyCode)
+            amounts
         }
     Column(
         modifier =
@@ -283,17 +296,17 @@ private fun SeHeroTile(
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            color =
-                if (settled || amount == null || amount.compareTo(BigDecimal.ZERO) == 0) {
-                    SplitEaseColors.Navy
-                } else {
-                    tone.color()
-                },
-            maxLines = 1,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            lines.forEach { (code, amount) ->
+                Text(
+                    text = MoneyFormat.format(amount, code.ifBlank { currencyCode }),
+                    style = amountStyle,
+                    color = amountColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -305,6 +318,19 @@ private fun SeMoneyPreview() {
             SeHeroBalancePair(
                 iOwe = mapOf("INR" to BigDecimal("1642.21")),
                 owedToMe = mapOf("INR" to BigDecimal("80.00")),
+                currencyCode = "INR",
+            )
+            SeHeroBalancePair(
+                iOwe =
+                    mapOf(
+                        "AED" to BigDecimal("50.00"),
+                        "INR" to BigDecimal("635.00"),
+                    ),
+                owedToMe =
+                    mapOf(
+                        "INR" to BigDecimal("13918.94"),
+                        "USD" to BigDecimal("1068.30"),
+                    ),
                 currencyCode = "INR",
             )
             SeHeroBalancePairSkeleton()
