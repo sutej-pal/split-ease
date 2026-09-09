@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
@@ -250,6 +251,7 @@ fun categoryIcon(iconKey: String?): ImageVector =
         "category_bus" -> Icons.Filled.DirectionsBus
         "category_train" -> Icons.Filled.Train
         "category_home", "category_rent" -> Icons.Filled.Home
+        "category_hotel" -> Icons.Filled.Hotel
         "category_entertainment" -> Icons.Filled.Movie
         "category_utilities" -> Icons.Filled.Bolt
         "category_payment" -> Icons.Filled.Payments

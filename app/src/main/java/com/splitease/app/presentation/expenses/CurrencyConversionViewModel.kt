@@ -60,8 +60,8 @@ class CurrencyConversionViewModel
         private val expenseInteractor: ExpenseInteractor,
         appSettingsRepository: AppSettingsRepository,
     ) : ViewModel() {
-        private val groupId: String? = savedStateHandle.get<String>("groupId")
-        private val friendUserId: String? = savedStateHandle.get<String>("friendUserId")
+        private val groupId: String? = savedStateHandle.get<String>("groupId")?.takeIf { it.isNotBlank() }
+        private val friendUserId: String? = savedStateHandle.get<String>("friendUserId")?.takeIf { it.isNotBlank() }
 
         private val userId =
             authRepository

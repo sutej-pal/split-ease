@@ -94,7 +94,6 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
-import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
@@ -483,7 +482,6 @@ fun AddExpenseScreen(
             )
         } else {
             closingAfterSave = true
-            onDone()
             viewModel.createExpenseInBackground(
                 description = title,
                 amountText = amount,
@@ -503,6 +501,7 @@ fun AddExpenseScreen(
                 notes = notes.trim().ifBlank { null },
                 expenseDateEpochMs = finalExpenseDateMs,
             )
+            onDone()
         }
     }
 
@@ -1086,15 +1085,23 @@ private fun ExpenseUnderlineField(
             contentAlignment = Alignment.Center,
         ) {
             when {
-                leadingLabel != null ->
+                leadingLabel != null -> {
+                    val adjustedStyle =
+                        when {
+                            leadingLabel.length >= 4 -> MaterialTheme.typography.labelSmall
+                            leadingLabel.length == 3 -> MaterialTheme.typography.labelMedium
+                            leadingLabel.length == 2 -> MaterialTheme.typography.titleMedium
+                            else -> leadingTextStyle ?: MaterialTheme.typography.titleLarge
+                        }
                     Text(
                         text = leadingLabel,
-                        style =
-                            leadingTextStyle
-                                ?: MaterialTheme.typography.titleLarge,
+                        style = adjustedStyle,
                         fontWeight = FontWeight.SemiBold,
                         color = SplitEaseColors.NavyMuted,
+                        maxLines = 1,
+                        softWrap = false,
                     )
+                }
                 icon != null ->
                     Icon(
                         imageVector = icon,

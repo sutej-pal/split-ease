@@ -88,6 +88,13 @@ object AppCurrencies {
         }
     }
 
+    private val SYMBOL_OVERRIDES =
+        mapOf(
+            "AED" to "د.إ",
+            "SAR" to "ر.س",
+            "EGP" to "ج.م",
+        )
+
     /**
      * Currency symbol for [code], or the code itself when the JDK has no symbol.
      */
@@ -97,6 +104,7 @@ object AppCurrencies {
     ): String {
         val normalized = code.trim().uppercase()
         if (normalized.isEmpty()) return DEFAULT
+        SYMBOL_OVERRIDES[normalized]?.let { return it }
         return runCatching { Currency.getInstance(normalized).getSymbol(locale) }
             .getOrElse { normalized }
     }

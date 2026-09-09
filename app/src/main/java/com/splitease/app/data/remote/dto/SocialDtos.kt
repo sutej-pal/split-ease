@@ -104,6 +104,20 @@ data class ExpenseDto(
     @SerialName("split_type") val splitType: String,
     val notes: String? = null,
     @SerialName("updated_at_epoch_ms") val updatedAtEpochMs: Long,
+    /** Amount in the currency entered at creation. Omitted when null so older DBs still upsert. */
+    @SerialName("original_amount")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val originalAmount: String? = null,
+    @SerialName("original_currency_code")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val originalCurrencyCode: String? = null,
+    /** 1 [originalCurrencyCode] = X group-default (or settings) currency. */
+    @SerialName("rate_to_default_currency")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val rateToDefaultCurrency: String? = null,
+    @SerialName("rate_source")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val rateSource: String? = null,
 )
 
 /**

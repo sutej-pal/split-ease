@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.DarkMode
@@ -43,6 +44,8 @@ import com.splitease.app.presentation.ads.AdConsentManager
 import com.splitease.app.presentation.settings.SettingsViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeConfirmDialog
+import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -236,11 +239,36 @@ private fun AccountScreenContent(
                     )
                 }
 
+                var showSignOutConfirm by remember { mutableStateOf(false) }
+
+                if (showSignOutConfirm) {
+                    SeConfirmDialog(
+                        title = stringResource(R.string.sign_out_confirm_title),
+                        body = stringResource(R.string.sign_out_confirm_message),
+                        onDismissRequest = { showSignOutConfirm = false },
+                        confirmLabel = stringResource(R.string.action_sign_out),
+                        onConfirm = {
+                            showSignOutConfirm = false
+                            onSignOut()
+                        },
+                        icon = Icons.AutoMirrored.Filled.ExitToApp,
+                        tone = SeConfirmTone.Danger,
+                        confirmBusy = isSigningOut,
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(28.dp))
                 SeOutlinedButton(
                     text = stringResource(R.string.action_sign_out),
-                    onClick = onSignOut,
+                    onClick = { showSignOutConfirm = true },
                     isLoading = isSigningOut,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    },
                 )
             }
         },

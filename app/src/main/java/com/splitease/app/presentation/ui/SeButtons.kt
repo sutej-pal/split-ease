@@ -163,6 +163,7 @@ fun SeOutlinedButton(
     enabled: Boolean = true,
     isLoading: Boolean = false,
     contentColor: Color = SplitEaseColors.Primary,
+    leadingIcon: (@Composable () -> Unit)? = null,
 ) {
     val interactive = enabled && !isLoading
     OutlinedButton(
@@ -187,7 +188,16 @@ fun SeOutlinedButton(
                 strokeWidth = 2.dp,
             )
         } else {
-            Text(text, style = MaterialTheme.typography.labelLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                if (leadingIcon != null) {
+                    leadingIcon()
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(text, style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }

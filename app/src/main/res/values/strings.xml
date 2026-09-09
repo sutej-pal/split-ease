@@ -24,6 +24,8 @@
     <string name="action_sign_up">Sign up</string>
     <string name="action_signup">Signup</string>
     <string name="action_sign_out">Sign out</string>
+    <string name="sign_out_confirm_title">Sign out</string>
+    <string name="sign_out_confirm_message">Are you sure you want to sign out of SplitEase?</string>
     <string name="action_send_reset">Send reset code</string>
     <string name="action_forgot_password">Forgot password?</string>
     <string name="action_add_friend">Add friend</string>

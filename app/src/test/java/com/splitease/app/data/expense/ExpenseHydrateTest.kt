@@ -247,6 +247,58 @@ class ExpenseHydrateTest {
             assertEquals(REMOTE_FETCH_ROW_CAP, splitsSlot.captured.size)
         }
 
+    @Test
+    fun refreshExpensesForUser_preserves_local_fx_when_newer_remote_omits_snapshot() =
+        runTest {
+            val remoteRow =
+                expenseDto("a", groupId = "g1", paidBy = "u1").copy(
+                    description = "USDDinner",
+                    amount = "40.00",
+                    currencyCode = "USD",
+                    updatedAtEpochMs = 5_000L,
+                )
+            val local =
+                com.splitease.app.domain.model.Expense(
+                    id = "a",
+                    description = "USDDinner",
+                    amount = java.math.BigDecimal("40.00"),
+                    currencyCode = "USD",
+                    paidByUserId = "u1",
+                    groupId = "g1",
+                    expenseDateEpochMs = 1_000L,
+                    createdAtEpochMs = 1_000L,
+                    updatedAtEpochMs = 2_000L,
+                    splitType = com.splitease.app.domain.model.SplitType.EQUAL,
+                    syncStatus = SyncStatus.SYNCED,
+                    originalAmount = java.math.BigDecimal("40"),
+                    originalCurrencyCode = "USD",
+                    rateToDefaultCurrency = java.math.BigDecimal("94.832"),
+                    rateSource = com.splitease.app.domain.model.ExchangeRateSource.LIVE,
+                )
+            coEvery { expenseRepository.getExpensesByIds(listOf("a")) } returns mapOf("a" to local)
+            coEvery { remote.fetchPaidBy("u1") } returns listOf(remoteRow)
+            coEvery { remote.fetchSplitExpenseIdsForUser("u1") } returns listOf("a")
+            coEvery { groupRepository.observeGroupsForUser("u1") } returns flowOf(listOf(group("g1")))
+            coEvery { remote.fetchByGroupIds(listOf("g1")) } returns listOf(remoteRow)
+            coEvery { remote.fetchSplitsForExpenseIds(listOf("a")) } returns
+                listOf(splitDto("sa", "a", "u1"))
+            coEvery { remote.fetchCommentsForExpenseIds(listOf("a")) } returns emptyList()
+            coEvery { remote.fetchPhotosForExpenseIds(listOf("a")) } returns emptyList()
+
+            val expensesSlot = slot<List<com.splitease.app.domain.model.Expense>>()
+            coEvery {
+                expenseRepository.upsertExpensesWithSplits(capture(expensesSlot), any())
+            } returns Unit
+
+            interactor.refreshExpensesForUser("u1")
+
+            val saved = expensesSlot.captured.single()
+            assertEquals(java.math.BigDecimal("94.832"), saved.rateToDefaultCurrency)
+            assertEquals("USD", saved.originalCurrencyCode)
+            assertEquals(com.splitease.app.domain.model.ExchangeRateSource.LIVE, saved.rateSource)
+            assertEquals("USDDinner", saved.description)
+        }
+
     private fun expenseDto(
         id: String,
         groupId: String?,

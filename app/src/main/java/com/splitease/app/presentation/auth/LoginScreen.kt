@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -118,7 +120,7 @@ fun LoginScreen(
             text = stringResource(R.string.action_continue_google),
             onClick = onContinueWithGoogle,
             enabled = !isBusy,
-            isLoading = isGoogleLoading,
+            modifier = Modifier.alpha(if (isBusy) 0.5f else 1f),
         )
         // Full-width center slot so the link stays aligned with Log in / Google
         // whether a press ripple is visible.

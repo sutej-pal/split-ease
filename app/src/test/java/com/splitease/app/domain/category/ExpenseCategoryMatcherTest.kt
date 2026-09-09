@@ -40,6 +40,12 @@ class ExpenseCategoryMatcherTest {
     }
 
     @Test
+    fun hotelKeywords_matchHotel() {
+        assertEquals("cat_hotel", ExpenseCategoryMatcher.matchCategoryId("Dubai Hotel"))
+        assertEquals("cat_hotel", ExpenseCategoryMatcher.matchCategoryId("Airbnb booking"))
+    }
+
+    @Test
     fun rentUtilitiesEntertainment() {
         assertEquals("cat_rent", ExpenseCategoryMatcher.matchCategoryId("March rent"))
         assertEquals("cat_utilities", ExpenseCategoryMatcher.matchCategoryId("Wifi bill"))

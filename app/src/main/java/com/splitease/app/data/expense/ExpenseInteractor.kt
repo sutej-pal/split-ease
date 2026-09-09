@@ -12,7 +12,9 @@ import com.splitease.app.data.remote.dto.ExpenseCommentDto
 import com.splitease.app.data.remote.dto.ExpenseDto
 import com.splitease.app.data.remote.dto.ExpensePhotoDto
 import com.splitease.app.data.remote.dto.ExpenseSplitDto
+import com.splitease.app.data.remote.mapper.toDomainExpense
 import com.splitease.app.data.remote.mapper.toDto
+import com.splitease.app.data.remote.mapper.toExpenseDto
 import com.splitease.app.data.sync.ExpensePushPolicy
 import com.splitease.app.data.sync.InFlightWorkGate
 import com.splitease.app.data.sync.REMOTE_FETCH_ROW_CAP
@@ -1159,23 +1161,10 @@ class ExpenseInteractor
                             ?: dto.updatedAtEpochMs.takeIf { it > 0L }
                             ?: dto.expenseDateEpochMs
                     val expense =
-                        Expense(
-                            id = dto.id,
-                            description = dto.description,
-                            amount = BigDecimal(dto.amount),
-                            currencyCode = dto.currencyCode,
+                        dto.toDomainExpense(
+                            existing = existing,
                             categoryId = categoryId,
-                            paidByUserId = dto.paidByUserId,
-                            groupId = dto.groupId,
-                            expenseDateEpochMs = dto.expenseDateEpochMs,
-                            splitType =
-                                runCatching { SplitType.valueOf(dto.splitType) }
-                                    .getOrDefault(SplitType.EQUAL),
-                            notes = dto.notes,
-                            remoteId = dto.id,
                             createdAtEpochMs = createdAt,
-                            updatedAtEpochMs = dto.updatedAtEpochMs,
-                            syncStatus = SyncStatus.SYNCED,
                         )
                     val splits =
                         splitDtos.map { split ->
@@ -1237,19 +1226,7 @@ class ExpenseInteractor
             expenseRepository.upsertExpenseWithSplits(bumped, splits)
             runCatching {
                 remote.upsertExpense(
-                    ExpenseDto(
-                        id = bumped.id,
-                        description = bumped.description,
-                        amount = bumped.amount.toPlainString(),
-                        currencyCode = bumped.currencyCode,
-                        categoryId = categoryRepository.categoryIdForCloud(bumped.categoryId),
-                        paidByUserId = bumped.paidByUserId,
-                        groupId = bumped.groupId,
-                        expenseDateEpochMs = bumped.expenseDateEpochMs,
-                        splitType = bumped.splitType.name,
-                        notes = bumped.notes,
-                        updatedAtEpochMs = bumped.updatedAtEpochMs,
-                    ),
+                    bumped.toExpenseDto(categoryRepository.categoryIdForCloud(bumped.categoryId)),
                 )
                 expenseRepository.upsertExpenseWithSplits(
                     bumped.copy(syncStatus = SyncStatus.SYNCED, remoteId = bumped.id),
@@ -1483,19 +1460,7 @@ class ExpenseInteractor
 
         private suspend fun pushExpense(expense: Expense, splits: List<ExpenseSplit>) {
             remote.upsertExpense(
-                ExpenseDto(
-                    id = expense.id,
-                    description = expense.description,
-                    amount = expense.amount.toPlainString(),
-                    currencyCode = expense.currencyCode,
-                    categoryId = categoryRepository.categoryIdForCloud(expense.categoryId),
-                    paidByUserId = expense.paidByUserId,
-                    groupId = expense.groupId,
-                    expenseDateEpochMs = expense.expenseDateEpochMs,
-                    splitType = expense.splitType.name,
-                    notes = expense.notes,
-                    updatedAtEpochMs = expense.updatedAtEpochMs,
-                ),
+                expense.toExpenseDto(categoryRepository.categoryIdForCloud(expense.categoryId)),
             )
             remote.deleteSplitsForExpense(expense.id)
             remote.upsertSplits(

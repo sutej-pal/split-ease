@@ -103,6 +103,20 @@ object ExpenseCategoryMatcher {
                 ),
             ),
             Rule(
+                "cat_hotel",
+                listOf(
+                    "hotel",
+                    "resort",
+                    "airbnb",
+                    "hostel",
+                    "lodging",
+                    "stay",
+                    "inn",
+                    "suites",
+                    "motel",
+                ),
+            ),
+            Rule(
                 "cat_travel",
                 listOf(
                     "travel",
@@ -110,7 +124,6 @@ object ExpenseCategoryMatcher {
                     "flight",
                     "airfare",
                     "airport",
-                    "hotel",
                     "uber",
                     "ola",
                     "taxi",
@@ -125,7 +138,6 @@ object ExpenseCategoryMatcher {
                     "visa",
                     "passport",
                     "booking",
-                    "airbnb",
                 ),
             ),
             Rule(

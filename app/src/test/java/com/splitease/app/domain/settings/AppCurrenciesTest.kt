@@ -42,6 +42,7 @@ class AppCurrenciesTest {
 
     @Test
     fun symbol_falls_back_to_code_when_unknown() {
+        assertEquals("د.إ", AppCurrencies.symbol("AED"))
         assertTrue(AppCurrencies.symbol(AppCurrencies.INR).isNotBlank())
         assertTrue(AppCurrencies.symbol(AppCurrencies.USD, java.util.Locale.US).isNotBlank())
         assertEquals("XYZ", AppCurrencies.symbol("XYZ"))

@@ -636,6 +636,15 @@ create table if not exists public.expenses (
   updated_at_epoch_ms bigint not null default 0
 );
 
+alter table public.expenses
+  add column if not exists original_amount text;
+alter table public.expenses
+  add column if not exists original_currency_code text;
+alter table public.expenses
+  add column if not exists rate_to_default_currency text;
+alter table public.expenses
+  add column if not exists rate_source text;
+
 create index if not exists expenses_group_idx on public.expenses (group_id);
 create index if not exists expenses_paid_by_idx on public.expenses (paid_by_user_id);
 
