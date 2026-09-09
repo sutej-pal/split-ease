@@ -54,6 +54,7 @@ import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.balances.GroupBalanceHeader
 import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.ledgerEntries
+import com.splitease.app.presentation.navigation.LocalBottomBarInset
 import com.splitease.app.presentation.theme.IndigoLight
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.TextPrimaryLight
@@ -134,9 +135,10 @@ fun NonGroupExpensesScreen(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
+                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
             )
         },
-    ) { padding ->
+    ) { _ ->
         SeSystemBars(
             statusBarColor = bannerColor,
             // Keep dark system-nav glyphs on the light content/FAB area at the bottom.
@@ -145,10 +147,7 @@ fun NonGroupExpensesScreen(
             navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
         Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding()),
+            modifier = Modifier.fillMaxSize(),
         ) {
             NonGroupDetailBanner(
                 bannerColor = bannerColor,
@@ -191,7 +190,11 @@ fun NonGroupExpensesScreen(
                     ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(vertical = 8.dp),
+                            contentPadding =
+                                PaddingValues(
+                                    top = 8.dp,
+                                    bottom = 8.dp + LocalBottomBarInset.current + 16.dp,
+                                ),
                         ) {
                             if (ledger.isEmpty()) {
                                 item {
@@ -215,7 +218,6 @@ fun NonGroupExpensesScreen(
                                     SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp))
                                 }
                             }
-                            item { Spacer(modifier = Modifier.height(88.dp)) }
                         }
                     }
                 }
@@ -235,7 +237,7 @@ fun NonGroupExpensesScreen(
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
                                     .padding(horizontal = 20.dp)
-                                    .padding(bottom = 88.dp),
+                                    .padding(bottom = LocalBottomBarInset.current + 16.dp),
                         ) {
                             SeSectionHeader(text = stringResource(R.string.balances_title))
                             GroupBalanceHeader(balance = balance)

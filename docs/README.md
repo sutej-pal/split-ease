@@ -52,10 +52,8 @@ One doc per phase (no a/b/c/d splits). Prefer:
 
 ## SQL (apply in Supabase)
 
-1. Fresh DB (or re-apply safely): [sql/migration_db.sql](sql/migration_db.sql) — single canonical file (schema, RLS, invites, expenses, payments, realtime, device tokens, pin boards, activity events, auth RPCs, share-link heal, optional FCM notify triggers).
-2. Account deletion (soft-delete RPC + deleted-profile RLS): [sql/phase-account-deletion.sql](sql/phase-account-deletion.sql) — run after the canonical file (existing projects too).
-3. Activity sync (existing projects): [sql/phase-activity-sync.sql](sql/phase-activity-sync.sql) — already inlined in the canonical file; run on older DBs that predate it.
-4. FCM Edge Function / webhooks ops: [fcm-setup.md](fcm-setup.md)
+1. Fresh or existing DB (safe to re-apply): [sql/migration_db.sql](sql/migration_db.sql) — single canonical file (schema, RLS, invites, expenses, payments, realtime, device tokens, pin boards, activity events, auth RPCs, account deletion, share-link heal, optional FCM notify triggers).
+2. FCM Edge Function / webhooks ops: [fcm-setup.md](fcm-setup.md)
 
 ### Clipboard helper
 

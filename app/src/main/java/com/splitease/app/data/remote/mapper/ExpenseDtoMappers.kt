@@ -65,7 +65,7 @@ fun Expense.toExpenseDto(cloudCategoryId: String?): ExpenseDto =
         rateSource = rateSource?.name,
     )
 
-/** Drop FX columns so an upsert can succeed before `phase-fx-snapshot.sql` is applied. */
+/** Drop FX columns so an upsert can succeed before `migration_db.sql` FX columns are applied. */
 fun ExpenseDto.withoutFxSnapshot(): ExpenseDto =
     copy(
         originalAmount = null,

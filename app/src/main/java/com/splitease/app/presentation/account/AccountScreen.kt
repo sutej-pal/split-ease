@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.settings.ThemeMode
 import com.splitease.app.presentation.ads.AdConsentManager
+import com.splitease.app.presentation.navigation.LocalBottomBarInset
 import com.splitease.app.presentation.settings.SettingsViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
@@ -122,14 +126,19 @@ private fun AccountScreenContent(
         title = stringResource(R.string.nav_account),
         onBack = onBack,
         content = { padding ->
+            val layoutDirection = LocalLayoutDirection.current
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values)
+                        .padding(
+                            top = padding.values.calculateTopPadding(),
+                            start = padding.values.calculateStartPadding(layoutDirection),
+                            end = padding.values.calculateEndPadding(layoutDirection),
+                        )
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp)
-                        .padding(bottom = 24.dp),
+                        .padding(bottom = LocalBottomBarInset.current + 16.dp),
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
                 AccountGroupCard(onClick = onOpenAccountProfile) {

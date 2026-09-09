@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.ui
 
 import android.app.Activity
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -75,7 +76,6 @@ fun SeSystemBars(
     if (view.isInEditMode) return
 
     val themeBg = MaterialTheme.colorScheme.background
-    val themeSurface = MaterialTheme.colorScheme.surface
     val themeDarkGlyphs = themeBg.luminance() > 0.5f
 
     DisposableEffect(
@@ -84,7 +84,6 @@ fun SeSystemBars(
         statusBarDarkIcons,
         navigationBarDarkIcons,
         themeBg,
-        themeSurface,
         themeDarkGlyphs,
     ) {
         val window =
@@ -96,6 +95,11 @@ fun SeSystemBars(
         window.statusBarColor = statusBarColor.toArgb()
         @Suppress("DEPRECATION")
         window.navigationBarColor = navigationBarColor.toArgb()
+        // Transparent nav must not get the OS contrast scrim — that re-colors the
+        // gesture/3-button inset after we cleared navigationBarColor.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = navigationBarColor.alpha > 0.01f
+        }
         controller.isAppearanceLightStatusBars = statusBarDarkIcons
         controller.isAppearanceLightNavigationBars = navigationBarDarkIcons
 
@@ -104,7 +108,10 @@ fun SeSystemBars(
             @Suppress("DEPRECATION")
             window.statusBarColor = themeBg.toArgb()
             @Suppress("DEPRECATION")
-            window.navigationBarColor = themeSurface.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = false
+            }
             controller.isAppearanceLightStatusBars = themeDarkGlyphs
             controller.isAppearanceLightNavigationBars = themeDarkGlyphs
         }

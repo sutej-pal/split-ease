@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,6 +48,9 @@ import androidx.compose.ui.unit.sp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SePreview
+
+/** Height of the main tab bar; scrollable tab screens add this as list content padding. */
+val LocalBottomBarInset = compositionLocalOf { 0.dp }
 
 enum class MainTab(
     val route: String,
@@ -70,9 +74,8 @@ fun SplitEaseBottomBar(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(Color.Transparent)
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(start = 16.dp, end = 16.dp, bottom = 10.dp, top = 4.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = 10.dp, top = 8.dp),
     ) {
         Row(
             modifier =
@@ -193,6 +196,8 @@ private fun BottomBarTab(
 @Composable
 private fun SplitEaseBottomBarPreview() {
     SePreview {
-        SplitEaseBottomBar(currentRoute = Routes.TAB_FRIENDS, onTabSelected = {})
+        Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+            SplitEaseBottomBar(currentRoute = Routes.TAB_FRIENDS, onTabSelected = {})
+        }
     }
 }

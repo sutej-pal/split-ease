@@ -118,7 +118,10 @@ fun SplitEaseTheme(
             @Suppress("DEPRECATION")
             window.statusBarColor = colorScheme.background.toArgb()
             @Suppress("DEPRECATION")
-            window.navigationBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = false
+            }
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !darkTheme
                 isAppearanceLightNavigationBars = !darkTheme

@@ -64,6 +64,7 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.groups.BannerCircleIconButton
+import com.splitease.app.presentation.navigation.LocalBottomBarInset
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
@@ -131,15 +132,13 @@ fun FriendDetailScreen(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
+                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
             )
         },
-    ) { padding ->
+    ) { _ ->
         LazyColumn(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding()),
-            contentPadding = PaddingValues(bottom = 88.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + 16.dp),
         ) {
             item {
                 FriendDetailBanner(

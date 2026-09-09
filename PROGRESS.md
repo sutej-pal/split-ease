@@ -24,7 +24,7 @@ Track development phases. Always check this file at the start of a session to de
 
 **Last completed:** Phase 12 — Forgot Password OTP (email recovery code + in-app new password)
 
-**Post-phase:** Account hub + CSV import removed (2026-09-08) — Account tab is the settings hub (`AccountScreen`); bank CSV import is gone. In-app account deletion (2026-09-07, UX 2026-09-08) — Account settings → Delete account; blocked groups are tappable; `delete_own_account()` RPC in [phase-account-deletion.sql](docs/sql/phase-account-deletion.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
+**Post-phase:** Account hub + CSV import removed (2026-09-08) — Account tab is the settings hub (`AccountScreen`); bank CSV import is gone. In-app account deletion (2026-09-07, UX 2026-09-08) — Account settings → Delete account; blocked groups are tappable; `delete_own_account()` RPC in [migration_db.sql](docs/sql/migration_db.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
 
 ### Docs map
 - Index: [docs/README.md](docs/README.md)
@@ -39,7 +39,7 @@ Track development phases. Always check this file at the start of a session to de
 - **Redeploy mail-service** — Recovery password-reset template lives in the mail-service; redeploy Vercel so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-email-otp.md)).
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
 - **Semantic balance colors** — `OweRed` / `OwedTeal` brand tokens ([phase-0](docs/phase-0-project-setup-and-brand-theme.md)).
-- **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run, then [phase-account-deletion.sql](docs/sql/phase-account-deletion.sql) and [phase-activity-sync.sql](docs/sql/phase-activity-sync.sql) (includes share-link heal, expense RLS, phone RPC, reciprocal friends, optional FCM notify triggers, activity feed).
+- **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run (includes share-link heal, expense RLS, phone RPC, reciprocal friends, optional FCM notify triggers, activity feed, account deletion).
 - **Invite email delivery** — Email contacts get invite mail via mail-service; phone contacts and generic share links use the system share sheet.
 - **SplitEase Server (separate repo)** — lives at `C:\splitease\server` beside the Android app at `C:\splitease\app` ([docs/splitease-server-repo.md](docs/splitease-server-repo.md)). Deployed on Vercel; uses Brevo HTTPS when `BREVO_API_KEY` is set, otherwise Nodemailer SMTP locally.
 - **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md)).

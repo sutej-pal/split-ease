@@ -10,12 +10,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -26,6 +29,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -596,11 +600,17 @@ private fun SignedInNavHost(
             AnimatedVisibility(
                 visible = showBottomBar,
                 enter =
-                    expandVertically(animationSpec = tween(NAV_TRANSITION_MS)) +
-                        fadeIn(animationSpec = tween(NAV_TRANSITION_MS)),
+                    expandVertically(
+                        animationSpec = tween(NAV_TRANSITION_MS),
+                        // Keep the floating pill's shadow; clip=true shears it into a
+                        // 1px Primary-tinted line at the left of the bar.
+                        clip = false,
+                    ) + fadeIn(animationSpec = tween(NAV_TRANSITION_MS)),
                 exit =
-                    shrinkVertically(animationSpec = tween(NAV_TRANSITION_MS)) +
-                        fadeOut(animationSpec = tween(NAV_TRANSITION_MS)),
+                    shrinkVertically(
+                        animationSpec = tween(NAV_TRANSITION_MS),
+                        clip = false,
+                    ) + fadeOut(animationSpec = tween(NAV_TRANSITION_MS)),
             ) {
                 SplitEaseBottomBar(
                     currentRoute = bottomBarSelectedRoute ?: lastSelectedTabRoute,
@@ -618,10 +628,18 @@ private fun SignedInNavHost(
             }
         },
     ) { padding ->
+        CompositionLocalProvider(
+            LocalBottomBarInset provides padding.calculateBottomPadding(),
+        ) {
         NavHost(
             navController = navController,
             startDestination = Routes.TAB_GROUPS,
-            modifier = Modifier.padding(padding),
+            modifier =
+                Modifier.padding(
+                    top = padding.calculateTopPadding(),
+                    start = padding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = padding.calculateEndPadding(LocalLayoutDirection.current),
+                ),
             enterTransition = { fadeIn(animationSpec = tween(NAV_TRANSITION_MS)) },
             exitTransition = {
                 if (shouldExpandAddExpenseFromFab(initialState, targetState)) {
@@ -1406,6 +1424,7 @@ private fun SignedInNavHost(
                     onSent = { navController.popBackStack() },
                 )
             }
+        }
         }
     }
 }

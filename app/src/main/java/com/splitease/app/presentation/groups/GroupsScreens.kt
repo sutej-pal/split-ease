@@ -105,6 +105,7 @@ import com.splitease.app.presentation.expenses.LedgerListItem
 import com.splitease.app.presentation.expenses.ledgerEntries
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
+import com.splitease.app.presentation.navigation.LocalBottomBarInset
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeActionChipRow
@@ -461,9 +462,10 @@ fun GroupDetailScreen(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
+                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
             )
         },
-    ) { padding ->
+    ) { _ ->
         SeSystemBars(
             statusBarColor = Color.Transparent,
             // Bottom of the screen is light content / FAB — keep dark system-nav glyphs.
@@ -474,10 +476,7 @@ fun GroupDetailScreen(
             navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
         Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding()),
+            modifier = Modifier.fillMaxSize(),
         ) {
             GroupDetailBanner(
                 group = group,
@@ -496,7 +495,11 @@ fun GroupDetailScreen(
                         .fillMaxWidth()
                         .background(SplitEaseColors.Surface)
                         .nestedScroll(nestedScrollConnection),
-                contentPadding = PaddingValues(vertical = 8.dp),
+                contentPadding =
+                    PaddingValues(
+                        top = 8.dp,
+                        bottom = 8.dp + LocalBottomBarInset.current + 16.dp,
+                    ),
             ) {
                 if (!(isSolo && ledger.isEmpty())) {
                     item {

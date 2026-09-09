@@ -610,7 +610,7 @@
     <string name="msg_expense_added">Expense added.</string>
     <string name="msg_expense_updated">Expense updated.</string>
     <string name="msg_expense_deleted">Expense deleted.</string>
-    <string name="msg_expense_cloud_rls">Could not save to cloud due to Supabase permissions (RLS). Verify you are a member of this group and run docs/sql/phase-4c-fix-expense-select-rls-returning.sql in Supabase SQL Editor.</string>
+    <string name="msg_expense_cloud_rls">Could not save to cloud due to Supabase permissions (RLS). Verify you are a member of this group and run docs/sql/migration_db.sql in the Supabase SQL Editor.</string>
     <string name="msg_expense_cloud_schema">Could not sync expense splits — the cloud database is missing a column (paid_amount / adjustment_amount). Run the expense_splits ALTER statements in docs/sql/migration_db.sql, then retry.</string>
     <string name="expense_not_found">Expense not found.</string>
     <string name="expense_added_by_on">Added by %1$s on %2$s</string>
@@ -659,7 +659,7 @@
         <item quantity="one">Synced %1$s; %2$d failed</item>
         <item quantity="other">Synced %1$s; %2$d failed</item>
     </plurals>
-    <string name="msg_cloud_tables_missing">Cloud tables are not set up yet. Group was not saved to the cloud — run docs/sql/phase-3-schema.sql in the Supabase SQL Editor.</string>
+    <string name="msg_cloud_tables_missing">Cloud tables are not set up yet. Group was not saved to the cloud — run docs/sql/migration_db.sql in the Supabase SQL Editor.</string>
     <string name="msg_cloud_unreachable">Couldn\'t reach the cloud. Showing saved data — check your connection and try again.</string>
     <string name="uncategorized_label">Uncategorized</string>
     <string name="activity_you_created">You created \"%1$s\"</string>

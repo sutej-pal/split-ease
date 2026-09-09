@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -64,6 +67,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.sync.SyncState
+import com.splitease.app.presentation.navigation.LocalBottomBarInset
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
@@ -152,14 +156,20 @@ fun ActivityScreen(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
+                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
             )
         },
     ) { padding ->
+        val layoutDirection = LocalLayoutDirection.current
         Column(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(
+                        top = padding.calculateTopPadding(),
+                        start = padding.calculateStartPadding(layoutDirection),
+                        end = padding.calculateEndPadding(layoutDirection),
+                    ),
         ) {
             if (showSearch) {
                 SeTextField(
@@ -198,7 +208,8 @@ fun ActivityScreen(
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 96.dp),
+                            contentPadding =
+                                PaddingValues(bottom = LocalBottomBarInset.current + 16.dp),
                         ) {
                             if (feed.entries.isEmpty()) {
                                 item(key = "empty", contentType = "empty") {
@@ -256,7 +267,7 @@ private fun ActivityListSkeleton(modifier: Modifier = Modifier) {
                 modifier
                     .fillMaxSize()
                     .semantics { contentDescription = loadingCd }
-                    .padding(bottom = 96.dp),
+                    .padding(bottom = LocalBottomBarInset.current + 16.dp),
         ) {
             Column(
                 modifier =

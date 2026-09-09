@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +36,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -53,11 +58,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
+import com.splitease.app.data.balance.OverallBalancesUi
 import com.splitease.app.data.sync.SyncState
 import com.splitease.app.data.sync.shouldFreezeBalances
+import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
+import com.splitease.app.presentation.navigation.LocalBottomBarInset
+import com.splitease.app.presentation.navigation.Routes
+import com.splitease.app.presentation.navigation.SplitEaseBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
@@ -97,10 +107,7 @@ fun GroupsHomeScreen(
     viewModel: GroupsHomeViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
-    var showSettledGroups by remember { mutableStateOf(false) }
     var photoTargetGroupId by remember { mutableStateOf<String?>(null) }
-    val changePhotoCd = stringResource(R.string.cd_change_group_photo)
     val groupPhotoPicker =
         rememberImagePicker(
             sourceTitle = stringResource(R.string.group_photo_source_title),
@@ -113,6 +120,38 @@ fun GroupsHomeScreen(
             photoTargetGroupId = null
             viewModel.updateGroupPhoto(groupId, uri)
         }
+
+    GroupsHomeScreenContent(
+        ui = ui,
+        onOpenGroup = onOpenGroup,
+        onOpenNonGroup = onOpenNonGroup,
+        onCreateGroup = onCreateGroup,
+        onAddExpense = onAddExpense,
+        onOpenSearch = onOpenSearch,
+        onRefresh = viewModel::refresh,
+        onRetryHydrate = viewModel::retryInitialHydrate,
+        onChangeGroupPhoto = { groupId ->
+            photoTargetGroupId = groupId
+            groupPhotoPicker.launch()
+        },
+    )
+}
+
+@Composable
+private fun GroupsHomeScreenContent(
+    ui: GroupsHomeUi,
+    onOpenGroup: (String) -> Unit,
+    onOpenNonGroup: () -> Unit,
+    onCreateGroup: () -> Unit,
+    onAddExpense: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onRefresh: () -> Unit,
+    onRetryHydrate: () -> Unit,
+    onChangeGroupPhoto: (String) -> Unit,
+) {
+    var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
+    var showSettledGroups by remember { mutableStateOf(false) }
+    val changePhotoCd = stringResource(R.string.cd_change_group_photo)
 
     if (ui.isLoading) {
         Scaffold(
@@ -211,21 +250,32 @@ fun GroupsHomeScreen(
                 text = stringResource(R.string.action_add_expense),
                 onClick = onAddExpense,
                 icon = Icons.Filled.Receipt,
+                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
             )
         },
     ) { padding ->
+        val layoutDirection = LocalLayoutDirection.current
         SePullRefreshBox(
             isRefreshing = ui.isRefreshing,
-            onRefresh = viewModel::refresh,
+            onRefresh = onRefresh,
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(
+                        top = padding.calculateTopPadding(),
+                        start = padding.calculateStartPadding(layoutDirection),
+                        end = padding.calculateEndPadding(layoutDirection),
+                    ),
         ) {
             SeShimmerHost(enabled = freezeBalances) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
+                    contentPadding =
+                        PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = LocalBottomBarInset.current + 16.dp,
+                        ),
                 ) {
                     item {
                         Crossfade(
@@ -240,7 +290,7 @@ fun GroupsHomeScreen(
                                     )
                                 ui.syncState == SyncState.FAILED ->
                                     GroupsBalancesSyncError(
-                                        onRetry = viewModel::retryInitialHydrate,
+                                        onRetry = onRetryHydrate,
                                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                                     )
                                 else ->
@@ -281,10 +331,7 @@ fun GroupsHomeScreen(
                             currencyFallback = ui.currencyCode,
                             showAmounts = !freezeBalances,
                             onClick = { onOpenGroup(row.groupId) },
-                            onIconClick = {
-                                photoTargetGroupId = row.groupId
-                                groupPhotoPicker.launch()
-                            },
+                            onIconClick = { onChangeGroupPhoto(row.groupId) },
                             iconContentDescription = changePhotoCd,
                         )
                     }
@@ -564,34 +611,144 @@ private fun groupTypeColor(type: GroupType?): Color =
         GroupType.OTHER, null -> SplitEaseColors.IconOther
     }
 
-@Preview(name = "Groups home", showBackground = true, heightDp = 640)
+@Preview(name = "Groups home", showBackground = true, widthDp = 360)
 @Composable
 private fun GroupsHomeScreenPreview() {
     SePreview {
-        Column {
-            SeHeroBalancePair(
-                iOwe = mapOf("INR" to BigDecimal("1642.21")),
-                owedToMe = emptyMap(),
-                currencyCode = "INR",
-                modifier = Modifier.padding(16.dp),
-            )
-            GroupBalanceListItem(
-                row =
-                    GroupBalanceUi(
-                        groupId = "1",
-                        groupName = "Home",
-                        myNetByCurrency = mapOf("INR" to BigDecimal("-420.00")),
-                        memberNetsByCurrency = emptyMap(),
-                        simplifiedDebts = emptyList(),
-                    ),
-                photoUrl = null,
-                icon = Icons.Filled.Home,
-                iconTint = SplitEaseColors.IconHome,
-                currencyFallback = "INR",
-                onClick = {},
-                onIconClick = {},
-                iconContentDescription = "Change group photo",
-            )
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            bottomBar = {
+                SplitEaseBottomBar(
+                    currentRoute = Routes.TAB_GROUPS,
+                    onTabSelected = {},
+                    activityUnreadCount = 3,
+                )
+            },
+        ) { padding ->
+            CompositionLocalProvider(
+                LocalBottomBarInset provides padding.calculateBottomPadding(),
+            ) {
+                Box(
+                    modifier =
+                        Modifier.padding(
+                            top = padding.calculateTopPadding(),
+                            start = padding.calculateStartPadding(LocalLayoutDirection.current),
+                            end = padding.calculateEndPadding(LocalLayoutDirection.current),
+                        ),
+                ) {
+                    GroupsHomeScreenContent(
+                    ui = previewGroupsHomeUi(),
+                    onOpenGroup = {},
+                    onOpenNonGroup = {},
+                    onCreateGroup = {},
+                    onAddExpense = {},
+                    onOpenSearch = {},
+                    onRefresh = {},
+                    onRetryHydrate = {},
+                    onChangeGroupPhoto = {},
+                )
+                }
+            }
         }
     }
 }
+
+private fun previewGroupsHomeUi(): GroupsHomeUi {
+    val home = previewGroup("g-home", "Home", GroupType.HOME)
+    val goa = previewGroup("g-goa", "Goa trip", GroupType.FRIENDS)
+    val hike = previewGroup("g-hike", "Weekend hike", GroupType.OTHER)
+    val club = previewGroup("g-club", "Book club", GroupType.FRIENDS)
+    val homeBalance =
+        GroupBalanceUi(
+            groupId = home.id,
+            groupName = home.name,
+            myNetByCurrency = mapOf("INR" to BigDecimal("-420.00")),
+            memberNetsByCurrency = emptyMap(),
+            simplifiedDebts =
+                listOf(
+                    previewDebt("u-me", "You", "u-sam", "Sam", "420.00"),
+                ),
+        )
+    val goaBalance =
+        GroupBalanceUi(
+            groupId = goa.id,
+            groupName = goa.name,
+            myNetByCurrency = mapOf("INR" to BigDecimal("890.00")),
+            memberNetsByCurrency = emptyMap(),
+            simplifiedDebts =
+                listOf(
+                    previewDebt("u-priya", "Priya", "u-me", "You", "810.00"),
+                    previewDebt("u-alex", "Alex", "u-me", "You", "80.00"),
+                ),
+        )
+    val hikeBalance =
+        GroupBalanceUi(
+            groupId = hike.id,
+            groupName = hike.name,
+            myNetByCurrency = mapOf("INR" to BigDecimal("-1222.21")),
+            memberNetsByCurrency = emptyMap(),
+            simplifiedDebts =
+                listOf(
+                    previewDebt("u-me", "You", "u-alex", "Alex", "1222.21"),
+                ),
+        )
+    val clubBalance =
+        GroupBalanceUi(
+            groupId = club.id,
+            groupName = club.name,
+            myNetByCurrency = emptyMap(),
+            memberNetsByCurrency = emptyMap(),
+            simplifiedDebts = emptyList(),
+        )
+    return GroupsHomeUi(
+        currencyCode = "INR",
+        isLoading = false,
+        syncState = SyncState.IDLE,
+        allGroups = listOf(home, goa, hike, club),
+        balances =
+            OverallBalancesUi(
+                totalIOweByCurrency = mapOf("INR" to BigDecimal("1642.21")),
+                totalOwedToMeByCurrency = mapOf("INR" to BigDecimal("1140.00")),
+                friendBalances = emptyList(),
+                groupBalances = listOf(homeBalance, goaBalance, hikeBalance, clubBalance),
+                nonGroupMyNetByCurrency = mapOf("INR" to BigDecimal("250.00")),
+                nonGroupDebts =
+                    listOf(
+                        previewDebt("u-rahul", "Rahul", "u-me", "You", "250.00"),
+                    ),
+                hasNonGroupActivity = true,
+            ),
+    )
+}
+
+private fun previewGroup(
+    id: String,
+    name: String,
+    type: GroupType,
+): Group =
+    Group(
+        id = id,
+        name = name,
+        defaultCurrencyCode = "INR",
+        groupType = type,
+        createdByUserId = "u-me",
+        createdAtEpochMs = 0L,
+        updatedAtEpochMs = 0L,
+    )
+
+private fun previewDebt(
+    fromId: String,
+    fromLabel: String,
+    toId: String,
+    toLabel: String,
+    amount: String,
+): LabeledDebt =
+    LabeledDebt(
+        fromUserId = fromId,
+        fromLabel = fromLabel,
+        toUserId = toId,
+        toLabel = toLabel,
+        amount = BigDecimal(amount),
+        currencyCode = "INR",
+    )

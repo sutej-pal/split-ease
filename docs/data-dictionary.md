@@ -237,7 +237,7 @@ Unique index: `(expenseId, userId)`.
 | activity_events               | involved_user_ids     | TEXT      | no       | Comma-wrapped participant ids                                                              |
 | activity_events               | sort_epoch_ms         | BIGINT    | no       | Sort time                                                                                  |
 
-**Activity event RLS** (see [sql/phase-activity-sync.sql](sql/phase-activity-sync.sql)):
+**Activity event RLS** (see [sql/migration_db.sql](sql/migration_db.sql)):
 - SELECT: actor or listed in `involved_user_ids`
 - INSERT / UPDATE: actor only (`isSeen` is not a cloud column)
 
@@ -250,7 +250,7 @@ Unique index: `(expenseId, userId)`.
 - `auth_email_registered(p_email)` — whether `auth.users` already has that email (skips banned / deleted Auth rows)
 - `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number (skips `profiles.deleted_at` rows and banned Auth users)
 
-**Account deletion RPC** (authenticated; see [sql/phase-account-deletion.sql](sql/phase-account-deletion.sql)):
+**Account deletion RPC** (authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
 - `delete_own_account()` — caller only (`auth.uid()`). Recomputes per-group nets at scale 2; raises `ACCOUNT_HAS_BALANCE` with `{id, name}` groups when any net is non-zero (includes the non-group ledger). Otherwise anonymizes `profiles` in place (`display_name` → `Deleted user`, email scrambled, phone/photo cleared, `deleted_at` set), bans Auth (`banned_until = infinity`, identities/sessions dropped), and does **not** delete `profiles` / `auth.users` or cascade expenses/splits/payments. Dropping `auth.identities` is what lets the same Google account sign up again as a new user.
 - `can_see_profile(p_profile_id)` — RLS helper: active profiles stay directory-visible; deleted profiles are readable only by people who share a group, expense, payment, or friendship so history still resolves as “Deleted user”.
 - `account_deletion_blocking_groups(p_user_id)` — internal helper used by the RPC (not granted to clients).
