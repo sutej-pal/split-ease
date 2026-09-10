@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -98,31 +100,7 @@ fun SeMoneyTone.color() =
         SeMoneyTone.NEUTRAL -> MaterialTheme.colorScheme.onBackground
     }
 
-@Composable
-fun SeOverallSummary(
-    prefix: String,
-    amount: BigDecimal?,
-    currencyCode: String,
-    tone: SeMoneyTone,
-    modifier: Modifier = Modifier,
-) {
-    if (amount == null) {
-        Text(
-            text = prefix,
-            modifier = modifier,
-            style = MaterialTheme.typography.titleMedium,
-            color = SplitEaseColors.Settled,
-        )
-        return
-    }
-    Text(
-        text = "$prefix ${MoneyFormat.format(amount, currencyCode)}",
-        modifier = modifier,
-        style = MaterialTheme.typography.titleMedium,
-        color = tone.color(),
-        fontWeight = FontWeight.Bold,
-    )
-}
+
 
 /**
  * Two side-by-side balance tiles: you-owe and owed-to-you, with large amounts.
@@ -138,7 +116,7 @@ fun SeHeroBalancePair(
     val owedAmounts = owedToMe.toHeroAmountList()
     val bothEmpty = oweAmounts.isEmpty() && owedAmounts.isEmpty()
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().height(IntrinsicSize.Max),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SeHeroTile(
@@ -146,7 +124,7 @@ fun SeHeroBalancePair(
             amounts = oweAmounts,
             currencyCode = currencyCode,
             tone = SeMoneyTone.YOU_OWE,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
             settled = bothEmpty,
         )
         SeHeroTile(
@@ -154,7 +132,7 @@ fun SeHeroBalancePair(
             amounts = owedAmounts,
             currencyCode = currencyCode,
             tone = SeMoneyTone.OWED_TO_YOU,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
             settled = bothEmpty,
         )
     }
@@ -177,11 +155,12 @@ fun SeHeroBalancePairSkeleton(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Max)
                 .semantics { contentDescription = loadingCd },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SeHeroTileSkeleton(modifier = Modifier.weight(1f))
-        SeHeroTileSkeleton(modifier = Modifier.weight(1f))
+        SeHeroTileSkeleton(modifier = Modifier.weight(1f).fillMaxHeight())
+        SeHeroTileSkeleton(modifier = Modifier.weight(1f).fillMaxHeight())
     }
 }
 
