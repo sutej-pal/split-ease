@@ -27,7 +27,7 @@ private val IndigoBannerWash = IndigoLight.wash(0.70f)
 // --- Light theme (derived from seeds) ---
 
 /** Screen canvas — indigo washed almost to white. */
-val BackgroundLight = IndigoLight.wash(0.96f)
+val BackgroundLight = IndigoLight.wash(0.98f)
 
 /** Soft indigo fill for selected / muted brand accents (not screen backgrounds). */
 val PrimaryContainerLight = IndigoLight.wash(0.88f)

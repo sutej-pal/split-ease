@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.home
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -11,11 +12,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.Layout
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -43,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -50,7 +56,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -63,6 +74,7 @@ import com.splitease.app.data.sync.SyncState
 import com.splitease.app.data.sync.shouldFreezeBalances
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
+import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.navigation.LocalBottomBarInset
@@ -81,7 +93,6 @@ import com.splitease.app.presentation.ui.SeHeroBalancePairSkeleton
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLineSkeleton
-import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
@@ -90,6 +101,7 @@ import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeShimmerHost
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.color
 import java.math.BigDecimal
 
 /** How the groups list on Home is filtered. */
@@ -475,6 +487,55 @@ private fun Map<String, BigDecimal>.matches(filter: GroupsHomeFilter): Boolean {
     }
 }
 
+private val IconWidth = 56.dp
+private const val IconAspectFloor = 0.85f
+
+@Composable
+private fun SeCountPill(count: Int, color: Color) {
+    Text(
+        text = "+$count",
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = color,
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(color.copy(alpha = 0.12f))
+                .padding(horizontal = 6.dp, vertical = 1.dp),
+    )
+}
+
+@Composable
+private fun SeSplitMoneyLine(
+    prefix: String,
+    amount: BigDecimal,
+    currencyCode: String,
+    tone: SeMoneyTone,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    useFullColor: Boolean = false,
+) {
+    val money = MoneyFormat.format(amount, currencyCode)
+    val prefixColor = if (useFullColor) tone.color() else Color.Gray
+    val amountColor = tone.color()
+    val text =
+        buildAnnotatedString {
+            withStyle(SpanStyle(color = prefixColor)) {
+                append("$prefix ")
+            }
+            withStyle(SpanStyle(color = amountColor, fontWeight = FontWeight.SemiBold)) {
+                append(money)
+            }
+        }
+    Text(
+        text = text,
+        style = style,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
+}
+
 @Composable
 private fun GroupBalanceListItem(
     row: GroupBalanceUi,
@@ -491,30 +552,53 @@ private fun GroupBalanceListItem(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .clickable(onClick = onClick)
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        SeGroupIconTile(
-            photoUrl = photoUrl,
-            fallbackIcon = icon,
-            fallbackTint = iconTint,
-            modifier =
-                Modifier
-                    .semantics { contentDescription = iconContentDescription }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onIconClick,
+        Layout(
+            content = {
+                SeGroupIconTile(
+                    photoUrl = photoUrl,
+                    fallbackIcon = icon,
+                    fallbackTint = iconTint,
+                    modifier =
+                        Modifier
+                            .semantics { contentDescription = iconContentDescription }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onIconClick,
+                            ),
+                    size = 56,
+                )
+            },
+            modifier = Modifier.fillMaxHeight(),
+        ) { measurables, constraints ->
+            val rowHeight = constraints.maxHeight
+            val minH = (IconWidth.toPx() * IconAspectFloor).toInt()
+            val maxH = (IconWidth.toPx() / IconAspectFloor).toInt()
+            val clampedH = rowHeight.coerceIn(minH, maxH)
+            val placeable =
+                measurables[0].measure(
+                    constraints.copy(
+                        minWidth = IconWidth.roundToPx(),
+                        maxWidth = IconWidth.roundToPx(),
+                        minHeight = clampedH,
+                        maxHeight = clampedH,
                     ),
-            size = 60
-        )
+                )
+            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+        }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = row.groupName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
             if (showAmounts) {
@@ -523,6 +607,7 @@ private fun GroupBalanceListItem(
                     .filter { it.fromLabel == "You" || it.toLabel == "You" }
                     .take(3)
                     .forEach { debt ->
+                        Spacer(modifier = Modifier.height(2.dp))
                         DebtLine(debt)
                     }
             } else {
@@ -544,22 +629,52 @@ private fun NonGroupListItem(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .clickable(onClick = onClick)
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        SeIconTile(icon = Icons.AutoMirrored.Filled.List, tint = SplitEaseColors.IconOther, size = 60)
+        Layout(
+            content = {
+                SeIconTile(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    tint = SplitEaseColors.IconOther,
+                    size = 56,
+                )
+            },
+            modifier = Modifier.fillMaxHeight(),
+        ) { measurables, constraints ->
+            val rowHeight = constraints.maxHeight
+            val minH = (IconWidth.toPx() * IconAspectFloor).toInt()
+            val maxH = (IconWidth.toPx() / IconAspectFloor).toInt()
+            val clampedH = rowHeight.coerceIn(minH, maxH)
+            val placeable =
+                measurables[0].measure(
+                    constraints.copy(
+                        minWidth = IconWidth.roundToPx(),
+                        maxWidth = IconWidth.roundToPx(),
+                        minHeight = clampedH,
+                        maxHeight = clampedH,
+                    ),
+                )
+            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+        }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.non_group_expenses),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
             if (showAmounts) {
                 MyNetStatus(myNet, currencyFallback)
-                debts.take(3).forEach { DebtLine(it) }
+                debts.take(3).forEach { debt ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    DebtLine(debt)
+                }
             } else {
                 SeLineSkeleton(modifier = Modifier.padding(top = 6.dp))
             }
@@ -573,21 +688,31 @@ private fun MyNetStatus(
     currencyFallback: String,
 ) {
     if (myNet.isEmpty()) {
-        SeMoneyText(
-            amount = BigDecimal.ZERO,
-            currencyCode = currencyFallback,
-            tone = SeMoneyTone.SETTLED,
-            prefix = stringResource(R.string.balances_settled_up).lowercase(),
+        Text(
+            text = stringResource(R.string.balances_settled_up).lowercase(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = SplitEaseColors.NavyMuted,
+            maxLines = 1,
         )
         return
     }
-    myNet.toSortedMap().forEach { (currency, net) ->
-        val code = currency.ifBlank { currencyFallback }
-        when {
-            net < BigDecimal.ZERO ->
-                SeMoneyText(net.abs(), code, SeMoneyTone.YOU_OWE, prefix = "you owe")
-            net > BigDecimal.ZERO ->
-                SeMoneyText(net, code, SeMoneyTone.OWED_TO_YOU, prefix = "you are owed")
+    val nonZero = myNet.filterValues { it.compareTo(BigDecimal.ZERO) != 0 }
+    val top = nonZero.maxByOrNull { it.value.abs() } ?: return
+    val (currency, net) = top
+    val code = currency.ifBlank { currencyFallback }
+    val tone = if (net < BigDecimal.ZERO) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU
+    val prefix = if (net < BigDecimal.ZERO) "you owe" else "you are owed"
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SeSplitMoneyLine(
+            prefix = prefix,
+            amount = net.abs(),
+            currencyCode = code,
+            tone = tone,
+            useFullColor = true,
+        )
+        if (nonZero.size > 1) {
+            Spacer(modifier = Modifier.width(6.dp))
+            SeCountPill(count = nonZero.size - 1, color = tone.color())
         }
     }
 }
@@ -595,11 +720,13 @@ private fun MyNetStatus(
 @Composable
 private fun DebtLine(debt: LabeledDebt) {
     val youOwe = debt.fromLabel == "You"
-    SeMoneyText(
+    val prefix = if (youOwe) "You owe ${debt.toLabel}" else "${debt.fromLabel} owes you"
+    SeSplitMoneyLine(
+        prefix = prefix,
         amount = debt.amount,
         currencyCode = debt.currencyCode,
         tone = if (youOwe) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU,
-        prefix = if (youOwe) "You owe ${debt.toLabel}" else "${debt.fromLabel} owes you",
+        style = MaterialTheme.typography.bodySmall,
     )
 }
 
@@ -669,7 +796,7 @@ private fun previewGroupsHomeUi(): GroupsHomeUi {
         GroupBalanceUi(
             groupId = home.id,
             groupName = home.name,
-            myNetByCurrency = mapOf("INR" to BigDecimal("-420.00")),
+            myNetByCurrency = mapOf("INR" to BigDecimal("-420.00"), "USD" to BigDecimal("15.00")),
             memberNetsByCurrency = emptyMap(),
             simplifiedDebts =
                 listOf(
@@ -686,6 +813,7 @@ private fun previewGroupsHomeUi(): GroupsHomeUi {
                 listOf(
                     previewDebt("u-priya", "Priya", "u-me", "You", "810.00"),
                     previewDebt("u-alex", "Alex", "u-me", "You", "80.00"),
+                    previewDebt("u-rahul", "Rahul", "u-me", "You", "50.00"),
                 ),
         )
     val hikeBalance =

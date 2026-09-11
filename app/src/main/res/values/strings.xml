@@ -14,14 +14,16 @@
     <string name="welcome_title">SplitEase</string>
     <string name="welcome_tagline">Share expenses. Settle fairly. Stay in sync.</string>
     <string name="action_get_started">Get started</string>
-    <string name="action_have_invite_link">Have an invite link?</string>
+    <string name="action_have_invite_link">Have an invitation link?</string>
     <string name="invite_paste_title">Open invite</string>
     <string name="invite_paste_body">Paste the https invite link (or token) from your email.</string>
     <string name="invite_paste_label">Invite link or token</string>
     <string name="invite_paste_continue">Continue</string>
-    <string name="invite_paste_invalid">Couldn\'t find an invite link in that text.</string>
+    <string name="invite_paste_invalid">Could\'t find an invitation link in that text.</string>
     <string name="action_log_in">Log in</string>
     <string name="action_sign_up">Sign up</string>
+    <string name="label_or">or</string>
+    <string name="label_no_account">Don\'t have an account?</string>
     <string name="action_signup">Signup</string>
     <string name="action_sign_out">Sign out</string>
     <string name="sign_out_confirm_title">Sign out</string>
@@ -106,7 +108,7 @@
     <string name="remind_template_they_owe_no_group">Hello %1$s,\n\nThis is a reminder that you owe me %2$s for shared expenses on SplitEase. Please tap the button below to review our activity.\n\nThank you,\n%3$s</string>
     <string name="remind_template_third_party_no_group">Hello %1$s and %2$s,\n\nThis is a reminder that %1$s owes %2$s %3$s for shared expenses on SplitEase. Please open SplitEase to review and settle up.\n\nThank you,\n%4$s</string>
     <string name="msg_reminder_sent">Reminder email sent.</string>
-    <string name="msg_reminder_no_email">Couldn\'t find email addresses for both people.</string>
+    <string name="msg_reminder_no_email">Could\'t find email addresses for both people.</string>
     <string name="cd_share_remind">Share payment reminder</string>
     <string name="action_charts">Charts</string>
     <string name="action_convert_currency">Convert to…</string>
@@ -230,7 +232,7 @@
     <string name="action_share_link">Share link</string>
     <string name="action_change_link">Change link</string>
     <string name="invite_link_change_confirm_title">Change invite link?</string>
-    <string name="invite_link_change_confirm_body">The current link will stop working. Anyone who still has it won\'t be able to join with it. A new link will be created.</string>
+    <string name="invite_link_change_confirm_body">The current link will stop working. Anyone who still has its won\'t be able to join with it. A new link will be created.</string>
     <string name="invite_link_loading">Preparing invite link…</string>
     <string name="invite_link_changing">Creating a new invite link…</string>
     <string name="invite_link_changed">New invite link ready. The previous link no longer works.</string>
@@ -249,8 +251,8 @@
     <string name="group_settings_export_csv">Export as CSV</string>
     <string name="group_settings_export_csv_subtitle">Expenses and payments with who paid and per-person amounts</string>
     <string name="group_settings_export_csv_working">Preparing CSV…</string>
-    <string name="msg_group_export_failed">Couldn\'t export this group.</string>
-    <string name="msg_group_export_share_failed">Couldn\'t share this CSV.</string>
+    <string name="msg_group_export_failed">Could\'t export this group.</string>
+    <string name="msg_group_export_share_failed">Could\'t share this CSV.</string>
     <string name="badge_pro">PRO</string>
     <string name="action_view_settings">View settings</string>
     <string name="action_remove_from_group">Remove from group</string>
@@ -320,7 +322,7 @@
     <string name="groups_empty_home">No groups yet. Create one to start splitting.</string>
     <string name="groups_fetching">Fetching groups…</string>
     <string name="groups_balances_loading">Loading balances</string>
-    <string name="groups_balances_sync_failed">Couldn\'t load your balances. Check your connection and try again.</string>
+    <string name="groups_balances_sync_failed">Could\'t load your balances. Check your connection and try again.</string>
     <string name="action_retry">Retry</string>
     <string name="groups_hiding_settled">Hiding groups that are settled up.</string>
     <plurals name="groups_show_settled">
@@ -337,7 +339,7 @@
     <string name="activity_empty">No activity yet. Create a group, add an expense, or record a payment to see it here.</string>
     <string name="activity_empty_filtered">No matching activity.</string>
     <string name="activity_loading">Loading activity</string>
-    <string name="activity_sync_failed">Couldn\'t load your activity. Check your connection and try again.</string>
+    <string name="activity_sync_failed">Could\'t load your activity. Check your connection and try again.</string>
     <string name="activity_search_hint">Search activity</string>
     <string name="cd_filter_activity">Filter activity</string>
     <string name="cd_scroll_to_top">Scroll to top</string>
@@ -522,7 +524,7 @@
     <string name="error_google_offline">Google Sign-In needs an internet connection. Connect and try again.</string>
     <string name="error_generic">Something went wrong. Try again.</string>
     <string name="error_network">Network error. Please check your connection and try again.</string>
-    <string name="error_exchange_rate_fetch">Couldn\'t fetch the exchange rate. Check your connection or enter a rate manually.</string>
+    <string name="error_exchange_rate_fetch">Could\'t fetch the exchange rate. Check your connection or enter a rate manually.</string>
     <string name="error_exchange_rate_required">Enter a valid exchange rate before saving this expense.</string>
     <string name="label_exchange_rate">Exchange Rate</string>
     <string name="rate_source_live">Live</string>
@@ -591,15 +593,15 @@
     <string name="settings_language_section">App language</string>
     <string name="settings_language_system">System default</string>
     <string name="settings_language_en">English</string>
-    <string name="settings_language_es">Español</string>
+    <string name="settings_language_es">Espalier</string>
     <string name="settings_language_fr">Français</string>
     <string name="settings_language_de">Deutsch</string>
-    <string name="settings_language_pt">Português</string>
+    <string name="settings_language_pt">Portuguese</string>
     <string name="settings_language_hi">हिन्दी</string>
     <string name="settings_language_ja">日本語</string>
     <string name="msg_not_signed_in">Not signed in.</string>
     <string name="msg_local_profile_missing">Your local profile is missing. Sign out, sign in again, then retry.</string>
-    <string name="msg_group_sync_rls">Couldn\'t sync this group to the cloud. Create a new group while signed in, then try the invite link again.</string>
+    <string name="msg_group_sync_rls">Could\'t sync this group to the cloud. Create a new group while signed in, then try the invite link again.</string>
     <string name="msg_friend_added">Friend added.</string>
     <string name="msg_invite_ready">Invite ready — share the link so they can join.</string>
     <string name="msg_invite_email_sent">Invite email sent to %1$s.</string>
@@ -661,7 +663,7 @@
         <item quantity="other">Synced %1$s; %2$d failed</item>
     </plurals>
     <string name="msg_cloud_tables_missing">Cloud tables are not set up yet. Group was not saved to the cloud — run docs/sql/migration_db.sql in the Supabase SQL Editor.</string>
-    <string name="msg_cloud_unreachable">Couldn\'t reach the cloud. Showing saved data — check your connection and try again.</string>
+    <string name="msg_cloud_unreachable">Could\'t reach the cloud. Showing saved data — check your connection and try again.</string>
     <string name="uncategorized_label">Uncategorized</string>
     <string name="activity_you_created">You created \"%1$s\"</string>
     <string name="balances_you_are_owed_plain">You are owed</string>

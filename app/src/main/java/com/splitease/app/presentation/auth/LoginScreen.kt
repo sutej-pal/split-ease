@@ -1,12 +1,17 @@
 package com.splitease.app.presentation.auth
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,7 +29,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
+import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -116,7 +123,21 @@ fun LoginScreen(
             enabled = !isBusy,
             isLoading = isEmailLoading,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(SeLayout.itemGap))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().alpha(if (isBusy) 0.5f else 1f),
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = SplitEaseColors.Outline)
+            Text(
+                text = stringResource(R.string.label_or),
+                style = MaterialTheme.typography.labelMedium,
+                color = SplitEaseColors.NavyMuted,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = SplitEaseColors.Outline)
+        }
+        Spacer(modifier = Modifier.height(SeLayout.itemGap))
         SeOutlinedButton(
             text = stringResource(R.string.action_continue_google),
             onClick = onContinueWithGoogle,
@@ -130,15 +151,16 @@ fun LoginScreen(
                 )
             },
         )
-        // Full-width center slot so the link stays aligned with Log in / Google
-        // whether a press ripple is visible.
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .alpha(if (isBusy) 0.5f else 1f),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.fillMaxWidth().alpha(if (isBusy) 0.5f else 1f),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Text(
+                text = stringResource(R.string.label_no_account),
+                style = MaterialTheme.typography.bodyMedium,
+                color = SplitEaseColors.NavyMuted,
+            )
             SeTextButton(
                 text = stringResource(R.string.action_sign_up),
                 onClick = onNavigateSignUp,
