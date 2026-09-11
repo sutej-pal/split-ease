@@ -19,6 +19,10 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): UserEntity?
 
+    /** @param id Local UUID. @return Flow of matching rows (0 or 1). */
+    @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
+    fun observeById(id: String): Flow<List<UserEntity>>
+
     /** @param email Stored email. @return Matching user or null. */
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     suspend fun getByEmail(email: String): UserEntity?

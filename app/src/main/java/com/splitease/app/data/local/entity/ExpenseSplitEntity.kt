@@ -39,5 +39,7 @@ data class ExpenseSplitEntity(
     val owedAmount: BigDecimal,
     val percentage: BigDecimal? = null,
     val shares: Int? = null,
+    val paidAmount: BigDecimal? = null,
+    val adjustmentAmount: BigDecimal? = null,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
 )

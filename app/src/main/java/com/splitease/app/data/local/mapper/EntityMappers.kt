@@ -24,6 +24,9 @@ fun UserEntity.toDomain(): User =
         email = email,
         displayName = displayName,
         photoUrl = photoUrl,
+        phoneCountryCode = phoneCountryCode,
+        phoneNumber = phoneNumber,
+        preferredCurrency = preferredCurrency,
         remoteId = remoteId,
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
@@ -37,6 +40,9 @@ fun User.toEntity(): UserEntity =
         email = email,
         displayName = displayName,
         photoUrl = photoUrl,
+        phoneCountryCode = phoneCountryCode,
+        phoneNumber = phoneNumber,
+        preferredCurrency = preferredCurrency,
         remoteId = remoteId,
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
@@ -77,6 +83,8 @@ fun GroupEntity.toDomain(): Group =
         id = id,
         name = name,
         defaultCurrencyCode = defaultCurrencyCode,
+        groupType = groupType,
+        photoUrl = photoUrl,
         createdByUserId = createdByUserId,
         remoteId = remoteId,
         createdAtEpochMs = createdAtEpochMs,
@@ -90,6 +98,8 @@ fun Group.toEntity(): GroupEntity =
         id = id,
         name = name,
         defaultCurrencyCode = defaultCurrencyCode,
+        groupType = groupType,
+        photoUrl = photoUrl,
         createdByUserId = createdByUserId,
         remoteId = remoteId,
         createdAtEpochMs = createdAtEpochMs,
@@ -153,11 +163,17 @@ fun ExpenseEntity.toDomain(): Expense =
         splitType = splitType,
         isRecurring = isRecurring,
         recurrenceFrequency = recurrenceFrequency,
+        nextOccurrenceEpochMs = nextOccurrenceEpochMs,
+        recurringTemplateId = recurringTemplateId,
         notes = notes,
         remoteId = remoteId,
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
         syncStatus = syncStatus,
+        originalAmount = originalAmount,
+        originalCurrencyCode = originalCurrencyCode,
+        rateToDefaultCurrency = rateToDefaultCurrency,
+        rateSource = rateSource,
     )
 
 /** Maps domain [Expense] to [ExpenseEntity]. */
@@ -174,11 +190,17 @@ fun Expense.toEntity(): ExpenseEntity =
         splitType = splitType,
         isRecurring = isRecurring,
         recurrenceFrequency = recurrenceFrequency,
+        nextOccurrenceEpochMs = nextOccurrenceEpochMs,
+        recurringTemplateId = recurringTemplateId,
         notes = notes,
         remoteId = remoteId,
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
         syncStatus = syncStatus,
+        originalAmount = originalAmount,
+        originalCurrencyCode = originalCurrencyCode,
+        rateToDefaultCurrency = rateToDefaultCurrency,
+        rateSource = rateSource,
     )
 
 /** Maps [ExpenseSplitEntity] to domain [ExpenseSplit]. */
@@ -190,6 +212,8 @@ fun ExpenseSplitEntity.toDomain(): ExpenseSplit =
         owedAmount = owedAmount,
         percentage = percentage,
         shares = shares,
+        paidAmount = paidAmount,
+        adjustmentAmount = adjustmentAmount,
         syncStatus = syncStatus,
     )
 
@@ -202,6 +226,8 @@ fun ExpenseSplit.toEntity(): ExpenseSplitEntity =
         owedAmount = owedAmount,
         percentage = percentage,
         shares = shares,
+        paidAmount = paidAmount,
+        adjustmentAmount = adjustmentAmount,
         syncStatus = syncStatus,
     )
 

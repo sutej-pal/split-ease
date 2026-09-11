@@ -25,6 +25,50 @@ interface FriendDao {
     @Query("SELECT * FROM friends WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): FriendEntity?
 
+    /**
+     * Finds any friendship pointing at [friendUserId] (for hydrating a local user stub).
+     *
+     * @param friendUserId The other party's user id.
+     * @return Matching friend or null.
+     */
+    @Query("SELECT * FROM friends WHERE friendUserId = :friendUserId LIMIT 1")
+    suspend fun getByFriendUserId(friendUserId: String): FriendEntity?
+
+    /**
+     * Finds a friendship by owner + friend user id.
+     *
+     * @param ownerUserId Owner user id.
+     * @param friendUserId The other party's user id.
+     * @return Matching friend or null.
+     */
+    @Query(
+        """
+        SELECT * FROM friends
+        WHERE ownerUserId = :ownerUserId AND friendUserId = :friendUserId
+        LIMIT 1
+        """,
+    )
+    suspend fun getByOwnerAndFriendUserId(
+        ownerUserId: String,
+        friendUserId: String,
+    ): FriendEntity?
+
+    /**
+     * Finds a friendship by owner + email snapshot (case-insensitive).
+     *
+     * @param ownerUserId Owner user id.
+     * @param email Friend email.
+     * @return Matching friend or null.
+     */
+    @Query(
+        """
+        SELECT * FROM friends
+        WHERE ownerUserId = :ownerUserId AND lower(emailSnapshot) = lower(:email)
+        LIMIT 1
+        """,
+    )
+    suspend fun getByOwnerAndEmail(ownerUserId: String, email: String): FriendEntity?
+
     /** Inserts or replaces [friend]. */
     @Upsert
     suspend fun upsert(friend: FriendEntity)
