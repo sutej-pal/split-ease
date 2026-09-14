@@ -92,7 +92,6 @@ import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeHeroBalancePair
 import com.splitease.app.presentation.ui.SeHeroBalancePairSkeleton
 import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.SeLineSkeleton
 import com.splitease.app.presentation.ui.seShimmer
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -222,7 +221,7 @@ private fun GroupsHomeScreenContent(
                     balances.hasNonGroupActivity && nonGroupNet.matches(listFilter)
             }
         }
-    val showListSkeleton = ui.isLoading && ui.allGroups.isEmpty() && !showNonGroup
+    val showListSkeleton = (ui.isLoading || balances == null) && !showNonGroup
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -333,7 +332,6 @@ private fun GroupsHomeScreenContent(
                                 icon = groupTypeIcon(group?.groupType),
                                 iconTint = groupTypeColor(group?.groupType),
                                 currencyFallback = ui.currencyCode,
-                                showAmounts = !freezeAmounts,
                                 onClick = { onOpenGroup(row.groupId) },
                                 onIconClick = { onChangeGroupPhoto(row.groupId) },
                                 iconContentDescription = changePhotoCd,
@@ -348,7 +346,6 @@ private fun GroupsHomeScreenContent(
                                 myNet = liveBalances.nonGroupMyNetByCurrency,
                                 debts = liveBalances.nonGroupDebts,
                                 currencyFallback = ui.currencyCode,
-                                showAmounts = !freezeAmounts,
                                 onClick = onOpenNonGroup,
                             )
                         }
@@ -563,6 +560,15 @@ private fun GroupSkeletonListItem() {
                         .clip(RoundedCornerShape(6.dp))
                         .seShimmer(),
             )
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.4f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
         }
     }
 }
@@ -577,7 +583,6 @@ private fun GroupBalanceListItem(
     onClick: () -> Unit,
     onIconClick: () -> Unit,
     iconContentDescription: String,
-    showAmounts: Boolean = true,
 ) {
     Row(
         modifier =
@@ -632,18 +637,14 @@ private fun GroupBalanceListItem(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
-            if (showAmounts) {
-                MyNetStatus(row.myNetByCurrency, currencyFallback)
-                row.simplifiedDebts
-                    .filter { it.fromLabel == "You" || it.toLabel == "You" }
-                    .take(3)
-                    .forEach { debt ->
-                        Spacer(modifier = Modifier.height(2.dp))
-                        DebtLine(debt)
-                    }
-            } else {
-                SeLineSkeleton(modifier = Modifier.padding(top = 6.dp))
-            }
+            MyNetStatus(row.myNetByCurrency, currencyFallback)
+            row.simplifiedDebts
+                .filter { it.fromLabel == "You" || it.toLabel == "You" }
+                .take(3)
+                .forEach { debt ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    DebtLine(debt)
+                }
         }
     }
 }
@@ -654,7 +655,6 @@ private fun NonGroupListItem(
     debts: List<LabeledDebt>,
     currencyFallback: String,
     onClick: () -> Unit,
-    showAmounts: Boolean = true,
 ) {
     Row(
         modifier =
@@ -700,14 +700,10 @@ private fun NonGroupListItem(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
-            if (showAmounts) {
-                MyNetStatus(myNet, currencyFallback)
-                debts.take(3).forEach { debt ->
-                    Spacer(modifier = Modifier.height(2.dp))
-                    DebtLine(debt)
-                }
-            } else {
-                SeLineSkeleton(modifier = Modifier.padding(top = 6.dp))
+            MyNetStatus(myNet, currencyFallback)
+            debts.take(3).forEach { debt ->
+                Spacer(modifier = Modifier.height(2.dp))
+                DebtLine(debt)
             }
         }
     }

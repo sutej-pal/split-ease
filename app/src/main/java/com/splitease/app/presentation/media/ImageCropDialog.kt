@@ -1,5 +1,7 @@
 package com.splitease.app.presentation.media
 
+import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.Rect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -10,17 +12,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,7 +66,6 @@ import java.io.File
 import kotlin.math.max
 import kotlin.math.min
 
-private val CropFrameCorner = 16.dp
 private val CropFrameInset = 20.dp
 private val CropCornerBracket = 22.dp
 
@@ -78,7 +86,8 @@ fun ImageCropDialog(
     val context = LocalContext.current
     val density = LocalDensity.current
     val decodeMaxSide = (cropSpec.maxSidePx * 2).coerceAtLeast(cropSpec.maxSidePx)
-    val sourceBitmap =
+    
+    val baseBitmap =
         remember(sourceUri, decodeMaxSide) {
             AvatarImageIO.decodeScaled(
                 context = context,
@@ -87,9 +96,33 @@ fun ImageCropDialog(
             )
         }
 
+    DisposableEffect(baseBitmap) {
+        onDispose {
+            baseBitmap?.takeIf { !it.isRecycled }?.recycle()
+        }
+    }
+    
+    var rotationTurns by remember(sourceUri) { mutableIntStateOf(0) }
+    
+    val sourceBitmap = remember(baseBitmap, rotationTurns) {
+        if (baseBitmap == null) return@remember null
+        val degrees = (rotationTurns % 4) * 90f
+        if (degrees == 0f) {
+            baseBitmap
+        } else {
+            val matrix = Matrix()
+            matrix.postRotate(degrees)
+            Bitmap.createBitmap(
+                baseBitmap, 0, 0, baseBitmap.width, baseBitmap.height, matrix, true
+            )
+        }
+    }
+    
     DisposableEffect(sourceBitmap) {
         onDispose {
-            sourceBitmap?.takeIf { !it.isRecycled }?.recycle()
+            if (sourceBitmap != baseBitmap) {
+                sourceBitmap?.takeIf { !it.isRecycled }?.recycle()
+            }
         }
     }
 
@@ -119,27 +152,6 @@ fun ImageCropDialog(
                     .statusBarsPadding()
                     .navigationBarsPadding(),
         ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = SeLayout.detailHorizontal)
-                        .padding(top = 8.dp, bottom = 4.dp),
-            ) {
-                Text(
-                    text = cropTitle,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimaryDark,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = cropBody,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextPrimaryDark.copy(alpha = 0.68f),
-                )
-            }
-
             if (sourceBitmap == null) {
                 Box(
                     modifier =
@@ -157,17 +169,25 @@ fun ImageCropDialog(
                 }
                 CropActions(
                     onUsePhoto = null,
+                    onRotate = null,
                     onCancel = onDismiss,
                 )
             } else {
                 var scale by remember { mutableFloatStateOf(1f) }
                 var offsetX by remember { mutableFloatStateOf(0f) }
                 var offsetY by remember { mutableFloatStateOf(0f) }
+                
+                DisposableEffect(rotationTurns) {
+                    scale = 1f
+                    offsetX = 0f
+                    offsetY = 0f
+                    onDispose { }
+                }
+                
                 val imageBitmap = remember(sourceBitmap) { sourceBitmap.asImageBitmap() }
                 val cropMetrics = remember { CropMetrics() }
                 val aspectRatio = cropSpec.aspectRatio
                 val frameInsetPx = with(density) { CropFrameInset.toPx() }
-                val cornerRadiusPx = with(density) { CropFrameCorner.toPx() }
                 val bracketLenPx = with(density) { CropCornerBracket.toPx() }
 
                 BoxWithConstraints(
@@ -259,41 +279,61 @@ fun ImageCropDialog(
                                         Size(size.width, size.height),
                                     ),
                                 )
-                                addRoundRect(
-                                    RoundRect(
-                                        frameRect,
-                                        CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                                    ),
-                                )
+                                addRect(frameRect)
                             }
                         drawPath(
                             path = scrimPath,
                             color = Color.Black.copy(alpha = 0.58f),
                         )
 
-                        drawRoundRect(
-                            color = Color.White.copy(alpha = 0.88f),
+                        val frameBorderColor = Color.White.copy(alpha = 0.88f)
+                        val thinStroke = 1.dp.toPx()
+                        drawRect(
+                            color = frameBorderColor,
                             topLeft = Offset(frameLeft, frameTop),
                             size = Size(frameW, frameH),
-                            cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                            style = Stroke(width = 1.5.dp.toPx()),
+                            style = Stroke(width = thinStroke),
                         )
 
-                        val accent = AmberDark.copy(alpha = 0.95f)
+                        // 3x3 Grid
+                        val colW = frameW / 3f
+                        val rowH = frameH / 3f
+                        for (i in 1..2) {
+                            val x = frameLeft + i * colW
+                            drawLine(frameBorderColor, Offset(x, frameTop), Offset(x, frameTop + frameH), strokeWidth = thinStroke)
+                            val y = frameTop + i * rowH
+                            drawLine(frameBorderColor, Offset(frameLeft, y), Offset(frameLeft + frameW, y), strokeWidth = thinStroke)
+                        }
+
+                        val accent = Color.White
                         val stroke = 3.dp.toPx()
-                        val r = min(cornerRadiusPx, bracketLenPx)
+                        
                         // Top-left
-                        drawLine(accent, Offset(frameLeft, frameTop + r), Offset(frameLeft, frameTop + bracketLenPx), stroke)
-                        drawLine(accent, Offset(frameLeft + r, frameTop), Offset(frameLeft + bracketLenPx, frameTop), stroke)
+                        drawLine(accent, Offset(frameLeft, frameTop), Offset(frameLeft, frameTop + bracketLenPx), stroke)
+                        drawLine(accent, Offset(frameLeft, frameTop), Offset(frameLeft + bracketLenPx, frameTop), stroke)
                         // Top-right
-                        drawLine(accent, Offset(frameLeft + frameW, frameTop + r), Offset(frameLeft + frameW, frameTop + bracketLenPx), stroke)
-                        drawLine(accent, Offset(frameLeft + frameW - r, frameTop), Offset(frameLeft + frameW - bracketLenPx, frameTop), stroke)
+                        drawLine(accent, Offset(frameLeft + frameW, frameTop), Offset(frameLeft + frameW, frameTop + bracketLenPx), stroke)
+                        drawLine(accent, Offset(frameLeft + frameW, frameTop), Offset(frameLeft + frameW - bracketLenPx, frameTop), stroke)
                         // Bottom-left
-                        drawLine(accent, Offset(frameLeft, frameTop + frameH - r), Offset(frameLeft, frameTop + frameH - bracketLenPx), stroke)
-                        drawLine(accent, Offset(frameLeft + r, frameTop + frameH), Offset(frameLeft + bracketLenPx, frameTop + frameH), stroke)
+                        drawLine(accent, Offset(frameLeft, frameTop + frameH), Offset(frameLeft, frameTop + frameH - bracketLenPx), stroke)
+                        drawLine(accent, Offset(frameLeft, frameTop + frameH), Offset(frameLeft + bracketLenPx, frameTop + frameH), stroke)
                         // Bottom-right
-                        drawLine(accent, Offset(frameLeft + frameW, frameTop + frameH - r), Offset(frameLeft + frameW, frameTop + frameH - bracketLenPx), stroke)
-                        drawLine(accent, Offset(frameLeft + frameW - r, frameTop + frameH), Offset(frameLeft + frameW - bracketLenPx, frameTop + frameH), stroke)
+                        drawLine(accent, Offset(frameLeft + frameW, frameTop + frameH), Offset(frameLeft + frameW, frameTop + frameH - bracketLenPx), stroke)
+                        drawLine(accent, Offset(frameLeft + frameW, frameTop + frameH), Offset(frameLeft + frameW - bracketLenPx, frameTop + frameH), stroke)
+                        
+                        // Middle edges (thick white)
+                        val midX = frameLeft + frameW / 2f
+                        val midY = frameTop + frameH / 2f
+                        val midBracketLen = bracketLenPx
+                        
+                        // Top middle
+                        drawLine(accent, Offset(midX - midBracketLen / 2f, frameTop), Offset(midX + midBracketLen / 2f, frameTop), stroke)
+                        // Bottom middle
+                        drawLine(accent, Offset(midX - midBracketLen / 2f, frameTop + frameH), Offset(midX + midBracketLen / 2f, frameTop + frameH), stroke)
+                        // Left middle
+                        drawLine(accent, Offset(frameLeft, midY - midBracketLen / 2f), Offset(frameLeft, midY + midBracketLen / 2f), stroke)
+                        // Right middle
+                        drawLine(accent, Offset(frameLeft + frameW, midY - midBracketLen / 2f), Offset(frameLeft + frameW, midY + midBracketLen / 2f), stroke)
                     }
                 }
 
@@ -338,6 +378,7 @@ fun ImageCropDialog(
                             onCropped(uriFile(dest))
                         }
                     },
+                    onRotate = { rotationTurns++ },
                     onCancel = onDismiss,
                 )
             }
@@ -348,30 +389,48 @@ fun ImageCropDialog(
 @Composable
 private fun CropActions(
     onUsePhoto: (() -> Unit)?,
+    onRotate: (() -> Unit)?,
     onCancel: () -> Unit,
 ) {
-    Column(
+    Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(
-                    color = SplitEaseColors.ShellSurface,
-                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                )
+                .background(SplitEaseColors.ShellSurface)
                 .padding(horizontal = SeLayout.detailHorizontal)
-                .padding(top = 16.dp, bottom = 12.dp),
+                .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onUsePhoto != null) {
-            SePrimaryButton(
-                text = stringResource(R.string.action_use_photo),
-                onClick = onUsePhoto,
+        TextButton(onClick = onCancel) {
+            Text(
+                text = stringResource(R.string.action_cancel),
+                color = SplitEaseColors.Positive,
             )
-            Spacer(modifier = Modifier.height(4.dp))
         }
-        SeTextButton(
-            text = stringResource(R.string.action_cancel),
-            onClick = onCancel,
-        )
+        
+        if (onRotate != null) {
+            IconButton(onClick = onRotate) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Rotate",
+                    tint = Color.White,
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.padding(24.dp))
+        }
+        
+        if (onUsePhoto != null) {
+            TextButton(onClick = onUsePhoto) {
+                Text(
+                    text = stringResource(R.string.action_done),
+                    color = SplitEaseColors.Positive,
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.padding(24.dp))
+        }
     }
 }
 
