@@ -168,9 +168,14 @@ private fun GroupsHomeScreenContent(
     var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
     var showSettledGroups by remember { mutableStateOf(false) }
     val changePhotoCd = stringResource(R.string.cd_change_group_photo)
-
-    val freezeBalances = ui.syncState.shouldFreezeBalances || ui.isRefreshing || ui.isLoading
     val balances = ui.balances
+    // Show the list shell immediately: freeze amounts while balances catch up, during
+    // first-login hydrate, or while pull-to-refresh is rewriting Room.
+    val freezeBalances =
+        ui.isLoading ||
+            balances == null ||
+            ui.syncState.shouldFreezeBalances ||
+            ui.isRefreshing
     val groupRows =
         remember(ui.allGroups, balances, freezeBalances) {
             ui.allGroups.map { group ->
@@ -183,7 +188,8 @@ private fun GroupsHomeScreenContent(
                         simplifiedDebts = emptyList(),
                     )
                 } else {
-                    balances?.groupBalances?.firstOrNull { it.groupId == group.id }
+                    val live = checkNotNull(balances)
+                    live.groupBalances.firstOrNull { it.groupId == group.id }
                         ?: GroupBalanceUi(
                             groupId = group.id,
                             groupName = group.name,
@@ -211,19 +217,24 @@ private fun GroupsHomeScreenContent(
         if (outstandingWithSettledHidden && !showSettledGroups) settled.size else 0
     val canHideSettled =
         outstandingWithSettledHidden && showSettledGroups && settled.isNotEmpty()
-    val nonGroupNet = balances?.nonGroupMyNetByCurrency.orEmpty()
     val showNonGroup =
-        balances != null &&
+        if (freezeBalances) {
+            false
+        } else {
+            val live = checkNotNull(balances)
+            val nonGroupNet = live.nonGroupMyNetByCurrency
             when (listFilter) {
-                GroupsHomeFilter.ALL -> balances.hasNonGroupActivity
+                GroupsHomeFilter.ALL -> live.hasNonGroupActivity
                 GroupsHomeFilter.OUTSTANDING ->
                     nonGroupNet.matches(GroupsHomeFilter.OUTSTANDING) ||
-                        balances.nonGroupDebts.isNotEmpty()
+                        live.nonGroupDebts.isNotEmpty()
                 GroupsHomeFilter.YOU_OWE,
                 GroupsHomeFilter.OWED_TO_YOU,
                 ->
-                    balances.hasNonGroupActivity && nonGroupNet.matches(listFilter)
+                    live.hasNonGroupActivity && nonGroupNet.matches(listFilter)
             }
+        }
+    val showListSkeleton = ui.isLoading && ui.allGroups.isEmpty() && !showNonGroup
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -311,8 +322,8 @@ private fun GroupsHomeScreenContent(
                         )
                     }
 
-                    if (ui.isLoading) {
-                        items(4) {
+                    if (showListSkeleton) {
+                        items(6) {
                             GroupSkeletonListItem()
                         }
                     } else if (ui.allGroups.isEmpty() && !showNonGroup) {
@@ -323,7 +334,9 @@ private fun GroupsHomeScreenContent(
                                 onAction = onCreateGroup,
                             )
                         }
-                    } else {
+                    }
+
+                    if (!showListSkeleton) {
                         items(visibleGroups, key = { it.groupId }) { row ->
                             val group = ui.allGroups.firstOrNull { it.id == row.groupId }
                             GroupBalanceListItem(
@@ -338,17 +351,18 @@ private fun GroupsHomeScreenContent(
                                 iconContentDescription = changePhotoCd,
                             )
                         }
+                    }
 
-                        if (showNonGroup) {
-                            item {
-                                NonGroupListItem(
-                                    myNet = balances.nonGroupMyNetByCurrency,
-                                    debts = balances.nonGroupDebts,
-                                    currencyFallback = ui.currencyCode,
-                                    showAmounts = !freezeBalances,
-                                    onClick = onOpenNonGroup,
-                                )
-                            }
+                    if (showNonGroup) {
+                        val liveBalances = checkNotNull(balances)
+                        item {
+                            NonGroupListItem(
+                                myNet = liveBalances.nonGroupMyNetByCurrency,
+                                debts = liveBalances.nonGroupDebts,
+                                currencyFallback = ui.currencyCode,
+                                showAmounts = !freezeBalances,
+                                onClick = onOpenNonGroup,
+                            )
                         }
                     }
 
@@ -520,6 +534,49 @@ private fun SeSplitMoneyLine(
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
+}
+
+@Composable
+private fun GroupSkeletonListItem() {
+    val loadingCd = stringResource(R.string.groups_fetching)
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .semantics { contentDescription = loadingCd }
+                .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .seShimmer(),
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.3f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
+        }
+    }
 }
 
 @Composable
@@ -714,47 +771,6 @@ private fun DebtLine(debt: LabeledDebt) {
         tone = if (youOwe) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU,
         style = MaterialTheme.typography.bodySmall,
     )
-}
-
-@Composable
-private fun GroupSkeletonListItem() {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .seShimmer(),
-        )
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.5f)
-                        .height(16.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .seShimmer(),
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.3f)
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .seShimmer(),
-            )
-        }
-    }
 }
 
 private fun groupTypeIcon(type: GroupType?): ImageVector =
