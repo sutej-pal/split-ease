@@ -18,10 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.Layout
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -93,6 +93,7 @@ import com.splitease.app.presentation.ui.SeHeroBalancePair
 import com.splitease.app.presentation.ui.SeHeroBalancePairSkeleton
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeLineSkeleton
+import com.splitease.app.presentation.ui.seShimmer
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
@@ -515,7 +516,7 @@ private fun SeSplitMoneyLine(
     useFullColor: Boolean = false,
 ) {
     val money = MoneyFormat.format(amount, currencyCode)
-    val prefixColor = if (useFullColor) tone.color() else Color.Gray
+    val prefixColor = if (useFullColor) tone.color() else Color.DarkGray
     val amountColor = tone.color()
     val text =
         buildAnnotatedString {
@@ -542,6 +543,7 @@ private fun GroupSkeletonListItem() {
         modifier =
             Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .semantics { contentDescription = loadingCd }
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
@@ -551,13 +553,28 @@ private fun GroupSkeletonListItem() {
                 Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(SplitEaseColors.SurfaceMuted),
+                    .seShimmer(),
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            SeLineSkeleton(widthFraction = 0.55f)
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
             Spacer(modifier = Modifier.height(10.dp))
-            SeLineSkeleton(widthFraction = 0.35f)
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.3f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
         }
     }
 }

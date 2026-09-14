@@ -527,6 +527,7 @@
     <string name="error_exchange_rate_fetch">Could\'t fetch the exchange rate. Check your connection or enter a rate manually.</string>
     <string name="error_exchange_rate_required">Enter a valid exchange rate before saving this expense.</string>
     <string name="label_exchange_rate">Exchange Rate</string>
+    <string name="label_total_after_exchange">Total after exchange</string>
     <string name="rate_source_live">Live</string>
     <string name="rate_source_custom">Custom</string>
     <string name="label_search_currencies">Search currencies</string>

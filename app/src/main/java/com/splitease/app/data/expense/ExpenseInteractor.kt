@@ -352,19 +352,7 @@ class ExpenseInteractor
                         photo
                     }
                 if (added.isEmpty()) error(appContext.getString(R.string.msg_photo_failed))
-                val actorName = displayNameOf(actorUserId)
                 val count = added.size
-                val body =
-                    if (count == 1) {
-                        "This expense was updated by $actorName.\nAdded an attachment."
-                    } else {
-                        "This expense was updated by $actorName.\nAdded $count attachments."
-                    }
-                persistSystemComment(
-                    expenseId = expenseId,
-                    actorUserId = actorUserId,
-                    body = body,
-                )
                 // Bump the parent expense so group Realtime / refresh pulls pick up new photos.
                 touchExpenseForSideData(expenseId)
                 AddAttachmentsResult(addedCount = count, failedCount = failedCount)

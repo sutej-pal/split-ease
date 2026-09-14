@@ -87,6 +87,7 @@ import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.ads.AdConfig
+import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.ads.SeBannerAd
 import com.splitease.app.presentation.ads.SeBannerAdSize
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -770,6 +771,7 @@ fun AddExpenseScreen(
                 
                 ExchangeRateRow(
                     fxState = fxState,
+                    amount = amount,
                     onRateChange = { viewModel.setManualExchangeRate(it) }
                 )
 
@@ -1217,11 +1219,22 @@ private fun CategoryPickerDialog(
 @Composable
 private fun ExchangeRateRow(
     fxState: ExchangeRateUiState,
+    amount: String,
     onRateChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (fxState.fromCurrency == null || fxState.toCurrency == null || fxState.fromCurrency == fxState.toCurrency) {
         return
+    }
+
+    val toCurrency = fxState.toCurrency
+
+    val parsedAmount = runCatching { BigDecimal(amount.trim()) }.getOrNull() ?: BigDecimal.ZERO
+    val rate = fxState.rate ?: runCatching { BigDecimal(fxState.manualRateText.trim()) }.getOrNull()
+    val convertedTotal = if (rate != null && rate > BigDecimal.ZERO) {
+        parsedAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP)
+    } else {
+        null
     }
 
     Column(
@@ -1305,6 +1318,29 @@ private fun ExchangeRateRow(
                 style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy
             )
+        }
+
+        if (convertedTotal != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = SplitEaseColors.Outline.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = stringResource(R.string.label_total_after_exchange),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SplitEaseColors.NavyMuted
+                )
+                Text(
+                    text = MoneyFormat.format(convertedTotal, toCurrency),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = SplitEaseColors.Navy
+                )
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.home
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.core.ErrorMessages
@@ -173,28 +174,34 @@ class GroupsHomeViewModel
             if (isInitialLoading.value) return
             if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
             viewModelScope.launch {
+                val startMs = System.currentTimeMillis()
+                Log.d("GroupsRefresh", "refresh() started for user $id")
                 isRefreshing.update { true }
-                val startedAt = System.currentTimeMillis()
-                withContext(Dispatchers.IO) {
-                    if (syncInteractor.syncState.value == SyncState.FAILED) {
-                        syncInteractor.markInitialHydrateStarted(id)
+                try {
+                    withContext(Dispatchers.IO) {
+                        if (syncInteractor.syncState.value == SyncState.FAILED) {
+                            syncInteractor.markInitialHydrateStarted(id)
+                        }
+                        val syncStart = System.currentTimeMillis()
+                        runCatching { syncInteractor.syncForUser(id, force = true) }
+                            .onSuccess {
+                                Log.d(
+                                    "GroupsRefresh",
+                                    "syncForUser(force) ok in ${System.currentTimeMillis() - syncStart}ms",
+                                )
+                            }
+                            .onFailure { err ->
+                                Log.w(
+                                    "GroupsRefresh",
+                                    "syncForUser(force) failed in ${System.currentTimeMillis() - syncStart}ms",
+                                    err,
+                                )
+                            }
                     }
-                    runCatching { syncInteractor.syncForUser(id, force = true) }
-                        .onSuccess {
-                            android.util.Log.d(
-                                "GroupsRefresh",
-                                "syncForUser(force) ok in ${System.currentTimeMillis() - startedAt}ms",
-                            )
-                        }
-                        .onFailure { err ->
-                            android.util.Log.w(
-                                "GroupsRefresh",
-                                "syncForUser(force) failed in ${System.currentTimeMillis() - startedAt}ms",
-                                err,
-                            )
-                        }
+                } finally {
+                    isRefreshing.update { false }
                 }
-                isRefreshing.update { false }
+                Log.d("GroupsRefresh", "refresh() completed in ${System.currentTimeMillis() - startMs}ms")
             }
         }
 
