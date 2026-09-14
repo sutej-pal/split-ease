@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -128,6 +129,8 @@ class GroupsHomeViewModel
                                 Triple(loading, refreshing, sync)
                             }.flatMapLatest { (loading, refreshing, sync) ->
                                 if (loading || refreshing || sync.shouldFreezeBalances) {
+                                    // Pause Room observation during write storms, but do not
+                                    // wipe the last snapshot (filters / non-group rows).
                                     flowOf<OverallBalancesUi?>(null)
                                 } else {
                                     balanceInteractor
@@ -141,6 +144,8 @@ class GroupsHomeViewModel
                                         .onStart { emit(null) }
                                         .flowOn(Dispatchers.Default)
                                 }
+                            }.runningFold(null as OverallBalancesUi?) { held, next ->
+                                next ?: held
                             },
                             groupRepository.observeGroupsForUser(me),
                             appSettingsRepository.observeCurrencyCode(),
@@ -172,7 +177,6 @@ class GroupsHomeViewModel
         fun refresh() {
             val id = userId.value ?: return
             if (isInitialLoading.value) return
-            if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
             viewModelScope.launch {
                 val startMs = System.currentTimeMillis()
                 Log.d("GroupsRefresh", "refresh() started for user $id")

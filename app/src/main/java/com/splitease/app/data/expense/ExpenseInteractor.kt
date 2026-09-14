@@ -352,7 +352,19 @@ class ExpenseInteractor
                         photo
                     }
                 if (added.isEmpty()) error(appContext.getString(R.string.msg_photo_failed))
+                val actorName = displayNameOf(actorUserId)
                 val count = added.size
+                val body =
+                    if (count == 1) {
+                        "This expense was updated by $actorName.\nAdded an attachment."
+                    } else {
+                        "This expense was updated by $actorName.\nAdded $count attachments."
+                    }
+                persistSystemComment(
+                    expenseId = expenseId,
+                    actorUserId = actorUserId,
+                    body = body,
+                )
                 // Bump the parent expense so group Realtime / refresh pulls pick up new photos.
                 touchExpenseForSideData(expenseId)
                 AddAttachmentsResult(addedCount = count, failedCount = failedCount)
@@ -603,7 +615,7 @@ class ExpenseInteractor
             pruneSyncedMissingRemote(
                 localSyncedIds = expenseRepository.getSyncedIdsByGroup(groupId),
                 remoteIds = remoteRows.map { it.id }.toSet(),
-                remoteRowCount = remoteRows.size,
+                remoteFetchComplete = true,
             )
         }
 
@@ -665,26 +677,22 @@ class ExpenseInteractor
 
             persistRemoteExpenseBatch(allDtos)
 
-            val groupFetchComplete = isCompleteRemoteFetch(groupRows.size)
+            // fetchByGroupIds pages past the PostgREST row cap, so the batch is complete
+            // even when groupRows.size >= REMOTE_FETCH_ROW_CAP.
             val groupRowsByGroup = groupRows.groupBy { it.groupId }
             groups.forEach { group ->
                 val remoteForGroup = groupRowsByGroup[group.id].orEmpty()
                 pruneSyncedMissingRemote(
                     localSyncedIds = expenseRepository.getSyncedIdsByGroup(group.id),
                     remoteIds = remoteForGroup.map { it.id }.toSet(),
-                    remoteRowCount =
-                        if (groupFetchComplete) {
-                            remoteForGroup.size
-                        } else {
-                            REMOTE_FETCH_ROW_CAP
-                        },
+                    remoteFetchComplete = true,
                 )
             }
 
             pruneSyncedMissingRemote(
                 localSyncedIds = expenseRepository.getSyncedNonGroupIdsInvolvingUser(userId),
                 remoteIds = involvingIds.toSet(),
-                remoteRowCount = involvingIds.size,
+                remoteFetchComplete = isCompleteRemoteFetch(involvingIds.size),
             )
         }
 
@@ -695,12 +703,13 @@ class ExpenseInteractor
         private suspend fun pruneSyncedMissingRemote(
             localSyncedIds: List<String>,
             remoteIds: Set<String>,
-            remoteRowCount: Int,
+            remoteFetchComplete: Boolean,
         ) {
-            if (!isCompleteRemoteFetch(remoteRowCount)) {
+            if (!remoteFetchComplete) {
                 android.util.Log.w(
                     "ExpenseSync",
-                    "Skip remote-delete prune: fetch returned $remoteRowCount rows (cap=$REMOTE_FETCH_ROW_CAP)",
+                    "Skip remote-delete prune: involving-user fetch may be truncated " +
+                        "(cap=$REMOTE_FETCH_ROW_CAP)",
                 )
                 return
             }

@@ -76,9 +76,9 @@ class PaymentHydrateTest {
         }
 
     @Test
-    fun refreshPaymentsForUser_capped_group_fetch_skips_prune() =
+    fun refreshPaymentsForUser_paged_group_fetch_prunes_stale_even_at_row_cap() =
         runTest {
-            val capped =
+            val paged =
                 List(REMOTE_FETCH_ROW_CAP) { index ->
                     paymentDto("p$index", groupId = "g1", from = "u2", to = "u3")
                 }
@@ -87,9 +87,27 @@ class PaymentHydrateTest {
                 flowOf(listOf(group("g1"), group("g2")))
             coEvery {
                 remote.fetchByGroupIds(match { it.toSet() == setOf("g1", "g2") })
-            } returns capped
+            } returns paged
             coEvery { paymentRepository.getSyncedIdsByGroup("g1") } returns listOf("stale")
             coEvery { paymentRepository.getSyncedIdsByGroup("g2") } returns listOf("other-stale")
+
+            interactor.refreshPaymentsForUser("u1")
+
+            coVerify(exactly = 1) { paymentRepository.deleteById("stale") }
+            coVerify(exactly = 1) { paymentRepository.deleteById("other-stale") }
+        }
+
+    @Test
+    fun refreshPaymentsForUser_capped_involving_fetch_skips_non_group_prune() =
+        runTest {
+            val capped =
+                List(REMOTE_FETCH_ROW_CAP) { index ->
+                    paymentDto("p$index", groupId = null, from = "u1", to = "u2")
+                }
+            coEvery { remote.fetchInvolvingUser("u1") } returns capped
+            coEvery { groupRepository.observeGroupsForUser("u1") } returns flowOf(emptyList())
+            coEvery { paymentRepository.getSyncedNonGroupIdsInvolvingUser("u1") } returns
+                listOf("stale-1to1")
 
             interactor.refreshPaymentsForUser("u1")
 

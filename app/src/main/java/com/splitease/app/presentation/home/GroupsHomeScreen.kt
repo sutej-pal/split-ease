@@ -169,35 +169,24 @@ private fun GroupsHomeScreenContent(
     var showSettledGroups by remember { mutableStateOf(false) }
     val changePhotoCd = stringResource(R.string.cd_change_group_photo)
     val balances = ui.balances
-    // Show the list shell immediately: freeze amounts while balances catch up, during
-    // first-login hydrate, or while pull-to-refresh is rewriting Room.
-    val freezeBalances =
+    // Freeze amounts while balances catch up, during first-login hydrate, or while
+    // pull-to-refresh is rewriting Room. Keep the last snapshot for filters / rows.
+    val freezeAmounts =
         ui.isLoading ||
             balances == null ||
             ui.syncState.shouldFreezeBalances ||
             ui.isRefreshing
     val groupRows =
-        remember(ui.allGroups, balances, freezeBalances) {
+        remember(ui.allGroups, balances) {
             ui.allGroups.map { group ->
-                if (freezeBalances) {
-                    GroupBalanceUi(
+                balances?.groupBalances?.firstOrNull { it.groupId == group.id }
+                    ?: GroupBalanceUi(
                         groupId = group.id,
                         groupName = group.name,
                         myNetByCurrency = emptyMap(),
                         memberNetsByCurrency = emptyMap(),
                         simplifiedDebts = emptyList(),
                     )
-                } else {
-                    val live = checkNotNull(balances)
-                    live.groupBalances.firstOrNull { it.groupId == group.id }
-                        ?: GroupBalanceUi(
-                            groupId = group.id,
-                            groupName = group.name,
-                            myNetByCurrency = emptyMap(),
-                            memberNetsByCurrency = emptyMap(),
-                            simplifiedDebts = emptyList(),
-                        )
-                }
             }
         }
     val settled =
@@ -218,20 +207,19 @@ private fun GroupsHomeScreenContent(
     val canHideSettled =
         outstandingWithSettledHidden && showSettledGroups && settled.isNotEmpty()
     val showNonGroup =
-        if (freezeBalances) {
+        if (balances == null) {
             false
         } else {
-            val live = checkNotNull(balances)
-            val nonGroupNet = live.nonGroupMyNetByCurrency
+            val nonGroupNet = balances.nonGroupMyNetByCurrency
             when (listFilter) {
-                GroupsHomeFilter.ALL -> live.hasNonGroupActivity
+                GroupsHomeFilter.ALL -> balances.hasNonGroupActivity
                 GroupsHomeFilter.OUTSTANDING ->
                     nonGroupNet.matches(GroupsHomeFilter.OUTSTANDING) ||
-                        live.nonGroupDebts.isNotEmpty()
+                        balances.nonGroupDebts.isNotEmpty()
                 GroupsHomeFilter.YOU_OWE,
                 GroupsHomeFilter.OWED_TO_YOU,
                 ->
-                    live.hasNonGroupActivity && nonGroupNet.matches(listFilter)
+                    balances.hasNonGroupActivity && nonGroupNet.matches(listFilter)
             }
         }
     val showListSkeleton = ui.isLoading && ui.allGroups.isEmpty() && !showNonGroup
@@ -278,7 +266,7 @@ private fun GroupsHomeScreenContent(
                         end = padding.calculateEndPadding(layoutDirection),
                     ),
         ) {
-            SeShimmerHost(enabled = freezeBalances) {
+            SeShimmerHost(enabled = freezeAmounts) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding =
@@ -290,7 +278,7 @@ private fun GroupsHomeScreenContent(
                 ) {
                     item {
                         Crossfade(
-                            targetState = freezeBalances,
+                            targetState = freezeAmounts,
                             label = "groups-hero-balances",
                             modifier = Modifier.fillMaxWidth(),
                         ) { frozen ->
@@ -345,7 +333,7 @@ private fun GroupsHomeScreenContent(
                                 icon = groupTypeIcon(group?.groupType),
                                 iconTint = groupTypeColor(group?.groupType),
                                 currencyFallback = ui.currencyCode,
-                                showAmounts = !freezeBalances,
+                                showAmounts = !freezeAmounts,
                                 onClick = { onOpenGroup(row.groupId) },
                                 onIconClick = { onChangeGroupPhoto(row.groupId) },
                                 iconContentDescription = changePhotoCd,
@@ -360,7 +348,7 @@ private fun GroupsHomeScreenContent(
                                 myNet = liveBalances.nonGroupMyNetByCurrency,
                                 debts = liveBalances.nonGroupDebts,
                                 currencyFallback = ui.currencyCode,
-                                showAmounts = !freezeBalances,
+                                showAmounts = !freezeAmounts,
                                 onClick = onOpenNonGroup,
                             )
                         }

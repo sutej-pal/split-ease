@@ -163,7 +163,7 @@ class ExpenseHydrateTest {
         }
 
     @Test
-    fun refreshExpensesForUser_capped_group_in_filter_omits_other_group_and_skips_prune() =
+    fun refreshExpensesForUser_paged_group_fetch_prunes_missing_group_even_at_row_cap() =
         runTest {
             val g1Rows =
                 (1..REMOTE_FETCH_ROW_CAP).map { n ->
@@ -189,7 +189,7 @@ class ExpenseHydrateTest {
             assertEquals(REMOTE_FETCH_ROW_CAP, expensesSlot.captured.size)
             assertTrue(expensesSlot.captured.all { it.groupId == "g1" })
             assertFalse(expensesSlot.captured.any { it.groupId == "g2" })
-            coVerify(exactly = 0) { expenseRepository.deleteExpenseById("g2-local") }
+            coVerify(exactly = 1) { expenseRepository.deleteExpenseById("g2-local") }
         }
 
     @Test

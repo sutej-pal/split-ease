@@ -125,25 +125,21 @@ class PaymentInteractor
                     }
             }
 
-            val groupFetchComplete = isCompleteRemoteFetch(groupRows.size)
+            // fetchByGroupIds pages past the PostgREST row cap, so the batch is complete
+            // even when groupRows.size >= REMOTE_FETCH_ROW_CAP.
             val groupRowsByGroup = groupRows.groupBy { it.groupId }
             groups.forEach { group ->
                 val remoteForGroup = groupRowsByGroup[group.id].orEmpty()
                 pruneSyncedMissingRemote(
                     localSyncedIds = paymentRepository.getSyncedIdsByGroup(group.id),
                     remoteIds = remoteForGroup.map { it.id }.toSet(),
-                    remoteRowCount =
-                        if (groupFetchComplete) {
-                            remoteForGroup.size
-                        } else {
-                            REMOTE_FETCH_ROW_CAP
-                        },
+                    remoteFetchComplete = true,
                 )
             }
             pruneSyncedMissingRemote(
                 localSyncedIds = paymentRepository.getSyncedNonGroupIdsInvolvingUser(userId),
                 remoteIds = involvingRows.map { it.id }.toSet(),
-                remoteRowCount = involvingRows.size,
+                remoteFetchComplete = isCompleteRemoteFetch(involvingRows.size),
             )
         }
 
@@ -170,19 +166,20 @@ class PaymentInteractor
             pruneSyncedMissingRemote(
                 localSyncedIds = paymentRepository.getSyncedIdsByGroup(groupId),
                 remoteIds = remoteRows.map { it.id }.toSet(),
-                remoteRowCount = remoteRows.size,
+                remoteFetchComplete = true,
             )
         }
 
         private suspend fun pruneSyncedMissingRemote(
             localSyncedIds: List<String>,
             remoteIds: Set<String>,
-            remoteRowCount: Int,
+            remoteFetchComplete: Boolean,
         ) {
-            if (!isCompleteRemoteFetch(remoteRowCount)) {
+            if (!remoteFetchComplete) {
                 android.util.Log.w(
                     "PaymentSync",
-                    "Skip remote-delete prune: fetch returned $remoteRowCount rows (cap=$REMOTE_FETCH_ROW_CAP)",
+                    "Skip remote-delete prune: involving-user fetch may be truncated " +
+                        "(cap=$REMOTE_FETCH_ROW_CAP)",
                 )
                 return
             }

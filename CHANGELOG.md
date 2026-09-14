@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Groups home load/refresh feel slow** — root causes and fixes:
   - UI no longer waits on the first full `observeOverallBalances` pass before painting the group list (`onStart { null }` + shimmer amounts). Cold opens with Room cache show names immediately.
   - Groups home skips the O(friends×groups) friend-balance matrix; overall balance math reuses one splits load (no per-group Room re-query).
-  - Pull-to-refresh pauses live balance observation while sync rewrites Room (avoids recompute storms).
+  - Pull-to-refresh pauses live balance observation while sync rewrites Room (avoids recompute storms) but keeps the last balance snapshot so You-owe / Owed-to-you / non-group rows do not disappear.
   - Payment hydrate batches `group_id in (...)` like expenses (was 1 GET per group).
   - Sync pull runs expenses + payments + activity in parallel after groups.
   - Empty first paint uses inline skeleton rows instead of a full-screen “Fetching groups…” blocker.
+  - Group expense/payment prune treats paged `in()` fetches as complete, so a total ≥1000 rows no longer skips remote-delete cleanup.
+- Adding receipt photos again writes “Added an attachment” system comments on the expense.
+- Add-expense “Total after exchange” is hidden until the amount is a positive number.
 
 ### Added
 - Delete-account blocked-balance rows are tappable: they open the group (or Non-group expenses) so you can settle before retrying. Checking balances shows a shimmer list and “Checking balances…” status.

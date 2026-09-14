@@ -1229,13 +1229,18 @@ private fun ExchangeRateRow(
 
     val toCurrency = fxState.toCurrency
 
-    val parsedAmount = runCatching { BigDecimal(amount.trim()) }.getOrNull() ?: BigDecimal.ZERO
+    val parsedAmount = runCatching { BigDecimal(amount.trim()) }.getOrNull()
     val rate = fxState.rate ?: runCatching { BigDecimal(fxState.manualRateText.trim()) }.getOrNull()
-    val convertedTotal = if (rate != null && rate > BigDecimal.ZERO) {
-        parsedAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP)
-    } else {
-        null
-    }
+    val convertedTotal =
+        if (parsedAmount != null &&
+            parsedAmount > BigDecimal.ZERO &&
+            rate != null &&
+            rate > BigDecimal.ZERO
+        ) {
+            parsedAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP)
+        } else {
+            null
+        }
 
     Column(
         modifier = modifier
