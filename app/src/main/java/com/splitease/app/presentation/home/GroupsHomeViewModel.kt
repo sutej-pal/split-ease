@@ -1,6 +1,7 @@
 package com.splitease.app.presentation.home
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.core.ErrorMessages
@@ -163,14 +164,19 @@ class GroupsHomeViewModel
             if (isInitialLoading.value) return
             if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
             viewModelScope.launch {
+                val startMs = System.currentTimeMillis()
+                Log.d("GroupsRefresh", "refresh() started for user $id")
                 isRefreshing.update { true }
                 withContext(Dispatchers.IO) {
                     if (syncInteractor.syncState.value == SyncState.FAILED) {
                         syncInteractor.markInitialHydrateStarted(id)
                     }
+                    val syncStart = System.currentTimeMillis()
                     runCatching { syncInteractor.syncForUser(id, force = true) }
+                    Log.d("GroupsRefresh", "syncForUser completed in ${System.currentTimeMillis() - syncStart}ms")
                 }
                 isRefreshing.update { false }
+                Log.d("GroupsRefresh", "refresh() completed in ${System.currentTimeMillis() - startMs}ms")
             }
         }
 

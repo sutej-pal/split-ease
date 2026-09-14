@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.Layout
@@ -91,8 +92,8 @@ import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeHeroBalancePair
 import com.splitease.app.presentation.ui.SeHeroBalancePairSkeleton
 import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLineSkeleton
+import com.splitease.app.presentation.ui.seShimmer
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
@@ -168,26 +169,7 @@ private fun GroupsHomeScreenContent(
     var showSettledGroups by remember { mutableStateOf(false) }
     val changePhotoCd = stringResource(R.string.cd_change_group_photo)
 
-    if (ui.isLoading) {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            contentWindowInsets = bottomBarContentWindowInsets(),
-        ) { padding ->
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .paddingAboveBottomBar(),
-                contentAlignment = Alignment.Center,
-            ) {
-                SeInlineLoader(text = stringResource(R.string.groups_fetching))
-            }
-        }
-        return
-    }
-
-    val freezeBalances = ui.syncState.shouldFreezeBalances || ui.isRefreshing
+    val freezeBalances = ui.syncState.shouldFreezeBalances || ui.isRefreshing || ui.isLoading
     val balances = ui.balances
     val groupRows =
         remember(ui.allGroups, balances, freezeBalances) {
@@ -329,7 +311,11 @@ private fun GroupsHomeScreenContent(
                         )
                     }
 
-                    if (ui.allGroups.isEmpty() && !showNonGroup) {
+                    if (ui.isLoading) {
+                        items(4) {
+                            GroupSkeletonListItem()
+                        }
+                    } else if (ui.allGroups.isEmpty() && !showNonGroup) {
                         item {
                             SeEmptyState(
                                 message = stringResource(R.string.groups_empty_home),
@@ -337,32 +323,32 @@ private fun GroupsHomeScreenContent(
                                 onAction = onCreateGroup,
                             )
                         }
-                    }
-
-                    items(visibleGroups, key = { it.groupId }) { row ->
-                        val group = ui.allGroups.firstOrNull { it.id == row.groupId }
-                        GroupBalanceListItem(
-                            row = row,
-                            photoUrl = group?.photoUrl,
-                            icon = groupTypeIcon(group?.groupType),
-                            iconTint = groupTypeColor(group?.groupType),
-                            currencyFallback = ui.currencyCode,
-                            showAmounts = !freezeBalances,
-                            onClick = { onOpenGroup(row.groupId) },
-                            onIconClick = { onChangeGroupPhoto(row.groupId) },
-                            iconContentDescription = changePhotoCd,
-                        )
-                    }
-
-                    if (showNonGroup) {
-                        item {
-                            NonGroupListItem(
-                                myNet = balances.nonGroupMyNetByCurrency,
-                                debts = balances.nonGroupDebts,
+                    } else {
+                        items(visibleGroups, key = { it.groupId }) { row ->
+                            val group = ui.allGroups.firstOrNull { it.id == row.groupId }
+                            GroupBalanceListItem(
+                                row = row,
+                                photoUrl = group?.photoUrl,
+                                icon = groupTypeIcon(group?.groupType),
+                                iconTint = groupTypeColor(group?.groupType),
                                 currencyFallback = ui.currencyCode,
                                 showAmounts = !freezeBalances,
-                                onClick = onOpenNonGroup,
+                                onClick = { onOpenGroup(row.groupId) },
+                                onIconClick = { onChangeGroupPhoto(row.groupId) },
+                                iconContentDescription = changePhotoCd,
                             )
+                        }
+
+                        if (showNonGroup) {
+                            item {
+                                NonGroupListItem(
+                                    myNet = balances.nonGroupMyNetByCurrency,
+                                    debts = balances.nonGroupDebts,
+                                    currencyFallback = ui.currencyCode,
+                                    showAmounts = !freezeBalances,
+                                    onClick = onOpenNonGroup,
+                                )
+                            }
                         }
                     }
 
@@ -516,7 +502,7 @@ private fun SeSplitMoneyLine(
     useFullColor: Boolean = false,
 ) {
     val money = MoneyFormat.format(amount, currencyCode)
-    val prefixColor = if (useFullColor) tone.color() else Color.Gray
+    val prefixColor = if (useFullColor) tone.color() else Color.DarkGray
     val amountColor = tone.color()
     val text =
         buildAnnotatedString {
@@ -728,6 +714,47 @@ private fun DebtLine(debt: LabeledDebt) {
         tone = if (youOwe) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU,
         style = MaterialTheme.typography.bodySmall,
     )
+}
+
+@Composable
+private fun GroupSkeletonListItem() {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .seShimmer(),
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(0.3f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .seShimmer(),
+            )
+        }
+    }
 }
 
 private fun groupTypeIcon(type: GroupType?): ImageVector =
