@@ -1,9 +1,11 @@
 package com.splitease.app.data.remote
 
 import com.splitease.app.data.remote.dto.PaymentDto
+import com.splitease.app.data.sync.fetchCompleteInFilter
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -70,12 +72,45 @@ class PaymentRemoteDataSource
          * @param groupId Group id.
          * @return Remote payment rows.
          */
-        suspend fun fetchByGroup(groupId: String): List<PaymentDto> =
-            supabase
-                .from("payments")
-                .select(Columns.ALL) {
-                    filter {
-                        eq("group_id", groupId)
-                    }
-                }.decodeList()
+        suspend fun fetchByGroup(groupId: String): List<PaymentDto> = fetchByGroupIds(listOf(groupId))
+
+        /**
+         * Fetches payments whose [group_id] is in [groupIds] (chunked `in.` filter).
+         * Pages past PostgREST's per-SELECT row cap so one busy group cannot hide another.
+         *
+         * @param groupIds Group ids.
+         * @return Payment rows (order not guaranteed).
+         */
+        suspend fun fetchByGroupIds(groupIds: List<String>): List<PaymentDto> =
+            selectByIn("payments", "group_id", groupIds)
+
+        private suspend inline fun <reified T : Any> selectByIn(
+            table: String,
+            column: String,
+            ids: List<String>,
+        ): List<T> =
+            fetchCompleteInFilter(
+                ids = ids,
+                fetchPage = { chunk ->
+                    supabase
+                        .from(table)
+                        .select(Columns.ALL) {
+                            filter {
+                                isIn(column, chunk)
+                            }
+                        }.decodeList()
+                },
+                fetchOffsetPage = { id, offset, limit ->
+                    val to = offset + limit - 1
+                    supabase
+                        .from(table)
+                        .select(Columns.ALL) {
+                            filter {
+                                eq(column, id)
+                            }
+                            order(column = "id", order = Order.ASCENDING)
+                            range(offset.toLong()..to.toLong())
+                        }.decodeList()
+                },
+            )
     }

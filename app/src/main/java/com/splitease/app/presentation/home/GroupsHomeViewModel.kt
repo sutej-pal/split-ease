@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -39,7 +40,10 @@ data class GroupsHomeUi(
     val currencyCode: String = AppCurrencies.DEFAULT,
     val balances: OverallBalancesUi? = null,
     val allGroups: List<Group> = emptyList(),
-    /** True only while the first lite group list pull runs (Room empty). */
+    /**
+     * True only while the first lite group list pull runs (Room empty).
+     * The screen still shows the list chrome + skeletons instead of a full-screen blocker.
+     */
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     /** First-login full hydrate phase; subsequent opens stay [SyncState.IDLE]. */
@@ -113,14 +117,27 @@ class GroupsHomeViewModel
                         flowOf(GroupsHomeUi())
                     } else {
                         combine(
-                            combine(isInitialLoading, syncInteractor.syncState) { loading, sync ->
-                                loading to sync
-                            }.flatMapLatest { (loading, sync) ->
-                                if (loading || sync.shouldFreezeBalances) {
+                            // Pause live balance math during first-login hydrate and pull-to-refresh
+                            // so Room write storms do not recompute friend×group nets on every row.
+                            combine(
+                                isInitialLoading,
+                                isRefreshing,
+                                syncInteractor.syncState,
+                            ) { loading, refreshing, sync ->
+                                Triple(loading, refreshing, sync)
+                            }.flatMapLatest { (loading, refreshing, sync) ->
+                                if (loading || refreshing || sync.shouldFreezeBalances) {
                                     flowOf<OverallBalancesUi?>(null)
                                 } else {
                                     balanceInteractor
-                                        .observeOverallBalances(me)
+                                        .observeOverallBalances(
+                                            viewerUserId = me,
+                                            includeFriendBalances = false,
+                                        )
+                                        // Emit immediately so the group list is not gated on
+                                        // the first (often expensive) balance pass.
+                                        .map<OverallBalancesUi, OverallBalancesUi?> { it }
+                                        .onStart { emit(null) }
                                         .flowOn(Dispatchers.Default)
                                 }
                             },
@@ -129,21 +146,14 @@ class GroupsHomeViewModel
                             isInitialLoading,
                             syncInteractor.syncState,
                         ) { balances, groups, currency, loading, sync ->
-                            if (loading) {
-                                GroupsHomeUi(
-                                    currencyCode = currency,
-                                    isLoading = true,
-                                    syncState = sync,
-                                )
-                            } else {
-                                GroupsHomeUi(
-                                    currencyCode = currency,
-                                    balances = balances,
-                                    allGroups = groups,
-                                    isLoading = false,
-                                    syncState = sync,
-                                )
-                            }
+                            GroupsHomeUi(
+                                currencyCode = currency,
+                                // Keep listing Room groups while the lite pull / balances catch up.
+                                balances = if (loading) null else balances,
+                                allGroups = groups,
+                                isLoading = loading,
+                                syncState = sync,
+                            )
                         }
                     }
                 },
@@ -164,11 +174,25 @@ class GroupsHomeViewModel
             if (syncInteractor.syncState.value == SyncState.IN_PROGRESS) return
             viewModelScope.launch {
                 isRefreshing.update { true }
+                val startedAt = System.currentTimeMillis()
                 withContext(Dispatchers.IO) {
                     if (syncInteractor.syncState.value == SyncState.FAILED) {
                         syncInteractor.markInitialHydrateStarted(id)
                     }
                     runCatching { syncInteractor.syncForUser(id, force = true) }
+                        .onSuccess {
+                            android.util.Log.d(
+                                "GroupsRefresh",
+                                "syncForUser(force) ok in ${System.currentTimeMillis() - startedAt}ms",
+                            )
+                        }
+                        .onFailure { err ->
+                            android.util.Log.w(
+                                "GroupsRefresh",
+                                "syncForUser(force) failed in ${System.currentTimeMillis() - startedAt}ms",
+                                err,
+                            )
+                        }
                 }
                 isRefreshing.update { false }
             }

@@ -306,10 +306,15 @@ class BalanceInteractor
          * Observes overall balances for the signed-in user.
          *
          * @param viewerUserId Signed-in user id.
+         * @param includeFriendBalances When false, skips the O(friends×groups) pairwise
+         *   matrix (Groups home only needs hero totals + per-group rows).
          * @return Cold [Flow] of [OverallBalancesUi].
          */
         @OptIn(ExperimentalCoroutinesApi::class)
-        fun observeOverallBalances(viewerUserId: String): Flow<OverallBalancesUi> =
+        fun observeOverallBalances(
+            viewerUserId: String,
+            includeFriendBalances: Boolean = true,
+        ): Flow<OverallBalancesUi> =
             combine(
                 combine(
                     expenseRepository.observeInvolvingUser(viewerUserId),
@@ -344,86 +349,94 @@ class BalanceInteractor
                             .mapValues { (_, v) -> v.abs() }
 
                     val friendBalances =
-                        inputs.friends
-                            .map { friend ->
-                            val contexts = mutableListOf<FriendContextBalanceUi>()
-                            inputs.groups.forEach { group ->
-                                val groupExpenses =
-                                    inputs.expenses.filter { it.groupId == group.id }
-                                val groupPayments =
-                                    inputs.payments.filter { it.groupId == group.id }
-                                val groupNets =
+                        if (!includeFriendBalances) {
+                            emptyList()
+                        } else {
+                            inputs.friends
+                                .map { friend ->
+                                val contexts = mutableListOf<FriendContextBalanceUi>()
+                                inputs.groups.forEach { group ->
+                                    val groupExpenses =
+                                        inputs.expenses.filter { it.groupId == group.id }
+                                    val groupPayments =
+                                        inputs.payments.filter { it.groupId == group.id }
+                                    val groupNets =
+                                        BalanceCalculator.pairwiseNetByCurrency(
+                                            viewerUserId = viewerUserId,
+                                            otherUserId = friend.friendUserId,
+                                            expenses = groupExpenses,
+                                            splitsByExpenseId = splits,
+                                            payments = groupPayments,
+                                        )
+                                    if (groupNets.isNotEmpty()) {
+                                        contexts +=
+                                            FriendContextBalanceUi(
+                                                contextId = group.id,
+                                                contextName = group.name,
+                                                netByCurrency = groupNets,
+                                            )
+                                    }
+                                }
+                                val nonGroupExpenses =
+                                    inputs.expenses.filter { it.groupId == null }
+                                val nonGroupPayments =
+                                    inputs.payments.filter { it.groupId == null }
+                                val nonGroupNets =
                                     BalanceCalculator.pairwiseNetByCurrency(
                                         viewerUserId = viewerUserId,
                                         otherUserId = friend.friendUserId,
-                                        expenses = groupExpenses,
+                                        expenses = nonGroupExpenses,
                                         splitsByExpenseId = splits,
-                                        payments = groupPayments,
+                                        payments = nonGroupPayments,
                                     )
-                                if (groupNets.isNotEmpty()) {
+                                if (nonGroupNets.isNotEmpty()) {
                                     contexts +=
                                         FriendContextBalanceUi(
-                                            contextId = group.id,
-                                            contextName = group.name,
-                                            netByCurrency = groupNets,
+                                            contextId = "",
+                                            contextName = "Non-group expenses",
+                                            netByCurrency = nonGroupNets,
                                         )
                                 }
-                            }
-                            val nonGroupExpenses =
-                                inputs.expenses.filter { it.groupId == null }
-                            val nonGroupPayments =
-                                inputs.payments.filter { it.groupId == null }
-                            val nonGroupNets =
-                                BalanceCalculator.pairwiseNetByCurrency(
-                                    viewerUserId = viewerUserId,
-                                    otherUserId = friend.friendUserId,
-                                    expenses = nonGroupExpenses,
-                                    splitsByExpenseId = splits,
-                                    payments = nonGroupPayments,
+                                val overallNets = sumNetsByCurrency(contexts.map { it.netByCurrency })
+                                FriendBalanceUi(
+                                    friendUserId = friend.friendUserId,
+                                    displayName = friend.displayNameSnapshot,
+                                    netByCurrency = overallNets,
+                                    contexts = contexts,
                                 )
-                            if (nonGroupNets.isNotEmpty()) {
-                                contexts +=
-                                    FriendContextBalanceUi(
-                                        contextId = "",
-                                        contextName = "Non-group expenses",
-                                        netByCurrency = nonGroupNets,
-                                    )
-                            }
-                            val overallNets = sumNetsByCurrency(contexts.map { it.netByCurrency })
-                            FriendBalanceUi(
-                                friendUserId = friend.friendUserId,
-                                displayName = friend.displayNameSnapshot,
-                                netByCurrency = overallNets,
-                                contexts = contexts,
-                            )
-                        }.filter { it.netByCurrency.isNotEmpty() }
+                            }.filter { it.netByCurrency.isNotEmpty() }
+                        }
 
+                    val friendLabels =
+                        inputs.friends.associate { it.friendUserId to it.displayNameSnapshot }
+                    val expensesByGroup = inputs.expenses.groupBy { it.groupId }
+                    val paymentsByGroup = inputs.payments.groupBy { it.groupId }
                     val groupBalances =
                         inputs.groups.map { group ->
-                            val groupExpenses = inputs.expenses.filter { it.groupId == group.id }
-                            val groupPayments = inputs.payments.filter { it.groupId == group.id }
                             buildGroupBalance(
                                 groupId = group.id,
                                 viewerUserId = viewerUserId,
-                                expenses = groupExpenses,
+                                expenses = expensesByGroup[group.id].orEmpty(),
                                 knownName = group.name,
-                                payments = groupPayments,
+                                payments = paymentsByGroup[group.id].orEmpty(),
                                 simplifyDebts = inputs.simplifyMap[group.id] ?: true,
                                 userLooks = userLooks,
+                                splitsByExpenseId = splits,
+                                friendLabels = friendLabels,
                             )
                         }
 
-                    val nonGroupExpenses = inputs.expenses.filter { it.groupId == null }
-                    val nonGroupPayments = inputs.payments.filter { it.groupId == null }
                     val nonGroupBalance =
                         buildGroupBalance(
                             groupId = "",
                             viewerUserId = viewerUserId,
-                            expenses = nonGroupExpenses,
+                            expenses = expensesByGroup[null].orEmpty(),
                             knownName = "Non-group expenses",
-                            payments = nonGroupPayments,
+                            payments = paymentsByGroup[null].orEmpty(),
                             simplifyDebts = true,
                             userLooks = userLooks,
+                            splitsByExpenseId = splits,
+                            friendLabels = friendLabels,
                         )
 
                     emit(
@@ -438,7 +451,8 @@ class BalanceInteractor
                                     debt.fromUserId == viewerUserId || debt.toUserId == viewerUserId
                                 },
                             hasNonGroupActivity =
-                                nonGroupExpenses.isNotEmpty() || nonGroupPayments.isNotEmpty(),
+                                expensesByGroup[null].orEmpty().isNotEmpty() ||
+                                    paymentsByGroup[null].orEmpty().isNotEmpty(),
                         ),
                     )
                 }
@@ -452,8 +466,10 @@ class BalanceInteractor
             payments: List<Payment> = emptyList(),
             simplifyDebts: Boolean = true,
             userLooks: Map<String, MemberLook> = emptyMap(),
+            splitsByExpenseId: Map<String, List<ExpenseSplit>>? = null,
+            friendLabels: Map<String, String>? = null,
         ): GroupBalanceUi {
-            val splits = loadSplits(expenses)
+            val splits = splitsByExpenseId ?: loadSplits(expenses)
             val byCurrency =
                 BalanceCalculator.applyPayments(
                     BalanceCalculator.netBalancesByCurrency(expenses, splits),
@@ -469,7 +485,14 @@ class BalanceInteractor
                 knownName
                     ?: groupRepository.getGroupById(groupId)?.name
                     ?: groupId.take(8)
-            val labels = resolveLabels(viewerUserId, byCurrency, transfers, userLooks)
+            val labels =
+                resolveLabels(
+                    viewerUserId = viewerUserId,
+                    byCurrency = byCurrency,
+                    transfers = transfers,
+                    userLooks = userLooks,
+                    friendLabels = friendLabels,
+                )
             val myNets =
                 byCurrency
                     .mapNotNull { (currency, nets) ->
@@ -502,6 +525,7 @@ class BalanceInteractor
             byCurrency: Map<String, Map<String, BigDecimal>>,
             transfers: List<DebtTransfer>,
             userLooks: Map<String, MemberLook> = emptyMap(),
+            friendLabels: Map<String, String>? = null,
         ): Map<String, MemberLook> {
             val ids =
                 buildSet {
@@ -512,11 +536,12 @@ class BalanceInteractor
                     }
                     add(viewerUserId)
                 }
-            val friendLabels =
-                friendRepository
-                    .observeFriends(viewerUserId)
-                    .first()
-                    .associate { it.friendUserId to it.displayNameSnapshot }
+            val resolvedFriendLabels =
+                friendLabels
+                    ?: friendRepository
+                        .observeFriends(viewerUserId)
+                        .first()
+                        .associate { it.friendUserId to it.displayNameSnapshot }
             return ids.associateWith { id ->
                 val look = userLooks[id]
                 val user = if (look != null) null else userRepository.getUserById(id)
@@ -525,7 +550,7 @@ class BalanceInteractor
                         when (id) {
                             viewerUserId -> "You"
                             else ->
-                                friendLabels[id]
+                                resolvedFriendLabels[id]
                                     ?: look?.label
                                     ?: user?.displayName
                                     ?: id.take(8)

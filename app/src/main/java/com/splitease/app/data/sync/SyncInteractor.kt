@@ -416,14 +416,36 @@ class SyncInteractor
                 groups.await()
                 invites.await()
             }
-            maybeHard {
-                SyncNetworkLog.phase("expenses") { expenseInteractor.get().refreshExpensesForUser(uid) }
-            }
-            maybeHard {
-                SyncNetworkLog.phase("payments") { paymentInteractor.get().refreshPaymentsForUser(uid) }
-            }
-            soft {
-                SyncNetworkLog.phase("activity") { activityInteractor.get().refreshForUser(uid) }
+            // Expenses + payments need memberships in Room; activity is independent of both.
+            // Run the three in parallel so Groups pull-to-refresh is not sum-of-phases latency.
+            coroutineScope {
+                val expenses =
+                    async {
+                        maybeHard {
+                            SyncNetworkLog.phase("expenses") {
+                                expenseInteractor.get().refreshExpensesForUser(uid)
+                            }
+                        }
+                    }
+                val payments =
+                    async {
+                        maybeHard {
+                            SyncNetworkLog.phase("payments") {
+                                paymentInteractor.get().refreshPaymentsForUser(uid)
+                            }
+                        }
+                    }
+                val activity =
+                    async {
+                        soft {
+                            SyncNetworkLog.phase("activity") {
+                                activityInteractor.get().refreshForUser(uid)
+                            }
+                        }
+                    }
+                expenses.await()
+                payments.await()
+                activity.await()
             }
             // Invitee may already have shared expenses/groups but no A←B friendship row.
             soft {

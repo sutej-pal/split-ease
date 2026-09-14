@@ -84,18 +84,37 @@ class PaymentInteractor
         /**
          * Pulls remote payments visible to [userId] into Room (payer/payee + member groups).
          *
-         * Prunes SYNCED 1:1 rows missing remotely; group rows are pruned inside
-         * [refreshGroupPayments]. PENDING / LOCAL_ONLY are never pruned.
+         * Prunes SYNCED 1:1 rows missing remotely; group rows are pruned from the
+         * batched group_id fetch (not a second child-table pull per group).
+         * PENDING / LOCAL_ONLY are never pruned.
          *
          * @param userId Current user id.
          */
         suspend fun refreshPaymentsForUser(userId: String) {
-            val remoteRows = remote.fetchInvolvingUser(userId)
+            val groups = groupRepository.observeGroupsForUser(userId).first()
+            val groupIds = groups.map { it.id }
+            val involvingRows = remote.fetchInvolvingUser(userId)
+            val groupRows =
+                if (groupIds.isEmpty()) {
+                    emptyList()
+                } else {
+                    remote.fetchByGroupIds(groupIds)
+                }
             SyncNetworkLog.info(
-                "payments plan: involvingUser=${remoteRows.size} " +
-                    "(2 GETs: from_user_id + to_user_id), then 1 GET per group",
+                "payments plan: involvingUser=${involvingRows.size} groups=${groupIds.size} " +
+                    "groupRows=${groupRows.size} — batched in() for group payments " +
+                    "(plus 2 GETs: from_user_id + to_user_id)",
             )
-            remoteRows.forEach { dto ->
+
+            val allDtos =
+                LinkedHashMap<String, PaymentDto>(involvingRows.size + groupRows.size)
+                    .apply {
+                        involvingRows.forEach { put(it.id, it) }
+                        groupRows.forEach { put(it.id, it) }
+                    }.values
+                    .toList()
+
+            allDtos.forEach { dto ->
                 runCatching { persistRemotePayment(dto) }
                     .onFailure { err ->
                         android.util.Log.w(
@@ -105,13 +124,26 @@ class PaymentInteractor
                         )
                     }
             }
-            groupRepository.observeGroupsForUser(userId).first().forEach { group ->
-                refreshGroupPayments(group.id)
+
+            val groupFetchComplete = isCompleteRemoteFetch(groupRows.size)
+            val groupRowsByGroup = groupRows.groupBy { it.groupId }
+            groups.forEach { group ->
+                val remoteForGroup = groupRowsByGroup[group.id].orEmpty()
+                pruneSyncedMissingRemote(
+                    localSyncedIds = paymentRepository.getSyncedIdsByGroup(group.id),
+                    remoteIds = remoteForGroup.map { it.id }.toSet(),
+                    remoteRowCount =
+                        if (groupFetchComplete) {
+                            remoteForGroup.size
+                        } else {
+                            REMOTE_FETCH_ROW_CAP
+                        },
+                )
             }
             pruneSyncedMissingRemote(
                 localSyncedIds = paymentRepository.getSyncedNonGroupIdsInvolvingUser(userId),
-                remoteIds = remoteRows.map { it.id }.toSet(),
-                remoteRowCount = remoteRows.size,
+                remoteIds = involvingRows.map { it.id }.toSet(),
+                remoteRowCount = involvingRows.size,
             )
         }
 
