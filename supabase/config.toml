@@ -1,0 +1,5 @@
+# Used by `supabase functions deploy` from the app repo.
+project_id = "adcshfmveuskukfobius"
+
+[functions.notify-group-members]
+verify_jwt = true

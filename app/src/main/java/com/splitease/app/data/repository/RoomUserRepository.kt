@@ -23,6 +23,9 @@ class RoomUserRepository
     ) : UserRepository {
         override fun observeUsers(): Flow<List<User>> = userDao.observeAll().map { rows -> rows.map { it.toDomain() } }
 
+        override fun observeUserById(id: String): Flow<User?> =
+            userDao.observeById(id).map { it.firstOrNull()?.toDomain() }
+
         override suspend fun getUserById(id: String): User? = userDao.getById(id)?.toDomain()
 
         override suspend fun getUserByEmail(email: String): User? = userDao.getByEmail(email)?.toDomain()
