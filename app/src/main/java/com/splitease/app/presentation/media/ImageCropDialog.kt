@@ -405,7 +405,7 @@ private fun CropActions(
         TextButton(onClick = onCancel) {
             Text(
                 text = stringResource(R.string.action_cancel),
-                color = SplitEaseColors.Positive,
+                color = SplitEaseColors.Primary,
             )
         }
         
@@ -425,7 +425,7 @@ private fun CropActions(
             TextButton(onClick = onUsePhoto) {
                 Text(
                     text = stringResource(R.string.action_done),
-                    color = SplitEaseColors.Positive,
+                    color = SplitEaseColors.Primary,
                 )
             }
         } else {
