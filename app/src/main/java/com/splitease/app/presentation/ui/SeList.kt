@@ -59,6 +59,10 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Leading icon well (pastel fill) with **16.dp rounded corners**.
+ * Do not remove the [RoundedCornerShape] clip or make this square.
+ */
 @Composable
 fun SeIconTile(
     icon: ImageVector,
@@ -86,6 +90,8 @@ fun SeIconTile(
 
 /**
  * Group icon tile that prefers a custom [photoUrl], otherwise falls back to the type icon.
+ * Photo well uses **14.dp rounded corners**; the type fallback uses [SeIconTile] (16.dp).
+ * Do not remove these clips or make the tiles square.
  */
 @Composable
 fun SeGroupIconTile(

@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1260,9 +1259,7 @@ private fun ExchangeRateRow(
                 style = MaterialTheme.typography.labelMedium,
                 color = SplitEaseColors.NavyMuted
             )
-            if (fxState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            } else {
+            if (!fxState.isLoading) {
                 Text(
                     text = if (fxState.source == ExchangeRateSource.LIVE)
                         stringResource(R.string.rate_source_live)

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Delete-account button does not incorrectly spin while checking balances and remains disabled until checking completes.
 - **Groups home load/refresh feel slow** — root causes and fixes:
   - UI no longer waits on the first full `observeOverallBalances` pass before painting the group list (`onStart { null }` + shimmer amounts). Cold opens with Room cache show names immediately.
   - Groups home skips the O(friends×groups) friend-balance matrix; overall balance math reuses one splits load (no per-group Room re-query).
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Push notifications for group ledger changes: Android 13 permission prompt, Account → Notifications (mute all), Group settings mute, tap opens the group; Edge Function honors `notification_prefs` and drops stale FCM tokens ([fcm-setup.md](docs/fcm-setup.md))
 
 ### Changed
+- Removed screen-level loaders and skeletons across the app (Home, Activity, Pin Board, Delete Account, Invite Link, Expense attachments/FX rate); action buttons still show their own loading state.
 - **Account tab** is the settings hub (`AccountScreen`): profile, spending, appearance, notifications, security, and sign out. The nested Settings hub composable is gone; currency and language stay on Account settings. Bottom-bar tab remains Account.
 - **Continue with Google** uses `isGoogleLoading` so the email Log in button does not spin while the Google picker is open (Sign up / invite-join likewise).
 - Typography scale in `Type.kt` raised ~2sp per Material role. `SePrimaryButton` / secondary / outlined height is **56dp**; `SeTopBar` content height **64dp**; `SeActionChip` 44dp; `SeListRow` has 16dp horizontal inset. `SeLayout.iconTile` (46) / `iconTileGap` (14dp) share one leading-icon rhythm on Activity and ledger rows.

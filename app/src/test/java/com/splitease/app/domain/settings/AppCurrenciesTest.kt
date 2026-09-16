@@ -49,9 +49,13 @@ class AppCurrenciesTest {
     }
 
     @Test
-    fun symbol_overrides_for_gulf_and_egypt() {
-        assertEquals("د.إ", AppCurrencies.symbol("AED"))
-        assertEquals("ر.س", AppCurrencies.symbol("SAR"))
-        assertEquals("ج.م", AppCurrencies.symbol("EGP"))
+    fun symbol_overrides_use_stable_display_forms() {
+        assertEquals("AED", AppCurrencies.symbol("AED"))
+        assertEquals("SAR", AppCurrencies.symbol("SAR"))
+        assertEquals("EGP", AppCurrencies.symbol("EGP"))
+        assertEquals("₹", AppCurrencies.symbol(AppCurrencies.INR, java.util.Locale.US))
+        assertEquals("$", AppCurrencies.symbol(AppCurrencies.USD, java.util.Locale.FRANCE))
+        assertEquals("€", AppCurrencies.symbol("EUR"))
+        assertEquals("£", AppCurrencies.symbol("GBP"))
     }
 }

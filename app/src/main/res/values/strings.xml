@@ -135,6 +135,7 @@
     <string name="msg_group_photo_saved">Group photo updated</string>
     <string name="image_crop_title">Adjust photo</string>
     <string name="image_crop_body">Pinch and drag to position the image in the frame.</string>
+    <string name="cd_rotate_photo">Rotate photo</string>
     <string name="msg_image_load_failed">Could not load that photo. Try another one.</string>
     <string name="action_use_photo">Use photo</string>
     <string name="label_group_type">Type</string>

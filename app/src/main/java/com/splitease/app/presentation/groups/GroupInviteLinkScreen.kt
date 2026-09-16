@@ -136,61 +136,33 @@ fun GroupInviteLinkScreen(
                 )
                 Spacer(modifier = Modifier.height(24.dp))
 
-                when {
-                    uiState.isLoading || uiState.isChanging -> {
-                        Row(
+                if (uiState.inviteUrl != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Box(
                             modifier =
                                 Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(SplitEaseColors.Primary),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp),
-                                color = SplitEaseColors.Primary,
-                                strokeWidth = 3.dp,
-                            )
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Text(
-                                text =
-                                    if (uiState.isChanging) {
-                                        stringResource(R.string.invite_link_changing)
-                                    } else {
-                                        stringResource(R.string.invite_link_loading)
-                                    },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SplitEaseColors.NavyMuted,
+                            Icon(
+                                imageVector = Icons.Filled.Link,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp),
                             )
                         }
-                    }
-                    uiState.inviteUrl != null -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(SplitEaseColors.Primary),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Link,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Text(
-                                text = uiState.inviteUrl.orEmpty(),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = SplitEaseColors.Navy,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Text(
+                            text = uiState.inviteUrl.orEmpty(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SplitEaseColors.Navy,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
 
@@ -212,6 +184,7 @@ fun GroupInviteLinkScreen(
                     icon = Icons.Filled.RemoveCircleOutline,
                     title = stringResource(R.string.action_change_link),
                     enabled = !uiState.isLoading && !uiState.isChanging,
+                    isLoading = uiState.isChanging,
                     onClick = { showChangeLinkConfirm = true },
                     showDivider = false,
                 )
@@ -311,6 +284,7 @@ private fun InviteLinkActionRow(
     title: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    isLoading: Boolean = false,
     showDivider: Boolean = true,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -322,17 +296,25 @@ private fun InviteLinkActionRow(
                     .padding(vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint =
-                    if (enabled) {
-                        SplitEaseColors.Navy
-                    } else {
-                        SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
-                    },
-                modifier = Modifier.size(24.dp),
-            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp).padding(2.dp),
+                    color = SplitEaseColors.Primary,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint =
+                        if (enabled) {
+                            SplitEaseColors.Navy
+                        } else {
+                            SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
+                        },
+                    modifier = Modifier.size(24.dp),
+                )
+            }
             Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = title,

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -124,6 +125,8 @@ data class ActivityFeedState(
     val isFiltered: Boolean = false,
     /** First-login full hydrate phase; subsequent opens stay [SyncState.IDLE]. */
     val syncState: SyncState = SyncState.IDLE,
+    /** True if a background fetch is currently running. */
+    val isFetching: Boolean = false,
 )
 
 @HiltViewModel
@@ -146,6 +149,8 @@ class ActivityViewModel
                 .observeSession()
                 .map { (it as? AuthSession.SignedIn)?.user?.userId }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+                
+        private val _isFetching = MutableStateFlow(false)
 
         init {
             viewModelScope.launch {
@@ -153,13 +158,13 @@ class ActivityViewModel
                     if (id == null) {
                         return@collect
                     }
-                    withContext(Dispatchers.IO) {
+                    _isFetching.value = true
+                    launch(Dispatchers.IO) {
                         if (!syncInteractor.hasCompletedInitialHydrate(id)) {
                             syncInteractor.markInitialHydrateStarted(id)
                         }
-                    }
-                    launch(Dispatchers.IO) {
                         runCatching { syncInteractor.syncForUser(id) }
+                        _isFetching.value = false
                     }
                 }
             }
@@ -215,7 +220,8 @@ class ActivityViewModel
                 listFilter,
                 debouncedSearchQuery,
                 syncInteractor.syncState,
-            ) { allItems, filter, query, sync ->
+                _isFetching,
+            ) { allItems, filter, query, sync, fetching ->
                 val visible =
                     allItems.filter { item ->
                         item.matches(filter) && item.matchesQuery(query)
@@ -225,15 +231,16 @@ class ActivityViewModel
                     hasAnyItems = allItems.isNotEmpty(),
                     isFiltered = filter != ActivityListFilter.ALL || query.isNotBlank(),
                     syncState = sync,
+                    isFetching = fetching,
                 )
-                ActivityPerfLog.emit("feed-state", "entries=${feedState.entries.size} filter=$filter query='$query' sync=$sync")
+                ActivityPerfLog.emit("feed-state", "entries=${feedState.entries.size} filter=$filter query='$query' sync=$sync fetching=$fetching")
                 feedState
             }.flowOn(Dispatchers.Default)
                 .distinctUntilChanged()
                 .stateIn(
                     viewModelScope,
                     SharingStarted.WhileSubscribed(5_000),
-                    ActivityFeedState(syncState = syncInteractor.syncState.value),
+                    ActivityFeedState(syncState = syncInteractor.syncState.value, isFetching = _isFetching.value),
                 )
 
         fun setListFilter(filter: ActivityListFilter) {
@@ -255,7 +262,9 @@ class ActivityViewModel
             viewModelScope.launch {
                 withContext(Dispatchers.IO) {
                     syncInteractor.markInitialHydrateStarted(id)
+                    _isFetching.value = true
                     runCatching { syncInteractor.syncForUser(id, force = true) }
+                    _isFetching.value = false
                 }
             }
         }
@@ -269,7 +278,9 @@ class ActivityViewModel
             viewModelScope.launch {
                 ActivityPerfLog.interaction("pull-to-refresh", "userId=$id")
                 withContext(Dispatchers.IO) {
+                    _isFetching.value = true
                     runCatching { syncInteractor.syncForUser(id, force = true) }
+                    _isFetching.value = false
                 }
             }
         }

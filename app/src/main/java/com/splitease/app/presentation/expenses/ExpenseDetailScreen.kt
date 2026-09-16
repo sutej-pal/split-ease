@@ -454,13 +454,7 @@ private fun ExpenseAttachmentThumbCard(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            ExpenseAttachmentThumbLoadState.Loading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                    color = SplitEaseColors.NavyMuted,
-                )
-            }
+            ExpenseAttachmentThumbLoadState.Loading -> Unit
             ExpenseAttachmentThumbLoadState.Failed -> Unit
         }
     }

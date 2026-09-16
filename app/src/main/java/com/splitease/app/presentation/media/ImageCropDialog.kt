@@ -6,25 +6,25 @@ import android.graphics.Rect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.RotateRight
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -34,11 +34,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.asImageBitmap
@@ -55,16 +54,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
-import com.splitease.app.presentation.theme.AmberDark
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.theme.TextPrimaryDark
 import com.splitease.app.presentation.ui.SeLayout
-import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
-import com.splitease.app.presentation.ui.SeTextButton
 import java.io.File
 import kotlin.math.max
-import kotlin.math.min
 
 private val CropFrameInset = 20.dp
 private val CropCornerBracket = 22.dp
@@ -86,7 +80,6 @@ fun ImageCropDialog(
     val context = LocalContext.current
     val density = LocalDensity.current
     val decodeMaxSide = (cropSpec.maxSidePx * 2).coerceAtLeast(cropSpec.maxSidePx)
-    
     val baseBitmap =
         remember(sourceUri, decodeMaxSide) {
             AvatarImageIO.decodeScaled(
@@ -101,23 +94,29 @@ fun ImageCropDialog(
             baseBitmap?.takeIf { !it.isRecycled }?.recycle()
         }
     }
-    
+
     var rotationTurns by remember(sourceUri) { mutableIntStateOf(0) }
-    
-    val sourceBitmap = remember(baseBitmap, rotationTurns) {
-        if (baseBitmap == null) return@remember null
-        val degrees = (rotationTurns % 4) * 90f
-        if (degrees == 0f) {
-            baseBitmap
-        } else {
-            val matrix = Matrix()
-            matrix.postRotate(degrees)
-            Bitmap.createBitmap(
-                baseBitmap, 0, 0, baseBitmap.width, baseBitmap.height, matrix, true
-            )
+    val sourceBitmap =
+        remember(baseBitmap, rotationTurns) {
+            if (baseBitmap == null) return@remember null
+            val degrees = (rotationTurns % 4) * 90f
+            if (degrees == 0f) {
+                baseBitmap
+            } else {
+                val matrix = Matrix()
+                matrix.postRotate(degrees)
+                Bitmap.createBitmap(
+                    baseBitmap,
+                    0,
+                    0,
+                    baseBitmap.width,
+                    baseBitmap.height,
+                    matrix,
+                    true,
+                )
+            }
         }
-    }
-    
+
     DisposableEffect(sourceBitmap) {
         onDispose {
             if (sourceBitmap != baseBitmap) {
@@ -126,12 +125,13 @@ fun ImageCropDialog(
         }
     }
 
-    val shell = SplitEaseColors.ShellBackground
+    val shell = MaterialTheme.colorScheme.background
+    val darkGlyphs = shell.luminance() > 0.5f
     SeSystemBars(
         statusBarColor = shell,
         navigationBarColor = shell,
-        statusBarDarkIcons = false,
-        navigationBarDarkIcons = false,
+        statusBarDarkIcons = darkGlyphs,
+        navigationBarDarkIcons = darkGlyphs,
     )
 
     Dialog(
@@ -152,6 +152,27 @@ fun ImageCropDialog(
                     .statusBarsPadding()
                     .navigationBarsPadding(),
         ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = SeLayout.detailHorizontal)
+                        .padding(top = 8.dp, bottom = 4.dp),
+            ) {
+                Text(
+                    text = cropTitle,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = cropBody,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.68f),
+                )
+            }
+
             if (sourceBitmap == null) {
                 Box(
                     modifier =
@@ -164,7 +185,7 @@ fun ImageCropDialog(
                     Text(
                         text = stringResource(R.string.msg_image_load_failed),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = TextPrimaryDark,
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
                 CropActions(
@@ -173,17 +194,9 @@ fun ImageCropDialog(
                     onCancel = onDismiss,
                 )
             } else {
-                var scale by remember { mutableFloatStateOf(1f) }
-                var offsetX by remember { mutableFloatStateOf(0f) }
-                var offsetY by remember { mutableFloatStateOf(0f) }
-                
-                DisposableEffect(rotationTurns) {
-                    scale = 1f
-                    offsetX = 0f
-                    offsetY = 0f
-                    onDispose { }
-                }
-                
+                var scale by remember(rotationTurns) { mutableFloatStateOf(1f) }
+                var offsetX by remember(rotationTurns) { mutableFloatStateOf(0f) }
+                var offsetY by remember(rotationTurns) { mutableFloatStateOf(0f) }
                 val imageBitmap = remember(sourceBitmap) { sourceBitmap.asImageBitmap() }
                 val cropMetrics = remember { CropMetrics() }
                 val aspectRatio = cropSpec.aspectRatio
@@ -307,7 +320,7 @@ fun ImageCropDialog(
 
                         val accent = Color.White
                         val stroke = 3.dp.toPx()
-                        
+
                         // Top-left
                         drawLine(accent, Offset(frameLeft, frameTop), Offset(frameLeft, frameTop + bracketLenPx), stroke)
                         drawLine(accent, Offset(frameLeft, frameTop), Offset(frameLeft + bracketLenPx, frameTop), stroke)
@@ -320,7 +333,7 @@ fun ImageCropDialog(
                         // Bottom-right
                         drawLine(accent, Offset(frameLeft + frameW, frameTop + frameH), Offset(frameLeft + frameW, frameTop + frameH - bracketLenPx), stroke)
                         drawLine(accent, Offset(frameLeft + frameW, frameTop + frameH), Offset(frameLeft + frameW - bracketLenPx, frameTop + frameH), stroke)
-                        
+
                         // Middle edges (thick white)
                         val midX = frameLeft + frameW / 2f
                         val midY = frameTop + frameH / 2f
@@ -396,7 +409,8 @@ private fun CropActions(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(SplitEaseColors.ShellSurface)
+                .background(MaterialTheme.colorScheme.surface)
+                .navigationBarsPadding()
                 .padding(horizontal = SeLayout.detailHorizontal)
                 .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -408,19 +422,19 @@ private fun CropActions(
                 color = SplitEaseColors.Primary,
             )
         }
-        
+
         if (onRotate != null) {
             IconButton(onClick = onRotate) {
                 Icon(
-                    imageVector = Icons.Filled.Refresh,
-                    contentDescription = "Rotate",
-                    tint = Color.White,
+                    imageVector = Icons.AutoMirrored.Filled.RotateRight,
+                    contentDescription = stringResource(R.string.cd_rotate_photo),
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
         } else {
             Spacer(modifier = Modifier.padding(24.dp))
         }
-        
+
         if (onUsePhoto != null) {
             TextButton(onClick = onUsePhoto) {
                 Text(

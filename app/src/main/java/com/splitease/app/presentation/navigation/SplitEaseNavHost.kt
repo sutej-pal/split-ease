@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -28,9 +29,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -286,6 +293,7 @@ object Routes {
  * bar collapsed, which read as two separate steps.
  */
 private const val NAV_TRANSITION_MS = 200
+private val BottomBarContentFade = 40.dp
 
 private val tabRoutes =
     setOf(
@@ -613,19 +621,45 @@ private fun SignedInNavHost(
                         clip = false,
                     ) + fadeOut(animationSpec = tween(NAV_TRANSITION_MS)),
             ) {
-                SplitEaseBottomBar(
-                    currentRoute = bottomBarSelectedRoute ?: lastSelectedTabRoute,
-                    activityUnreadCount = activityUnreadCount,
-                    onTabSelected = { tab ->
-                        navController.navigate(tab.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                val scrim = MaterialTheme.colorScheme.background
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer { clip = false }
+                            .drawBehind {
+                                val fadePx = BottomBarContentFade.toPx()
+                                drawRect(
+                                    brush =
+                                        Brush.verticalGradient(
+                                            colors =
+                                                listOf(
+                                                    Color.Transparent,
+                                                    scrim.copy(alpha = 0.55f),
+                                                    scrim,
+                                                ),
+                                            startY = -fadePx,
+                                            endY = size.height,
+                                        ),
+                                    topLeft = Offset(0f, -fadePx),
+                                    size = Size(size.width, size.height + fadePx),
+                                )
+                            },
+                ) {
+                    SplitEaseBottomBar(
+                        currentRoute = bottomBarSelectedRoute ?: lastSelectedTabRoute,
+                        activityUnreadCount = activityUnreadCount,
+                        onTabSelected = { tab ->
+                            navController.navigate(tab.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         },
     ) { padding ->

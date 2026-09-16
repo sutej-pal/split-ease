@@ -34,6 +34,7 @@ Track development phases. Always check this file at the start of a session to de
 - Ordered Supabase follow-ups: [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md)
 
 ### Carried-forward TODOs
+- **Screen-level loaders removed**: All screen-level loaders/skeletons were removed app-wide in favor of instant cache-backed rendering + empty states; only in-progress action buttons (save/delete/change-link) still show a loading indicator.
 - **Supabase architecture TODOs (ordered)** — ~~Remote delete tombstones~~ → ~~conflict policy~~ → ~~category sync (defaults)~~ → ~~pin-board boundary~~ → Edge Functions non-CRUD → ops hygiene ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md)).
 - **OTP ops** — App OTP flows shipped; live Confirm email / templates / SMTP stay on [release-checklist.md](docs/release-checklist.md) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
 - **Redeploy mail-service** — Recovery password-reset template lives in the mail-service; redeploy Vercel so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-email-otp.md)).

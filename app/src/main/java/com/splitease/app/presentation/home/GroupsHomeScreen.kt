@@ -90,18 +90,15 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeHeroBalancePair
-import com.splitease.app.presentation.ui.SeHeroBalancePairSkeleton
 import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.seShimmer
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePreview
-import com.splitease.app.presentation.ui.SePullRefreshBox
-import com.splitease.app.presentation.ui.SeShimmerHost
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.color
+import com.splitease.app.presentation.ui.seShimmer
 import java.math.BigDecimal
 
 /** How the groups list on Home is filtered. */
@@ -221,7 +218,6 @@ private fun GroupsHomeScreenContent(
                     balances.hasNonGroupActivity && nonGroupNet.matches(listFilter)
             }
         }
-    val showListSkeleton = (ui.isLoading || balances == null) && !showNonGroup
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -253,9 +249,7 @@ private fun GroupsHomeScreenContent(
         },
     ) { padding ->
         val layoutDirection = LocalLayoutDirection.current
-        SePullRefreshBox(
-            isRefreshing = ui.isRefreshing,
-            onRefresh = onRefresh,
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -265,39 +259,33 @@ private fun GroupsHomeScreenContent(
                         end = padding.calculateEndPadding(layoutDirection),
                     ),
         ) {
-            SeShimmerHost(enabled = freezeAmounts) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding =
-                        PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            bottom = bottomBarScrollPadding(includeFab = true),
-                        ),
-                ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = bottomBarScrollPadding(includeFab = true),
+                    ),
+            ) {
                     item {
                         Crossfade(
-                            targetState = freezeAmounts,
+                            targetState = ui.syncState == SyncState.FAILED,
                             label = "groups-hero-balances",
                             modifier = Modifier.fillMaxWidth(),
-                        ) { frozen ->
-                            when {
-                                frozen ->
-                                    SeHeroBalancePairSkeleton(
-                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                                    )
-                                ui.syncState == SyncState.FAILED ->
-                                    GroupsBalancesSyncError(
-                                        onRetry = onRetryHydrate,
-                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                                    )
-                                else ->
-                                    SeHeroBalancePair(
-                                        iOwe = balances?.totalIOweByCurrency.orEmpty(),
-                                        owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
-                                        currencyCode = ui.currencyCode,
-                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                                    )
+                        ) { isFailed ->
+                            if (isFailed) {
+                                GroupsBalancesSyncError(
+                                    onRetry = onRetryHydrate,
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                                )
+                            } else {
+                                SeHeroBalancePair(
+                                    iOwe = balances?.totalIOweByCurrency.orEmpty(),
+                                    owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
+                                    currencyCode = ui.currencyCode,
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                                )
                             }
                         }
                         GroupsFilterMenu(
@@ -309,21 +297,22 @@ private fun GroupsHomeScreenContent(
                         )
                     }
 
+                    val showListSkeleton = ui.isLoading && ui.allGroups.isEmpty()
                     if (showListSkeleton) {
                         items(6) {
                             GroupSkeletonListItem()
                         }
-                    } else if (ui.allGroups.isEmpty() && !showNonGroup) {
-                        item {
-                            SeEmptyState(
-                                message = stringResource(R.string.groups_empty_home),
-                                actionLabel = stringResource(R.string.action_create_group),
-                                onAction = onCreateGroup,
-                            )
+                    } else {
+                        if (ui.allGroups.isEmpty() && !showNonGroup) {
+                            item {
+                                SeEmptyState(
+                                    message = stringResource(R.string.groups_empty_home),
+                                    actionLabel = stringResource(R.string.action_create_group),
+                                    onAction = onCreateGroup,
+                                )
+                            }
                         }
-                    }
 
-                    if (!showListSkeleton) {
                         items(visibleGroups, key = { it.groupId }) { row ->
                             val group = ui.allGroups.firstOrNull { it.id == row.groupId }
                             GroupBalanceListItem(
@@ -332,58 +321,59 @@ private fun GroupsHomeScreenContent(
                                 icon = groupTypeIcon(group?.groupType),
                                 iconTint = groupTypeColor(group?.groupType),
                                 currencyFallback = ui.currencyCode,
+                                showAmounts = !freezeAmounts,
                                 onClick = { onOpenGroup(row.groupId) },
                                 onIconClick = { onChangeGroupPhoto(row.groupId) },
                                 iconContentDescription = changePhotoCd,
                             )
                         }
-                    }
 
-                    if (showNonGroup) {
-                        val liveBalances = checkNotNull(balances)
-                        item {
-                            NonGroupListItem(
-                                myNet = liveBalances.nonGroupMyNetByCurrency,
-                                debts = liveBalances.nonGroupDebts,
-                                currencyFallback = ui.currencyCode,
-                                onClick = onOpenNonGroup,
-                            )
+                        if (showNonGroup) {
+                            val liveBalances = checkNotNull(balances)
+                            item {
+                                NonGroupListItem(
+                                    myNet = liveBalances.nonGroupMyNetByCurrency,
+                                    debts = liveBalances.nonGroupDebts,
+                                    currencyFallback = ui.currencyCode,
+                                    showAmounts = !freezeAmounts,
+                                    onClick = onOpenNonGroup,
+                                )
+                            }
                         }
-                    }
 
-                    if (hiddenSettledCount > 0) {
-                        item {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = stringResource(R.string.groups_hiding_settled),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SeOutlinedButton(
-                                text =
-                                    pluralStringResource(
-                                        R.plurals.groups_show_settled,
-                                        hiddenSettledCount,
-                                        hiddenSettledCount,
-                                    ),
-                                onClick = { showSettledGroups = true },
-                            )
-                        }
-                    } else if (canHideSettled) {
-                        item {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SeTextButton(
-                                text = stringResource(R.string.groups_hide_settled),
-                                onClick = { showSettledGroups = false },
-                            )
+                        if (hiddenSettledCount > 0) {
+                            item {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = stringResource(R.string.groups_hiding_settled),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeOutlinedButton(
+                                    text =
+                                        pluralStringResource(
+                                            R.plurals.groups_show_settled,
+                                            hiddenSettledCount,
+                                            hiddenSettledCount,
+                                        ),
+                                    onClick = { showSettledGroups = true },
+                                )
+                            }
+                        } else if (canHideSettled) {
+                            item {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                SeTextButton(
+                                    text = stringResource(R.string.groups_hide_settled),
+                                    onClick = { showSettledGroups = false },
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
 
 private val GroupsHomeFilter.labelRes: Int
     get() =
@@ -583,6 +573,7 @@ private fun GroupBalanceListItem(
     onClick: () -> Unit,
     onIconClick: () -> Unit,
     iconContentDescription: String,
+    showAmounts: Boolean = true,
 ) {
     Row(
         modifier =
@@ -637,14 +628,16 @@ private fun GroupBalanceListItem(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
-            MyNetStatus(row.myNetByCurrency, currencyFallback)
-            row.simplifiedDebts
-                .filter { it.fromLabel == "You" || it.toLabel == "You" }
-                .take(3)
-                .forEach { debt ->
-                    Spacer(modifier = Modifier.height(2.dp))
-                    DebtLine(debt)
-                }
+            if (showAmounts) {
+                MyNetStatus(row.myNetByCurrency, currencyFallback)
+                row.simplifiedDebts
+                    .filter { it.fromLabel == "You" || it.toLabel == "You" }
+                    .take(3)
+                    .forEach { debt ->
+                        Spacer(modifier = Modifier.height(2.dp))
+                        DebtLine(debt)
+                    }
+            }
         }
     }
 }
@@ -655,6 +648,7 @@ private fun NonGroupListItem(
     debts: List<LabeledDebt>,
     currencyFallback: String,
     onClick: () -> Unit,
+    showAmounts: Boolean = true,
 ) {
     Row(
         modifier =
@@ -700,10 +694,12 @@ private fun NonGroupListItem(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
-            MyNetStatus(myNet, currencyFallback)
-            debts.take(3).forEach { debt ->
-                Spacer(modifier = Modifier.height(2.dp))
-                DebtLine(debt)
+            if (showAmounts) {
+                MyNetStatus(myNet, currencyFallback)
+                debts.take(3).forEach { debt ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    DebtLine(debt)
+                }
             }
         }
     }

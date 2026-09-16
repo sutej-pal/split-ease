@@ -1,7 +1,6 @@
 package com.splitease.app.presentation.activity
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -61,14 +60,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -88,12 +82,9 @@ import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeFab
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeLayout
-import com.splitease.app.presentation.ui.SeLineSkeleton
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePreview
-import com.splitease.app.presentation.ui.SePullRefreshBox
-import com.splitease.app.presentation.ui.SeShimmerProvider
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.seDetailHorizontal
@@ -220,9 +211,9 @@ fun ActivityScreen(
         },
     ) { padding ->
         val layoutDirection = LocalLayoutDirection.current
-        SePullRefreshBox(
-            isRefreshing = feed.syncState == SyncState.IN_PROGRESS,
-            onRefresh = viewModel::refreshFeed,
+        val isError = !feed.hasAnyItems && feed.syncState == SyncState.FAILED
+
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -232,9 +223,7 @@ fun ActivityScreen(
                         end = padding.calculateEndPadding(layoutDirection),
                     ),
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 if (showSearch) {
                     SeTextField(
                         value = query,
@@ -246,142 +235,67 @@ fun ActivityScreen(
                                 .padding(top = 4.dp, bottom = 4.dp),
                     )
                 }
-                Crossfade(
-                    targetState =
-                        when (feed.syncState) {
-                            SyncState.IN_PROGRESS -> 0
-                            SyncState.FAILED -> 1
-                            SyncState.IDLE,
-                            SyncState.COMPLETE,
-                            -> 2
-                        },
-                    label = "activity-feed",
-                    modifier = Modifier.fillMaxSize(),
-                ) { phase ->
-                    when (phase) {
-                        0 -> ActivityListSkeleton()
-                        1 ->
-                            ActivitySyncError(
-                                onRetry = viewModel::retryInitialHydrate,
-                                modifier =
-                                    Modifier
-                                        .seDetailHorizontal()
-                                        .padding(top = 16.dp),
-                            )
-                        else ->
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding =
-                                    PaddingValues(bottom = bottomBarScrollPadding(includeFab = true)),
-                            ) {
-                                if (feed.entries.isEmpty()) {
-                                    item(key = "empty", contentType = "empty") {
-                                        SeEmptyState(
-                                            message = emptyMessage,
-                                            icon = Icons.Filled.Receipt,
-                                            modifier = Modifier.seDetailHorizontal(),
-                                        )
+                if (isError) {
+                    ActivitySyncError(
+                        onRetry = viewModel::retryInitialHydrate,
+                        modifier =
+                            Modifier
+                                .seDetailHorizontal()
+                                .padding(top = 16.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                            PaddingValues(bottom = bottomBarScrollPadding(includeFab = true)),
+                    ) {
+                        if (feed.entries.isEmpty()) {
+                            item(key = "empty", contentType = "empty") {
+                                SeEmptyState(
+                                    message = emptyMessage,
+                                    icon = Icons.Filled.Receipt,
+                                    modifier = Modifier.seDetailHorizontal(),
+                                )
+                            }
+                        } else {
+                            feed.entries.forEach { entry ->
+                                when (entry) {
+                                    is ActivityListEntry.DayHeader -> {
+                                        stickyHeader(
+                                            key = entry.stableKey(),
+                                            contentType = "header",
+                                        ) {
+                                            ActivityDayHeader(day = entry.day)
+                                        }
                                     }
-                                } else {
-                                    feed.entries.forEach { entry ->
-                                        when (entry) {
-                                            is ActivityListEntry.DayHeader -> {
-                                                stickyHeader(
-                                                    key = entry.stableKey(),
-                                                    contentType = "header",
-                                                ) {
-                                                    ActivityDayHeader(day = entry.day)
-                                                }
-                                            }
-                                            is ActivityListEntry.Row -> {
-                                                item(
-                                                    key = entry.stableKey(),
-                                                    contentType = "row",
-                                                ) {
-                                                    val expenseId = entry.item.relatedExpenseId
-                                                    val onClick = remember(expenseId, onOpenExpense) {
-                                                        expenseId?.let { id ->
-                                                            {
-                                                                ActivityPerfLog.interaction("row-click", "expenseId=$id")
-                                                                onOpenExpense(id)
-                                                            }
-                                                        }
+                                    is ActivityListEntry.Row -> {
+                                        item(
+                                            key = entry.stableKey(),
+                                            contentType = "row",
+                                        ) {
+                                            val expenseId = entry.item.relatedExpenseId
+                                            val onClick = remember(expenseId, onOpenExpense) {
+                                                expenseId?.let { id ->
+                                                    {
+                                                        ActivityPerfLog.interaction("row-click", "expenseId=$id")
+                                                        onOpenExpense(id)
                                                     }
-                                                    ActivityRow(
-                                                        item = entry.item,
-                                                        onClick = onClick,
-                                                    )
                                                 }
                                             }
+                                            ActivityRow(
+                                                item = entry.item,
+                                                onClick = onClick,
+                                            )
                                         }
                                     }
                                 }
                             }
+                        }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ActivityListSkeleton(modifier: Modifier = Modifier) {
-    val loadingCd = stringResource(R.string.activity_loading)
-    SeShimmerProvider {
-        Column(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .semantics { contentDescription = loadingCd }
-                    .padding(bottom = bottomBarScrollPadding(includeFab = true)),
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = SeLayout.detailHorizontal)
-                        .padding(top = 16.dp, bottom = 8.dp),
-            ) {
-                SeLineSkeleton(widthFraction = 0.28f)
-            }
-            repeat(7) { ActivityRowSkeleton() }
-        }
-    }
-}
-
-@Composable
-private fun ActivityRowSkeleton() {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = SeLayout.detailHorizontal, vertical = 12.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(SeLayout.iconTileSize)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(SplitEaseColors.SurfaceMuted),
-            )
-            Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
-            Column(modifier = Modifier.weight(1f)) {
-                SeLineSkeleton(widthFraction = 0.86f)
-                Spacer(modifier = Modifier.height(10.dp))
-                SeLineSkeleton(widthFraction = 0.42f)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(modifier = Modifier.width(48.dp)) {
-                SeLineSkeleton(widthFraction = 1f)
-            }
-        }
-        HorizontalDivider(
-            modifier = Modifier.padding(start = activityDividerStart),
-            color = SplitEaseColors.Outline,
-        )
     }
 }
 
@@ -660,13 +574,7 @@ private fun ActivityScreenPreview() {
     }
 }
 
-@Preview(showBackground = true, heightDp = 400)
-@Composable
-private fun ActivitySkeletonPreview() {
-    SePreview {
-        ActivityListSkeleton()
-    }
-}
+
 
 @Preview(showBackground = true, heightDp = 240)
 @Composable

@@ -14,6 +14,7 @@ Do **not** invent alternate looks (custom accent schemes, one-off dialog skins) 
 ## Concrete rules
 
 - Prefer `presentation/ui/Se*` building blocks (`SeScreen`, `SeModal`, `SePrimaryButton`, `SeTextButton`, `SeListRow`, etc.) over raw Material widgets with custom colors.
+- **`SeIconTile` / `SeGroupIconTile` stay rounded** (`16.dp` / `14.dp`). Do not make them square. See `docs/locked-ui.md` and `docs/design-tokens.md`.
 - New modals/dialogs → use `SeModal` / `SeModalTitle` / `SeModalBody`.
 - Colors → brand vals in `presentation/theme/Color.kt`, `MaterialTheme.colorScheme` via `SplitEaseTheme`, and `SplitEaseColors` aliases. Do not hardcode hex outside theme files.
 - Screenshots or third-party UI mocks are **content/layout references** only; restyle them to the app theme unless the user says otherwise.

@@ -23,7 +23,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -277,13 +276,7 @@ private fun AttachmentGalleryPage(displayUri: String) {
         contentAlignment = Alignment.Center,
     ) {
         when (val imageLoad = loadState) {
-            AttachmentGalleryLoadState.Loading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = Color.White.copy(alpha = 0.7f),
-                    strokeWidth = 2.dp,
-                )
-            }
+            AttachmentGalleryLoadState.Loading -> Unit
             is AttachmentGalleryLoadState.Ready -> {
                 Image(
                     bitmap = imageLoad.bitmap,

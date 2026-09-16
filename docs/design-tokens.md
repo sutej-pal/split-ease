@@ -58,7 +58,7 @@ Do not invent per-screen title sizes (`headlineMedium` vs `titleMedium` vs `titl
 | Top bar height        | `SeTopBar`                  | 64.dp content height below status bar   |
 | Full-width buttons    | `SePrimaryButton` etc.      | 56.dp                                  |
 | Action chips          | `SeActionChip`              | 44.dp                                  |
-| Leading icon tile     | `SeLayout.iconTile`         | 46 dp                                  |
+| Leading icon tile     | `SeLayout.iconTile`         | 46 dp, **16.dp rounded** (see Locked shapes) |
 | Icon → text gap       | `SeLayout.iconTileGap`      | 14.dp                                  |
 | After icon tile       | `SeLayout.afterIconTile`    | tile + gap (60.dp)                     |
 | Horizontal inset      | `SeLayout.screenHorizontal` | 24.dp                                  |
@@ -102,3 +102,17 @@ Hero / banner titles on colored group headers, ledger amount lines, and in-list 
 | `labelLarge` | 16 / 22 sp | SemiBold (buttons) |
 | `labelMedium` | 14 / 18 sp | Medium |
 | `labelSmall` | 13 / 16 sp | Medium |
+
+## Locked shapes (do not change)
+
+These silhouettes are product decisions. Do **not** restyle them in a later prompt unless the user explicitly asks.
+
+| Component | Shape | Do not |
+| --------- | ----- | ------ |
+| `SeIconTile` | `RoundedCornerShape(16.dp)` | Do not remove the clip or make the tile square |
+| `SeGroupIconTile` (photo) | `RoundedCornerShape(14.dp)` | Do not remove the clip or make the photo square |
+| Home list icon skeleton (`GroupSkeletonListItem`) | `RoundedCornerShape(16.dp)` | Keep in sync with `SeIconTile` |
+
+Avatars (`SeAvatarBadge`) stay circular. Action chips and cards keep their own rounded radii.
+
+Canonical freeze list: [locked-ui.md](locked-ui.md).

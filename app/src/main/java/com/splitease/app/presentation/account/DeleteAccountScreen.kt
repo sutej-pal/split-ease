@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
@@ -99,9 +98,8 @@ private fun DeleteAccountContent(
     var showTypedConfirm by rememberSaveable { mutableStateOf(false) }
     val blocked = blockingGroups.isNotEmpty()
     val isCheckingBalances = isLoadingBalances || isRefreshingBalances
-    val showBlockingSection = isCheckingBalances || blocked
-    val busy = isDeleting || isRefreshingBalances
-    val canRequestDelete = !blocked && !isLoadingBalances && !busy
+    val showBlockingSection = !isCheckingBalances && blocked
+    val canRequestDelete = !blocked && !isCheckingBalances && !isDeleting
 
     BackHandler(enabled = isDeleting) { }
     LaunchedEffect(isDeleting, errorMessage) {
@@ -191,94 +189,58 @@ private fun DeleteAccountContent(
                     color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                SeShimmerHost(enabled = isCheckingBalances) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(SplitEaseColors.Surface),
-                    ) {
-                        if (isCheckingBalances) {
-                            val count = 3
-                            repeat(count) { index ->
-                                Row(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(32.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .seShimmer(),
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(SplitEaseColors.Surface),
+                ) {
+                    blockingGroups.forEachIndexed { index, group ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .alpha(if (isDeleting) 0.5f else 1f)
+                                    .clickable(
+                                        enabled = !isDeleting,
+                                        onClick = {
+                                            if (group.groupId.isNotBlank()) {
+                                                onOpenGroup(group.groupId)
+                                            } else {
+                                                onOpenNonGroupExpenses()
+                                            }
+                                        },
                                     )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    SeLineSkeleton(
-                                        modifier = Modifier.weight(1f),
-                                        widthFraction = 0.6f,
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
-                                if (index < count - 1) {
-                                    HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = SplitEaseColors.Outline,
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                    )
-                                }
-                            }
-                        } else {
-                            blockingGroups.forEachIndexed { index, group ->
-                                Row(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .alpha(if (busy) 0.5f else 1f)
-                                            .clickable(
-                                                enabled = !busy,
-                                                onClick = {
-                                                    if (group.groupId.isNotBlank()) {
-                                                        onOpenGroup(group.groupId)
-                                                    } else {
-                                                        onOpenNonGroupExpenses()
-                                                    }
-                                                },
-                                            )
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    SeIconTile(
-                                        icon = if (group.groupId.isNotBlank()) Icons.Filled.Group else Icons.Filled.Receipt,
-                                        tint = SplitEaseColors.YouOwe,
-                                        size = 32,
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = group.groupName,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = SplitEaseColors.Navy,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = SplitEaseColors.NavyMuted,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                                if (index < blockingGroups.lastIndex) {
-                                    HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = SplitEaseColors.Outline,
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                    )
-                                }
-                            }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SeIconTile(
+                                icon = if (group.groupId.isNotBlank()) Icons.Filled.Group else Icons.Filled.Receipt,
+                                tint = SplitEaseColors.YouOwe,
+                                size = 32,
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = group.groupName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = SplitEaseColors.Navy,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = SplitEaseColors.NavyMuted,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        if (index < blockingGroups.lastIndex) {
+                            HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = SplitEaseColors.Outline,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
                         }
                     }
                 }
@@ -293,12 +255,7 @@ private fun DeleteAccountContent(
                 },
                 enabled = canRequestDelete,
                 isLoading = isDeleting,
-                leadingIcon =
-                    when {
-                        isDeleting -> null
-                        !canRequestDelete -> Icons.Filled.Lock
-                        else -> Icons.Filled.Delete
-                    },
+                leadingIcon = if (isDeleting) null else Icons.Filled.Delete,
             )
             if (errorMessage != null) {
                 Spacer(modifier = Modifier.height(12.dp))

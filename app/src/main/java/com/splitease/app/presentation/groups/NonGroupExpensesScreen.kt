@@ -69,7 +69,6 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeOutlinedButton
-import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeSystemBars
 
@@ -182,9 +181,7 @@ fun NonGroupExpensesScreen(
 
             when (pane) {
                 NonGroupDetailPane.Expenses -> {
-                    SePullRefreshBox(
-                        isRefreshing = expensesUi.isRefreshing,
-                        onRefresh = { expensesViewModel.refreshMyExpenses(force = true) },
+                    Box(
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -226,9 +223,7 @@ fun NonGroupExpensesScreen(
                 }
 
                 NonGroupDetailPane.Balances -> {
-                    SePullRefreshBox(
-                        isRefreshing = expensesUi.isRefreshing,
-                        onRefresh = { expensesViewModel.refreshMyExpenses(force = true) },
+                    Box(
                         modifier =
                             Modifier
                                 .weight(1f)

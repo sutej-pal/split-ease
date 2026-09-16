@@ -90,9 +90,13 @@ object AppCurrencies {
 
     private val SYMBOL_OVERRIDES =
         mapOf(
-            "AED" to "د.إ",
-            "SAR" to "ر.س",
-            "EGP" to "ج.م",
+            "AED" to "AED",
+            "SAR" to "SAR",
+            "EGP" to "EGP",
+            "INR" to "₹",
+            "USD" to "$",
+            "EUR" to "€",
+            "GBP" to "£",
         )
 
     /**

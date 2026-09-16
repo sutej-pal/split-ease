@@ -83,7 +83,6 @@ import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
 import com.splitease.app.presentation.ui.SePrimaryButton
-import com.splitease.app.presentation.ui.SePullRefreshBox
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextButton
@@ -200,9 +199,7 @@ fun FriendsListScreen(
         },
     ) { padding ->
         val layoutDirection = LocalLayoutDirection.current
-        SePullRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = viewModel::refresh,
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()

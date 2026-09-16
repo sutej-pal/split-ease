@@ -25,6 +25,7 @@ Use this order to stay fast and consistent.
 - Supabase architecture TODOs (ordered): [supabase-architecture-todos.md](supabase-architecture-todos.md)
 - FCM / Realtime ops: [fcm-setup.md](fcm-setup.md)
 - Design tokens: [design-tokens.md](design-tokens.md)
+- Locked UI (do not restyle): [locked-ui.md](locked-ui.md)
 - Mail server repo notes: [splitease-server-repo.md](splitease-server-repo.md)
 
 ## 3) Phase docs
