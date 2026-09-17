@@ -489,7 +489,7 @@ private fun ExpenseAttachmentOverflowCard(
 }
 
 @Composable
-private fun ExpenseCommentRow(comment: ExpenseCommentUi) {
+internal fun ExpenseCommentRow(comment: ExpenseCommentUi) {
     val isSystem = comment.kind == ExpenseCommentKind.SYSTEM
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -862,7 +862,7 @@ private fun ExpenseTrendBars(
 }
 
 @Composable
-private fun ExpenseCommentBar(
+internal fun ExpenseCommentBar(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,

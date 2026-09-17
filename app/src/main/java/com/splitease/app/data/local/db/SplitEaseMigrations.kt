@@ -4,7 +4,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Incremental Room migrations for [SplitEaseDatabase] (exported schemas 1–5).
+ * Incremental Room migrations for [SplitEaseDatabase] (exported schemas 1–17).
  *
  * Replaces destructive upgrade for users moving between historical versions.
  */
@@ -118,196 +118,6 @@ object SplitEaseMigrations {
             }
         }
 
-    /** Adds optional header cover image path on `groups`. */
-    val MIGRATION_7_8 =
-        object : Migration(7, 8) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE `groups` ADD COLUMN `coverUrl` TEXT")
-            }
-        }
-
-    /** Adds optional multi-payer paid amount on expense splits. */
-    val MIGRATION_8_9 =
-        object : Migration(8, 9) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE `expense_splits` ADD COLUMN `paidAmount` TEXT")
-            }
-        }
-
-    /** Adds optional adjustment amount on expense splits. */
-    val MIGRATION_9_10 =
-        object : Migration(9, 10) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE `expense_splits` ADD COLUMN `adjustmentAmount` TEXT")
-            }
-        }
-
-    /** Adds expense comments + receipt photos (detail screen thread). */
-    val MIGRATION_10_11 =
-        object : Migration(10, 11) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS `expense_comments` (
-                        `id` TEXT NOT NULL,
-                        `expenseId` TEXT NOT NULL,
-                        `authorUserId` TEXT NOT NULL,
-                        `body` TEXT NOT NULL,
-                        `kind` TEXT NOT NULL,
-                        `createdAtEpochMs` INTEGER NOT NULL,
-                        `syncStatus` TEXT NOT NULL,
-                        PRIMARY KEY(`id`),
-                        FOREIGN KEY(`expenseId`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_expense_comments_expenseId` ON `expense_comments` (`expenseId`)",
-                )
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_expense_comments_createdAtEpochMs` ON `expense_comments` (`createdAtEpochMs`)",
-                )
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_expense_comments_syncStatus` ON `expense_comments` (`syncStatus`)",
-                )
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS `expense_photos` (
-                        `id` TEXT NOT NULL,
-                        `expenseId` TEXT NOT NULL,
-                        `createdByUserId` TEXT NOT NULL,
-                        `localPath` TEXT,
-                        `remoteUrl` TEXT,
-                        `createdAtEpochMs` INTEGER NOT NULL,
-                        `syncStatus` TEXT NOT NULL,
-                        PRIMARY KEY(`id`),
-                        FOREIGN KEY(`expenseId`) REFERENCES `expenses`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_expense_photos_expenseId` ON `expense_photos` (`expenseId`)",
-                )
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_expense_photos_createdAtEpochMs` ON `expense_photos` (`createdAtEpochMs`)",
-                )
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_expense_photos_syncStatus` ON `expense_photos` (`syncStatus`)",
-                )
-            }
-        }
-
-    /**
-     * Remaps legacy random default category ids to stable `cat_*` ids so co-members
-     * share the same `expenses.category_id` over the wire.
-     */
-    val MIGRATION_11_12 =
-        object : Migration(11, 12) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("PRAGMA foreign_keys=OFF")
-                STABLE_DEFAULT_CATEGORIES.forEach { (stableId, name, iconKey) ->
-                    db.execSQL(
-                        """
-                        UPDATE expenses
-                        SET categoryId = ?
-                        WHERE categoryId IN (
-                            SELECT id FROM categories
-                            WHERE lower(name) = lower(?)
-                              AND id != ?
-                              AND isDefault = 1
-                        )
-                        """.trimIndent(),
-                        arrayOf(stableId, name, stableId),
-                    )
-                    db.execSQL(
-                        """
-                        DELETE FROM categories
-                        WHERE lower(name) = lower(?)
-                          AND id != ?
-                          AND isDefault = 1
-                        """.trimIndent(),
-                        arrayOf(name, stableId),
-                    )
-                    db.execSQL(
-                        """
-                        INSERT OR IGNORE INTO categories (id, name, iconKey, isDefault, syncStatus)
-                        VALUES (?, ?, ?, 1, 'LOCAL_ONLY')
-                        """.trimIndent(),
-                        arrayOf(stableId, name, iconKey),
-                    )
-                }
-                db.execSQL("PRAGMA foreign_keys=ON")
-            }
-        }
-
-    /** Drops unused `groups.coverUrl` (header cover photo feature removed). */
-    val MIGRATION_12_13 =
-        object : Migration(12, 13) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("PRAGMA foreign_keys=OFF")
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS `groups_new` (
-                        `id` TEXT NOT NULL,
-                        `name` TEXT NOT NULL,
-                        `defaultCurrencyCode` TEXT NOT NULL,
-                        `groupType` TEXT NOT NULL,
-                        `photoUrl` TEXT,
-                        `createdByUserId` TEXT NOT NULL,
-                        `remoteId` TEXT,
-                        `createdAtEpochMs` INTEGER NOT NULL,
-                        `updatedAtEpochMs` INTEGER NOT NULL,
-                        `syncStatus` TEXT NOT NULL,
-                        PRIMARY KEY(`id`)
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL(
-                    """
-                    INSERT INTO `groups_new` (
-                        `id`, `name`, `defaultCurrencyCode`, `groupType`, `photoUrl`,
-                        `createdByUserId`, `remoteId`, `createdAtEpochMs`, `updatedAtEpochMs`,
-                        `syncStatus`
-                    )
-                    SELECT
-                        `id`, `name`, `defaultCurrencyCode`, `groupType`, `photoUrl`,
-                        `createdByUserId`, `remoteId`, `createdAtEpochMs`, `updatedAtEpochMs`,
-                        `syncStatus`
-                    FROM `groups`
-                    """.trimIndent(),
-                )
-                db.execSQL("DROP TABLE `groups`")
-                db.execSQL("ALTER TABLE `groups_new` RENAME TO `groups`")
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_groups_createdByUserId` ON `groups` (`createdByUserId`)",
-                )
-                db.execSQL("PRAGMA foreign_keys=ON")
-            }
-        }
-
-    /** Adds `pin_boards` table (Phase 7). */
-    val MIGRATION_13_14 =
-        object : Migration(13, 14) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS `pin_boards` (
-                        `groupId` TEXT NOT NULL,
-                        `content` TEXT NOT NULL,
-                        `updatedByUserId` TEXT,
-                        `updatedAtEpochMs` INTEGER NOT NULL,
-                        `syncStatus` TEXT NOT NULL,
-                        PRIMARY KEY(`groupId`),
-                        FOREIGN KEY(`groupId`) REFERENCES `groups`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
-                    )
-                    """.trimIndent(),
-                )
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS `index_pin_boards_groupId` ON `pin_boards` (`groupId`)",
-                )
-            }
-        }
-
     /** Adds currency conversion snapshot columns to `expenses` (Phase 7 FX). */
     val MIGRATION_14_15 =
         object : Migration(14, 15) {
@@ -334,6 +144,44 @@ object SplitEaseMigrations {
             }
         }
 
+    /** Adds snapshot fields to activity_events and removes foreign key constraint from expense_comments. */
+    val MIGRATION_16_17 =
+        object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotDescription` TEXT")
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotAmount` TEXT")
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotCurrency` TEXT")
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotGroupId` TEXT")
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotGroupName` TEXT")
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotCreatorUserId` TEXT")
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotCreatedAtEpochMs` INTEGER")
+                db.execSQL("ALTER TABLE `activity_events` ADD COLUMN `snapshotParticipantUserIds` TEXT")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `expense_comments_new` (
+                        `id` TEXT NOT NULL,
+                        `expenseId` TEXT NOT NULL,
+                        `authorUserId` TEXT NOT NULL,
+                        `body` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `createdAtEpochMs` INTEGER NOT NULL,
+                        `syncStatus` TEXT NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "INSERT INTO `expense_comments_new` (`id`, `expenseId`, `authorUserId`, `body`, `kind`, `createdAtEpochMs`, `syncStatus`) SELECT `id`, `expenseId`, `authorUserId`, `body`, `kind`, `createdAtEpochMs`, `syncStatus` FROM `expense_comments`",
+                )
+                db.execSQL("DROP TABLE `expense_comments`")
+                db.execSQL("ALTER TABLE `expense_comments_new` RENAME TO `expense_comments`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_expense_comments_expenseId` ON `expense_comments` (`expenseId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_expense_comments_createdAtEpochMs` ON `expense_comments` (`createdAtEpochMs`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_expense_comments_syncStatus` ON `expense_comments` (`syncStatus`)")
+            }
+        }
+
     private val STABLE_DEFAULT_CATEGORIES =
         listOf(
             Triple("cat_general", "General", "category_general"),
@@ -344,7 +192,7 @@ object SplitEaseMigrations {
             Triple("cat_entertainment", "Entertainment", "category_entertainment"),
         )
 
-    /** All migrations from version 1 through [SplitEaseDatabase] version 16. */
+    /** All migrations from version 1 through [SplitEaseDatabase] version 17. */
     val ALL =
         arrayOf(
             MIGRATION_1_2,
@@ -353,14 +201,8 @@ object SplitEaseMigrations {
             MIGRATION_4_5,
             MIGRATION_5_6,
             MIGRATION_6_7,
-            MIGRATION_7_8,
-            MIGRATION_8_9,
-            MIGRATION_9_10,
-            MIGRATION_10_11,
-            MIGRATION_11_12,
-            MIGRATION_12_13,
-            MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
+            MIGRATION_16_17,
         )
 }

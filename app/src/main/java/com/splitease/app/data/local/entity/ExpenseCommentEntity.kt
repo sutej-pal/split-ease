@@ -1,7 +1,6 @@
 package com.splitease.app.data.local.entity
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.splitease.app.domain.model.SyncStatus
@@ -11,14 +10,6 @@ import com.splitease.app.domain.model.SyncStatus
  */
 @Entity(
     tableName = "expense_comments",
-    foreignKeys = [
-        ForeignKey(
-            entity = ExpenseEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["expenseId"],
-            onDelete = ForeignKey.CASCADE,
-        ),
-    ],
     indices = [
         Index("expenseId"),
         Index("createdAtEpochMs"),

@@ -1,7 +1,7 @@
 package com.splitease.app.domain.model
 
 /**
- * Activity-feed event (create / update / delete of expenses).
+ * Activity-feed event (create / update / delete / restore of expenses).
  *
  * Synced to Supabase when [syncStatus] is [SyncStatus.PENDING]. Pre-v16 rows stay
  * [SyncStatus.LOCAL_ONLY] and are not uploaded. [isSeen] is device-local.
@@ -32,6 +32,14 @@ data class ActivityEvent(
     val remoteId: String? = null,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
     val isSeen: Boolean = false,
+    val snapshotDescription: String? = null,
+    val snapshotAmount: String? = null,
+    val snapshotCurrency: String? = null,
+    val snapshotGroupId: String? = null,
+    val snapshotGroupName: String? = null,
+    val snapshotCreatorUserId: String? = null,
+    val snapshotCreatedAtEpochMs: Long? = null,
+    val snapshotParticipantUserIds: String? = null,
 )
 
 /**
@@ -41,4 +49,5 @@ enum class ActivityEventKind {
     EXPENSE_ADDED,
     EXPENSE_UPDATED,
     EXPENSE_DELETED,
+    EXPENSE_RESTORED,
 }

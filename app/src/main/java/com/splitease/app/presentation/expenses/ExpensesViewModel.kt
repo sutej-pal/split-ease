@@ -12,6 +12,7 @@ import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.sync.GroupLiveSync
 import com.splitease.app.data.sync.SyncInteractor
 import com.splitease.app.domain.balance.BalanceCalculator
+import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Category
 import com.splitease.app.domain.model.ExchangeRateSource
@@ -27,6 +28,7 @@ import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
+import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.ExpenseCommentRepository
@@ -45,6 +47,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -200,6 +203,7 @@ class ExpensesViewModel
         private val paymentRepository: PaymentRepository,
         private val appSettingsRepository: AppSettingsRepository,
         private val groupLiveSync: GroupLiveSync,
+        private val activityEventRepository: ActivityEventRepository,
         private val currencyService: com.splitease.app.data.remote.ExchangeRateCurrencyService,
     ) : ViewModel() {
         private val userId: StateFlow<String?> =
@@ -1418,6 +1422,35 @@ class ExpensesViewModel
                 lower.contains("timeout") ||
                 lower.contains("network is unreachable") ||
                 lower.contains("no address associated with hostname")
+        }
+
+        private val activityEventFlows = ConcurrentHashMap<String, StateFlow<ActivityEvent?>>()
+        private val emptyActivityEvent = MutableStateFlow<ActivityEvent?>(null)
+
+        fun observeActivityEvent(eventId: String): StateFlow<ActivityEvent?> {
+            if (eventId.isBlank()) return emptyActivityEvent
+            return activityEventFlows.getOrPut(eventId) {
+                activityEventRepository
+                    .observeById(eventId)
+                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            }
+        }
+
+        fun restoreExpenseFromActivity(
+            eventId: String,
+            onRestored: (newExpenseId: String) -> Unit,
+        ) {
+            val me = userId.value ?: return
+            viewModelScope.launch {
+                val result = expenseInteractor.restoreExpenseFromActivity(eventId, me)
+                result.onSuccess { newExpenseId ->
+                    withContext(Dispatchers.Main) {
+                        onRestored(newExpenseId)
+                    }
+                }.onFailure { err ->
+                    _uiState.update { it.copy(errorMessage = err.localizedMessage ?: "Failed to restore expense") }
+                }
+            }
         }
 
         private companion object {

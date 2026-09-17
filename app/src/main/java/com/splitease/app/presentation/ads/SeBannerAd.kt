@@ -14,10 +14,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +65,7 @@ fun SeBannerAd(
     horizontalPadding: Dp = SeLayout.detailHorizontal,
     size: SeBannerAdSize = SeBannerAdSize.Anchored,
     showBottomDivider: Boolean = true,
+    onHeightChanged: (Dp) -> Unit = {},
 ) {
     if (LocalInspectionMode.current) {
         SeBannerAdPlaceholder(
@@ -71,13 +74,24 @@ fun SeBannerAd(
             tall = size is SeBannerAdSize.Inline,
             showBottomDivider = showBottomDivider,
         )
+        val previewHeight = if (size is SeBannerAdSize.Inline) 90.dp else 50.dp
+        val currentOnHeightChanged = rememberUpdatedState(onHeightChanged)
+        LaunchedEffect(size, showBottomDivider) {
+            currentOnHeightChanged.value(previewHeight + 8.dp + if (showBottomDivider) 9.dp else 0.dp)
+        }
         return
     }
 
-    if (!AdConfig.isEnabled || adUnitId.isBlank()) return
+    if (!AdConfig.isEnabled || adUnitId.isBlank()) {
+        LaunchedEffect(Unit) { onHeightChanged(0.dp) }
+        return
+    }
 
     val canRequestAds by AdConsentManager.canRequestAds
-    if (!canRequestAds) return
+    if (!canRequestAds) {
+        LaunchedEffect(Unit) { onHeightChanged(0.dp) }
+        return
+    }
 
     val context = LocalContext.current
 
@@ -103,19 +117,21 @@ fun SeBannerAd(
                     AdSize.getInlineAdaptiveBannerAdSize(adWidthDp, maxHeight)
                 }
             }
-        val placeholderHeight =
-            when (size) {
-                is SeBannerAdSize.Anchored -> 50.dp
-                is SeBannerAdSize.Inline ->
-                    (size.maxHeightDp ?: availableHeightDp.coerceAtMost(280))
-                        .coerceAtLeast(120)
-                        .dp
-            }
 
         // Recreate AdView when width/orientation changes; AdSize cannot be updated in place.
         key(adUnitId, size, adWidthDp, resolvedAdSize) {
             var isLoaded by remember { mutableStateOf(false) }
             var loadFailed by remember { mutableStateOf(false) }
+
+            val currentOnHeightChanged = rememberUpdatedState(onHeightChanged)
+            LaunchedEffect(resolvedAdSize, loadFailed) {
+                val height = if (loadFailed) {
+                    0.dp
+                } else {
+                    resolvedAdSize.height.dp + 8.dp + if (showBottomDivider) 9.dp else 0.dp
+                }
+                currentOnHeightChanged.value(height)
+            }
 
             if (!loadFailed) {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -124,13 +140,7 @@ fun SeBannerAd(
                             Modifier
                                 .fillMaxWidth()
                                 .padding(top = 8.dp)
-                                .then(
-                                    if (isLoaded) {
-                                        Modifier
-                                    } else {
-                                        Modifier.height(placeholderHeight)
-                                    },
-                                ),
+                                .height(resolvedAdSize.height.dp),
                     ) {
                         AndroidView(
                             factory = {
@@ -169,6 +179,10 @@ fun SeBannerAd(
                             color = SplitEaseColors.Outline,
                         )
                     }
+                }
+            } else {
+                LaunchedEffect(Unit) {
+                    currentOnHeightChanged.value(0.dp)
                 }
             }
         }

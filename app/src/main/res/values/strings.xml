@@ -353,6 +353,10 @@
     <string name="activity_added_in">%1$s added %2$s in %3$s</string>
     <string name="activity_updated_in">%1$s updated %2$s in %3$s</string>
     <string name="activity_deleted_in">%1$s deleted %2$s in %3$s</string>
+    <string name="activity_restored_in">%1$s restored %2$s in %3$s</string>
+    <string name="action_restore">Restore</string>
+    <string name="activity_added_by">Added by %1$s on %2$s</string>
+    <string name="activity_deleted_by">Deleted by %1$s on %2$s</string>
     <string name="activity_you_get_back">You get back %1$s</string>
     <string name="activity_you_owe">you owe %1$s</string>
     <string name="activity_you_received">You received %1$s</string>

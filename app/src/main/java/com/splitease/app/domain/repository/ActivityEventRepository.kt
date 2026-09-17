@@ -40,4 +40,7 @@ interface ActivityEventRepository {
 
     /** Returns an event by id, or null if not found. */
     suspend fun getById(id: String): ActivityEvent?
+
+    /** Observes an event by id. */
+    fun observeById(id: String): Flow<ActivityEvent?>
 }

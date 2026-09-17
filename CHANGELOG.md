@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Add Expense ad banner height is now dynamic based on adaptive ad size (AdSize.getHeight()), preventing it from covering form content when notes expand.
 - Delete-account button does not incorrectly spin while checking balances and remains disabled until checking completes.
 - **Groups home load/refresh feel slow** — root causes and fixes:
   - UI no longer waits on the first full `observeOverallBalances` pass before painting the group list (`onStart { null }` + shimmer amounts). Cold opens with Room cache show names immediately.
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add-expense “Total after exchange” is hidden until the amount is a positive number.
 
 ### Added
+- **Activity snapshots & Restore** — Activity log entries persist full expense snapshots (description, amount, currency, group, creator/timestamp) at write time. Activity feed and detail screens render directly from snapshots. Deleted entries show strikethrough amounts in the feed, have a deleted-entry detail screen with a Restore action (re-creates an independent expense and logs a `restored` activity entry), and support persistent comment threads.
 - Delete-account blocked-balance rows are tappable: they open the group (or Non-group expenses) so you can settle before retrying. Checking balances shows a shimmer list and “Checking balances…” status.
 - **Activity cross-device sync** — expense create/update/delete events flush to Supabase `activity_events` and pull onto other devices. Room v16 adds `remoteId` / `syncStatus` / `isSeen` without uploading pre-existing local history. SQL: [migration_db.sql](docs/sql/migration_db.sql). Unread badge on the Activity tab; leaving the feed marks events seen.
 - **Common ISO currency catalog** (~30 codes in `AppCurrencies`) and **Group Totals per-currency breakdown** when a period mixes currencies.
@@ -32,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Push notifications for group ledger changes: Android 13 permission prompt, Account → Notifications (mute all), Group settings mute, tap opens the group; Edge Function honors `notification_prefs` and drops stale FCM tokens ([fcm-setup.md](docs/fcm-setup.md))
 
 ### Changed
+- Added delete/trash icon to Account Settings "Delete account" button with 8dp spacing and destructive color.
+- Removed skeleton loader on Groups screen, replacing initial loading with centered progress indicator.
 - Removed screen-level loaders and skeletons across the app (Home, Activity, Pin Board, Delete Account, Invite Link, Expense attachments/FX rate); action buttons still show their own loading state.
 - **Account tab** is the settings hub (`AccountScreen`): profile, spending, appearance, notifications, security, and sign out. The nested Settings hub composable is gone; currency and language stay on Account settings. Bottom-bar tab remains Account.
 - **Continue with Google** uses `isGoogleLoading` so the email Log in button does not spin while the Google picker is open (Sign up / invite-join likewise).

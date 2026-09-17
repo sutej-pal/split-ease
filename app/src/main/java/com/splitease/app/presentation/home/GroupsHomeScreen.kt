@@ -32,7 +32,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -297,10 +299,19 @@ private fun GroupsHomeScreenContent(
                         )
                     }
 
-                    val showListSkeleton = ui.isLoading && ui.allGroups.isEmpty()
-                    if (showListSkeleton) {
-                        items(6) {
-                            GroupSkeletonListItem()
+                    val showLoading = ui.isLoading && ui.allGroups.isEmpty()
+                    if (showLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 48.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    color = SplitEaseColors.Primary,
+                                )
+                            }
                         }
                     } else {
                         if (ui.allGroups.isEmpty() && !showNonGroup) {
@@ -511,57 +522,6 @@ private fun SeSplitMoneyLine(
     )
 }
 
-@Composable
-private fun GroupSkeletonListItem() {
-    val loadingCd = stringResource(R.string.groups_fetching)
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .semantics { contentDescription = loadingCd }
-                .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .seShimmer(),
-        )
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.5f)
-                        .height(16.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .seShimmer(),
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.3f)
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .seShimmer(),
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.4f)
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .seShimmer(),
-            )
-        }
-    }
-}
 
 @Composable
 private fun GroupBalanceListItem(

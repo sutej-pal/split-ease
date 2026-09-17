@@ -1069,7 +1069,7 @@ class ExpenseInteractor
         ) {
             val groupName =
                 expense.groupId?.let { id -> groupRepository.getGroupById(id)?.name }
-            val context = groupName ?: "Non-group"
+            val context = groupName ?: appContext.getString(R.string.non_group_expenses)
             val date =
                 DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(expense.expenseDateEpochMs))
             val titlePrefix =
@@ -1077,6 +1077,7 @@ class ExpenseInteractor
                     ActivityEventKind.EXPENSE_ADDED -> ""
                     ActivityEventKind.EXPENSE_UPDATED -> "Updated: "
                     ActivityEventKind.EXPENSE_DELETED -> "Deleted: "
+                    ActivityEventKind.EXPENSE_RESTORED -> "Restored: "
                 }
             val involved =
                 (participantIds + expense.paidByUserId + actorUserId)
@@ -1096,9 +1097,114 @@ class ExpenseInteractor
                     sortEpochMs = System.currentTimeMillis(),
                     syncStatus = SyncStatus.PENDING,
                     isSeen = true,
+                    snapshotDescription = expense.description,
+                    snapshotAmount = expense.amount.toPlainString(),
+                    snapshotCurrency = expense.currencyCode,
+                    snapshotGroupId = expense.groupId,
+                    snapshotGroupName = context,
+                    snapshotCreatorUserId = expense.paidByUserId,
+                    snapshotCreatedAtEpochMs = expense.createdAtEpochMs.takeIf { it > 0L } ?: expense.expenseDateEpochMs,
+                    snapshotParticipantUserIds = participantIds.distinct().sorted().joinToString(prefix = ",", postfix = ",", separator = ","),
                 ),
             )
         }
+
+        /**
+         * Restores an expense from a deleted activity event, creating a new independent active expense record
+         * and logging a new EXPENSE_RESTORED activity event.
+         */
+        suspend fun restoreExpenseFromActivity(
+            eventId: String,
+            actorUserId: String,
+        ): Result<String> =
+            runCatching {
+                val event =
+                    activityEventRepository.getById(eventId)
+                        ?: error("Activity event not found.")
+                val description = event.snapshotDescription ?: event.title.removePrefix("Deleted: ").trim()
+                val amountStr = event.snapshotAmount ?: "0.00"
+                val amount = BigDecimal(amountStr)
+                val currency = event.snapshotCurrency ?: AppCurrencies.DEFAULT
+                val groupId = event.snapshotGroupId
+                val groupName = event.snapshotGroupName
+                val participantIds =
+                    event.snapshotParticipantUserIds
+                        ?.split(",")
+                        ?.filter { it.isNotBlank() }
+                        ?.toSet()
+                        ?: setOf(event.snapshotCreatorUserId ?: actorUserId)
+
+                val now = System.currentTimeMillis()
+                val newExpenseId = UUID.randomUUID().toString()
+                val newExpense =
+                    Expense(
+                        id = newExpenseId,
+                        description = description,
+                        amount = amount,
+                        currencyCode = currency,
+                        groupId = groupId,
+                        paidByUserId = event.snapshotCreatorUserId ?: actorUserId,
+                        expenseDateEpochMs = event.snapshotCreatedAtEpochMs ?: now,
+                        categoryId = null,
+                        splitType = SplitType.EQUAL,
+                        remoteId = null,
+                        createdAtEpochMs = now,
+                        updatedAtEpochMs = now,
+                        syncStatus = SyncStatus.PENDING,
+                    )
+                val splitAmount =
+                    if (participantIds.isNotEmpty()) {
+                        amount.divide(BigDecimal(participantIds.size), 2, java.math.RoundingMode.HALF_UP)
+                    } else {
+                        amount
+                    }
+                val splits =
+                    participantIds.map { uid ->
+                        ExpenseSplit(
+                            id = UUID.randomUUID().toString(),
+                            expenseId = newExpenseId,
+                            userId = uid,
+                            owedAmount = splitAmount,
+                            adjustmentAmount = null,
+                            syncStatus = SyncStatus.PENDING,
+                        )
+                    }
+                expenseRepository.upsertExpenseWithSplits(newExpense, splits)
+
+                val context = groupName ?: appContext.getString(R.string.non_group_expenses)
+                val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(newExpense.expenseDateEpochMs))
+                val involved =
+                    (participantIds + newExpense.paidByUserId + actorUserId)
+                        .distinct()
+                        .sorted()
+                        .joinToString(prefix = ",", postfix = ",", separator = ",")
+
+                activityEventRepository.upsert(
+                    ActivityEvent(
+                        id = UUID.randomUUID().toString(),
+                        kind = ActivityEventKind.EXPENSE_RESTORED,
+                        title = appContext.getString(R.string.activity_restored_in, "You", description, context),
+                        subtitle = "$context · $date",
+                        amountLabel = "$currency ${amount.toPlainString()}",
+                        actorUserId = actorUserId,
+                        relatedExpenseId = newExpenseId,
+                        involvedUserIds = involved,
+                        sortEpochMs = System.currentTimeMillis(),
+                        syncStatus = SyncStatus.PENDING,
+                        isSeen = true,
+                        snapshotDescription = description,
+                        snapshotAmount = amount.toPlainString(),
+                        snapshotCurrency = currency,
+                        snapshotGroupId = groupId,
+                        snapshotGroupName = context,
+                        snapshotCreatorUserId = newExpense.paidByUserId,
+                        snapshotCreatedAtEpochMs = newExpense.expenseDateEpochMs,
+                        snapshotParticipantUserIds = participantIds.joinToString(prefix = ",", postfix = ",", separator = ","),
+                    ),
+                )
+                scheduleCloudPush(newExpenseId)
+                newExpenseId
+            }
 
         private suspend fun persistRemoteExpenseBatch(dtos: List<ExpenseDto>) {
             if (dtos.isEmpty()) return

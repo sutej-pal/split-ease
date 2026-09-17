@@ -65,6 +65,7 @@ import com.splitease.app.presentation.auth.rememberContinueWithGoogle
 import com.splitease.app.presentation.expenses.AddExpensePickerScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.CurrencyConversionScreen
+import com.splitease.app.presentation.expenses.DeletedExpenseDetailScreen
 import com.splitease.app.presentation.expenses.ExpenseAttachmentsGalleryScreen
 import com.splitease.app.presentation.expenses.ExpenseDetailScreen
 import com.splitease.app.presentation.expenses.FriendDetailScreen
@@ -146,6 +147,7 @@ object Routes {
         "add_expense?groupId={groupId}&friendUserId={friendUserId}&expenseId={expenseId}"
     const val ADD_EXPENSE_PICKER = "add_expense_picker"
     const val EXPENSE_DETAIL = "expense_detail/{expenseId}"
+    const val DELETED_EXPENSE_DETAIL = "deleted_expense_detail/{eventId}"
     const val EXPENSE_ATTACHMENTS =
         "expense_attachments/{expenseId}?startIndex={startIndex}"
     const val PIN_BOARD = "pin_board/{groupId}"
@@ -183,6 +185,8 @@ object Routes {
     fun friendSettings(friendUserId: String) = "friend_settings/$friendUserId"
 
     fun expenseDetail(expenseId: String) = "expense_detail/$expenseId"
+
+    fun deletedExpenseDetail(eventId: String) = "deleted_expense_detail/$eventId"
 
     fun expenseAttachments(
         expenseId: String,
@@ -714,6 +718,7 @@ private fun SignedInNavHost(
             composable(Routes.TAB_ACTIVITY) {
                 ActivityScreen(
                     onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
+                    onOpenDeletedActivity = { eventId -> navController.navigate(Routes.deletedExpenseDetail(eventId)) },
                     onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                 )
             }
@@ -1260,6 +1265,21 @@ private fun SignedInNavHost(
                     },
                     onOpenAttachments = { id, startIndex ->
                         navController.navigate(Routes.expenseAttachments(id, startIndex))
+                    },
+                )
+            }
+            composable(
+                route = Routes.DELETED_EXPENSE_DETAIL,
+                arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+            ) { entry ->
+                val eventId = entry.arguments?.getString("eventId").orEmpty()
+                DeletedExpenseDetailScreen(
+                    eventId = eventId,
+                    onBack = { navController.popBackStack() },
+                    onRestored = { newExpenseId ->
+                        navController.navigate(Routes.expenseDetail(newExpenseId)) {
+                            popUpTo(Routes.TAB_ACTIVITY)
+                        }
                     },
                 )
             }

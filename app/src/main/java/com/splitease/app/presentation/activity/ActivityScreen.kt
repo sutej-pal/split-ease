@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
@@ -62,6 +63,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -96,6 +98,7 @@ import java.time.format.FormatStyle
 @Composable
 fun ActivityScreen(
     onOpenExpense: (expenseId: String) -> Unit = {},
+    onOpenDeletedActivity: (eventId: String) -> Unit = {},
     onAddExpense: () -> Unit = {},
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
@@ -274,12 +277,21 @@ fun ActivityScreen(
                                             key = entry.stableKey(),
                                             contentType = "row",
                                         ) {
+                                            val eventId = entry.item.id.removePrefix("event-")
                                             val expenseId = entry.item.relatedExpenseId
-                                            val onClick = remember(expenseId, onOpenExpense) {
-                                                expenseId?.let { id ->
+                                            val kind = entry.item.kind
+                                            val onClick = remember(expenseId, eventId, kind, onOpenExpense, onOpenDeletedActivity) {
+                                                if (kind == ActivityKind.EXPENSE_DELETED) {
                                                     {
-                                                        ActivityPerfLog.interaction("row-click", "expenseId=$id")
-                                                        onOpenExpense(id)
+                                                        ActivityPerfLog.interaction("row-click", "deletedEventId=$eventId")
+                                                        onOpenDeletedActivity(eventId)
+                                                    }
+                                                } else {
+                                                    expenseId?.let { id ->
+                                                        {
+                                                            ActivityPerfLog.interaction("row-click", "expenseId=$id")
+                                                            onOpenExpense(id)
+                                                        }
                                                     }
                                                 }
                                             }
@@ -423,6 +435,7 @@ private fun ActivityRow(
                 ActivityKind.EXPENSE -> Icons.Filled.Receipt
                 ActivityKind.EXPENSE_UPDATED -> Icons.Filled.Edit
                 ActivityKind.EXPENSE_DELETED -> Icons.Filled.Delete
+                ActivityKind.EXPENSE_RESTORED -> Icons.Filled.Refresh
                 ActivityKind.PAYMENT -> Icons.Filled.Payments
                 ActivityKind.GROUP_CREATED -> Icons.Filled.Group
             }
@@ -432,6 +445,7 @@ private fun ActivityRow(
             ActivityKind.EXPENSE -> SplitEaseColors.Primary
             ActivityKind.EXPENSE_UPDATED -> SplitEaseColors.Primary
             ActivityKind.EXPENSE_DELETED -> SplitEaseColors.YouOwe
+            ActivityKind.EXPENSE_RESTORED -> SplitEaseColors.Primary
             ActivityKind.PAYMENT -> SplitEaseColors.OwedToYou
             ActivityKind.GROUP_CREATED -> SplitEaseColors.IconFriends
         }
@@ -440,6 +454,7 @@ private fun ActivityRow(
             item.kind == ActivityKind.EXPENSE ||
                 item.kind == ActivityKind.EXPENSE_UPDATED ||
                 item.kind == ActivityKind.EXPENSE_DELETED ||
+                item.kind == ActivityKind.EXPENSE_RESTORED ||
                 item.kind == ActivityKind.PAYMENT
         }
     val amountTone =
@@ -477,11 +492,15 @@ private fun ActivityRow(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = item.balanceLabel.orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            textDecoration = if (item.kind == ActivityKind.EXPENSE_DELETED) TextDecoration.LineThrough else null
+                        ),
                         fontWeight = FontWeight.SemiBold,
                         color =
                             if (item.balanceLabel.isNullOrBlank()) {
                                 Color.Transparent
+                            } else if (item.kind == ActivityKind.EXPENSE_DELETED) {
+                                SplitEaseColors.YouOwe
                             } else {
                                 amountTone
                             },

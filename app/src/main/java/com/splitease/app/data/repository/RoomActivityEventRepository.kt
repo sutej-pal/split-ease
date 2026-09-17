@@ -53,6 +53,9 @@ class RoomActivityEventRepository
         override suspend fun getById(id: String): ActivityEvent? =
             activityEventDao.getById(id)?.toDomain()
 
+        override fun observeById(id: String): Flow<ActivityEvent?> =
+            activityEventDao.observeById(id).map { it?.toDomain() }
+
         private fun ActivityEvent.toEntity(): ActivityEventEntity =
             ActivityEventEntity(
                 id = id,
@@ -67,6 +70,14 @@ class RoomActivityEventRepository
                 remoteId = remoteId,
                 syncStatus = syncStatus.name,
                 isSeen = isSeen,
+                snapshotDescription = snapshotDescription,
+                snapshotAmount = snapshotAmount,
+                snapshotCurrency = snapshotCurrency,
+                snapshotGroupId = snapshotGroupId,
+                snapshotGroupName = snapshotGroupName,
+                snapshotCreatorUserId = snapshotCreatorUserId,
+                snapshotCreatedAtEpochMs = snapshotCreatedAtEpochMs,
+                snapshotParticipantUserIds = snapshotParticipantUserIds,
             )
 
         private fun ActivityEventEntity.toDomain(): ActivityEvent =
@@ -87,5 +98,13 @@ class RoomActivityEventRepository
                     runCatching { SyncStatus.valueOf(syncStatus) }
                         .getOrDefault(SyncStatus.LOCAL_ONLY),
                 isSeen = isSeen,
+                snapshotDescription = snapshotDescription,
+                snapshotAmount = snapshotAmount,
+                snapshotCurrency = snapshotCurrency,
+                snapshotGroupId = snapshotGroupId,
+                snapshotGroupName = snapshotGroupName,
+                snapshotCreatorUserId = snapshotCreatorUserId,
+                snapshotCreatedAtEpochMs = snapshotCreatedAtEpochMs,
+                snapshotParticipantUserIds = snapshotParticipantUserIds,
             )
     }

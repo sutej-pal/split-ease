@@ -2,7 +2,7 @@
 
 Canonical schema reference for Room entities and Supabase tables. Updated whenever a schema changes.
 
-Room version: **16** (`app/schemas/`). v14 added `pin_boards`; v15 added expense FX snapshot columns; v16 added `activity_events.remoteId` / `syncStatus` / `isSeen`.
+Room version: **17** (`app/schemas/`). v14 added `pin_boards`; v15 added expense FX snapshot columns; v16 added `activity_events.remoteId` / `syncStatus` / `isSeen`; v17 added activity event snapshots and `EXPENSE_RESTORED`.
 
 ## Room Entities
 
@@ -168,7 +168,7 @@ Unique index: `(expenseId, userId)`.
 | Column           | Type      | Nullable | Description                                              |
 | ---------------- | --------- | -------- | -------------------------------------------------------- |
 | id               | TEXT (PK) | no       | Local UUID (same id on the wire when flushed)            |
-| kind             | TEXT      | no       | `EXPENSE_ADDED` / `EXPENSE_UPDATED` / `EXPENSE_DELETED`  |
+| kind             | TEXT      | no       | `EXPENSE_ADDED` / `EXPENSE_UPDATED` / `EXPENSE_DELETED` / `EXPENSE_RESTORED` |
 | title            | TEXT      | no       | Primary label                                            |
 | subtitle         | TEXT      | no       | Secondary label                                          |
 | amountLabel      | TEXT      | no       | Amount text snapshot                                     |
@@ -179,6 +179,14 @@ Unique index: `(expenseId, userId)`.
 | remoteId         | TEXT      | yes      | Cloud id when synced (Room v16)                          |
 | syncStatus       | TEXT      | no       | Sync bookmark. Pre-v16 rows stay `LOCAL_ONLY` (not pushed) |
 | isSeen           | INTEGER   | no       | Device-local unread flag (Room v16; not stored in cloud) |
+| snapshotDescription | TEXT   | yes      | Expense description snapshot                             |
+| snapshotAmount   | TEXT      | yes      | Expense amount snapshot                                  |
+| snapshotCurrency | TEXT      | yes      | Expense currency snapshot                                |
+| snapshotGroupId  | TEXT      | yes      | Group id snapshot                                        |
+| snapshotGroupName | TEXT     | yes      | Group name snapshot                                      |
+| snapshotCreatorUserId | TEXT | yes      | Creator user id snapshot                                 |
+| snapshotCreatedAtEpochMs | INTEGER | yes | Created-at timestamp snapshot                           |
+| snapshotParticipantUserIds | TEXT | yes | Participant user ids snapshot                           |
 
 ## Supabase remote tables
 

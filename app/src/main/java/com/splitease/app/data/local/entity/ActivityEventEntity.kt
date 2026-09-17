@@ -28,4 +28,12 @@ data class ActivityEventEntity(
     val remoteId: String?,
     val syncStatus: String,
     val isSeen: Boolean,
+    val snapshotDescription: String?,
+    val snapshotAmount: String?,
+    val snapshotCurrency: String?,
+    val snapshotGroupId: String?,
+    val snapshotGroupName: String?,
+    val snapshotCreatorUserId: String?,
+    val snapshotCreatedAtEpochMs: Long?,
+    val snapshotParticipantUserIds: String?,
 )

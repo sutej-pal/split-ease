@@ -57,6 +57,10 @@ interface ActivityEventDao {
     @Query("SELECT * FROM activity_events WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ActivityEventEntity?
 
+    /** Observes a single event by id. */
+    @Query("SELECT * FROM activity_events WHERE id = :id LIMIT 1")
+    fun observeById(id: String): Flow<ActivityEventEntity?>
+
     /** Gets events that are waiting to be flushed to the cloud. */
     @Query("SELECT * FROM activity_events WHERE syncStatus = 'PENDING'")
     suspend fun getPendingSync(): List<ActivityEventEntity>

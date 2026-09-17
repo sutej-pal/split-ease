@@ -68,6 +68,7 @@ enum class ActivityKind {
     EXPENSE,
     EXPENSE_UPDATED,
     EXPENSE_DELETED,
+    EXPENSE_RESTORED,
     PAYMENT,
     GROUP_CREATED,
 }
@@ -460,8 +461,6 @@ class ActivityViewModel
                         me = me,
                         groupNames = groupNames,
                         groupCreatedEpochs = groupCreatedEpochs,
-                        expensesById = expensesById,
-                        splitsByExpenseId = splitsByExpenseId,
                         nameOf = ::nameOf,
                     )
                 }
@@ -486,8 +485,6 @@ class ActivityViewModel
             me: String,
             groupNames: Map<String, String>,
             groupCreatedEpochs: Map<String, Long>,
-            expensesById: Map<String, Expense>,
-            splitsByExpenseId: Map<String, List<ExpenseSplit>>,
             nameOf: (String) -> String,
         ): ActivityUiItem {
             val uiKind =
@@ -495,16 +492,24 @@ class ActivityViewModel
                     ActivityEventKind.EXPENSE_ADDED -> ActivityKind.EXPENSE
                     ActivityEventKind.EXPENSE_UPDATED -> ActivityKind.EXPENSE_UPDATED
                     ActivityEventKind.EXPENSE_DELETED -> ActivityKind.EXPENSE_DELETED
+                    ActivityEventKind.EXPENSE_RESTORED -> ActivityKind.EXPENSE_RESTORED
                 }
             val actorName = nameOf(actorUserId)
-            val liveExpense = relatedExpenseId?.let { expensesById[it] }
-            val description =
-                liveExpense?.description
-                    ?: title.removePrefix("Updated: ").removePrefix("Deleted: ").trim()
+            val description = snapshotDescription ?: title.removePrefix("Updated: ").removePrefix("Deleted: ").removePrefix("Restored: ").trim()
             val contextLabel =
-                liveExpense?.groupId?.let { groupNames[it] }
+                snapshotGroupName
+                    ?: snapshotGroupId?.let { groupNames[it] }
                     ?: subtitle.split(" · ").firstOrNull()?.takeIf { it.isNotBlank() }
                     ?: appContext.getString(R.string.non_group_expenses)
+
+            val amountNum = snapshotAmount?.let { runCatching { BigDecimal(it) }.getOrNull() }
+            val amountFormatted =
+                if (amountNum != null && snapshotCurrency != null) {
+                    MoneyFormat.format(amountNum, snapshotCurrency)
+                } else {
+                    amountLabel
+                }
+
             val titleLine =
                 when (kind) {
                     ActivityEventKind.EXPENSE_ADDED ->
@@ -513,33 +518,27 @@ class ActivityViewModel
                         appContext.getString(R.string.activity_updated_in, actorName, description, contextLabel)
                     ActivityEventKind.EXPENSE_DELETED ->
                         appContext.getString(R.string.activity_deleted_in, actorName, description, contextLabel)
+                    ActivityEventKind.EXPENSE_RESTORED ->
+                        appContext.getString(R.string.activity_restored_in, actorName, description, contextLabel)
                 }
-            val (balanceLabel, balanceTone) =
-                if (liveExpense != null) {
-                    balanceLine(
-                        me = me,
-                        expense = liveExpense,
-                        splits = splitsByExpenseId[liveExpense.id].orEmpty(),
-                    )
-                } else {
-                    null to null
-                }
-            val groupCreatedAt = liveExpense?.groupId?.let { groupCreatedEpochs[it] } ?: 0L
+
+            val isDeleted = uiKind == ActivityKind.EXPENSE_DELETED
             val displayEpochMs = sortEpochMs
+            val groupCreatedAt = snapshotGroupId?.let { groupCreatedEpochs[it] } ?: 0L
             val effectiveSortMs =
                 if (groupCreatedAt > 0L) maxOf(sortEpochMs, groupCreatedAt + 1L) else sortEpochMs
+
             return ActivityUiItem(
                 id = "event-$id",
                 kind = uiKind,
                 title = titleLine,
                 subtitle = formatDateTime(displayEpochMs),
-                amountLabel = "",
+                amountLabel = if (isDeleted) amountFormatted else "",
                 timeLabel = formatTimeLabel(displayEpochMs),
-                balanceLabel = balanceLabel,
-                balanceTone = balanceTone,
+                balanceLabel = if (isDeleted) amountFormatted else null,
+                balanceTone = if (isDeleted) ActivityBalanceTone.NEGATIVE else null,
                 sortEpochMs = effectiveSortMs,
-                relatedExpenseId =
-                    relatedExpenseId.takeIf { uiKind != ActivityKind.EXPENSE_DELETED },
+                relatedExpenseId = relatedExpenseId,
                 expenseTitle = description,
                 isSeen = isSeen,
                 annotatedTitle = formatActivityTitle(titleLine, actorName, description, contextLabel),
@@ -902,7 +901,8 @@ private fun ActivityUiItem.matches(filter: ActivityListFilter): Boolean =
         ActivityListFilter.EXPENSE ->
             kind == ActivityKind.EXPENSE ||
                 kind == ActivityKind.EXPENSE_UPDATED ||
-                kind == ActivityKind.EXPENSE_DELETED
+                kind == ActivityKind.EXPENSE_DELETED ||
+                kind == ActivityKind.EXPENSE_RESTORED
         ActivityListFilter.SETTLEMENTS -> kind == ActivityKind.PAYMENT
         ActivityListFilter.GROUPS -> kind == ActivityKind.GROUP_CREATED
     }
