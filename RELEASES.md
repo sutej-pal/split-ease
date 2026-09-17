@@ -28,9 +28,10 @@ That command:
 2. Bumps `versionName` (`patch` default, or `minor` / `major`)
 3. Prepends a row here
 4. Cuts `CHANGELOG.md` `[Unreleased]` into the new version section
-5. Updates `app/build.gradle.kts` via `version.properties` (Gradle reads it at sync)
+5. Writes [play/whatsnew/en-US.txt](play/whatsnew/en-US.txt) (Play Console “What’s new”, 500 characters)
+6. Updates `app/build.gradle.kts` via `version.properties` (Gradle reads it at sync)
 
-Then assemble / bundle as usual (`assembleRelease` / `bundleRelease`).
+Then assemble / bundle as usual (`assembleRelease` / `bundleRelease`). Paste `play/whatsnew/en-US.txt` into the Play Console release notes. The app shows the same changelog under Account → What's new.
 
 **These rows are testing / sideload builds, not a Play Store production release.** Production ship is [TODO(release)](TODO.md#store--release).
 

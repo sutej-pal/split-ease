@@ -5,7 +5,7 @@ Use before uploading a Play Console build.
 Current `versionName` / sideload APKs are **testing only**. First production Play upload is [TODO(release)](../TODO.md).
 
 ## Build & version
-- [ ] Create the next build with `./gradlew newRelease` (or `.\scripts\new-release.ps1`) — increments `versionCode`, bumps `versionName`, records [RELEASES.md](../RELEASES.md), cuts [CHANGELOG.md](../CHANGELOG.md)
+- [ ] Create the next build with `./gradlew newRelease` (or `.\scripts\new-release.ps1`) — increments `versionCode`, bumps `versionName`, records [RELEASES.md](../RELEASES.md), cuts [CHANGELOG.md](../CHANGELOG.md), writes [play/whatsnew/en-US.txt](../play/whatsnew/en-US.txt)
 - [ ] Confirm `versionName` / `versionCode` in `version.properties` (`./gradlew printVersion`)
 - [ ] `./gradlew assembleRelease` (or bundle) succeeds
 - [ ] Host Digital Asset Links: `https://splitease.app/.well-known/assetlinks.json` (and mail-service host if used) — see [app-links-setup.md](app-links-setup.md)
@@ -35,8 +35,9 @@ Current `versionName` / sideload APKs are **testing only**. First production Pla
 - [ ] Offline create expense → go online and verify auto-sync uploads within worker window
 - [ ] Settle-up pay intents + Spending chart smoke
 - [ ] Account → Account settings → Delete account: blocked groups are tappable when balances remain; typed DELETE works when nets are zero
+- [ ] Account → What's new shows this version; paste `play/whatsnew/en-US.txt` into Play Console “What's new”
 - [ ] Biometric lock timeout smoke
-- [ ] Room upgrade from a prior installation does **not** wipe data (migrations 1→4)
+- [ ] Room schema bump on a debug install recreates the local DB; signed-in sync rehydrates from the cloud (no historical Room migrations until first Play production ship)
 
 ## Store
 - [ ] Short/full descriptions from `docs/store-listing.md`

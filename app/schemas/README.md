@@ -15,3 +15,7 @@ version compiled at that point in history, so those files cannot be regenerated
 or hand-written retroactively. Do not spend time chasing them.
 
 The oldest export in this folder is `5.json`. The guard starts there.
+
+While the app is in development, Room does **not** run incremental migrations.
+Schema bumps wipe and recreate `splitease.db` (`fallbackToDestructiveMigration`);
+keep exporting JSON when you bump `SplitEaseDatabase` version.

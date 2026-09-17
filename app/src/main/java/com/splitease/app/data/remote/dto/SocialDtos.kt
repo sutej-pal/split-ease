@@ -174,4 +174,12 @@ data class ActivityEventDto(
     @SerialName("related_expense_id") val relatedExpenseId: String? = null,
     @SerialName("involved_user_ids") val involvedUserIds: String,
     @SerialName("sort_epoch_ms") val sortEpochMs: Long,
+    @SerialName("snapshot_description") val snapshotDescription: String? = null,
+    @SerialName("snapshot_amount") val snapshotAmount: String? = null,
+    @SerialName("snapshot_currency") val snapshotCurrency: String? = null,
+    @SerialName("snapshot_group_id") val snapshotGroupId: String? = null,
+    @SerialName("snapshot_group_name") val snapshotGroupName: String? = null,
+    @SerialName("snapshot_creator_user_id") val snapshotCreatorUserId: String? = null,
+    @SerialName("snapshot_created_at_epoch_ms") val snapshotCreatedAtEpochMs: Long? = null,
+    @SerialName("snapshot_participant_user_ids") val snapshotParticipantUserIds: String? = null,
 )

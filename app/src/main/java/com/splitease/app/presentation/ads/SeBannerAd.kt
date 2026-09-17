@@ -103,7 +103,6 @@ fun SeBannerAd(
                 .padding(horizontal = horizontalPadding),
     ) {
         val adWidthDp = maxWidth.value.toInt().coerceAtLeast(320)
-        val availableHeightDp = maxHeight.value.toInt().coerceAtLeast(50)
         val resolvedAdSize =
             when (size) {
                 is SeBannerAdSize.Anchored ->
@@ -112,24 +111,29 @@ fun SeBannerAd(
                         adWidthDp,
                     )
                 is SeBannerAdSize.Inline -> {
-                    val maxHeight =
-                        (size.maxHeightDp ?: availableHeightDp).coerceAtLeast(50)
+                    val maxHeight = (size.maxHeightDp ?: 100).coerceAtLeast(50)
                     AdSize.getInlineAdaptiveBannerAdSize(adWidthDp, maxHeight)
                 }
             }
 
         // Recreate AdView when width/orientation changes; AdSize cannot be updated in place.
         key(adUnitId, size, adWidthDp, resolvedAdSize) {
-            var isLoaded by remember { mutableStateOf(false) }
             var loadFailed by remember { mutableStateOf(false) }
+            var loadedHeightDp by remember { mutableStateOf(0) }
+            val displayHeightDp = when {
+                loadFailed -> 0
+                loadedHeightDp > 0 -> loadedHeightDp
+                else -> resolvedAdSize.height.coerceAtLeast(50)
+            }
 
             val currentOnHeightChanged = rememberUpdatedState(onHeightChanged)
-            LaunchedEffect(resolvedAdSize, loadFailed) {
-                val height = if (loadFailed) {
-                    0.dp
-                } else {
-                    resolvedAdSize.height.dp + 8.dp + if (showBottomDivider) 9.dp else 0.dp
-                }
+            LaunchedEffect(displayHeightDp, loadFailed, showBottomDivider) {
+                val height =
+                    if (loadFailed || displayHeightDp <= 0) {
+                        0.dp
+                    } else {
+                        displayHeightDp.dp + 8.dp + if (showBottomDivider) 9.dp else 0.dp
+                    }
                 currentOnHeightChanged.value(height)
             }
 
@@ -140,7 +144,7 @@ fun SeBannerAd(
                             Modifier
                                 .fillMaxWidth()
                                 .padding(top = 8.dp)
-                                .height(resolvedAdSize.height.dp),
+                                .height(displayHeightDp.dp),
                     ) {
                         AndroidView(
                             factory = {
@@ -155,13 +159,15 @@ fun SeBannerAd(
                                     adListener =
                                         object : AdListener() {
                                             override fun onAdLoaded() {
-                                                isLoaded = true
                                                 loadFailed = false
+                                                loadedHeightDp =
+                                                    adSize?.getHeight()?.takeIf { it > 0 }
+                                                        ?: resolvedAdSize.height.coerceAtLeast(50)
                                             }
 
                                             override fun onAdFailedToLoad(error: LoadAdError) {
-                                                isLoaded = false
                                                 loadFailed = true
+                                                loadedHeightDp = 0
                                             }
                                         }
                                     loadAd(AdRequest.Builder().build())
@@ -179,10 +185,6 @@ fun SeBannerAd(
                             color = SplitEaseColors.Outline,
                         )
                     }
-                }
-            } else {
-                LaunchedEffect(Unit) {
-                    currentOnHeightChanged.value(0.dp)
                 }
             }
         }

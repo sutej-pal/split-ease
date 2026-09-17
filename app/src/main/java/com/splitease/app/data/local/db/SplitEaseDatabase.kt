@@ -13,8 +13,8 @@ import com.splitease.app.data.local.dao.FriendDao
 import com.splitease.app.data.local.dao.GroupDao
 import com.splitease.app.data.local.dao.InviteDao
 import com.splitease.app.data.local.dao.PaymentDao
-import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.dao.PinBoardDao
+import com.splitease.app.data.local.dao.UserDao
 import com.splitease.app.data.local.entity.ActivityEventEntity
 import com.splitease.app.data.local.entity.CategoryEntity
 import com.splitease.app.data.local.entity.ExpenseCommentEntity
@@ -30,7 +30,10 @@ import com.splitease.app.data.local.entity.PinBoardEntity
 import com.splitease.app.data.local.entity.UserEntity
 
 /**
- * Offline-first Room database for SplitEase (Room v17; activity snapshot & comment constraint decoupling).
+ * Offline-first Room database for SplitEase (schema v17; activity snapshots & comment FK drop).
+ *
+ * [com.splitease.app.data.di.DatabaseModule] applies [SplitEaseMigrations] 1–17 and falls back
+ * to a destructive recreate only when no migration path exists.
  */
 @Database(
     entities = [

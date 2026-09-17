@@ -263,6 +263,37 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+abstract class CopyChangelogAssetTask : DefaultTask() {
+    @get:InputFile
+    abstract val changelogFile: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun copyChangelog() {
+        val destDir = outputDirectory.get().asFile
+        destDir.mkdirs()
+        changelogFile.get().asFile.copyTo(destDir.resolve("CHANGELOG.md"), overwrite = true)
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val taskName =
+            "copy${variant.name.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}ChangelogAsset"
+        val copyTask =
+            tasks.register<CopyChangelogAssetTask>(taskName) {
+                changelogFile.set(rootProject.file("CHANGELOG.md"))
+                outputDirectory.set(layout.buildDirectory.dir("generated/${variant.name}/changelogAsset"))
+            }
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            copyTask,
+            CopyChangelogAssetTask::outputDirectory,
+        )
+    }
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
 }

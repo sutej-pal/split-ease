@@ -62,6 +62,8 @@ import com.splitease.app.presentation.auth.ResetPasswordOtpScreen
 import com.splitease.app.presentation.auth.SignUpScreen
 import com.splitease.app.presentation.auth.VerifyEmailScreen
 import com.splitease.app.presentation.auth.rememberContinueWithGoogle
+import com.splitease.app.presentation.changelog.ChangelogScreen
+import com.splitease.app.presentation.changelog.WhatsNewPrompt
 import com.splitease.app.presentation.expenses.AddExpensePickerScreen
 import com.splitease.app.presentation.expenses.AddExpenseScreen
 import com.splitease.app.presentation.expenses.CurrencyConversionScreen
@@ -119,6 +121,7 @@ object Routes {
     const val TAB_ACCOUNT = "tab_account"
 
     const val ACCOUNT_PROFILE_SETTINGS = "account_profile_settings"
+    const val WHATS_NEW = "whats_new"
     const val DELETE_ACCOUNT = "delete_account"
     const val APPEARANCE_SETTINGS = "appearance_settings"
     const val SECURITY_SETTINGS = "security_settings"
@@ -567,6 +570,9 @@ private fun SignedInNavHost(
         bottomBarSelectedRoute?.let { lastSelectedTabRoute = it }
     }
     NotificationPermissionEffect()
+    WhatsNewPrompt(
+        onSeeAll = { navController.navigate(Routes.WHATS_NEW) },
+    )
 
     // Claim on sign-in (post-OTP open target) and again when a deep-link token arrives
     // while already signed in. Key on non-blank token only so clearing the token after
@@ -718,6 +724,7 @@ private fun SignedInNavHost(
             composable(Routes.TAB_ACTIVITY) {
                 ActivityScreen(
                     onOpenExpense = { id -> navController.navigate(Routes.expenseDetail(id)) },
+                    onOpenEditExpense = { id -> navController.navigate(Routes.editExpense(id)) },
                     onOpenDeletedActivity = { eventId -> navController.navigate(Routes.deletedExpenseDetail(eventId)) },
                     onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                 )
@@ -730,6 +737,7 @@ private fun SignedInNavHost(
                     onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS_SETTINGS) },
                     onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
+                    onOpenWhatsNew = { navController.navigate(Routes.WHATS_NEW) },
                     onSignOut = onSignOut,
                     isSigningOut = isSigningOut,
                 )
@@ -741,6 +749,9 @@ private fun SignedInNavHost(
                     onOpenLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
                     onOpenDeleteAccount = { navController.navigate(Routes.DELETE_ACCOUNT) },
                 )
+            }
+            composable(Routes.WHATS_NEW) {
+                ChangelogScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.DELETE_ACCOUNT) {
                 DeleteAccountScreen(
@@ -1277,7 +1288,7 @@ private fun SignedInNavHost(
                     eventId = eventId,
                     onBack = { navController.popBackStack() },
                     onRestored = { newExpenseId ->
-                        navController.navigate(Routes.expenseDetail(newExpenseId)) {
+                        navController.navigate(Routes.editExpense(newExpenseId)) {
                             popUpTo(Routes.TAB_ACTIVITY)
                         }
                     },

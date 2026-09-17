@@ -98,6 +98,7 @@ import java.time.format.FormatStyle
 @Composable
 fun ActivityScreen(
     onOpenExpense: (expenseId: String) -> Unit = {},
+    onOpenEditExpense: (expenseId: String) -> Unit = {},
     onOpenDeletedActivity: (eventId: String) -> Unit = {},
     onAddExpense: () -> Unit = {},
     viewModel: ActivityViewModel = hiltViewModel(),
@@ -280,21 +281,48 @@ fun ActivityScreen(
                                             val eventId = entry.item.id.removePrefix("event-")
                                             val expenseId = entry.item.relatedExpenseId
                                             val kind = entry.item.kind
-                                            val onClick = remember(expenseId, eventId, kind, onOpenExpense, onOpenDeletedActivity) {
-                                                if (kind == ActivityKind.EXPENSE_DELETED) {
-                                                    {
-                                                        ActivityPerfLog.interaction("row-click", "deletedEventId=$eventId")
-                                                        onOpenDeletedActivity(eventId)
-                                                    }
-                                                } else {
-                                                    expenseId?.let { id ->
-                                                        {
-                                                            ActivityPerfLog.interaction("row-click", "expenseId=$id")
-                                                            onOpenExpense(id)
+                                            val opensEditor = entry.item.opensEditor
+                                            val onClick =
+                                                remember(
+                                                    expenseId,
+                                                    eventId,
+                                                    kind,
+                                                    opensEditor,
+                                                    onOpenExpense,
+                                                    onOpenEditExpense,
+                                                    onOpenDeletedActivity,
+                                                ) {
+                                                    when {
+                                                        kind == ActivityKind.EXPENSE_DELETED && !opensEditor -> {
+                                                            {
+                                                                ActivityPerfLog.interaction(
+                                                                    "row-click",
+                                                                    "deletedEventId=$eventId",
+                                                                )
+                                                                onOpenDeletedActivity(eventId)
+                                                            }
                                                         }
+                                                        opensEditor && expenseId != null -> {
+                                                            {
+                                                                ActivityPerfLog.interaction(
+                                                                    "row-click",
+                                                                    "editExpenseId=$expenseId",
+                                                                )
+                                                                onOpenEditExpense(expenseId)
+                                                            }
+                                                        }
+                                                        expenseId != null -> {
+                                                            {
+                                                                ActivityPerfLog.interaction(
+                                                                    "row-click",
+                                                                    "expenseId=$expenseId",
+                                                                )
+                                                                onOpenExpense(expenseId)
+                                                            }
+                                                        }
+                                                        else -> null
                                                     }
                                                 }
-                                            }
                                             ActivityRow(
                                                 item = entry.item,
                                                 onClick = onClick,

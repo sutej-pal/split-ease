@@ -1,4 +1,5 @@
-# Create the next SplitEase Android release (bumps versionCode + versionName).
+# Create the next SplitEase Android release (bumps versionCode + versionName,
+# cuts CHANGELOG.md, writes play/whatsnew/en-US.txt for Play Console).
 #
 # Usage:
 #   .\scripts\new-release.ps1

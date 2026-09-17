@@ -139,10 +139,11 @@ fun ExpenseDetailScreen(
             viewModel.addExpenseAttachments(expenseId = expenseId, photoUris = uris)
         }
 
+    val topBarBg = SplitEaseColors.PrimarySoft
     SeSystemBars(
-        statusBarColor = bg,
+        statusBarColor = topBarBg,
         navigationBarColor = bg,
-        statusBarDarkIcons = lightIconsOnBars,
+        statusBarDarkIcons = topBarBg.luminance() > 0.5f,
         navigationBarDarkIcons = lightIconsOnBars,
     )
 
@@ -154,6 +155,7 @@ fun ExpenseDetailScreen(
             SeTopBar(
                 title = "",
                 onBack = onBack,
+                containerColor = topBarBg,
                 navigationExtra = {
                     if (detailSnapshot != null) {
                         Spacer(modifier = Modifier.width(4.dp))

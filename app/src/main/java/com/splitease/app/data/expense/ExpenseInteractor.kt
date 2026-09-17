@@ -2,6 +2,8 @@ package com.splitease.app.data.expense
 
 import android.content.Context
 import com.splitease.app.R
+import com.splitease.app.data.activity.restoreAmount
+import com.splitease.app.data.activity.restoreCurrency
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.data.media.LocalMediaCleanup
 import com.splitease.app.data.media.MediaStorageCleanup
@@ -1103,15 +1105,20 @@ class ExpenseInteractor
                     snapshotGroupId = expense.groupId,
                     snapshotGroupName = context,
                     snapshotCreatorUserId = expense.paidByUserId,
-                    snapshotCreatedAtEpochMs = expense.createdAtEpochMs.takeIf { it > 0L } ?: expense.expenseDateEpochMs,
+                    snapshotCreatedAtEpochMs = expense.expenseDateEpochMs.takeIf { it > 0L } ?: expense.createdAtEpochMs,
                     snapshotParticipantUserIds = participantIds.distinct().sorted().joinToString(prefix = ",", postfix = ",", separator = ","),
                 ),
             )
         }
 
         /**
-         * Restores an expense from a deleted activity event, creating a new independent active expense record
-         * and logging a new EXPENSE_RESTORED activity event.
+         * Restores an expense from a deleted activity event.
+         *
+         * Creates a new independent expense, relinks the deleted event and its
+         * comment thread to that id, and writes an [ActivityEventKind.EXPENSE_RESTORED]
+         * feed row. Both activity rows then open the restored expense.
+         *
+         * @return The restored (or already-restored) expense id.
          */
         suspend fun restoreExpenseFromActivity(
             eventId: String,
@@ -1120,31 +1127,49 @@ class ExpenseInteractor
             runCatching {
                 val event =
                     activityEventRepository.getById(eventId)
-                        ?: error("Activity event not found.")
-                val description = event.snapshotDescription ?: event.title.removePrefix("Deleted: ").trim()
-                val amountStr = event.snapshotAmount ?: "0.00"
-                val amount = BigDecimal(amountStr)
-                val currency = event.snapshotCurrency ?: AppCurrencies.DEFAULT
-                val groupId = event.snapshotGroupId
-                val groupName = event.snapshotGroupName
+                        ?: error(appContext.getString(R.string.error_restore_expense))
+                require(event.kind == ActivityEventKind.EXPENSE_DELETED) {
+                    appContext.getString(R.string.error_restore_expense)
+                }
+                event.relatedExpenseId?.let { existingId ->
+                    expenseRepository.getExpenseById(existingId)?.let { return@runCatching existingId }
+                }
+
+                val description =
+                    event.snapshotDescription?.trim()?.ifBlank { null }
+                        ?: event.title.removePrefix("Deleted: ").trim().ifBlank { null }
+                        ?: error(appContext.getString(R.string.error_restore_missing_snapshot))
+                val amount =
+                    event.restoreAmount()?.takeIf { it > BigDecimal.ZERO }
+                        ?: error(appContext.getString(R.string.error_restore_missing_snapshot))
+                val currency = event.restoreCurrency()
                 val participantIds =
                     event.snapshotParticipantUserIds
                         ?.split(",")
                         ?.filter { it.isNotBlank() }
-                        ?.toSet()
-                        ?: setOf(event.snapshotCreatorUserId ?: actorUserId)
-
+                        ?.distinct()
+                        ?.sorted()
+                        .orEmpty()
+                        .ifEmpty { listOf(event.snapshotCreatorUserId ?: actorUserId) }
+                val paidByUserId = event.snapshotCreatorUserId ?: actorUserId
                 val now = System.currentTimeMillis()
+                val expenseDate = event.snapshotCreatedAtEpochMs?.takeIf { it > 0L } ?: now
                 val newExpenseId = UUID.randomUUID().toString()
+                val owed =
+                    SplitCalculator.calculate(
+                        total = amount,
+                        splitType = SplitType.EQUAL,
+                        participantIds = participantIds,
+                    )
                 val newExpense =
                     Expense(
                         id = newExpenseId,
                         description = description,
                         amount = amount,
                         currencyCode = currency,
-                        groupId = groupId,
-                        paidByUserId = event.snapshotCreatorUserId ?: actorUserId,
-                        expenseDateEpochMs = event.snapshotCreatedAtEpochMs ?: now,
+                        groupId = event.snapshotGroupId,
+                        paidByUserId = paidByUserId,
+                        expenseDateEpochMs = expenseDate,
                         categoryId = null,
                         splitType = SplitType.EQUAL,
                         remoteId = null,
@@ -1152,55 +1177,49 @@ class ExpenseInteractor
                         updatedAtEpochMs = now,
                         syncStatus = SyncStatus.PENDING,
                     )
-                val splitAmount =
-                    if (participantIds.isNotEmpty()) {
-                        amount.divide(BigDecimal(participantIds.size), 2, java.math.RoundingMode.HALF_UP)
-                    } else {
-                        amount
-                    }
                 val splits =
-                    participantIds.map { uid ->
+                    owed.map { (userId, owedAmount) ->
                         ExpenseSplit(
                             id = UUID.randomUUID().toString(),
                             expenseId = newExpenseId,
-                            userId = uid,
-                            owedAmount = splitAmount,
+                            userId = userId,
+                            owedAmount = owedAmount,
                             adjustmentAmount = null,
                             syncStatus = SyncStatus.PENDING,
                         )
                     }
                 expenseRepository.upsertExpenseWithSplits(newExpense, splits)
 
-                val context = groupName ?: appContext.getString(R.string.non_group_expenses)
-                val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(newExpense.expenseDateEpochMs))
-                val involved =
-                    (participantIds + newExpense.paidByUserId + actorUserId)
-                        .distinct()
-                        .sorted()
-                        .joinToString(prefix = ",", postfix = ",", separator = ",")
+                val oldExpenseId = event.relatedExpenseId
+                if (!oldExpenseId.isNullOrBlank() && oldExpenseId != newExpenseId) {
+                    val comments = expenseCommentRepository.getForExpense(oldExpenseId)
+                    comments.forEach { comment ->
+                        pushCommentBestEffort(
+                            comment.copy(
+                                expenseId = newExpenseId,
+                                syncStatus = SyncStatus.PENDING,
+                            ),
+                        )
+                    }
+                }
 
+                val relinkStatus =
+                    if (event.syncStatus == SyncStatus.LOCAL_ONLY) {
+                        SyncStatus.LOCAL_ONLY
+                    } else {
+                        SyncStatus.PENDING
+                    }
                 activityEventRepository.upsert(
-                    ActivityEvent(
-                        id = UUID.randomUUID().toString(),
-                        kind = ActivityEventKind.EXPENSE_RESTORED,
-                        title = appContext.getString(R.string.activity_restored_in, "You", description, context),
-                        subtitle = "$context · $date",
-                        amountLabel = "$currency ${amount.toPlainString()}",
-                        actorUserId = actorUserId,
+                    event.copy(
                         relatedExpenseId = newExpenseId,
-                        involvedUserIds = involved,
-                        sortEpochMs = System.currentTimeMillis(),
-                        syncStatus = SyncStatus.PENDING,
-                        isSeen = true,
-                        snapshotDescription = description,
-                        snapshotAmount = amount.toPlainString(),
-                        snapshotCurrency = currency,
-                        snapshotGroupId = groupId,
-                        snapshotGroupName = context,
-                        snapshotCreatorUserId = newExpense.paidByUserId,
-                        snapshotCreatedAtEpochMs = newExpense.expenseDateEpochMs,
-                        snapshotParticipantUserIds = participantIds.joinToString(prefix = ",", postfix = ",", separator = ","),
+                        syncStatus = relinkStatus,
                     ),
+                )
+                recordExpenseActivity(
+                    kind = ActivityEventKind.EXPENSE_RESTORED,
+                    expense = newExpense,
+                    participantIds = participantIds,
+                    actorUserId = actorUserId,
                 )
                 scheduleCloudPush(newExpenseId)
                 newExpenseId

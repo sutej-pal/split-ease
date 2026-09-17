@@ -22,7 +22,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -192,7 +192,7 @@ fun AccountProfileSettingsScreen(
                 contentColor = SplitEaseColors.YouOwe,
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.DeleteOutline,
+                        imageVector = Icons.Filled.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )

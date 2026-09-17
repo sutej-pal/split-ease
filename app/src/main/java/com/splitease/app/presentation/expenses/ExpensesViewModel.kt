@@ -1426,6 +1426,8 @@ class ExpensesViewModel
 
         private val activityEventFlows = ConcurrentHashMap<String, StateFlow<ActivityEvent?>>()
         private val emptyActivityEvent = MutableStateFlow<ActivityEvent?>(null)
+        private val userLabelFlows = ConcurrentHashMap<String, StateFlow<String>>()
+        private val emptyUserLabel = MutableStateFlow("")
 
         fun observeActivityEvent(eventId: String): StateFlow<ActivityEvent?> {
             if (eventId.isBlank()) return emptyActivityEvent
@@ -1436,20 +1438,62 @@ class ExpensesViewModel
             }
         }
 
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun observeUserLabel(userId: String): StateFlow<String> {
+            if (userId.isBlank()) return emptyUserLabel
+            return userLabelFlows.getOrPut(userId) {
+                this.userId
+                    .flatMapLatest { me ->
+                        if (me == null) {
+                            flowOf(appContext.getString(R.string.activity_someone))
+                        } else {
+                            combine(
+                                userRepository.observeUsers(),
+                                friendRepository.observeFriends(me),
+                            ) { users, friends ->
+                                nameOf(
+                                    userId,
+                                    me,
+                                    friends.associateBy({ it.friendUserId }, { it.displayNameSnapshot }),
+                                    users.associateBy({ it.id }, { it.displayName }),
+                                )
+                            }
+                        }
+                    }.stateIn(
+                        viewModelScope,
+                        SharingStarted.WhileSubscribed(5_000),
+                        appContext.getString(R.string.activity_someone),
+                    )
+            }
+        }
+
         fun restoreExpenseFromActivity(
             eventId: String,
             onRestored: (newExpenseId: String) -> Unit,
         ) {
-            val me = userId.value ?: return
+            val me = userId.value
+            if (me == null) {
+                _uiState.update { it.copy(errorMessage = appContext.getString(R.string.msg_wait_for_account)) }
+                return
+            }
+            if (_uiState.value.isSubmitting) return
             viewModelScope.launch {
+                _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
                 val result = expenseInteractor.restoreExpenseFromActivity(eventId, me)
                 result.onSuccess { newExpenseId ->
                     withContext(Dispatchers.Main) {
                         onRestored(newExpenseId)
                     }
                 }.onFailure { err ->
-                    _uiState.update { it.copy(errorMessage = err.localizedMessage ?: "Failed to restore expense") }
+                    _uiState.update {
+                        it.copy(
+                            errorMessage =
+                                err.localizedMessage
+                                    ?: appContext.getString(R.string.error_restore_expense),
+                        )
+                    }
                 }
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
 

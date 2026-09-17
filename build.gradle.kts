@@ -15,6 +15,8 @@ plugins {
 val versionPropertiesFile = file("version.properties")
 val releasesHistoryFile = file("RELEASES.md")
 val changelogFile = file("CHANGELOG.md")
+val playWhatsNewFile = file("play/whatsnew/en-US.txt")
+val playWhatsNewMaxChars = 500
 
 fun loadAppVersion(): Pair<Int, String> {
     val props =
@@ -70,6 +72,7 @@ fun writeVersionProperties(
         |#   ./gradlew newRelease
         |#   ./gradlew newRelease -Pbump=minor -Pnotes=Short summary
         |#   .\\scripts\\new-release.ps1 -Bump patch -Notes Short summary
+        |# Also cuts CHANGELOG.md and writes play/whatsnew/en-US.txt for Play Console.
         |versionCode=$versionCode
         |versionName=$versionName
         |
@@ -137,6 +140,42 @@ fun cutChangelogUnreleased(
     changelogFile.writeText(header + freshUnreleased + rest)
 }
 
+fun playWhatsNewFromChangelogBody(body: String): String {
+    val bullets =
+        body
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.startsWith("- ") }
+            .map { it.removePrefix("- ").replace("**", "").trim() }
+            .filter { it.isNotEmpty() }
+            .toList()
+    val fallback = "Bug fixes and improvements."
+    if (bullets.isEmpty()) return fallback
+    val builder = StringBuilder()
+    for (bullet in bullets) {
+        val line = "• $bullet"
+        val candidate =
+            if (builder.isEmpty()) {
+                line
+            } else {
+                builder.toString() + "\n" + line
+            }
+        if (candidate.length > playWhatsNewMaxChars) break
+        if (builder.isNotEmpty()) builder.append('\n')
+        builder.append(line)
+    }
+    if (builder.isEmpty()) {
+        return ("• " + bullets.first()).take(playWhatsNewMaxChars)
+    }
+    return builder.toString()
+}
+
+fun writePlayWhatsNew(body: String) {
+    playWhatsNewFile.parentFile.mkdirs()
+    val text = playWhatsNewFromChangelogBody(body)
+    playWhatsNewFile.writeText(text.trimEnd() + "\n")
+}
+
 tasks.register("printVersion") {
     group = "release"
     description = "Print the current versionName and versionCode from version.properties."
@@ -149,7 +188,7 @@ tasks.register("printVersion") {
 tasks.register("newRelease") {
     group = "release"
     description =
-        "Increment versionCode, bump versionName (patch/minor/major), record RELEASES.md, cut CHANGELOG."
+        "Increment versionCode, bump versionName (patch/minor/major), cut CHANGELOG, write Play What's new."
     doLast {
         val bump = (findProperty("bump") as? String)?.trim().orEmpty().ifBlank { "patch" }
         val notes = (findProperty("notes") as? String)?.trim().orEmpty()
@@ -157,10 +196,24 @@ tasks.register("newRelease") {
         val nextCode = currentCode + 1
         val nextName = bumpSemver(currentName, bump)
         val date = LocalDate.now().toString()
+        val changelogText = changelogFile.readText()
+        val unreleasedMarker = "## [Unreleased]"
+        val unreleasedStart = changelogText.indexOf(unreleasedMarker)
+        require(unreleasedStart >= 0) { "CHANGELOG.md is missing '## [Unreleased]'" }
+        val unreleasedBodyStart = unreleasedStart + unreleasedMarker.length
+        val nextHeading = Regex("\\n## \\[").find(changelogText, unreleasedBodyStart)
+        val unreleasedBody =
+            if (nextHeading != null) {
+                changelogText.substring(unreleasedBodyStart, nextHeading.range.first)
+            } else {
+                changelogText.substring(unreleasedBodyStart)
+            }
         writeVersionProperties(nextCode, nextName)
         prependReleaseHistoryRow(nextCode, nextName, date, notes)
         cutChangelogUnreleased(nextName, nextCode, date)
+        writePlayWhatsNew(unreleasedBody)
         println("Release $nextName (build $nextCode) recorded. Previous was $currentName (build $currentCode).")
-        println("Next: assemble/bundle the release, then commit version.properties, RELEASES.md, and CHANGELOG.md.")
+        println("Wrote Play Console What's new (${playWhatsNewFile.path}).")
+        println("Next: assemble/bundle the release, then commit version.properties, RELEASES.md, CHANGELOG.md, and play/whatsnew/en-US.txt.")
     }
 }

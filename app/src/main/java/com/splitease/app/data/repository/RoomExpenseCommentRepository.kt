@@ -20,6 +20,9 @@ class RoomExpenseCommentRepository
         override fun observeForExpense(expenseId: String): Flow<List<ExpenseComment>> =
             dao.observeForExpense(expenseId).map { rows -> rows.map { it.toDomain() } }
 
+        override suspend fun getForExpense(expenseId: String): List<ExpenseComment> =
+            dao.getForExpense(expenseId).map { it.toDomain() }
+
         override suspend fun upsert(comment: ExpenseComment) {
             dao.upsert(comment.toEntity())
         }

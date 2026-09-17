@@ -18,6 +18,15 @@ interface ExpenseCommentDao {
     )
     fun observeForExpense(expenseId: String): Flow<List<ExpenseCommentEntity>>
 
+    @Query(
+        """
+        SELECT * FROM expense_comments
+        WHERE expenseId = :expenseId
+        ORDER BY createdAtEpochMs ASC
+        """,
+    )
+    suspend fun getForExpense(expenseId: String): List<ExpenseCommentEntity>
+
     @Upsert
     suspend fun upsert(comment: ExpenseCommentEntity)
 

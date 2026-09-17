@@ -218,13 +218,14 @@ fun SeTopBar(
     consumeWindowInsets: Boolean = true,
     /** Side inset for leading chrome; auth forms pass [SeLayout.screenHorizontal]. */
     horizontalPadding: Dp = SeLayout.detailHorizontal,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     navigationExtra: @Composable RowScope.() -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     if (centered) {
         val colors =
             TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = containerColor,
                 titleContentColor = SplitEaseColors.Navy,
                 actionIconContentColor = SplitEaseColors.Navy,
                 navigationIconContentColor = SplitEaseColors.Navy,
@@ -265,7 +266,7 @@ fun SeTopBar(
             modifier =
                 modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(containerColor)
                     .then(insetsModifier)
                     .height(SeTopBarContentHeight)
                     .padding(horizontal = horizontalPadding),
@@ -325,13 +326,14 @@ fun SeScreen(
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
+    topBarContainerColor: Color = MaterialTheme.colorScheme.background,
     contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     content: @Composable (padding: PaddingValuesAware) -> Unit,
 ) {
     val bg = MaterialTheme.colorScheme.background
     val lightIconsOnBars = bg.luminance() > 0.5f
     SeSystemBars(
-        statusBarColor = bg,
+        statusBarColor = if (topBarContainerColor == bg) bg else topBarContainerColor,
         navigationBarColor = Color.Transparent,
         statusBarDarkIcons = lightIconsOnBars,
         navigationBarDarkIcons = lightIconsOnBars,
@@ -352,6 +354,7 @@ fun SeScreen(
                     onBack = onBack,
                     onClose = onClose,
                     centered = centeredTitle,
+                    containerColor = topBarContainerColor,
                     actions = actions,
                 )
             }

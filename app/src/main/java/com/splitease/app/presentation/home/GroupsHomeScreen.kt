@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -100,7 +99,6 @@ import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeSoftIconButton
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.color
-import com.splitease.app.presentation.ui.seShimmer
 import java.math.BigDecimal
 
 /** How the groups list on Home is filtered. */
@@ -473,9 +471,6 @@ private fun Map<String, BigDecimal>.matches(filter: GroupsHomeFilter): Boolean {
     }
 }
 
-private val IconWidth = 56.dp
-private const val IconAspectFloor = 0.85f
-
 @Composable
 private fun SeCountPill(count: Int, color: Color) {
     Text(
@@ -539,45 +534,24 @@ private fun GroupBalanceListItem(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min)
                 .clickable(onClick = onClick)
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        Layout(
-            content = {
-                SeGroupIconTile(
-                    photoUrl = photoUrl,
-                    fallbackIcon = icon,
-                    fallbackTint = iconTint,
-                    modifier =
-                        Modifier
-                            .semantics { contentDescription = iconContentDescription }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onIconClick,
-                            ),
-                    size = 56,
-                )
-            },
-            modifier = Modifier.fillMaxHeight(),
-        ) { measurables, constraints ->
-            val rowHeight = constraints.maxHeight
-            val minH = (IconWidth.toPx() * IconAspectFloor).toInt()
-            val maxH = (IconWidth.toPx() / IconAspectFloor).toInt()
-            val clampedH = rowHeight.coerceIn(minH, maxH)
-            val placeable =
-                measurables[0].measure(
-                    constraints.copy(
-                        minWidth = IconWidth.roundToPx(),
-                        maxWidth = IconWidth.roundToPx(),
-                        minHeight = clampedH,
-                        maxHeight = clampedH,
+        SeGroupIconTile(
+            photoUrl = photoUrl,
+            fallbackIcon = icon,
+            fallbackTint = iconTint,
+            modifier =
+                Modifier
+                    .semantics { contentDescription = iconContentDescription }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onIconClick,
                     ),
-                )
-            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-        }
+            size = 56,
+        )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -614,36 +588,15 @@ private fun NonGroupListItem(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min)
                 .clickable(onClick = onClick)
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        Layout(
-            content = {
-                SeIconTile(
-                    icon = Icons.AutoMirrored.Filled.List,
-                    tint = SplitEaseColors.IconOther,
-                    size = 56,
-                )
-            },
-            modifier = Modifier.fillMaxHeight(),
-        ) { measurables, constraints ->
-            val rowHeight = constraints.maxHeight
-            val minH = (IconWidth.toPx() * IconAspectFloor).toInt()
-            val maxH = (IconWidth.toPx() / IconAspectFloor).toInt()
-            val clampedH = rowHeight.coerceIn(minH, maxH)
-            val placeable =
-                measurables[0].measure(
-                    constraints.copy(
-                        minWidth = IconWidth.roundToPx(),
-                        maxWidth = IconWidth.roundToPx(),
-                        minHeight = clampedH,
-                        maxHeight = clampedH,
-                    ),
-                )
-            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-        }
+        SeIconTile(
+            icon = Icons.AutoMirrored.Filled.List,
+            tint = SplitEaseColors.IconOther,
+            size = 56,
+        )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

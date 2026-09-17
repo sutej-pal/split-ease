@@ -41,10 +41,14 @@ object DatabaseModule {
     ): SplitEaseDatabase =
         Room
             .databaseBuilder(
-            context,
-            SplitEaseDatabase::class.java,
-            SplitEaseDatabase.NAME,
-        ).addMigrations(*SplitEaseMigrations.ALL)
+                context,
+                SplitEaseDatabase::class.java,
+                SplitEaseDatabase.NAME,
+            )
+            .addMigrations(*SplitEaseMigrations.ALL)
+            // Last resort when no migration path exists (unknown/corrupt versions).
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
 
     /** @param db Database. @return [UserDao]. */

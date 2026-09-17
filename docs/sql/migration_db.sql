@@ -228,12 +228,22 @@ create table if not exists public.activity_events (
   subtitle text not null,
   amount_label text not null,
   actor_user_id uuid not null references auth.users (id) on delete cascade,
-  -- App sends null here for EXPENSE_DELETED upserts (parent expense is already gone).
+  -- App sends null here for EXPENSE_DELETED upserts until restore relinks a living expense.
   related_expense_id uuid references public.expenses (id) on delete set null,
   involved_user_ids text not null,
   sort_epoch_ms bigint not null,
   created_at timestamptz not null default now()
 );
+
+alter table public.activity_events
+  add column if not exists snapshot_description text,
+  add column if not exists snapshot_amount text,
+  add column if not exists snapshot_currency text,
+  add column if not exists snapshot_group_id text,
+  add column if not exists snapshot_group_name text,
+  add column if not exists snapshot_creator_user_id text,
+  add column if not exists snapshot_created_at_epoch_ms bigint,
+  add column if not exists snapshot_participant_user_ids text;
 
 create index if not exists activity_events_sort_idx on public.activity_events (sort_epoch_ms);
 create index if not exists activity_events_actor_idx on public.activity_events (actor_user_id);

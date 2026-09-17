@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 interface ExpenseCommentRepository {
     fun observeForExpense(expenseId: String): Flow<List<ExpenseComment>>
 
+    suspend fun getForExpense(expenseId: String): List<ExpenseComment>
+
     suspend fun upsert(comment: ExpenseComment)
 
     suspend fun upsertAll(comments: List<ExpenseComment>)

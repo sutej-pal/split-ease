@@ -606,8 +606,6 @@ fun AddExpenseScreen(
             }
         },
         content = { padding ->
-            var bannerHeight by remember { mutableStateOf(0.dp) }
-
             Column(
                 modifier =
                     Modifier
@@ -618,10 +616,9 @@ fun AddExpenseScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .weight(1f, fill = false)
+                            .weight(1f)
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp, vertical = 12.dp)
-                            .padding(bottom = bannerHeight),
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
                 ) {
                 Row(
                     modifier =
@@ -836,9 +833,8 @@ fun AddExpenseScreen(
                             Modifier
                                 .fillMaxWidth(),
                         horizontalPadding = 20.dp,
-                        size = SeBannerAdSize.Inline(),
+                        size = SeBannerAdSize.Inline(maxHeightDp = 100),
                         showBottomDivider = false,
-                        onHeightChanged = { bannerHeight = it },
                     )
                 }
         },
@@ -1483,8 +1479,6 @@ private fun AddExpenseScreenPreview() {
                 }
             },
             content = { padding ->
-                var bannerHeight by remember { mutableStateOf(0.dp) }
-
                 Column(
                     modifier =
                         Modifier
@@ -1495,10 +1489,9 @@ private fun AddExpenseScreenPreview() {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .weight(1f, fill = false)
+                                .weight(1f)
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 20.dp, vertical = 12.dp)
-                                .padding(bottom = bannerHeight),
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1591,9 +1584,8 @@ private fun AddExpenseScreenPreview() {
                             Modifier
                                 .fillMaxWidth(),
                         horizontalPadding = 20.dp,
-                        size = SeBannerAdSize.Inline(),
+                        size = SeBannerAdSize.Inline(maxHeightDp = 100),
                         showBottomDivider = false,
-                        onHeightChanged = { bannerHeight = it },
                     )
                 }
             },

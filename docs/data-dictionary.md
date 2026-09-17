@@ -241,9 +241,10 @@ Unique index: `(expenseId, userId)`.
 | activity_events               | id                    | UUID (PK) | no       | Same as Room id when flushed                                                               |
 | activity_events               | kind / title / subtitle / amount_label | TEXT | no | Event copy                                                                                 |
 | activity_events               | actor_user_id         | UUID      | no       | Actor (`auth.users`)                                                                       |
-| activity_events               | related_expense_id    | UUID      | yes      | Expense FK; `ON DELETE SET NULL`. Delete-event upserts send null (parent row already gone) |
+| activity_events               | related_expense_id    | UUID      | yes      | Expense FK; `ON DELETE SET NULL`. Delete-event upserts send null until restore relinks a living expense |
 | activity_events               | involved_user_ids     | TEXT      | no       | Comma-wrapped participant ids                                                              |
 | activity_events               | sort_epoch_ms         | BIGINT    | no       | Sort time                                                                                  |
+| activity_events               | snapshot_*            | TEXT/BIGINT | yes    | Expense snapshot copied from Room at write time (restore + feed)                         |
 
 **Activity event RLS** (see [sql/migration_db.sql](sql/migration_db.sql)):
 - SELECT: actor or listed in `involved_user_ids`

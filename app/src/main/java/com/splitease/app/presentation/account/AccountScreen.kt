@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -41,6 +42,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.splitease.app.BuildConfig
 import com.splitease.app.R
 import com.splitease.app.domain.settings.ThemeMode
 import com.splitease.app.presentation.ads.AdConsentManager
@@ -66,6 +68,7 @@ fun AccountScreen(
     onOpenNotifications: () -> Unit,
     onOpenSecurity: () -> Unit,
     onOpenSpending: () -> Unit,
+    onOpenWhatsNew: () -> Unit,
     onSignOut: () -> Unit = {},
     isSigningOut: Boolean = false,
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -97,6 +100,7 @@ fun AccountScreen(
         onOpenNotifications = onOpenNotifications,
         onOpenSecurity = onOpenSecurity,
         onOpenSpending = onOpenSpending,
+        onOpenWhatsNew = onOpenWhatsNew,
         onOpenAdPrivacy = {
             (context as? FragmentActivity)?.let { activity ->
                 AdConsentManager.showPrivacyOptionsForm(activity)
@@ -120,6 +124,7 @@ private fun AccountScreenContent(
     onOpenNotifications: () -> Unit,
     onOpenSecurity: () -> Unit,
     onOpenSpending: () -> Unit,
+    onOpenWhatsNew: () -> Unit,
     onOpenAdPrivacy: () -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -241,6 +246,24 @@ private fun AccountScreenContent(
                     )
                 }
 
+                SeSectionHeader(text = stringResource(R.string.settings_about_section))
+                AccountGroupCard(onClick = onOpenWhatsNew) {
+                    SeListRow(
+                        title = stringResource(R.string.whats_new_title),
+                        subtitle = stringResource(R.string.whats_new_current_build, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Filled.NewReleases,
+                                tint = SplitEaseColors.IconFriends,
+                                size = 40,
+                            )
+                        },
+                        trailing = { AccountChevron() },
+                        onClick = null,
+                        showDivider = false,
+                    )
+                }
+
                 if (privacyOptionsRequired) {
                     Spacer(modifier = Modifier.height(16.dp))
                     SeListRow(
@@ -336,6 +359,7 @@ private fun AccountScreenPreview() {
             onOpenNotifications = {},
             onOpenSecurity = {},
             onOpenSpending = {},
+            onOpenWhatsNew = {},
             onOpenAdPrivacy = {},
             onSignOut = {},
         )

@@ -30,14 +30,14 @@ On Windows: `gradlew.bat :app:assembleDebug`
 
 Release builds enable **R8 minify + resource shrinking**.
 
-Number a testing or store build (increments `versionCode`, bumps SemVer, records history). Current APKs are **testing only** — production Play release is still [TODO(release)](TODO.md):
+Number a testing or store build (increments `versionCode`, bumps SemVer, cuts `CHANGELOG.md`, writes Play “What's new”). Current APKs are **testing only** — production Play release is still [TODO(release)](TODO.md):
 
 ```bash
 ./gradlew newRelease
 ./gradlew newRelease -Pbump=minor -Pnotes="Short summary"
 ```
 
-See [RELEASES.md](RELEASES.md).
+See [RELEASES.md](RELEASES.md). Paste [play/whatsnew/en-US.txt](play/whatsnew/en-US.txt) into Play Console. The app shows the changelog at Account → What's new.
 
 ## Docs
 

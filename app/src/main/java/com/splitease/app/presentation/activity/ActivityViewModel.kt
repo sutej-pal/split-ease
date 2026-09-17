@@ -110,6 +110,8 @@ data class ActivityUiItem(
     /** False when this row is an unseen synced activity event. */
     val isSeen: Boolean = true,
     val annotatedTitle: AnnotatedString,
+    /** Deleted (after restore) and restored rows open the expense editor. */
+    val opensEditor: Boolean = false,
 )
 
 @Immutable
@@ -461,6 +463,8 @@ class ActivityViewModel
                         me = me,
                         groupNames = groupNames,
                         groupCreatedEpochs = groupCreatedEpochs,
+                        expensesById = expensesById,
+                        splitsByExpenseId = splitsByExpenseId,
                         nameOf = ::nameOf,
                     )
                 }
@@ -485,6 +489,8 @@ class ActivityViewModel
             me: String,
             groupNames: Map<String, String>,
             groupCreatedEpochs: Map<String, Long>,
+            expensesById: Map<String, Expense>,
+            splitsByExpenseId: Map<String, List<ExpenseSplit>>,
             nameOf: (String) -> String,
         ): ActivityUiItem {
             val uiKind =
@@ -495,7 +501,13 @@ class ActivityViewModel
                     ActivityEventKind.EXPENSE_RESTORED -> ActivityKind.EXPENSE_RESTORED
                 }
             val actorName = nameOf(actorUserId)
-            val description = snapshotDescription ?: title.removePrefix("Updated: ").removePrefix("Deleted: ").removePrefix("Restored: ").trim()
+            val description =
+                snapshotDescription
+                    ?: title
+                        .removePrefix("Updated: ")
+                        .removePrefix("Deleted: ")
+                        .removePrefix("Restored: ")
+                        .trim()
             val contextLabel =
                 snapshotGroupName
                     ?: snapshotGroupId?.let { groupNames[it] }
@@ -523,10 +535,30 @@ class ActivityViewModel
                 }
 
             val isDeleted = uiKind == ActivityKind.EXPENSE_DELETED
+            val liveExpense = relatedExpenseId?.let { expensesById[it] }
+            val (balanceLabel, balanceTone) =
+                when {
+                    isDeleted ->
+                        amountFormatted.ifBlank { null } to ActivityBalanceTone.NEGATIVE
+                    liveExpense != null ->
+                        balanceLine(
+                            me = me,
+                            expense = liveExpense,
+                            splits = splitsByExpenseId[liveExpense.id].orEmpty(),
+                        )
+                    else ->
+                        amountFormatted.ifBlank { null } to null
+                }
             val displayEpochMs = sortEpochMs
             val groupCreatedAt = snapshotGroupId?.let { groupCreatedEpochs[it] } ?: 0L
             val effectiveSortMs =
                 if (groupCreatedAt > 0L) maxOf(sortEpochMs, groupCreatedAt + 1L) else sortEpochMs
+            val opensEditor =
+                relatedExpenseId != null &&
+                    (
+                        uiKind == ActivityKind.EXPENSE_RESTORED ||
+                            (uiKind == ActivityKind.EXPENSE_DELETED && liveExpense != null)
+                    )
 
             return ActivityUiItem(
                 id = "event-$id",
@@ -535,13 +567,14 @@ class ActivityViewModel
                 subtitle = formatDateTime(displayEpochMs),
                 amountLabel = if (isDeleted) amountFormatted else "",
                 timeLabel = formatTimeLabel(displayEpochMs),
-                balanceLabel = if (isDeleted) amountFormatted else null,
-                balanceTone = if (isDeleted) ActivityBalanceTone.NEGATIVE else null,
+                balanceLabel = balanceLabel,
+                balanceTone = balanceTone,
                 sortEpochMs = effectiveSortMs,
                 relatedExpenseId = relatedExpenseId,
                 expenseTitle = description,
                 isSeen = isSeen,
                 annotatedTitle = formatActivityTitle(titleLine, actorName, description, contextLabel),
+                opensEditor = opensEditor,
             )
         }
 
@@ -932,5 +965,7 @@ private fun List<ActivityUiItem>.contentSignature(): List<String> =
             append(item.timeLabel)
             append('|')
             append(item.isSeen)
+            append('|')
+            append(item.opensEditor)
         }
     }
