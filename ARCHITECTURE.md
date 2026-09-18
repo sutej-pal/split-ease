@@ -45,7 +45,7 @@ Credentials: `SUPABASE_URL` + `SUPABASE_ANON_KEY` + mail config (`MAIL_SERVICE_B
 - **Sign-out:** `flushBeforeSignOut` waits for in-flight expense writes then flushes PENDING rows while the session is valid (10s cap per step). `discardLocalWrites` then invalidates in-flight persist callbacks so a hung cloud push cannot re-insert into Room after wipe. Offline sign-out can still drop unsynced rows after that timeout.
 - **Expense recorded time:** cloud `expenses` has `updated_at_epoch_ms` and `expense_date_epoch_ms`, not a separate created-at. First hydrate fills local `createdAtEpochMs` from `updated_at` (else expense date). Add-expense stamps save time unless the user picked a custom date.
 
-Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) (single canonical file; safe to re-run on existing projects). Optional FCM notify triggers are included and no-op until `app.settings` are set — see [docs/fcm-setup.md](docs/fcm-setup.md).
+Apply Supabase SQL via [docs/sql/migration_db.sql](docs/sql/migration_db.sql) (single canonical file; safe to re-run on existing projects). To wipe cloud data and re-apply after schema churn, follow [docs/supabase-reset.md](docs/supabase-reset.md) (`scripts/clear-supabase.ps1` then `scripts/apply-supabase-schema.ps1`). Optional FCM notify triggers are included and no-op until `app.settings` are set — see [docs/fcm-setup.md](docs/fcm-setup.md).
 
 Group detail keeps Room fresh via Supabase Realtime (`GroupLiveSync`) while the screen is resumed; background members are notified via FCM when configured. Mute-all / mute-group live in `notification_prefs` (Account → Notifications + Group settings).
 

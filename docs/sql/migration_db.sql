@@ -61,11 +61,9 @@ create table if not exists public.groups (
 
 alter table public.groups drop column if exists cover_url;
 
--- Leftover header-cover files from an old schema. Scoped to `{groupId}/cover.jpg`
--- only; list/settings photos (`{groupId}/photo.jpg`) are kept. Idempotent.
-delete from storage.objects
-where bucket_id = 'group-covers'
-  and name like '%/cover.jpg';
+-- Leftover header-cover files from an old schema (`{groupId}/cover.jpg`).
+-- Postgres blocks direct DELETE on storage.objects; empty the bucket with
+-- scripts/clear-supabase.ps1 (Storage API) instead. See docs/supabase-reset.md.
 
 create table if not exists public.group_members (
   id uuid primary key,

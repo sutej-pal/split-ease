@@ -70,7 +70,7 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 
 ## Ops / SQL (existing projects)
 
-- [ ] **Apply SQL on fresh DB** — Use [docs/sql/migration_db.sql](docs/sql/migration_db.sql) for full setup in one run (safe to re-run on existing projects).
+- [ ] **Apply SQL on fresh DB** — Use [docs/sql/migration_db.sql](docs/sql/migration_db.sql) for full setup in one run (safe to re-run). Wipe + re-apply playbook: [docs/supabase-reset.md](docs/supabase-reset.md).
 - [ ] **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP. See [docs/phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md).
 - [ ] **SplitEase Server** — Lives at `C:\splitease\server`; prefer Nodemailer SMTP locally. See [docs/splitease-server-repo.md](docs/splitease-server-repo.md).
 

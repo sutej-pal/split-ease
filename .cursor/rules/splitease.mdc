@@ -45,6 +45,10 @@ For each phase:
 
 Prefer small reviewable diffs; suggest a commit message per logical unit. Do not commit unless the user asks.
 
+## Supabase reset
+
+When the user asks to clear/wipe the server database or test with fresh data, follow `docs/supabase-reset.md` (workspace: `app/docs/supabase-reset.md`) and run those scripts. Do not improvise.
+
 ## Releases
 
 When the user asks to create a release / ship a Play build, **do not** hand-edit `versionCode`. Run `./gradlew newRelease` (optional `-Pbump=minor|major`, `-Pnotes="..."`). That increments the build counter, bumps SemVer in `version.properties`, prepends `RELEASES.md`, and cuts `CHANGELOG.md` `[Unreleased]`.

@@ -328,6 +328,8 @@ Canonical columns: [data-dictionary.md](data-dictionary.md). Cloud schema: `migr
 4. Database webhooks on `public.expenses` and `public.payments` (INSERT/UPDATE/DELETE) → `https://<PROJECT_REF>.supabase.co/functions/v1/notify-group-members` with `Authorization: Bearer <SERVICE_ROLE_KEY>`.  
 5. Older pg_net notify triggers in SQL no-op until `app.settings` are set; prefer Dashboard webhooks so the service role is not stored in DB settings.
 
+**Wipe for a fresh app test** (rows + auth users + storage, then re-apply schema): [supabase-reset.md](supabase-reset.md). From the app repo: `.\scripts\clear-supabase.ps1` then `.\scripts\apply-supabase-schema.ps1`. Clear Android app data afterward so Room does not re-upload old rows. Optional `.\scripts\seed-supabase.ps1` for Admin/Member test accounts.
+
 Clipboard helper (Windows): `.\scripts\build-supabase-bootstrap-sql.ps1 -CopyToClipboard`
 
 ### 9.2 Firebase

@@ -1,4 +1,5 @@
 # Seed SplitEase Supabase with Admin + Member test accounts.
+# Run after a wipe if you want those logins. See docs/supabase-reset.md.
 #
 # Creates (idempotent):
 #   - Auth users (email confirmed) + profiles

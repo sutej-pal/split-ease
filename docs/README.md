@@ -24,6 +24,7 @@ Use this order to stay fast and consistent.
 - Extras backlog: [extras-group-live-updates-notifications.md](extras-group-live-updates-notifications.md)
 - Supabase architecture TODOs (ordered): [supabase-architecture-todos.md](supabase-architecture-todos.md)
 - FCM / Realtime ops: [fcm-setup.md](fcm-setup.md)
+- Wipe / re-apply Supabase for a fresh test: [supabase-reset.md](supabase-reset.md)
 - Design tokens: [design-tokens.md](design-tokens.md)
 - Locked UI (do not restyle): [locked-ui.md](locked-ui.md)
 - Mail server repo notes: [splitease-server-repo.md](splitease-server-repo.md)
@@ -54,7 +55,8 @@ One doc per phase (no a/b/c/d splits). Prefer:
 ## SQL (apply in Supabase)
 
 1. Fresh or existing DB (safe to re-apply): [sql/migration_db.sql](sql/migration_db.sql) — single canonical file (schema, RLS, invites, expenses, payments, realtime, device tokens, pin boards, activity events, auth RPCs, account deletion, share-link heal, optional FCM notify triggers).
-2. FCM Edge Function / webhooks ops: [fcm-setup.md](fcm-setup.md)
+2. Wipe cloud data + re-apply schema for a clean test: [supabase-reset.md](supabase-reset.md) (`.\scripts\clear-supabase.ps1` then `.\scripts\apply-supabase-schema.ps1`).
+3. FCM Edge Function / webhooks ops: [fcm-setup.md](fcm-setup.md)
 
 ### Clipboard helper
 
