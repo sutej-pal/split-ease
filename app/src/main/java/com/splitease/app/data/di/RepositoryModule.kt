@@ -1,19 +1,31 @@
 package com.splitease.app.data.di
 
+import com.splitease.app.data.repository.RemoteMailRepository
+import com.splitease.app.data.repository.RoomActivityEventRepository
 import com.splitease.app.data.repository.RoomCategoryRepository
+import com.splitease.app.data.repository.RoomExpenseCommentRepository
+import com.splitease.app.data.repository.RoomExpensePhotoRepository
 import com.splitease.app.data.repository.RoomExpenseRepository
 import com.splitease.app.data.repository.RoomFriendRepository
 import com.splitease.app.data.repository.RoomGroupRepository
+import com.splitease.app.data.repository.RoomInviteRepository
 import com.splitease.app.data.repository.RoomPaymentRepository
 import com.splitease.app.data.repository.RoomUserRepository
 import com.splitease.app.data.repository.SupabaseAuthRepository
+import com.splitease.app.data.settings.SharedPreferencesAppSettingsRepository
+import com.splitease.app.domain.repository.ActivityEventRepository
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
+import com.splitease.app.domain.repository.ExpenseCommentRepository
+import com.splitease.app.domain.repository.ExpensePhotoRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
+import com.splitease.app.domain.repository.InviteRepository
+import com.splitease.app.domain.repository.MailRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -41,6 +53,11 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindFriendRepository(impl: RoomFriendRepository): FriendRepository
 
+    /** Binds [InviteRepository] to [RoomInviteRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindInviteRepository(impl: RoomInviteRepository): InviteRepository
+
     /** Binds [GroupRepository] to [RoomGroupRepository]. */
     @Binds
     @Singleton
@@ -56,8 +73,33 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindExpenseRepository(impl: RoomExpenseRepository): ExpenseRepository
 
+    /** Binds [ExpenseCommentRepository] to [RoomExpenseCommentRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindExpenseCommentRepository(impl: RoomExpenseCommentRepository): ExpenseCommentRepository
+
+    /** Binds [ExpensePhotoRepository] to [RoomExpensePhotoRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindExpensePhotoRepository(impl: RoomExpensePhotoRepository): ExpensePhotoRepository
+
+    /** Binds [ActivityEventRepository] to [RoomActivityEventRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindActivityEventRepository(impl: RoomActivityEventRepository): ActivityEventRepository
+
     /** Binds [PaymentRepository] to [RoomPaymentRepository]. */
     @Binds
     @Singleton
     abstract fun bindPaymentRepository(impl: RoomPaymentRepository): PaymentRepository
+
+    /** Binds [AppSettingsRepository] to [SharedPreferencesAppSettingsRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindAppSettingsRepository(impl: SharedPreferencesAppSettingsRepository): AppSettingsRepository
+
+    /** Binds [MailRepository] to [RemoteMailRepository]. */
+    @Binds
+    @Singleton
+    abstract fun bindMailRepository(impl: RemoteMailRepository): MailRepository
 }

@@ -34,4 +34,12 @@ interface CategoryDao {
     /** Deletes category [id]. */
     @Query("DELETE FROM categories WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    /** @param name Category display name. @return Row with matching name (case-insensitive). */
+    @Query("SELECT * FROM categories WHERE lower(name) = lower(:name) LIMIT 1")
+    suspend fun getByNameIgnoreCase(name: String): CategoryEntity?
+
+    /** @return Built-in default category rows. */
+    @Query("SELECT * FROM categories WHERE isDefault = 1")
+    suspend fun getDefaults(): List<CategoryEntity>
 }

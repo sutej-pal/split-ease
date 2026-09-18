@@ -1,0 +1,2 @@
+Testing build 1.0.0 — not a Play Store production release.
+Activity snapshots and restore, in-app account deletion, Google Sign-In, and Groups home performance fixes.
