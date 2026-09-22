@@ -38,6 +38,7 @@ fun SeTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     supportingText: String? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     CompositionLocalProvider(LocalAutofillHighlightBrush provides SolidColor(Color.Transparent)) {
@@ -72,6 +73,7 @@ fun SeTextField(
                         )
                     }
                 },
+            leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
             shape = SeTextFieldShape,
             colors =

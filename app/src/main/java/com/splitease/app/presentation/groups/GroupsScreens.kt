@@ -42,6 +42,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -71,7 +73,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -483,6 +488,7 @@ fun GroupDetailScreen(
         ) {
             GroupDetailBanner(
                 group = group,
+                memberCount = members.size,
                 bannerColor = bannerColor,
                 bannerHeight = bannerHeight,
                 collapseFraction = collapseFraction,
@@ -605,6 +611,7 @@ fun GroupDetailScreen(
 @Composable
 private fun GroupDetailBanner(
     group: Group?,
+    memberCount: Int,
     bannerColor: Color,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -684,23 +691,73 @@ private fun GroupDetailBanner(
             )
         }
 
-        Text(
-            text = title,
-            style =
-                MaterialTheme.typography.headlineMedium.copy(
-                    shadow = titleShadow,
-                ),
-            fontWeight = FontWeight.Bold,
-            color = onBanner,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+        Column(
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
                     .padding(horizontal = 16.dp, vertical = expandedTitleBottomPad)
                     .fillMaxWidth()
-                    .graphicsLayer { alpha = expandedTitleAlpha },
-        )
+                    .graphicsLayer { alpha = expandedTitleAlpha }
+                    .then(
+                        if (expandedTitleAlpha < 0.5f) {
+                            Modifier.clearAndSetSemantics { }
+                        } else {
+                            Modifier
+                        },
+                    ),
+        ) {
+            Text(
+                text = title,
+                style =
+                    MaterialTheme.typography.headlineMedium.copy(
+                        shadow = titleShadow,
+                    ),
+                fontWeight = FontWeight.Bold,
+                color = onBanner,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            if (memberCount > 1) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier =
+                        Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color.Black.copy(alpha = 0.18f))
+                            .clickable(
+                                enabled = expandedTitleAlpha > 0.5f,
+                                role = Role.Button,
+                                onClickLabel = stringResource(R.string.action_add_group_members),
+                                onClick = onOpenSettings,
+                            )
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Group,
+                        contentDescription = null,
+                        tint = onBanner,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = pluralStringResource(R.plurals.group_member_count, memberCount, memberCount),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = onBanner,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = Icons.Filled.PersonAdd,
+                        contentDescription = null,
+                        tint = onBanner,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -712,14 +769,14 @@ private val GroupDetailTitleShadow =
         blurRadius = 6f,
     )
 
-/** Expanded height for the group detail header banner (includes status-bar inset). */
-private val GroupDetailBannerHeight = 180.dp
+/** Expanded height for the group detail header banner (includes status-bar inset and member chip). */
+private val GroupDetailBannerHeight = 220.dp
 
 /** Collapsed toolbar content height below the status bar (matches [SeTopBar] 64.dp). */
 private val GroupDetailBannerToolbarHeight = 64.dp
 
-/** Minimum shrink distance so the banner always has room to collapse. */
-private val GroupDetailBannerCollapseRange = 96.dp
+/** Minimum shrink distance so the banner always has room to collapse (includes member chip). */
+private val GroupDetailBannerCollapseRange = 136.dp
 
 @Composable
 internal fun BannerCircleIconButton(
@@ -969,29 +1026,35 @@ private fun GroupSoloEmptyState(
     onAddMembers: () -> Unit,
     onShareLink: () -> Unit,
 ) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = SplitEaseColors.PrimarySoft),
+        shape = RoundedCornerShape(SeLayout.cardRadius),
     ) {
-        Text(
-            text = stringResource(R.string.group_solo_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = SplitEaseColors.Navy,
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        SePrimaryButton(
-            text = stringResource(R.string.action_add_group_members),
-            onClick = onAddMembers,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        SeOutlinedButton(
-            text = stringResource(R.string.action_share_group_link),
-            onClick = onShareLink,
-        )
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.group_solo_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = SplitEaseColors.Navy,
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            SePrimaryButton(
+                text = stringResource(R.string.action_add_group_members),
+                onClick = onAddMembers,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            SeOutlinedButton(
+                text = stringResource(R.string.action_share_group_link),
+                onClick = onShareLink,
+            )
+        }
     }
 }
 
@@ -1194,6 +1257,7 @@ private fun GroupExpenseListPreview() {
             ) {
                 GroupDetailBanner(
                     group = sampleGroup,
+                    memberCount = 2,
                     bannerColor = bannerColor,
                     onBack = {},
                     onOpenSettings = {},

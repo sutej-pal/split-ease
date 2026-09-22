@@ -26,8 +26,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +53,7 @@ import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.SeTopBarActionButton
 
@@ -159,17 +158,13 @@ fun FindPeopleScreen(
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
             item {
-                OutlinedTextField(
+                SeTextField(
                     value = uiState.query,
                     onValueChange = viewModel::setQuery,
+                    placeholder = stringResource(R.string.find_people_search_hint),
                     modifier =
                         Modifier
-                            .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 8.dp),
-                    placeholder = {
-                        Text(stringResource(R.string.find_people_search_hint))
-                    },
-                    singleLine = true,
                     leadingIcon = {
                         Icon(
                             Icons.Filled.Search,
@@ -177,16 +172,6 @@ fun FindPeopleScreen(
                             tint = SplitEaseColors.NavyMuted,
                         )
                     },
-                    colors =
-                        OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SplitEaseColors.Primary,
-                            unfocusedBorderColor = SplitEaseColors.OutlineStrong,
-                            focusedContainerColor = SplitEaseColors.Surface,
-                            unfocusedContainerColor = SplitEaseColors.Surface,
-                            cursorColor = SplitEaseColors.Primary,
-                            focusedTextColor = SplitEaseColors.Navy,
-                            unfocusedTextColor = SplitEaseColors.Navy,
-                        ),
                 )
             }
 

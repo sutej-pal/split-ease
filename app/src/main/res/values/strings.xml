@@ -703,4 +703,9 @@
     <string name="pin_board_saving">Saving…</string>
     <string name="pin_board_last_edited">Last edited by %1$s</string>
     <string name="action_open_pin_board">Pin Board</string>
+
+    <plurals name="group_member_count">
+        <item quantity="one">%1$d person</item>
+        <item quantity="other">%1$d people</item>
+    </plurals>
 </resources>

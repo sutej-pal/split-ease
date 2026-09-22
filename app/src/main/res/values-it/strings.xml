@@ -2,4 +2,8 @@
 <resources>
     <string name="msg_group_export_share_failed">Impossibile condividere questo CSV.</string>
     <string name="ledger_not_synced">Non ancora sincronizzato</string>
+    <plurals name="group_member_count">
+        <item quantity="one">%1$d persona</item>
+        <item quantity="other">%1$d persone</item>
+    </plurals>
 </resources>
