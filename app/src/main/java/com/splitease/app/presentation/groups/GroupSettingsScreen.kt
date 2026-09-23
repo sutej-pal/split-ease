@@ -77,7 +77,6 @@ import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
-import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
@@ -107,6 +106,7 @@ fun GroupSettingsScreen(
     onLeftOrDeleted: () -> Unit,
     onAddPeople: () -> Unit,
     onInviteViaLink: () -> Unit,
+    onEditGroup: () -> Unit,
     onViewMemberSettings: (friendUserId: String) -> Unit = {},
     viewModel: GroupsViewModel = hiltViewModel(),
     balancesViewModel: BalancesViewModel = hiltViewModel(),
@@ -192,16 +192,10 @@ fun GroupSettingsScreen(
             ) {
                 GroupSettingsHeader(
                     group = group,
-                    onEdit = { showEdit = true },
+                    onEdit = onEditGroup,
                     onChangePhoto = { photoPicker.launch() },
                 )
-                SettingsActionRow(
-                    icon = Icons.Filled.PhotoCamera,
-                    title = stringResource(R.string.action_edit_group_photo),
-                    onClick = { photoPicker.launch() },
-                )
-                HorizontalDivider(color = SplitEaseColors.Outline)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 SeSectionHeader(text = stringResource(R.string.group_settings_members_section))
                 SettingsActionRow(
@@ -240,9 +234,7 @@ fun GroupSettingsScreen(
                                     ?: stringResource(R.string.you_label),
                             )
                         } else if (pending) {
-                            friend?.displayNameSnapshot
-                                ?: userDisplayNames[member.userId]
-                                ?: member.userId.take(8)
+                            friend.displayNameSnapshot
                         } else {
                             rawName
                         }
@@ -253,7 +245,7 @@ fun GroupSettingsScreen(
                             when {
                                 pending ->
                                     listOfNotNull(
-                                        friend?.emailSnapshot,
+                                        friend.emailSnapshot,
                                         stringResource(R.string.invite_pending_label),
                                     ).joinToString(" · ")
                                 else -> friend?.emailSnapshot
@@ -429,19 +421,6 @@ fun GroupSettingsScreen(
             }
         },
     )
-
-    if (showEdit && group != null) {
-        EditGroupDialog(
-            group = group!!,
-            isSubmitting = uiState.isSubmitting,
-            onDismiss = { showEdit = false },
-            onSave = { name, type ->
-                val updated = group!!.copy(name = name, groupType = type)
-                viewModel.updateGroup(updated)
-                showEdit = false
-            },
-        )
-    }
 
     if (showLeaveConfirm) {
         SeConfirmDialog(
@@ -883,69 +862,6 @@ private fun SettingsToggleRow(
                     checkedTrackColor = SplitEaseColors.Primary,
                 ),
         )
-    }
-}
-
-@Composable
-private fun EditGroupDialog(
-    group: Group,
-    isSubmitting: Boolean,
-    onDismiss: () -> Unit,
-    onSave: (name: String, type: GroupType) -> Unit,
-) {
-    var name by rememberSaveable(group.id) { mutableStateOf(group.name) }
-    var type by rememberSaveable(group.id) { mutableStateOf(group.groupType.name) }
-    var showValidation by rememberSaveable(group.id) { mutableStateOf(false) }
-    val selected = runCatching { GroupType.valueOf(type) }.getOrDefault(GroupType.OTHER)
-    val nameError = showValidation && name.isBlank()
-
-    SeModal(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.action_edit),
-        icon = Icons.Filled.Edit,
-        tone = SeConfirmTone.Primary,
-        dismissLabel = stringResource(R.string.action_close),
-        confirmLabel = stringResource(R.string.action_save),
-        onConfirm = {
-            showValidation = true
-            val trimmed = name.trim()
-            if (trimmed.isNotEmpty()) onSave(trimmed, selected)
-        },
-        confirmEnabled = !isSubmitting,
-    ) {
-        SeTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = stringResource(R.string.label_group_name),
-            isError = nameError,
-            supportingText =
-                if (nameError) stringResource(R.string.msg_group_name_required) else null,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        SeSectionHeader(text = stringResource(R.string.label_group_type))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SeTypeChip(
-                label = stringResource(R.string.group_type_friends),
-                icon = Icons.Filled.Group,
-                selected = selected == GroupType.FRIENDS,
-                onClick = { type = GroupType.FRIENDS.name },
-                modifier = Modifier.weight(1f),
-            )
-            SeTypeChip(
-                label = stringResource(R.string.group_type_home),
-                icon = Icons.Filled.Home,
-                selected = selected == GroupType.HOME,
-                onClick = { type = GroupType.HOME.name },
-                modifier = Modifier.weight(1f),
-            )
-            SeTypeChip(
-                label = stringResource(R.string.group_type_other),
-                icon = Icons.AutoMirrored.Filled.List,
-                selected = selected == GroupType.OTHER,
-                onClick = { type = GroupType.OTHER.name },
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 }
 

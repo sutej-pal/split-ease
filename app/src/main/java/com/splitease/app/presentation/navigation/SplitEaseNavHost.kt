@@ -141,7 +141,7 @@ object Routes {
     const val REVIEW_FRIENDS = "review_friends?groupId={groupId}"
     const val FRIEND_DETAIL = "friend_detail/{friendUserId}"
     const val FRIEND_SETTINGS = "friend_settings/{friendUserId}"
-    const val CREATE_GROUP = "create_group"
+    const val CREATE_GROUP = "create_group?groupId={groupId}"
     const val GROUP_DETAIL = "group_detail/{groupId}"
     const val NON_GROUP_EXPENSES = "non_group_expenses"
     const val GROUP_SETTINGS = "group_settings/{groupId}"
@@ -230,6 +230,8 @@ object Routes {
             "&confirmOnly=$confirmOnly" +
             "&name=$n&contact=$c"
     }
+
+    fun editGroup(groupId: String) = "create_group?groupId=$groupId"
 
     fun addExpenseForGroup(groupId: String) =
         "add_expense?groupId=$groupId&friendUserId=&expenseId="
@@ -990,8 +992,16 @@ private fun SignedInNavHost(
                     },
                 )
             }
-            composable(Routes.CREATE_GROUP) {
+            composable(
+                route = Routes.CREATE_GROUP,
+                arguments = listOf(navArgument("groupId") { 
+                    type = NavType.StringType
+                    defaultValue = "" 
+                })
+            ) { entry ->
+                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
                 CreateGroupScreen(
+                    groupId = groupId,
                     onBack = { navController.popBackStack() },
                     onCreated = { id ->
                         navController.navigate(Routes.groupDetail(id)) {
@@ -1148,6 +1158,7 @@ private fun SignedInNavHost(
                     onViewMemberSettings = { friendUserId ->
                         navController.navigate(Routes.friendSettings(friendUserId))
                     },
+                    onEditGroup = { navController.navigate(Routes.editGroup(groupId)) },
                 )
             }
             composable(

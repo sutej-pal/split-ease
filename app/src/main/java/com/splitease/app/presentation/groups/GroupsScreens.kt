@@ -131,22 +131,31 @@ import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.SeTypeChip
+import kotlinx.coroutines.flow.MutableStateFlow
 import java.math.BigDecimal
 
 @Composable
 fun CreateGroupScreen(
+    groupId: String? = null,
     onBack: () -> Unit,
     onCreated: (String) -> Unit,
     viewModel: GroupsViewModel = hiltViewModel(),
 ) {
+    val existingGroup by remember(groupId) {
+        if (groupId != null) viewModel.observeGroup(groupId) else MutableStateFlow(null)
+    }.collectAsStateWithLifecycle()
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var name by rememberSaveable { mutableStateOf("") }
-    var groupType by rememberSaveable { mutableStateOf(GroupType.OTHER.name) }
-    var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var name by rememberSaveable(existingGroup) { mutableStateOf(existingGroup?.name ?: "") }
+    var groupType by rememberSaveable(existingGroup) { mutableStateOf(existingGroup?.groupType?.name ?: GroupType.OTHER.name) }
+    var photoUri by rememberSaveable(existingGroup) { mutableStateOf(existingGroup?.photoUrl) }
+    
     val selectedType = runCatching { GroupType.valueOf(groupType) }.getOrDefault(GroupType.OTHER)
     val isSubmitting = uiState.isSubmitting
     var showValidation by rememberSaveable { mutableStateOf(false) }
     val nameError = showValidation && name.isBlank()
+    val isEditMode = groupId != null
+    
     val photoPicker =
         rememberImagePicker(
             sourceTitle = stringResource(R.string.group_photo_source_title),
@@ -161,9 +170,9 @@ fun CreateGroupScreen(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             SeTopBar(
-                title = stringResource(R.string.create_group_title),
+                title = stringResource(if (isEditMode) R.string.edit_group_title else R.string.create_group_title),
                 onClose = if (isSubmitting) null else onBack,
-                centered = true,
+                centered = false,
             )
         },
     ) { padding ->
@@ -249,28 +258,30 @@ fun CreateGroupScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SplitEaseColors.PrimarySoft)
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PersonAdd,
-                    contentDescription = null,
-                    tint = SplitEaseColors.Primary,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = stringResource(R.string.create_group_invite_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SplitEaseColors.Navy,
-                )
+            if (!isEditMode) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SplitEaseColors.PrimarySoft)
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PersonAdd,
+                        contentDescription = null,
+                        tint = SplitEaseColors.Primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.create_group_invite_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SplitEaseColors.Navy,
+                    )
+                }
             }
 
             uiState.errorMessage?.let {
@@ -281,21 +292,32 @@ fun CreateGroupScreen(
             Spacer(modifier = Modifier.height(24.dp))
             SePrimaryButton(
                 text =
-                    if (isSubmitting) {
-                        stringResource(R.string.group_creating)
-                    } else {
-                        stringResource(R.string.action_create_group)
+                    when {
+                        isSubmitting && isEditMode -> stringResource(R.string.pin_board_saving)
+                        isSubmitting -> stringResource(R.string.group_creating)
+                        isEditMode -> stringResource(R.string.action_save)
+                        else -> stringResource(R.string.action_create_group)
                     },
                 onClick = {
                     showValidation = true
                     if (name.isBlank()) return@SePrimaryButton
                     focusManager.clearFocus()
-                    viewModel.createGroup(
-                        name = name,
-                        groupType = selectedType,
-                        photoUri = photoUri,
-                        onSuccess = onCreated,
-                    )
+                    if (isEditMode && existingGroup != null) {
+                        val updated = existingGroup!!.copy(
+                            name = name,
+                            groupType = selectedType,
+                            photoUrl = photoUri,
+                        )
+                        viewModel.updateGroup(updated)
+                        onCreated(existingGroup!!.id)
+                    } else {
+                        viewModel.createGroup(
+                            name = name,
+                            groupType = selectedType,
+                            photoUri = photoUri,
+                            onSuccess = onCreated,
+                        )
+                    }
                 },
                 enabled = !isSubmitting,
                 isLoading = isSubmitting,
@@ -473,7 +495,7 @@ fun GroupDetailScreen(
                 modifier = Modifier.paddingAboveBottomBar(),
             )
         },
-    ) { _ ->
+    ) { padding ->
         SeSystemBars(
             statusBarColor = Color.Transparent,
             // Bottom of the screen is light content / FAB — keep dark system-nav glyphs.
@@ -484,7 +506,7 @@ fun GroupDetailScreen(
             navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(bottom = padding.calculateBottomPadding()),
         ) {
             GroupDetailBanner(
                 group = group,

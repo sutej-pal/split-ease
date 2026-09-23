@@ -123,7 +123,8 @@
     <string name="find_people_loading_contacts">Loading contacts…</string>
     <string name="find_people_contacts_permission">Allow SplitEase to read your contacts to invite people faster.</string>
     <string name="action_create_group">Create group</string>
-    <string name="create_group_title">Create a group</string>
+    <string name="create_group_title">Create group</string>
+    <string name="edit_group_title">Edit group</string>
     <string name="create_group_invite_note">You\'ll be able to invite members by email or SMS once the group is created.</string>
     <string name="group_creating">Creating group…</string>
     <string name="action_close">Close</string>
