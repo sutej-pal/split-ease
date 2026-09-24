@@ -141,8 +141,9 @@ fun CreateGroupScreen(
     onCreated: (String) -> Unit,
     viewModel: GroupsViewModel = hiltViewModel(),
 ) {
-    val existingGroup by remember(groupId) {
-        if (groupId != null) viewModel.observeGroup(groupId) else MutableStateFlow(null)
+    val validGroupId = groupId.takeIf { !it.isNullOrBlank() && it != "{groupId}" }
+    val existingGroup by remember(validGroupId) {
+        if (validGroupId != null) viewModel.observeGroup(validGroupId) else MutableStateFlow(null)
     }.collectAsStateWithLifecycle()
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -154,7 +155,7 @@ fun CreateGroupScreen(
     val isSubmitting = uiState.isSubmitting
     var showValidation by rememberSaveable { mutableStateOf(false) }
     val nameError = showValidation && name.isBlank()
-    val isEditMode = groupId != null
+    val isEditMode = validGroupId != null
     
     val photoPicker =
         rememberImagePicker(

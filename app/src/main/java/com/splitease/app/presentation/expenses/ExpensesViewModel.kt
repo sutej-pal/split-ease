@@ -157,6 +157,8 @@ data class ExpenseDetailUi(
     val viewerBalanceAmount: BigDecimal? = null,
     /** Last 3 calendar months of group spending (empty when not in a group). */
     val spendingTrendMonths: List<GroupMonthSpending> = emptyList(),
+    val lastUpdatedByLabel: String? = null,
+    val lastUpdatedAtEpochMs: Long? = null,
 )
 
 data class ExpenseCommentUi(
@@ -887,20 +889,25 @@ class ExpensesViewModel
                                             flowOf(emptyMap())
                                         }
                                     combine(
-                                        expenseRepository.observeSplits(expenseId),
-                                        userRepository.observeUsers(),
-                                        friendRepository.observeFriends(me),
-                                        groupRepository.observeGroupsForUser(me),
-                                        categoryRepository.observeCategories(),
-                                    ) { splits, users, friends, groups, categories ->
-                                        DetailCore(
-                                            expense = expense,
-                                            splits = splits,
-                                            users = users,
-                                            friends = friends,
-                                            groups = groups,
-                                            categories = categories,
-                                        )
+                                        combine(
+                                            expenseRepository.observeSplits(expenseId),
+                                            userRepository.observeUsers(),
+                                            friendRepository.observeFriends(me),
+                                            groupRepository.observeGroupsForUser(me),
+                                            categoryRepository.observeCategories(),
+                                        ) { splits, users, friends, groups, categories ->
+                                            DetailCore(
+                                                expense = expense,
+                                                splits = splits,
+                                                users = users,
+                                                friends = friends,
+                                                groups = groups,
+                                                categories = categories,
+                                            )
+                                        },
+                                        expenseCommentRepository.observeForExpense(expenseId),
+                                    ) { core, comments ->
+                                        core.copy(comments = comments)
                                     }.combine(
                                         combine(groupExpensesFlow, groupSplitsFlow) { expenses, splitsByExpense ->
                                             expenses to splitsByExpense
@@ -957,6 +964,23 @@ class ExpensesViewModel
                                                     else -> listOf(core.expense.paidByUserId)
                                                 }
                                             }
+                                        val lastSystemUpdateComment =
+                                            core.comments
+                                                .filter {
+                                                    it.kind == ExpenseCommentKind.SYSTEM &&
+                                                        it.body.contains("This expense was updated by")
+                                                }
+                                                .maxByOrNull { it.createdAtEpochMs }
+
+                                        val (lastUpdatedByLabel, lastUpdatedAtEpochMs) =
+                                            if (lastSystemUpdateComment != null) {
+                                                nameOf(lastSystemUpdateComment.authorUserId) to lastSystemUpdateComment.createdAtEpochMs
+                                            } else if (core.expense.updatedAtEpochMs > core.expense.createdAtEpochMs + 2000L) {
+                                                nameOf(core.expense.paidByUserId) to core.expense.updatedAtEpochMs
+                                            } else {
+                                                null to null
+                                            }
+
                                         ExpenseDetailUi(
                                             expense = core.expense,
                                             splits =
@@ -996,6 +1020,8 @@ class ExpensesViewModel
                                             viewerBalanceSide = balanceSide,
                                             viewerBalanceAmount = balanceAmount,
                                             spendingTrendMonths = trendMonths,
+                                            lastUpdatedByLabel = lastUpdatedByLabel,
+                                            lastUpdatedAtEpochMs = lastUpdatedAtEpochMs,
                                         )
                                     }
                                 }
@@ -1206,6 +1232,7 @@ class ExpensesViewModel
             val friends: List<Friend>,
             val groups: List<Group>,
             val categories: List<Category>,
+            val comments: List<ExpenseComment> = emptyList(),
         )
 
         fun updateExpense(

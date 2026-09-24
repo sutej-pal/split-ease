@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +31,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -120,7 +121,7 @@ fun ExpenseDetailScreen(
     val comments by viewModel.observeExpenseComments(expenseId).collectAsStateWithLifecycle()
     val attachments by viewModel.observeExpensePhotos(expenseId).collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(value = false) }
     var commentDraft by remember { mutableStateOf("") }
     val hasExpense = detail != null
     val me = viewModel.currentUserId()
@@ -159,10 +160,9 @@ fun ExpenseDetailScreen(
                 navigationExtra = {
                     if (detailSnapshot != null) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        CategoryChip(
-                            iconKey = detailSnapshot.categoryIconKey,
-                            onClick = { onEdit(expenseId) },
-                        )
+                        CategoryChip(iconKey = detailSnapshot.categoryIconKey) {
+                            onEdit(expenseId)
+                        }
                     }
                 },
                 actions = {
@@ -262,6 +262,21 @@ fun ExpenseDetailScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.NavyMuted,
             )
+            val lastUpdatedBy = snapshot.lastUpdatedByLabel
+            val lastUpdatedAt = snapshot.lastUpdatedAtEpochMs
+            if ((!lastUpdatedBy.isNullOrBlank()) && lastUpdatedAt != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text =
+                        stringResource(
+                            R.string.expense_updated_by_on,
+                            addedByDisplayName(lastUpdatedBy),
+                            formatExpenseAddedDate(lastUpdatedAt),
+                        ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SplitEaseColors.NavyMuted,
+                )
+            }
             Spacer(modifier = Modifier.height(20.dp))
 
             ExpensePaidOwesBlock(
@@ -269,7 +284,8 @@ fun ExpenseDetailScreen(
                 currentUserId = me,
             )
 
-            if (!snapshot.expense.notes.isNullOrBlank()) {
+            val notes = snapshot.expense.notes
+            if (!notes.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.label_notes),
@@ -278,7 +294,7 @@ fun ExpenseDetailScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = snapshot.expense.notes.orEmpty(),
+                    text = notes,
                     style = MaterialTheme.typography.bodyLarge,
                     color = SplitEaseColors.Navy,
                 )
@@ -609,34 +625,32 @@ private fun ExpensePaidOwesBlock(
 
     val oweNodes =
         remember(detail.splits, currentUserId, currency, youLabel, owesWord) {
-            buildList {
-                detail.splits
-                    .filter { it.owedAmount.compareTo(BigDecimal.ZERO) != 0 }
-                    .sortedByDescending { it.userId == currentUserId }
-                    .forEach { line ->
-                        val isViewer = line.userId == currentUserId
-                        val money = MoneyFormat.format(line.owedAmount, currency)
-                        add(
-                            ExpenseOweTreeNode(
-                                userId = line.userId,
-                                displayName =
-                                    if (isViewer) {
-                                        youLabel
-                                    } else {
-                                        shortDisplayName(line.participantLabel)
-                                    },
-                                amountLabel =
-                                    if (isViewer) {
-                                        money
-                                    } else {
-                                        "$owesWord $money"
-                                    },
-                                isViewer = isViewer,
-                                photoUrl = line.photoUrl,
-                            ),
-                        )
-                    }
-            }
+            detail.splits
+                .asSequence()
+                .filter { it.owedAmount.compareTo(BigDecimal.ZERO) != 0 }
+                .sortedByDescending { it.userId == currentUserId }
+                .map { line ->
+                    val isViewer = line.userId == currentUserId
+                    val money = MoneyFormat.format(line.owedAmount, currency)
+                    ExpenseOweTreeNode(
+                        userId = line.userId,
+                        displayName =
+                            if (isViewer) {
+                                youLabel
+                            } else {
+                                shortDisplayName(line.participantLabel)
+                            },
+                        amountLabel =
+                            if (isViewer) {
+                                money
+                            } else {
+                                "$owesWord $money"
+                            },
+                        isViewer = isViewer,
+                        photoUrl = line.photoUrl,
+                    )
+                }
+                .toList()
         }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -874,6 +888,8 @@ internal fun ExpenseCommentBar(
             Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
+                .navigationBarsPadding()
+                .imePadding()
                 .padding(horizontal = SeLayout.detailHorizontal, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

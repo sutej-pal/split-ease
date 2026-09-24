@@ -231,6 +231,9 @@ object Routes {
             "&name=$n&contact=$c"
     }
 
+    fun createGroup(groupId: String? = null) =
+        if (groupId.isNullOrBlank()) "create_group" else "create_group?groupId=$groupId"
+
     fun editGroup(groupId: String) = "create_group?groupId=$groupId"
 
     fun addExpenseForGroup(groupId: String) =
@@ -708,7 +711,7 @@ private fun SignedInNavHost(
                 GroupsHomeScreen(
                     onOpenGroup = { id -> navController.navigate(Routes.groupDetail(id)) },
                     onOpenNonGroup = { navController.navigate(Routes.NON_GROUP_EXPENSES) },
-                    onCreateGroup = { navController.navigate(Routes.CREATE_GROUP) },
+                    onCreateGroup = { navController.navigate(Routes.createGroup()) },
                     onAddExpense = { navController.navigate(Routes.ADD_EXPENSE_PICKER) },
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 )
@@ -999,7 +1002,8 @@ private fun SignedInNavHost(
                     defaultValue = "" 
                 })
             ) { entry ->
-                val groupId = entry.arguments?.getString("groupId").orEmpty().ifBlank { null }
+                val rawGroupId = entry.arguments?.getString("groupId").orEmpty()
+                val groupId = rawGroupId.takeIf { it.isNotBlank() && it != "{groupId}" }
                 CreateGroupScreen(
                     groupId = groupId,
                     onBack = { navController.popBackStack() },
@@ -1194,7 +1198,7 @@ private fun SignedInNavHost(
                     onPickFriend = { friendUserId ->
                         navController.navigate(Routes.addExpenseForFriend(friendUserId))
                     },
-                    onCreateGroup = { navController.navigate(Routes.CREATE_GROUP) },
+                    onCreateGroup = { navController.navigate(Routes.createGroup()) },
                     onInviteFriend = { navController.navigate(Routes.editContact()) },
                     onSearchContacts = { navController.navigate(Routes.findPeople()) },
                 )

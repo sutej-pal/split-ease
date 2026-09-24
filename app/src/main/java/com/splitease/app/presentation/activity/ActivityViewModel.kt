@@ -29,6 +29,8 @@ import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.presentation.common.MoneyFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -53,7 +55,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.math.BigDecimal
 import java.text.DateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -540,14 +541,14 @@ class ActivityViewModel
                 when {
                     isDeleted ->
                         amountFormatted.ifBlank { null } to ActivityBalanceTone.NEGATIVE
-                    liveExpense != null ->
-                        balanceLine(
-                            me = me,
-                            expense = liveExpense,
-                            splits = splitsByExpenseId[liveExpense.id].orEmpty(),
-                        )
                     else ->
-                        amountFormatted.ifBlank { null } to null
+                        computeEventBalanceLine(
+                            me = me,
+                            event = this,
+                            liveExpense = liveExpense,
+                            splits = relatedExpenseId?.let { splitsByExpenseId[it] }.orEmpty(),
+                            currencyFallback = snapshotCurrency ?: liveExpense?.currencyCode ?: "",
+                        )
                 }
             val displayEpochMs = sortEpochMs
             val groupCreatedAt = snapshotGroupId?.let { groupCreatedEpochs[it] } ?: 0L
@@ -639,6 +640,61 @@ class ActivityViewModel
             val zero = BigDecimal.ZERO.setScale(2)
             val net = BalanceCalculator.viewerNetForExpense(me, expense, splits)
             val money = MoneyFormat.format(net.abs(), expense.currencyCode)
+            return when {
+                net > zero ->
+                    appContext.getString(R.string.activity_you_get_back, money) to
+                        ActivityBalanceTone.POSITIVE
+                net < zero ->
+                    appContext.getString(R.string.activity_you_owe, money) to
+                        ActivityBalanceTone.NEGATIVE
+                else -> null to null
+            }
+        }
+
+        private fun computeEventBalanceLine(
+            me: String,
+            event: ActivityEvent,
+            liveExpense: Expense?,
+            splits: List<ExpenseSplit>,
+            currencyFallback: String,
+        ): Pair<String?, ActivityBalanceTone?> {
+            val snapshotAmt = event.snapshotAmount?.let { runCatching { BigDecimal(it) }.getOrNull() }
+            val currency = event.snapshotCurrency ?: liveExpense?.currencyCode ?: currencyFallback
+
+            if (liveExpense != null &&
+                snapshotAmt != null &&
+                liveExpense.amount.setScale(2, RoundingMode.HALF_UP).compareTo(snapshotAmt.setScale(2, RoundingMode.HALF_UP)) == 0 &&
+                splits.isNotEmpty()
+            ) {
+                return balanceLine(me, liveExpense, splits)
+            }
+
+            if (snapshotAmt == null || snapshotAmt.compareTo(BigDecimal.ZERO) <= 0 || currency.isBlank()) {
+                return null to null
+            }
+
+            val participants = event.snapshotParticipantUserIds
+                ?.split(",")
+                ?.filter { it.isNotBlank() }
+                ?.distinct()
+                .orEmpty()
+
+            val payer = event.snapshotCreatorUserId ?: event.actorUserId
+            val zero = BigDecimal.ZERO.setScale(2)
+
+            val net = if (participants.isNotEmpty()) {
+                val total = snapshotAmt.setScale(2, RoundingMode.HALF_UP)
+                val count = BigDecimal(participants.size)
+                val share = total.divide(count, 2, RoundingMode.HALF_UP)
+
+                val paid = if (payer == me) total else zero
+                val owed = if (me in participants) share else zero
+                paid.subtract(owed).setScale(2, RoundingMode.HALF_UP)
+            } else {
+                if (payer == me) snapshotAmt.setScale(2, RoundingMode.HALF_UP) else zero.negate()
+            }
+
+            val money = MoneyFormat.format(net.abs(), currency)
             return when {
                 net > zero ->
                     appContext.getString(R.string.activity_you_get_back, money) to

@@ -33,6 +33,7 @@ import com.splitease.app.domain.model.ExpenseCommentKind
 import com.splitease.app.domain.model.ExpensePhoto
 import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.RecurrenceFrequency
+import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.domain.model.SplitType
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
@@ -1427,11 +1428,10 @@ class ExpenseInteractor
             val actorName = displayNameOf(actorUserId)
             val body =
                 buildString {
-                    append("This expense was updated by ")
                     append(actorName)
-                    append('.')
+                    append(" updated this transaction:")
                     changes.forEach { change ->
-                        append('\n')
+                        append("\n- ")
                         append(change)
                     }
                 }
@@ -1442,7 +1442,7 @@ class ExpenseInteractor
             )
         }
 
-        private fun describeExpenseChanges(
+        private suspend fun describeExpenseChanges(
             before: Expense,
             beforeSplits: List<ExpenseSplit>,
             after: Expense,
@@ -1452,13 +1452,17 @@ class ExpenseInteractor
             if (before.description != after.description) {
                 changes += "Description: \"${before.description}\" → \"${after.description}\""
             }
-            if (before.amount.compareTo(after.amount) != 0) {
+            val amountChanged =
+                before.amount.compareTo(after.amount) != 0 || before.currencyCode != after.currencyCode
+            if (amountChanged) {
                 changes +=
                     "Amount: ${before.currencyCode} ${before.amount.toPlainString()} → " +
                         "${after.currencyCode} ${after.amount.toPlainString()}"
             }
             if (before.paidByUserId != after.paidByUserId) {
-                changes += "Paid by changed"
+                val oldPayer = displayNameOf(before.paidByUserId)
+                val newPayer = displayNameOf(after.paidByUserId)
+                changes += "Paid by: $oldPayer → $newPayer"
             }
             if (before.splitType != after.splitType) {
                 changes += "Split type: ${before.splitType.name} → ${after.splitType.name}"
@@ -1472,23 +1476,74 @@ class ExpenseInteractor
             if (before.categoryId != after.categoryId) {
                 changes += "Category updated"
             }
+
+            val beforeMap = beforeSplits.associateBy { it.userId }
+            val afterMap = afterSplits.associateBy { it.userId }
+            val allUserIds = (beforeMap.keys + afterMap.keys).distinct()
+
+            val beforeParticipants = beforeMap.keys
+            val afterParticipants = afterMap.keys
+            val participantsChanged = beforeParticipants != afterParticipants
+
+            val beforePercentages =
+                beforeSplits.associate { it.userId to (it.percentage?.stripTrailingZeros()?.toPlainString() ?: "") }
+            val afterPercentages =
+                afterSplits.associate { it.userId to (it.percentage?.stripTrailingZeros()?.toPlainString() ?: "") }
+            val percentagesChanged = beforePercentages != afterPercentages
+
+            val beforeShares =
+                beforeSplits.associate { it.userId to (it.shares?.toString() ?: "") }
+            val afterShares =
+                afterSplits.associate { it.userId to (it.shares?.toString() ?: "") }
+            val sharesChanged = beforeShares != afterShares
+
+            val beforeAdjustments =
+                beforeSplits.associate { it.userId to (it.adjustmentAmount?.stripTrailingZeros()?.toPlainString() ?: "") }
+            val afterAdjustments =
+                afterSplits.associate { it.userId to (it.adjustmentAmount?.stripTrailingZeros()?.toPlainString() ?: "") }
+            val adjustmentsChanged = beforeAdjustments != afterAdjustments
+
+            val beforePaid =
+                beforeSplits.associate { it.userId to (it.paidAmount?.stripTrailingZeros()?.toPlainString() ?: "") }
+            val afterPaid =
+                afterSplits.associate { it.userId to (it.paidAmount?.stripTrailingZeros()?.toPlainString() ?: "") }
+            val paidChanged = beforePaid != afterPaid
+
             val beforeOwed =
                 beforeSplits.associate { it.userId to it.owedAmount.stripTrailingZeros().toPlainString() }
             val afterOwed =
                 afterSplits.associate { it.userId to it.owedAmount.stripTrailingZeros().toPlainString() }
-            val beforePaid =
-                beforeSplits.associate {
-                    it.userId to (it.paidAmount?.stripTrailingZeros()?.toPlainString() ?: "")
+            val owedChanged = beforeOwed != afterOwed
+
+            val splitConfigChanged =
+                participantsChanged ||
+                    percentagesChanged ||
+                    sharesChanged ||
+                    adjustmentsChanged ||
+                    paidChanged ||
+                    before.splitType != after.splitType ||
+                    (!amountChanged && owedChanged)
+
+            if (splitConfigChanged) {
+                allUserIds.forEach { userId ->
+                    val bSplit = beforeMap[userId]
+                    val aSplit = afterMap[userId]
+                    val name = displayNameOf(userId)
+                    val possessiveName = if (name.endsWith("s", ignoreCase = true)) "$name'" else "$name's"
+
+                    if (bSplit != null && aSplit != null) {
+                        if (bSplit.owedAmount.compareTo(aSplit.owedAmount) != 0) {
+                            val bMoney = MoneyFormat.format(bSplit.owedAmount, before.currencyCode)
+                            val aMoney = MoneyFormat.format(aSplit.owedAmount, after.currencyCode)
+                            changes += "$possessiveName share changed from $bMoney to $aMoney"
+                        }
+                    } else if (bSplit == null && aSplit != null) {
+                        val aMoney = MoneyFormat.format(aSplit.owedAmount, after.currencyCode)
+                        changes += "$possessiveName share set to $aMoney"
+                    } else if (bSplit != null) {
+                        changes += "$name was removed from the split"
+                    }
                 }
-            val afterPaid =
-                afterSplits.associate {
-                    it.userId to (it.paidAmount?.stripTrailingZeros()?.toPlainString() ?: "")
-                }
-            if (beforeOwed != afterOwed ||
-                beforePaid != afterPaid ||
-                beforeSplits.map { it.userId }.toSet() != afterSplits.map { it.userId }.toSet()
-            ) {
-                changes += "Split details updated"
             }
             return changes
         }

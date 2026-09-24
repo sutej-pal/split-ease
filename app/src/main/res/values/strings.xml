@@ -635,6 +635,7 @@
     <string name="msg_expense_cloud_schema">Could not sync expense splits — the cloud database is missing a column (paid_amount / adjustment_amount). Run the expense_splits ALTER statements in docs/sql/migration_db.sql, then retry.</string>
     <string name="expense_not_found">Expense not found.</string>
     <string name="expense_added_by_on">Added by %1$s on %2$s</string>
+    <string name="expense_updated_by_on">Updated by %1$s on %2$s</string>
     <string name="expense_you_owe_amount">You owe %1$s</string>
     <string name="expense_spending_trends_for">Spending trends for %1$s</string>
     <string name="expense_view_more_charts">View more charts</string>
