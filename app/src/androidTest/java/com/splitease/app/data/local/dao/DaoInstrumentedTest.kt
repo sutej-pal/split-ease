@@ -43,7 +43,8 @@ class DaoInstrumentedTest {
     @Before
     fun createDb() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, SplitEaseDatabase::class.java)
+        db = Room
+            .inMemoryDatabaseBuilder(context, SplitEaseDatabase::class.java)
             .allowMainThreadQueries()
             .build()
         userDao = db.userDao()

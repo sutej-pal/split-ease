@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path
+        name="avatar_cache"
+        path="avatars/" />
+    <files-path
+        name="avatar_files"
+        path="avatars/" />
+    <cache-path
+        name="group_photo_cache"
+        path="group_photos/" />
+    <files-path
+        name="group_photo_files"
+        path="group_photos/" />
+    <cache-path
+        name="image_capture_cache"
+        path="image_capture/" />
+    <cache-path
+        name="expense_attachment_cache"
+        path="expense_attachments/" />
+    <cache-path
+        name="group_export_cache"
+        path="exports/" />
+</paths>
