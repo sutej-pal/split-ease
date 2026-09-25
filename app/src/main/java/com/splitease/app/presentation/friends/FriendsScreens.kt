@@ -213,51 +213,55 @@ fun FriendsListScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding =
                     PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
                         bottom = bottomBarScrollPadding(includeFab = true),
                     ),
             ) {
                 uiState.errorMessage?.let { message ->
                     item {
-                        SeErrorText(message, modifier = Modifier.padding(bottom = 8.dp))
+                        SeErrorText(message, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     }
                 }
                 uiState.infoMessage?.let { message ->
                     item {
-                        SeInfoText(message, modifier = Modifier.padding(bottom = 8.dp))
+                        SeInfoText(message, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     }
                 }
 
                 item {
-                    SeHeroBalancePair(
-                        iOwe = balances?.totalIOweByCurrency.orEmpty(),
-                        owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
-                        currencyCode = currencyCode,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                    )
-                    FriendsFilterMenu(
-                        selectedFilter = listFilter,
-                        onFilterSelected = {
-                            listFilter = it
-                            showSettledFriends = false
-                        },
-                    )
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        SeHeroBalancePair(
+                            iOwe = balances?.totalIOweByCurrency.orEmpty(),
+                            owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
+                            currencyCode = currencyCode,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                        )
+                        FriendsFilterMenu(
+                            selectedFilter = listFilter,
+                            onFilterSelected = {
+                                listFilter = it
+                                showSettledFriends = false
+                            },
+                        )
+                    }
                 }
 
                 if (friends.isEmpty()) {
                     item {
-                        SeEmptyState(
-                            message = stringResource(R.string.friends_empty),
-                            actionLabel = stringResource(R.string.action_add_friend),
-                            onAction = onAddFriend,
-                        )
+                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            SeEmptyState(
+                                message = stringResource(R.string.friends_empty),
+                                actionLabel = stringResource(R.string.action_add_friend),
+                                onAction = onAddFriend,
+                            )
+                        }
                     }
                 } else if (visibleFriends.isEmpty()) {
                     item {
-                        SeEmptyState(
-                            message = stringResource(R.string.friends_empty_filtered),
-                        )
+                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            SeEmptyState(
+                                message = stringResource(R.string.friends_empty_filtered),
+                            )
+                        }
                     }
                 } else {
                     items(visibleFriends, key = { it.id }) { friend ->
@@ -278,30 +282,34 @@ fun FriendsListScreen(
 
                 if (hiddenSettledCount > 0) {
                     item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = stringResource(R.string.friends_hiding_settled),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SeOutlinedButton(
-                            text =
-                                pluralStringResource(
-                                    R.plurals.friends_show_settled,
-                                    hiddenSettledCount,
-                                    hiddenSettledCount,
-                                ),
-                            onClick = { showSettledFriends = true },
-                        )
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(R.string.friends_hiding_settled),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeOutlinedButton(
+                                text =
+                                    pluralStringResource(
+                                        R.plurals.friends_show_settled,
+                                        hiddenSettledCount,
+                                        hiddenSettledCount,
+                                    ),
+                                onClick = { showSettledFriends = true },
+                            )
+                        }
                     }
                 } else if (canHideSettled) {
                     item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SeTextButton(
-                            text = stringResource(R.string.friends_hide_settled),
-                            onClick = { showSettledFriends = false },
-                        )
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            SeTextButton(
+                                text = stringResource(R.string.friends_hide_settled),
+                                onClick = { showSettledFriends = false },
+                            )
+                        }
                     }
                 }
             }
@@ -410,7 +418,7 @@ private fun FriendBalanceListItem(
                 Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onClick)
-                    .padding(vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.Top,
         ) {
             SeAvatarBadge(

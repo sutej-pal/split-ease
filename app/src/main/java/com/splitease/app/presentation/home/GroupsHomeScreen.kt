@@ -263,38 +263,38 @@ private fun GroupsHomeScreenContent(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding =
                     PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
                         bottom = bottomBarScrollPadding(includeFab = true),
                     ),
             ) {
                     item {
-                        Crossfade(
-                            targetState = ui.syncState == SyncState.FAILED,
-                            label = "groups-hero-balances",
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { isFailed ->
-                            if (isFailed) {
-                                GroupsBalancesSyncError(
-                                    onRetry = onRetryHydrate,
-                                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                                )
-                            } else {
-                                SeHeroBalancePair(
-                                    iOwe = balances?.totalIOweByCurrency.orEmpty(),
-                                    owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
-                                    currencyCode = ui.currencyCode,
-                                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                                )
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            Crossfade(
+                                targetState = ui.syncState == SyncState.FAILED,
+                                label = "groups-hero-balances",
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { isFailed ->
+                                if (isFailed) {
+                                    GroupsBalancesSyncError(
+                                        onRetry = onRetryHydrate,
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                                    )
+                                } else {
+                                    SeHeroBalancePair(
+                                        iOwe = balances?.totalIOweByCurrency.orEmpty(),
+                                        owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
+                                        currencyCode = ui.currencyCode,
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                                    )
+                                }
                             }
+                            GroupsFilterMenu(
+                                selectedFilter = listFilter,
+                                onFilterSelected = {
+                                    listFilter = it
+                                    showSettledGroups = false
+                                },
+                            )
                         }
-                        GroupsFilterMenu(
-                            selectedFilter = listFilter,
-                            onFilterSelected = {
-                                listFilter = it
-                                showSettledGroups = false
-                            },
-                        )
                     }
 
                     val showLoading = ui.isLoading && ui.allGroups.isEmpty()
@@ -303,7 +303,7 @@ private fun GroupsHomeScreenContent(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
+                                    .padding(horizontal = 16.dp, vertical = 48.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 CircularProgressIndicator(
@@ -314,11 +314,13 @@ private fun GroupsHomeScreenContent(
                     } else {
                         if (ui.allGroups.isEmpty() && !showNonGroup) {
                             item {
-                                SeEmptyState(
-                                    message = stringResource(R.string.groups_empty_home),
-                                    actionLabel = stringResource(R.string.action_create_group),
-                                    onAction = onCreateGroup,
-                                )
+                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                    SeEmptyState(
+                                        message = stringResource(R.string.groups_empty_home),
+                                        actionLabel = stringResource(R.string.action_create_group),
+                                        onAction = onCreateGroup,
+                                    )
+                                }
                             }
                         }
 
@@ -352,30 +354,34 @@ private fun GroupsHomeScreenContent(
 
                         if (hiddenSettledCount > 0) {
                             item {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = stringResource(R.string.groups_hiding_settled),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeOutlinedButton(
-                                    text =
-                                        pluralStringResource(
-                                            R.plurals.groups_show_settled,
-                                            hiddenSettledCount,
-                                            hiddenSettledCount,
-                                        ),
-                                    onClick = { showSettledGroups = true },
-                                )
+                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = stringResource(R.string.groups_hiding_settled),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    SeOutlinedButton(
+                                        text =
+                                            pluralStringResource(
+                                                R.plurals.groups_show_settled,
+                                                hiddenSettledCount,
+                                                hiddenSettledCount,
+                                            ),
+                                        onClick = { showSettledGroups = true },
+                                    )
+                                }
                             }
                         } else if (canHideSettled) {
                             item {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                SeTextButton(
-                                    text = stringResource(R.string.groups_hide_settled),
-                                    onClick = { showSettledGroups = false },
-                                )
+                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    SeTextButton(
+                                        text = stringResource(R.string.groups_hide_settled),
+                                        onClick = { showSettledGroups = false },
+                                    )
+                                }
                             }
                         }
                     }
@@ -535,7 +541,7 @@ private fun GroupBalanceListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeGroupIconTile(
@@ -589,7 +595,7 @@ private fun NonGroupListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeIconTile(
