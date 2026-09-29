@@ -846,10 +846,39 @@ begin
     return null;
   end if;
 
-  select coalesce(nullif(p.display_name, ''), split_part(p.email, '@', 1), 'A friend')
+  select coalesce(nullif(p.display_name, ''), split_part(p.email, '@', 1))
     into v_inviter_name
   from public.profiles p
   where p.id = inv.inviter_user_id;
+
+  if v_inviter_name is null or length(trim(v_inviter_name)) = 0 then
+    select coalesce(
+      nullif(u.raw_user_meta_data->>'display_name', ''),
+      nullif(u.raw_user_meta_data->>'full_name', ''),
+      split_part(u.email, '@', 1)
+    )
+      into v_inviter_name
+    from auth.users u
+    where u.id = inv.inviter_user_id;
+  end if;
+
+  if (v_inviter_name is null or length(trim(v_inviter_name)) = 0) and inv.group_id is not null then
+    select coalesce(
+      nullif(p.display_name, ''),
+      nullif(u.raw_user_meta_data->>'display_name', ''),
+      nullif(u.raw_user_meta_data->>'full_name', ''),
+      split_part(coalesce(p.email, u.email), '@', 1)
+    )
+      into v_inviter_name
+    from public.groups g
+    left join public.profiles p on p.id = g.created_by_user_id
+    left join auth.users u on u.id = g.created_by_user_id
+    where g.id = inv.group_id;
+  end if;
+
+  if v_inviter_name is null or length(trim(v_inviter_name)) = 0 then
+    v_inviter_name := 'A friend';
+  end if;
 
   if inv.group_id is not null then
     select g.name, g.photo_url
@@ -861,15 +890,22 @@ begin
       into v_members
     from (
       select
-        lower(coalesce(pr.display_name, pr.email, '')) as sort_name,
+        lower(coalesce(pr.display_name, u.raw_user_meta_data->>'display_name', u.raw_user_meta_data->>'full_name', pr.email, u.email, '')) as sort_name,
         jsonb_build_object(
           'display_name',
-          coalesce(nullif(pr.display_name, ''), split_part(pr.email, '@', 1), 'Member'),
+          coalesce(
+            nullif(pr.display_name, ''),
+            nullif(u.raw_user_meta_data->>'display_name', ''),
+            nullif(u.raw_user_meta_data->>'full_name', ''),
+            split_part(coalesce(pr.email, u.email), '@', 1),
+            'Member'
+          ),
           'already_joined',
           true
         ) as row_data
       from public.group_members gm
-      join public.profiles pr on pr.id = gm.user_id
+      left join public.profiles pr on pr.id = gm.user_id
+      left join auth.users u on u.id = gm.user_id
       where gm.group_id = inv.group_id
 
       union all

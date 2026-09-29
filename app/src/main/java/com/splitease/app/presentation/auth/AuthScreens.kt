@@ -349,7 +349,7 @@ internal fun PasswordSeTextField(
         supportingText = supportingText,
         trailingIcon = {
             val icon =
-                if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility
+                if (passwordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff
             val description =
                 if (passwordVisible) {
                     stringResource(R.string.cd_hide_password)

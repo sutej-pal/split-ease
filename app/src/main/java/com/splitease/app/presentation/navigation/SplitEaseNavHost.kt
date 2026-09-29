@@ -450,6 +450,10 @@ fun SplitEaseNavHost(
                         },
                         onContinueWithGoogle = onContinueWithGoogle,
                         onClearError = authViewModel::clearMessages,
+                        onNavigateBack = {
+                            authViewModel.clearMessages()
+                            navController.popBackStack()
+                        },
                     )
                 }
                 composable(Routes.SIGN_UP) {

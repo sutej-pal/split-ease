@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add-expense “Total after exchange” is hidden until the amount is a positive number.
 
 ### Added
+- theme/SeText.kt: named text-style composables (SeTitleMedium, SeBodyMedium, etc.) bundling style + fontWeight + default color. theme/Color.kt reorganized into labeled sections (helpers / brand / text & separator); no visual change.
+- Login screen has a back button (same SeTopBar chevron as Sign up and Forgot password) returning to Welcome, plus a subtitle under the title.
 - **What's new** — Account → What's new shows the packaged changelog. After a Play `versionCode` bump, a one-time dialog offers the latest notes. `./gradlew newRelease` also writes [play/whatsnew/en-US.txt](play/whatsnew/en-US.txt) for the Play Console (500 characters).
 - **Activity snapshots & Restore** — Activity log entries persist full expense snapshots at write time and flush those fields to Supabase `activity_events`. Deleted entries show strikethrough amounts, open a restore screen, then create an `EXPENSE_RESTORED` row and open the new expense in the editor. After restore, both the deleted and restored activity rows open that editor. Comment threads are relinked onto the restored expense.
 - Delete-account blocked-balance rows are tappable: they open the group (or Non-group expenses) so you can settle before retrying. Checking balances shows a shimmer list and “Checking balances…” status.
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Push notifications for group ledger changes: Android 13 permission prompt, Account → Notifications (mute all), Group settings mute, tap opens the group; Edge Function honors `notification_prefs` and drops stale FCM tokens ([fcm-setup.md](docs/fcm-setup.md))
 
 ### Changed
+- Paste-invite-link modal copy no longer mentions 'token'; title now reads 'Join SplitEase'.
 - Room ships incremental migrations 1–17. Schema bumps with no migration path still wipe the local cache (`fallbackToDestructiveMigration`); the next sync rehydrates from Supabase.
 - Added delete/trash icon to Account Settings "Delete account" button with 8dp spacing and destructive color.
 - Removed skeleton loader on Groups screen, replacing initial loading with centered progress indicator.

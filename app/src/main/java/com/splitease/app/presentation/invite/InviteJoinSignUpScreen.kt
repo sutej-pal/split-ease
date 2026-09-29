@@ -175,7 +175,7 @@ fun InviteJoinSignUpScreen(
                     },
                 trailingIcon = {
                     val icon =
-                        if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
+                        if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     val description =
                         if (passwordVisible) {
                             stringResource(R.string.cd_hide_password)

@@ -629,21 +629,32 @@ class SocialInteractor
                     it.equals(GROUP_SHARE_LINK_EMAIL, ignoreCase = true) ||
                         it.endsWith("@splitease.invalid", ignoreCase = true)
                 }.orEmpty()
+            val members =
+                dto.members.map { member ->
+                    InvitePreviewMember(
+                        displayName = member.displayName,
+                        alreadyJoined = member.alreadyJoined,
+                    )
+                }
+
+            var rawInviterName = dto.inviterName.trim()
+            if (rawInviterName.isBlank() || rawInviterName.equals("A friend", ignoreCase = true)) {
+                val fallbackJoinedMember =
+                    members.firstOrNull { it.alreadyJoined && !it.displayName.equals("Member", ignoreCase = true) }?.displayName
+                if (!fallbackJoinedMember.isNullOrBlank()) {
+                    rawInviterName = fallbackJoinedMember
+                }
+            }
+
             return InvitePreview(
                 token = dto.token,
                 kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
                 email = previewEmail,
-                inviterName = dto.inviterName.ifBlank { "A friend" },
+                inviterName = rawInviterName.ifBlank { "A friend" },
                 groupId = dto.groupId,
                 groupName = dto.groupName,
                 groupPhotoUrl = dto.groupPhotoUrl?.trim()?.takeIf { it.isNotEmpty() },
-                members =
-                    dto.members.map { member ->
-                        InvitePreviewMember(
-                            displayName = member.displayName,
-                            alreadyJoined = member.alreadyJoined,
-                        )
-                    },
+                members = members,
             )
         }
 

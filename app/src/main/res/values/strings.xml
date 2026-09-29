@@ -15,9 +15,9 @@
     <string name="welcome_tagline">Share expenses. Settle fairly. Stay in sync.</string>
     <string name="action_get_started">Get started</string>
     <string name="action_have_invite_link">Have an invitation link?</string>
-    <string name="invite_paste_title">Open invite</string>
-    <string name="invite_paste_body">Paste the https invite link (or token) from your email.</string>
-    <string name="invite_paste_label">Invite link or token</string>
+    <string name="invite_paste_title">Join SplitEase</string>
+    <string name="invite_paste_body">Paste the invite link shared with you</string>
+    <string name="invite_paste_label">Invite link</string>
     <string name="invite_paste_continue">Continue</string>
     <string name="invite_paste_invalid">Could\'t find an invitation link in that text.</string>
     <string name="action_log_in">Log in</string>
@@ -238,7 +238,7 @@
     <string name="invite_link_trust_body">Anyone can follow this link to join \"%1$s\". Only share it with people you trust.</string>
     <string name="this_group_label">this group</string>
     <string name="action_copy_link">Copy link</string>
-    <string name="action_link_copied">Copied</string>
+    <string name="action_link_copied">Link copied</string>
     <string name="action_share_link">Share link</string>
     <string name="action_change_link">Change link</string>
     <string name="invite_link_change_confirm_title">Change invite link?</string>
@@ -276,6 +276,7 @@
     <string name="group_leave_confirm">Leave this group? You will lose access to its expenses and balances.</string>
     <string name="group_delete_confirm">Delete this group for everyone? Expenses and balances in the group will be removed from this device.</string>
     <string name="login_title">Welcome back</string>
+    <string name="login_subtitle">Log in to pick up where you left off</string>
     <string name="signup_welcome_title">Welcome to SplitEase!</string>
     <string name="signup_welcome_subtitle">Let\'s create your account.</string>
     <string name="label_full_name">Full name</string>

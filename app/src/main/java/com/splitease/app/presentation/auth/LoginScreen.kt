@@ -47,6 +47,7 @@ fun LoginScreen(
     onContinueWithGoogle: () -> Unit,
     modifier: Modifier = Modifier,
     onClearError: () -> Unit = {},
+    onNavigateBack: (() -> Unit)? = null,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -70,6 +71,9 @@ fun LoginScreen(
 
     AuthScaffold(
         title = stringResource(R.string.login_title),
+        subtitle = stringResource(R.string.login_subtitle),
+        contentPlacement = AuthContentPlacement.Top,
+        onNavigateBack = onNavigateBack,
         formState = formState,
         modifier = modifier,
         showErrorInSnackbar = false,
@@ -180,6 +184,7 @@ private fun LoginScreenPreview() {
             onNavigateSignUp = {},
             onNavigateForgot = {},
             onContinueWithGoogle = {},
+            onNavigateBack = {},
         )
     }
 }
@@ -194,6 +199,7 @@ private fun LoginScreenLoadingPreview() {
             onNavigateSignUp = {},
             onNavigateForgot = {},
             onContinueWithGoogle = {},
+            onNavigateBack = {},
         )
     }
 }

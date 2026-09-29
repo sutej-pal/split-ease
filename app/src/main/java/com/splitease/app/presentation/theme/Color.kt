@@ -9,17 +9,23 @@ import androidx.compose.ui.graphics.lerp
  * toward white or black so banners, fills, and chrome stay on-brand.
  */
 
-// --- Brand seeds ---
+// ============================================================
+// COLOR DERIVATION HELPERS
+// Used by both brand colors below and text/separator colors.
+// ============================================================
+private fun Color.wash(amount: Float): Color = lerp(this, Color.White, amount)
+
+private fun Color.shade(amount: Float): Color = lerp(this, Color.Black, amount)
+
+// ============================================================
+// BRAND SEEDS & DERIVED SURFACE COLORS
+// ============================================================
 
 /** Primary indigo — CTAs, focused fields, links, and other brand accents. */
 val IndigoLight = Color(0xFF4F46E5)
 
 /** Accent amber — highlights, "pending" states, home-group warmth. */
 val AmberLight = Color(0xFFFFA008)
-
-private fun Color.wash(amount: Float): Color = lerp(this, Color.White, amount)
-
-private fun Color.shade(amount: Float): Color = lerp(this, Color.Black, amount)
 
 /** Soft indigo fill used on Friends + Other group banners and the friends header. */
 private val IndigoBannerWash = IndigoLight.wash(0.70f)
@@ -37,18 +43,6 @@ val SurfaceLight = Color.White
 
 /** Grouped rows, unfocused fields, chip idle fills. */
 val SurfaceMutedLight = IndigoLight.wash(0.93f)
-
-/** Body/heading text on light backgrounds. */
-val TextPrimaryLight = IndigoLight.shade(0.72f)
-
-/** Captions, hints, timestamps, muted labels (light theme). */
-val TextSecondaryLight = lerp(IndigoLight.wash(0.40f), Color.Black, 0.28f)
-
-/** Resting borders. */
-val OutlineLight = IndigoLight.wash(0.82f)
-
-/** Hairline / card edges. */
-val OutlineVariantLight = IndigoLight.wash(0.90f)
 
 /** Pastel detail-header banners. */
 val BannerFriendsLight = IndigoBannerWash
@@ -69,12 +63,6 @@ val BackgroundDark = IndigoLight.shade(0.88f)
 /** Cards, sheets, input fields (one step lighter than background). */
 val SurfaceDark = IndigoLight.shade(0.78f)
 
-/** Body/heading text on dark backgrounds. */
-val TextPrimaryDark = IndigoLight.wash(0.92f)
-
-/** Captions, hints, timestamps, muted labels (dark theme). */
-val TextSecondaryDark = IndigoLight.wash(0.68f)
-
 // --- Semantic balance ---
 
 /** "You owe" / error — rose that stays readable on pale fills. */
@@ -88,3 +76,34 @@ val OwedTeal = Color(0xFF1B8A6B)
 
 /** Positive container. */
 val OwedContainer = Color(0xFFDDF6EE)
+
+// ============================================================
+// TEXT & SEPARATOR COLORS
+// To change app-wide text or divider/outline colors, edit ONLY
+// the values below. See theme/SeText.kt for which named text
+// style uses which of these.
+// ============================================================
+
+/** Body/heading text on light backgrounds. */
+val TextPrimaryLight = IndigoLight.shade(0.72f)
+
+/** Captions, hints, timestamps, muted labels (light theme). */
+val TextSecondaryLight = lerp(IndigoLight.wash(0.40f), Color.Black, 0.28f)
+
+/** Body/heading text on dark backgrounds. */
+val TextPrimaryDark = IndigoLight.wash(0.92f)
+
+/** Captions, hints, timestamps, muted labels (dark theme). */
+val TextSecondaryDark = IndigoLight.wash(0.68f)
+
+/** Resting borders. */
+val OutlineLight = IndigoLight.wash(0.82f)
+
+/** Hairline / card edges. */
+val OutlineVariantLight = IndigoLight.wash(0.90f)
+
+/** Resting borders (dark theme). */
+val OutlineDark = Color(0xFF4B465C)
+
+/** Hairline / card edges (dark theme). */
+val OutlineVariantDark = Color(0xFF3A3552)

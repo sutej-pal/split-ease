@@ -103,6 +103,27 @@ Hero / banner titles on colored group headers, ledger amount lines, and in-list 
 | `labelMedium` | 14 / 18 sp | Medium |
 | `labelSmall` | 13 / 16 sp | Medium |
 
+### Typography Composables (`theme/SeText.kt`)
+
+For all text rendering going forward, prefer the named composables in `theme/SeText.kt` (`SeTitleMedium`, `SeBodyMedium`, etc.) over raw `Text()` calls with `MaterialTheme.typography.*`. They bundle the typography scale, default weight, and default color from `SplitEaseColors`:
+
+| Composable | Typography scale | Default Weight | Default Color |
+| --- | --- | --- | --- |
+| `SeDisplayLarge` | `displayLarge` | Bold | `SplitEaseColors.Navy` |
+| `SeDisplayMedium` | `displayMedium` | Bold | `SplitEaseColors.Navy` |
+| `SeHeadlineLarge` | `headlineLarge` | Bold | `SplitEaseColors.Navy` |
+| `SeHeadlineMedium` | `headlineMedium` | SemiBold | `SplitEaseColors.Navy` |
+| `SeHeadlineSmall` | `headlineSmall` | SemiBold | `SplitEaseColors.Navy` |
+| `SeTitleLarge` | `titleLarge` | SemiBold | `SplitEaseColors.Navy` |
+| `SeTitleMedium` | `titleMedium` | SemiBold | `SplitEaseColors.Navy` |
+| `SeTitleSmall` | `titleSmall` | SemiBold | `SplitEaseColors.Navy` |
+| `SeBodyLarge` | `bodyLarge` | Normal | `SplitEaseColors.Navy` |
+| `SeBodyMedium` | `bodyMedium` | Normal | `SplitEaseColors.NavyMuted` |
+| `SeBodySmall` | `bodySmall` | Normal | `SplitEaseColors.NavyMuted` |
+| `SeLabelLarge` | `labelLarge` | SemiBold | `SplitEaseColors.Navy` |
+| `SeLabelMedium` | `labelMedium` | Medium | `SplitEaseColors.NavyMuted` |
+| `SeLabelSmall` | `labelSmall` | Medium | `SplitEaseColors.NavyMuted` |
+
 ## Locked shapes (do not change)
 
 These silhouettes are product decisions. Do **not** restyle them in a later prompt unless the user explicitly asks.

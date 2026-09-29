@@ -75,8 +75,8 @@ private val DarkColorScheme =
         onSurface = TextPrimaryDark,
         surfaceVariant = SurfaceDark,
         onSurfaceVariant = TextSecondaryDark,
-        outline = Color(0xFF4B465C),
-        outlineVariant = Color(0xFF3A3552),
+        outline = OutlineDark,
+        outlineVariant = OutlineVariantDark,
         error = OweRed,
         onError = Color.White,
         errorContainer = Color(0xFF8C1D18),
@@ -111,21 +111,10 @@ fun SplitEaseTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as? Activity)?.window ?: return@SideEffect
-            // Match system bars to the theme background. With edge-to-edge
-            // (MainActivity.enableEdgeToEdge), these may be translucent; icon
-            // contrast is still controlled via WindowInsetsController.
+            val window = (view.context as Activity).window
             @Suppress("DEPRECATION")
             window.statusBarColor = colorScheme.background.toArgb()
-            @Suppress("DEPRECATION")
-            window.navigationBarColor = Color.Transparent.toArgb()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.isNavigationBarContrastEnforced = false
-            }
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
-            }
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 

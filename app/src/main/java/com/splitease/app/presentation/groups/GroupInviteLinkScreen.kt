@@ -121,52 +121,59 @@ fun GroupInviteLinkScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp),
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text =
-                        stringResource(
-                            R.string.invite_link_trust_body,
-                            uiState.groupName.ifBlank { stringResource(R.string.this_group_label) },
-                        ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = SplitEaseColors.Navy,
-                )
-                Spacer(modifier = Modifier.height(24.dp))
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text =
+                            stringResource(
+                                R.string.invite_link_trust_body,
+                                uiState.groupName.ifBlank { stringResource(R.string.this_group_label) },
+                            ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = SplitEaseColors.Navy,
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                if (uiState.inviteUrl != null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(SplitEaseColors.Primary),
-                            contentAlignment = Alignment.Center,
+                    if (uiState.inviteUrl != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top,
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.Link,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp),
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(SplitEaseColors.Primary),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Link,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Text(
+                                text = uiState.inviteUrl.orEmpty(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = SplitEaseColors.Navy,
+                                modifier = Modifier.weight(1f),
                             )
                         }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Text(
-                            text = uiState.inviteUrl.orEmpty(),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = SplitEaseColors.Navy,
-                            modifier = Modifier.weight(1f),
-                        )
                     }
+
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
                 HorizontalDivider(color = SplitEaseColors.Outline)
 
                 InviteLinkCopyRow(
@@ -186,12 +193,13 @@ fun GroupInviteLinkScreen(
                     enabled = !uiState.isLoading && !uiState.isChanging,
                     isLoading = uiState.isChanging,
                     onClick = { showChangeLinkConfirm = true },
-                    showDivider = false,
                 )
 
                 uiState.errorMessage?.let {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SeErrorText(it)
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SeErrorText(it)
+                    }
                 }
             }
         },
@@ -219,62 +227,59 @@ private fun InviteLinkCopyRow(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        AnimatedContent(
-            targetState = copied,
-            transitionSpec = {
-                (fadeIn() + scaleIn(initialScale = 0.85f)) togetherWith
-                    (fadeOut() + scaleOut(targetScale = 0.85f))
-            },
-            label = "invite_link_copy_feedback",
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = enabled, onClick = onClick)
-                    .padding(vertical = 16.dp),
-        ) { isCopied ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(28.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isCopied) {
-                        SeLottieOnce(
-                            rawRes = R.raw.success_check,
-                            modifier = Modifier.size(28.dp),
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Filled.ContentCopy,
-                            contentDescription = null,
-                            tint =
-                                if (enabled) {
-                                    SplitEaseColors.Navy
-                                } else {
-                                    SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
-                                },
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
+    AnimatedContent(
+        targetState = copied,
+        transitionSpec = {
+            (fadeIn() + scaleIn(initialScale = 0.85f)) togetherWith
+                (fadeOut() + scaleOut(targetScale = 0.85f))
+        },
+        label = "invite_link_copy_feedback",
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) { isCopied ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(28.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isCopied) {
+                    SeLottieOnce(
+                        rawRes = R.raw.success_check,
+                        modifier = Modifier.size(28.dp),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.ContentCopy,
+                        contentDescription = null,
+                        tint =
+                            if (enabled) {
+                                SplitEaseColors.Navy
+                            } else {
+                                SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
+                            },
+                        modifier = Modifier.size(24.dp),
+                    )
                 }
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text =
-                        stringResource(
-                            if (isCopied) R.string.action_link_copied else R.string.action_copy_link,
-                        ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color =
-                        when {
-                            isCopied -> SplitEaseColors.Positive
-                            enabled -> SplitEaseColors.Navy
-                            else -> SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
-                        },
-                )
             }
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text =
+                    stringResource(
+                        if (isCopied) R.string.action_link_copied else R.string.action_copy_link,
+                    ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color =
+                    when {
+                        isCopied -> SplitEaseColors.NavyMuted
+                        enabled -> SplitEaseColors.Navy
+                        else -> SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
+                    },
+            )
         }
-        HorizontalDivider(color = SplitEaseColors.Outline)
     }
 }
 
@@ -285,51 +290,45 @@ private fun InviteLinkActionRow(
     onClick: () -> Unit,
     enabled: Boolean = true,
     isLoading: Boolean = false,
-    showDivider: Boolean = true,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = enabled, onClick = onClick)
-                    .padding(vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp).padding(2.dp),
-                    color = SplitEaseColors.Primary,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint =
-                        if (enabled) {
-                            SplitEaseColors.Navy
-                        } else {
-                            SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
-                        },
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color =
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp).padding(2.dp),
+                color = SplitEaseColors.Primary,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint =
                     if (enabled) {
                         SplitEaseColors.Navy
                     } else {
                         SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
                     },
+                modifier = Modifier.size(24.dp),
             )
         }
-        if (showDivider) {
-            HorizontalDivider(color = SplitEaseColors.Outline)
-        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color =
+                if (enabled) {
+                    SplitEaseColors.Navy
+                } else {
+                    SplitEaseColors.NavyMuted.copy(alpha = 0.5f)
+                },
+        )
     }
 }

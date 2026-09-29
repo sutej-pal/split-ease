@@ -187,7 +187,6 @@ fun GroupSettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp),
             ) {
                 GroupSettingsHeader(
@@ -195,9 +194,13 @@ fun GroupSettingsScreen(
                     onEdit = onEditGroup,
                     onChangePhoto = { photoPicker.launch() },
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                SeSectionHeader(text = stringResource(R.string.group_settings_members_section))
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                    SeSectionHeader(text = stringResource(R.string.group_settings_members_section))
+                }
                 SettingsActionRow(
                     icon = Icons.Filled.PersonAdd,
                     title = stringResource(R.string.action_add_people_to_group),
@@ -320,7 +323,7 @@ fun GroupSettingsScreen(
                             } else {
                                 null
                             },
-                        showDivider = true,
+                        showDivider = false,
                     )
                 }
 
@@ -341,7 +344,12 @@ fun GroupSettingsScreen(
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
-                SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
+                HorizontalDivider(color = SplitEaseColors.Outline)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                    SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
+                }
 
                 SettingsToggleRow(
                     icon = Icons.Filled.AccountTree,
@@ -353,15 +361,14 @@ fun GroupSettingsScreen(
                     text = stringResource(R.string.group_settings_simplify_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 54.dp, end = 8.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 4.dp),
                 )
                 SeTextButton(
                     text = stringResource(R.string.action_learn_more),
                     onClick = { showSimplifyInfo = true },
                     emphasized = true,
-                    modifier = Modifier.padding(start = 40.dp),
+                    modifier = Modifier.padding(start = 46.dp, bottom = 8.dp),
                 )
-                HorizontalDivider(color = SplitEaseColors.Outline)
 
                 SettingsToggleRow(
                     icon = Icons.Filled.NotificationsOff,
@@ -373,9 +380,8 @@ fun GroupSettingsScreen(
                     text = stringResource(R.string.group_settings_mute_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 54.dp, end = 8.dp, bottom = 12.dp),
+                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
                 )
-                HorizontalDivider(color = SplitEaseColors.Outline)
 
                 SettingsActionRow(
                     icon = Icons.AutoMirrored.Filled.List,
@@ -388,9 +394,8 @@ fun GroupSettingsScreen(
                     text = stringResource(R.string.group_settings_default_split_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 54.dp, end = 8.dp, bottom = 12.dp),
+                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
                 )
-                HorizontalDivider(color = SplitEaseColors.Outline)
 
                 SettingsActionRow(
                     icon = Icons.AutoMirrored.Filled.ExitToApp,
@@ -411,12 +416,16 @@ fun GroupSettingsScreen(
                 }
 
                 uiState.errorMessage?.let {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    SeErrorText(it)
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeErrorText(it)
+                    }
                 }
                 uiState.infoMessage?.let {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    SeInfoText(it)
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeInfoText(it)
+                    }
                 }
             }
         },
@@ -641,7 +650,10 @@ private fun MemberSheetActionRow(
             )
         }
         if (showDivider) {
-            HorizontalDivider(color = SplitEaseColors.Outline)
+            HorizontalDivider(
+                color = SplitEaseColors.Outline,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
         }
     }
 }
@@ -708,7 +720,7 @@ private fun GroupSettingsHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -756,7 +768,7 @@ private fun SettingsActionRow(
     trailingBadge: String? = null,
     enabled: Boolean = true,
     showProgress: Boolean = false,
-    showDivider: Boolean = true,
+    showDivider: Boolean = false,
 ) {
     val resolvedTitleColor = titleColor ?: SplitEaseColors.Navy
     val resolvedIconTint = iconTint ?: SplitEaseColors.NavyMuted
@@ -773,7 +785,7 @@ private fun SettingsActionRow(
                             Modifier
                         },
                     )
-                    .padding(vertical = 14.dp),
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -825,7 +837,10 @@ private fun SettingsActionRow(
             }
         }
         if (showDivider) {
-            HorizontalDivider(color = SplitEaseColors.Outline)
+            HorizontalDivider(
+                color = SplitEaseColors.Outline,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
         }
     }
 }
@@ -841,7 +856,7 @@ private fun SettingsToggleRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 10.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = SplitEaseColors.NavyMuted, modifier = Modifier.size(24.dp))
