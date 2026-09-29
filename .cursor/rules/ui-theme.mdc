@@ -19,6 +19,8 @@ Do **not** invent alternate looks (custom accent schemes, one-off dialog skins) 
 - New modals/dialogs → use `SeModal` / `SeModalTitle` / `SeModalBody`.
 - Colors → brand vals in `presentation/theme/Color.kt`, `MaterialTheme.colorScheme` via `SplitEaseTheme`, and `SplitEaseColors` aliases. Do not hardcode hex outside theme files.
 - Colours are explicit hex; do not use lerp/wash/shade.
+- Errors use `colorScheme.error`, never `OweRed`.
+- All inline error messages use bodySmall via `SeErrorText` / `seErrorTextStyle()`.
 - Screenshots or third-party UI mocks are **content/layout references** only; restyle them to the app theme unless the user says otherwise.
 
 ## Exception

@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.splitease.app.R
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SePrimaryButton
 
 /**
@@ -149,10 +150,8 @@ private fun AppLockOverlay(onUnlocked: () -> Unit) {
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
         )
         if (promptError != null) {
-            Text(
+            SeErrorText(
                 text = promptError.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(bottom = 16.dp),
             )
         }

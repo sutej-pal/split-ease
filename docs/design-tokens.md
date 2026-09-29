@@ -81,15 +81,40 @@ These values are written directly. Balance colours stay on these tokens.
 | `onSurfaceVariant` | TextSecondaryLight `#575F9E` | TextSecondaryDark `#BFC8FC` |
 | `outline` | OutlineLight `#DAE0FE` | OutlineDark `#4B465C` |
 | `outlineVariant` | OutlineVariantLight `#EBEEFF` | OutlineVariantDark `#3A3552` |
-| `error` | OweRed `#C43D5A` | OweRed `#C43D5A` |
-| `onError` | White | White |
+| `error` | ErrorLight `#B3261E` | ErrorDark `#FF8A80` |
+| `onError` | White | BackgroundDark `#000004` |
 | `errorContainer` | OweContainer `#FDE8EC` | `#8C1D18` |
-| `onErrorContainer` | OweRed `#C43D5A` | OweContainer `#FDE8EC` |
+| `onErrorContainer` | ErrorLight `#B3261E` | OweContainer `#FDE8EC` |
 | `positive` / `positiveContainer` | OwedTeal `#1B8A6B` / OwedContainer `#DDF6EE` | same |
 
 ## Semantic balance colors
 
 Brand-permanent tokens in `Color.kt`: **OweRed** (`#C43D5A`) for "you owe", **OwedTeal** (`#1B8A6B`) for "you're owed" / positive. Role aliases `SplitEaseColors.YouOwe` / `OwedToYou` map to those seeds.
+
+Errors use `colorScheme.error`, never `OweRed`.
+
+## Error colours
+
+| Token | Hex | Role |
+| ----- | --- | ---- |
+| `ErrorLight` | `#B3261E` | Light `colorScheme.error` and `onErrorContainer` |
+| `ErrorDark` | `#FF8A80` | Dark `colorScheme.error` |
+
+Contrast below is WCAG relative luminance from these hex values and the surface tokens above.
+
+| Pair | Ratio |
+| ---- | ----- |
+| ErrorLight on BackgroundLight `#FBFCFF` | 6.37:1 |
+| ErrorLight on white / SurfaceLight | 6.54:1 |
+| ErrorLight on SurfaceMutedLight `#F1F3FF` | 5.92:1 |
+| ErrorDark on BackgroundDark `#000004` | 9.18:1 |
+| ErrorDark on SurfaceDark `#030217` (also dark `surfaceVariant`) | 8.98:1 |
+| White on ErrorLight (`onError` on `error`, light) | 6.54:1 |
+| BackgroundDark on ErrorDark (`onError` on `error`, dark) | 9.18:1 |
+| ErrorLight on OweContainer `#FDE8EC` (`onErrorContainer` on `errorContainer`, light) | 5.58:1 |
+| OweContainer on `#8C1D18` (`onErrorContainer` on `errorContainer`, dark) | 7.78:1 |
+
+All of those pairs are at least 4.5:1. All inline error messages use bodySmall via `SeErrorText` / `seErrorTextStyle()`.
 
 ## Screen chrome (back + title)
 

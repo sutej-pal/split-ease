@@ -48,6 +48,7 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
@@ -241,11 +242,7 @@ fun EnterPaidAmountsScreen(
                     )
                     if (showValidation && !canConfirm) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.msg_expense_paid_amounts_mismatch),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                        )
+                        SeErrorText(text = stringResource(R.string.msg_expense_paid_amounts_mismatch))
                     }
                 }
             }

@@ -26,6 +26,8 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Account hub + CSV import removed (2026-09-08) — Account tab is the settings hub (`AccountScreen`); bank CSV import is gone. In-app account deletion (2026-09-07, UX 2026-09-08) — Account settings → Delete account; blocked groups are tappable; `delete_own_account()` RPC in [migration_db.sql](docs/sql/migration_db.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
 
+**Post-phase:** Explicit colour tokens and error text (2026-09-29) — brand colours are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colours stay `OweRed` / `OwedTeal`.
+
 ### Docs map
 - Index: [docs/README.md](docs/README.md)
 - Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)

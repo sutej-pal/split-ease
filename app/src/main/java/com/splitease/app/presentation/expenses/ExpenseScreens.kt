@@ -1150,11 +1150,7 @@ private fun ExpenseUnderlineField(
             )
             if (errorText != null) {
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = errorText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                SeErrorText(text = errorText)
             }
         }
     }
@@ -1272,10 +1268,8 @@ private fun ExchangeRateRow(
         }
         Spacer(modifier = Modifier.height(10.dp))
         if (fxState.fetchError != null) {
-            Text(
+            SeErrorText(
                 text = fxState.fetchError,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }

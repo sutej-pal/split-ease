@@ -46,6 +46,7 @@ import com.splitease.app.domain.split.SplitCalculator
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
@@ -295,15 +296,9 @@ fun AdjustSplitScreen(
                     },
                 )
                 if (splitError != null) {
-                    Text(
+                    SeErrorText(
                         text = splitError,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }
             }

@@ -64,6 +64,12 @@ fun SeTextField(
                     {
                         Text(
                             text = hint,
+                            style =
+                                if (isError) {
+                                    seErrorTextStyle()
+                                } else {
+                                    MaterialTheme.typography.bodySmall
+                                },
                             color =
                                 if (isError) {
                                     MaterialTheme.colorScheme.error

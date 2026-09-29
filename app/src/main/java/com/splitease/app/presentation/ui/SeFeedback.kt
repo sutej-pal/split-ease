@@ -33,6 +33,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
 
+/** Shared style for inline error messages: bodySmall, 14sp / 18sp, normal weight. */
+@Composable
+fun seErrorTextStyle() = MaterialTheme.typography.bodySmall
+
 @Composable
 fun SeErrorText(
     text: String,
@@ -41,7 +45,7 @@ fun SeErrorText(
     Text(
         text = text,
         modifier = modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.bodyMedium,
+        style = seErrorTextStyle(),
         color = MaterialTheme.colorScheme.error,
         textAlign = TextAlign.Start,
     )

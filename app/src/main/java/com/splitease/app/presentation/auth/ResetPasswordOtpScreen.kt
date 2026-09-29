@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.components.SegmentedOtpInput
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTextButton
@@ -147,12 +148,7 @@ fun ResetPasswordOtpScreen(
         )
         if (showValidation && otpIncomplete) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.msg_otp_required),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            SeErrorText(text = stringResource(R.string.msg_otp_required))
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(

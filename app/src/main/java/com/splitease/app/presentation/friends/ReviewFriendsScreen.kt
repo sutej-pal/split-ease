@@ -218,11 +218,7 @@ private fun ReviewFriendRow(
                     color = SplitEaseColors.NavyMuted,
                 )
             } else {
-                Text(
-                    text = stringResource(R.string.review_friends_missing_contact),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SplitEaseColors.YouOwe,
-                )
+                SeErrorText(text = stringResource(R.string.review_friends_missing_contact))
             }
         }
         TextButton(

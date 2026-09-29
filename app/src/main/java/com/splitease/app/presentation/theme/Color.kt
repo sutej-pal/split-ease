@@ -67,10 +67,10 @@ val NonGroupBannerDark = Color(0xFF332C9B) // dark non-group banner
 
 // --- Semantic balance ---
 
-/** "You owe" / error — rose that stays readable on pale fills. */
+/** "You owe" — rose balance colour. Not used for error text. */
 val OweRed = Color(0xFFC43D5A) // you-owe balance
 
-/** Error / you-owe container. */
+/** You-owe container. Also the light-theme error container. */
 val OweContainer = Color(0xFFFDE8EC) // you-owe container
 
 /** "You're owed" / positive — teal. */
@@ -78,6 +78,18 @@ val OwedTeal = Color(0xFF1B8A6B) // you're-owed balance
 
 /** Positive container. */
 val OwedContainer = Color(0xFFDDF6EE) // positive container
+
+/**
+ * Error text and icons in light theme.
+ * Contrast: 6.37:1 on BackgroundLight, 6.54:1 on white, 5.92:1 on SurfaceMutedLight.
+ */
+val ErrorLight = Color(0xFFB3261E) // light error
+
+/**
+ * Error text and icons in dark theme.
+ * Contrast: 9.18:1 on BackgroundDark, 8.98:1 on SurfaceDark.
+ */
+val ErrorDark = Color(0xFFFF8A80) // dark error
 
 // ============================================================
 // TEXT & SEPARATOR COLORS

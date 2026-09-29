@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Colour tokens are now explicit hex values (no runtime derivation); no visual change.
+- Error text uses a new red with AA contrast in light and dark, and one consistent size (bodySmall).
 
 ### Fixed
+- Dark-theme error text failed WCAG AA contrast.
 - Add Expense ad banner sits below the form at a capped adaptive height (`AdSize.getHeight()` after load) so expanding notes scroll instead of being covered.
 - Room upgrades apply incremental migrations 1–17; destructive recreate is only used when no migration path exists.
 - Delete-account button does not incorrectly spin while checking balances and remains disabled until checking completes.

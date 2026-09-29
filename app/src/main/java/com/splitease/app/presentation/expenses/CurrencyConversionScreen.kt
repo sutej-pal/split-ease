@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
@@ -93,10 +94,8 @@ fun CurrencyConversionScreen(
                             .padding(20.dp),
                 ) {
                     if (ui.error != null) {
-                        Text(
+                        SeErrorText(
                             text = ui.error!!,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }

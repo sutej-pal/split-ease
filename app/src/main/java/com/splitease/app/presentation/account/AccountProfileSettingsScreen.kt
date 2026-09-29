@@ -61,6 +61,7 @@ import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -307,11 +308,7 @@ private fun AccountProfileHero(
         }
         if (isError) {
             Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = stringResource(R.string.msg_display_name_required),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
+            SeErrorText(text = stringResource(R.string.msg_display_name_required))
         }
         if (email.isNotBlank()) {
             Spacer(modifier = Modifier.height(6.dp))

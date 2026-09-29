@@ -47,6 +47,7 @@ import com.splitease.app.domain.model.InviteKind
 import com.splitease.app.domain.model.InvitePreview
 import com.splitease.app.domain.model.InvitePreviewMember
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -196,12 +197,10 @@ private fun InviteLandingContent(
                             }
 
                             else -> {
-                                Text(
+                                SeErrorText(
                                     text =
                                         uiState.errorMessage
                                             ?: stringResource(R.string.invite_not_found),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.error,
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 SeOutlinedButton(

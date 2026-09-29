@@ -31,6 +31,8 @@ class ColorTokensFrozenTest {
         assertHex(0xFF747CF0, FriendDetailBannerDark)
         assertHex(0xFF332C9B, NonGroupBannerDark)
         assertHex(0xFFC43D5A, OweRed)
+        assertHex(0xFFB3261E, ErrorLight)
+        assertHex(0xFFFF8A80, ErrorDark)
         assertHex(0xFFFDE8EC, OweContainer)
         assertHex(0xFF1B8A6B, OwedTeal)
         assertHex(0xFFDDF6EE, OwedContainer)

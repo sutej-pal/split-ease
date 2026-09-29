@@ -58,6 +58,7 @@ import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeScreen
@@ -357,10 +358,8 @@ fun SecuritySettingsScreen(
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
                 if (enableError != null) {
-                    Text(
+                    SeErrorText(
                         text = enableError.orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
