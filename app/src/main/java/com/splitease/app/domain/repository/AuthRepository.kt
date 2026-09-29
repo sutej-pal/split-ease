@@ -224,4 +224,24 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun ensureLocalProfile(): Result<Unit>
+
+    /**
+     * Upserts the signed-in user's Room profile to `public.profiles` immediately.
+     *
+     * Unlike the sign-in upsert, this does not swallow errors and does not skip
+     * the call when a recent upsert was coalesced. Invite creation calls this so
+     * a share link is never issued for a sender who has no profile row.
+     *
+     * @throws IllegalStateException when there is no session, no local user, or a blank display name.
+     */
+    suspend fun ensureOwnProfileSynced()
+
+    companion object {
+        /**
+         * Thrown when an invite cannot name its sender from the local profile.
+         * Presentation maps this text to a user-facing string.
+         */
+        const val INVITE_SENDER_PROFILE_MISSING =
+            "Invite sender profile is missing or has no display name."
+    }
 }

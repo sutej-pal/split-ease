@@ -57,7 +57,7 @@ fun SeTextField(
             enabled = enabled,
             singleLine = singleLine,
             isError = isError,
-            keyboardOptions = keyboardOptions,
+            keyboardOptions = keyboardOptions.copy(autoCorrectEnabled = false),
             visualTransformation = visualTransformation,
             supportingText =
                 supportingText?.let { hint ->
@@ -97,10 +97,10 @@ fun SeTextField(
                     focusedTextColor = SplitEaseColors.Navy,
                     unfocusedTextColor = SplitEaseColors.Navy,
                     disabledTextColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
-                    focusedContainerColor = SplitEaseColors.Surface,
-                    unfocusedContainerColor = SplitEaseColors.SurfaceMuted,
-                    disabledContainerColor = SplitEaseColors.SurfaceMuted,
-                    errorContainerColor = SplitEaseColors.Surface,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    errorContainerColor = Color.Transparent,
                     errorSupportingTextColor = MaterialTheme.colorScheme.error,
                 ),
         )

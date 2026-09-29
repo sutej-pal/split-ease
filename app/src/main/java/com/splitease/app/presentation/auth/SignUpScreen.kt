@@ -382,7 +382,7 @@ private fun PhoneNumberRow(
         label = { Text(stringResource(R.string.label_phone_number)) },
         enabled = enabled,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, autoCorrectEnabled = false),
         leadingIcon = {
             Row(
                 modifier =

@@ -304,14 +304,21 @@ class GroupsViewModel
             viewModelScope.launch {
                 val friend =
                     friends.value.firstOrNull { it.friendUserId == memberUserId }
-                val outcome =
+                val result =
                     friend?.let {
-                        runCatching { socialInteractor.deliverPendingInvite(it.id) }.getOrNull()
+                        runCatching { socialInteractor.deliverPendingInvite(it.id) }
                     }
+                val outcome = result?.getOrNull()
                 if (outcome == null) {
+                    val thrown = result?.exceptionOrNull()
                     _uiState.update {
                         it.copy(
-                            errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
+                            errorMessage =
+                                if (thrown != null) {
+                                    ErrorMessages.message(appContext, TAG, thrown)
+                                } else {
+                                    appContext.getString(R.string.msg_invite_link_unavailable)
+                                },
                             infoMessage = null,
                         )
                     }
@@ -639,6 +646,8 @@ class GroupsViewModel
             ErrorMessages.log(TAG, error)
             val raw = error?.message.orEmpty()
             return when {
+                ErrorMessages.isInviteSenderProfileMissing(error) ->
+                    appContext.getString(R.string.msg_invite_sender_profile_missing)
                 raw.contains("FOREIGN KEY", ignoreCase = true) ||
                     raw.contains("SQLITE_CONSTRAINT_FOREIGNKEY", ignoreCase = true) ->
                     appContext.getString(R.string.msg_local_profile_missing)

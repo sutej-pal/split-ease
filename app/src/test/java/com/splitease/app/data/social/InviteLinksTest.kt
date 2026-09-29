@@ -113,6 +113,28 @@ class InviteLinksTest {
     }
 
     @Test
+    fun `htmlForShareText returns null when sender name is blank`() {
+        val body =
+            " invited you to SplitEase.\n\nJoin here:\n${InviteLinks.urlFor("tok123abc")}"
+        assertNull(InviteLinks.htmlForShareText(body))
+    }
+
+    @Test
+    fun `htmlForShareText returns null when group name cannot be parsed`() {
+        val body =
+            "Ada invited you to join the group on SplitEase.\n\nJoin here:\n${InviteLinks.urlFor("tok123abc")}"
+        assertNull(InviteLinks.htmlForShareText(body))
+    }
+
+    @Test
+    fun `htmlForShareText keeps a real sender name`() {
+        val body = InviteLinks.friendShareText("Ada", "tok123abc")
+        val html = InviteLinks.htmlForShareText(body)
+        assertTrue(html!!.contains("Ada"), html)
+        assertFalse(html.contains("A friend"), html)
+    }
+
+    @Test
     fun `tokenFromInstallReferrer returns null when missing`() {
         assertNull(InviteLinks.tokenFromInstallReferrer("utm_source=google-play"))
         assertNull(InviteLinks.tokenFromInstallReferrer(null))

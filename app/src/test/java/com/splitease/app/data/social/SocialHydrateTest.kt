@@ -12,6 +12,7 @@ import com.splitease.app.data.remote.dto.FriendDto
 import com.splitease.app.data.remote.dto.InviteDto
 import com.splitease.app.data.remote.dto.ProfileDto
 import com.splitease.app.domain.model.User
+import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
@@ -74,6 +75,7 @@ class SocialHydrateTest {
                 expenseInteractor = mockk<ExpenseInteractor>(relaxed = true),
                 mailRepository = mockk<MailRepository>(relaxed = true),
                 paymentRemote = mockk<PaymentRemoteDataSource>(relaxed = true),
+                authRepository = mockk<AuthRepository>(relaxed = true),
             )
     }
 

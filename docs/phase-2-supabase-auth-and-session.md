@@ -42,7 +42,7 @@ No Room schema version bump. On auth success, upsert into existing `users` with:
 | ------------- | ------------------------------------------------ |
 | id / remoteId | Supabase auth user UUID                          |
 | email         | Account email                                    |
-| displayName   | `user_metadata.display_name` or email local-part |
+| displayName   | `user_metadata.display_name`, then `full_name`, then `name`, then email local-part |
 | syncStatus    | `SYNCED`                                         |
 
 ## Files Added/Modified

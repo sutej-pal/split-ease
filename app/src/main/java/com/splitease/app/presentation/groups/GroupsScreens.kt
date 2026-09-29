@@ -227,8 +227,6 @@ fun CreateGroupScreen(
                     value = name,
                     onValueChange = { name = it },
                     label = stringResource(R.string.label_group_name),
-                    // width(0) + weight lets the field shrink; OutlinedTextField's
-                    // intrinsic min width otherwise overflows the row.
                     modifier = Modifier
                         .weight(1f)
                         .width(0.dp),

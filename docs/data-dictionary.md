@@ -251,7 +251,7 @@ Unique index: `(expenseId, userId)`.
 - INSERT / UPDATE: actor only (`isSeen` is not a cloud column)
 
 **Invite join RPCs** (see [sql/migration_db.sql](sql/migration_db.sql)):
-- `get_invite_preview(p_token)` — public (anon) preview for landing UI
+- `get_invite_preview(p_token)` — public (anon) preview for landing UI. Inviter name is `profiles.display_name` for `invites.inviter_user_id` (empty string when that profile is missing or blank). Member names come from `profiles` (inner join). No auth-metadata, group-creator, email local-part, or "A friend" fallbacks for the inviter.. Inviter name is `profiles.display_name` for `invites.inviter_user_id` (empty string when that profile is missing or blank). Joined members come from `profiles` (inner join). No auth-metadata, group-creator, email local-part, or "A friend" fallbacks for the inviter.
 - `accept_invite_by_token(p_token)` — authenticated accept for deep-link join-as-new (share links stay `PENDING` / multi-use; inviter self-claim returns 0)
 - `accept_pending_invites()` — email-based accept for person invites only (`friend_row_id` required; skips generic share links)
 

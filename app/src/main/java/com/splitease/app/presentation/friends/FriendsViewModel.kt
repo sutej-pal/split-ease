@@ -177,12 +177,18 @@ class FriendsViewModel
          */
         fun shareInviteAgain(friendRowId: String) {
             viewModelScope.launch {
-                val outcome =
-                    runCatching { socialInteractor.deliverPendingInvite(friendRowId) }.getOrNull()
+                val result = runCatching { socialInteractor.deliverPendingInvite(friendRowId) }
+                val outcome = result.getOrNull()
                 if (outcome == null) {
+                    val thrown = result.exceptionOrNull()
                     _uiState.update {
                         it.copy(
-                            errorMessage = appContext.getString(R.string.msg_invite_link_unavailable),
+                            errorMessage =
+                                if (thrown != null) {
+                                    ErrorMessages.message(appContext, TAG, thrown)
+                                } else {
+                                    appContext.getString(R.string.msg_invite_link_unavailable)
+                                },
                             infoMessage = null,
                         )
                     }

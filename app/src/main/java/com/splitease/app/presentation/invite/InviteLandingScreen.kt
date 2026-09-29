@@ -238,10 +238,24 @@ private fun inviteHeroIcon(kind: InviteKind?): Pair<ImageVector, Color> =
 @Composable
 private fun InviteMessage(preview: InvitePreview) {
     val groupLabel = preview.groupName?.takeIf { it.isNotBlank() }
+    val inviterName = preview.inviterName?.trim()?.takeIf { it.isNotEmpty() }
+    if (inviterName == null) {
+        Text(
+            text =
+                if (groupLabel != null) {
+                    stringResource(R.string.invite_generic_group, groupLabel)
+                } else {
+                    stringResource(R.string.invite_generic_no_name)
+                },
+            style = MaterialTheme.typography.bodyLarge,
+            color = SplitEaseColors.Navy,
+        )
+        return
+    }
     val annotated =
         buildAnnotatedString {
             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                append(preview.inviterName)
+                append(inviterName)
             }
             append(" ")
             append(stringResource(R.string.invite_has_invited_you))
@@ -336,6 +350,30 @@ private fun InviteLandingPreview() {
                                     InvitePreviewMember("Alex", alreadyJoined = true),
                                     InvitePreviewMember("Sam", alreadyJoined = true),
                                 ),
+                        ),
+                ),
+            onJoinAsNew = {},
+            onAlreadyHaveAccount = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 720, name = "No inviter name")
+@Composable
+private fun InviteLandingNoNamePreview() {
+    SePreview {
+        InviteLandingContent(
+            uiState =
+                InviteJoinUiState(
+                    token = "abc",
+                    preview =
+                        InvitePreview(
+                            token = "abc",
+                            kind = InviteKind.GROUP,
+                            email = "guest@example.com",
+                            inviterName = null,
+                            groupName = "Roommates",
                         ),
                 ),
             onJoinAsNew = {},

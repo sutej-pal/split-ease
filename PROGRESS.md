@@ -28,6 +28,8 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Explicit colour tokens and error text (2026-09-29) — brand colours are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colours stay `OweRed` / `OwedTeal`.
 
+**Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
+
 ### Docs map
 - Index: [docs/README.md](docs/README.md)
 - Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)

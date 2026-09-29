@@ -26,7 +26,8 @@ interface MailRepository {
      * fall back to the system share sheet.
      *
      * @param toEmail Recipient email address.
-     * @param inviterName Display name of the person sending the invite.
+     * @param inviterName Display name of the person sending the invite. A blank name
+     * returns a failure and does not call the mail service.
      * @param groupName Group name when inviting into a group; null for friend invites.
      * @param token Opaque invite token used to build the join URL.
      * @return [Result] success or failure.

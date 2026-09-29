@@ -2,6 +2,7 @@ package com.splitease.app.data.repository
 
 import com.splitease.app.data.remote.MailRemoteDataSource
 import com.splitease.app.data.social.InviteLinks
+import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.MailRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,10 +36,15 @@ class RemoteMailRepository
             inviterName: String,
             groupName: String?,
             token: String,
-        ): Result<Unit> =
-            runCatching {
-                val safeInviter = inviterName.trim().ifBlank { "A friend" }
-                val safeGroup = groupName?.trim()?.takeIf { it.isNotEmpty() }
+        ): Result<Unit> {
+            val safeInviter = inviterName.trim()
+            if (safeInviter.isEmpty()) {
+                return Result.failure(
+                    IllegalArgumentException(AuthRepository.INVITE_SENDER_PROFILE_MISSING),
+                )
+            }
+            val safeGroup = groupName?.trim()?.takeIf { it.isNotEmpty() }
+            return runCatching {
                 val link = InviteLinks.urlFor(token)
                 if (safeGroup != null) {
                     mailRemoteDataSource.sendTemplate(
@@ -63,6 +69,7 @@ class RemoteMailRepository
                     )
                 }
             }
+        }
 
         override suspend fun sendBalanceReminderEmail(
             toEmails: List<String>,

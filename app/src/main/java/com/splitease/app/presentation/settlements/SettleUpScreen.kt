@@ -346,7 +346,7 @@ private fun SettleAmountEditor(
                 onValueChange = onAmountChange,
                 modifier = Modifier.width(intrinsicSize = IntrinsicSize.Min).widthIn(min = 120.dp),
                 textStyle = textStyle,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, autoCorrectEnabled = false),
                 singleLine = true,
                 cursorBrush = SolidColor(SplitEaseColors.Primary),
                 enabled = enabled,

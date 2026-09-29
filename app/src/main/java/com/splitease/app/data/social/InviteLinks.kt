@@ -254,6 +254,8 @@ object InviteLinks {
      */
     fun htmlForShareText(plainShareText: String): String? {
         val token = tokenFromPastedText(plainShareText) ?: return null
+        val inviter = plainShareText.substringBefore(" invited").trim()
+        if (inviter.isEmpty()) return null
         return if (plainShareText.contains("join \"", ignoreCase = true) ||
             plainShareText.contains("join the group", ignoreCase = true)
         ) {
@@ -262,13 +264,11 @@ object InviteLinks {
                     .find(plainShareText)
                     ?.groupValues
                     ?.getOrNull(1)
-                    ?: "a group"
-            val inviter =
-                plainShareText.substringBefore(" invited").trim().ifBlank { "A friend" }
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: return null
             groupShareHtml(inviter, groupName, token)
         } else {
-            val inviter =
-                plainShareText.substringBefore(" invited").trim().ifBlank { "A friend" }
             friendShareHtml(inviter, token)
         }
     }

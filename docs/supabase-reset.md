@@ -57,6 +57,32 @@ After a full reset, these should all be **0** and `activity_events` must exist (
 
 `Content-Range: */0` on `GET /rest/v1/activity_events?select=id&limit=1` with the service role means PostgREST can see the table and it is empty.
 
+## One-time repairs
+
+Run these manually in the Supabase SQL editor. They are not part of [sql/migration_db.sql](sql/migration_db.sql) and are not applied by `apply-supabase-schema.ps1`.
+
+`get_invite_preview` itself lives in `migration_db.sql`. Re-apply that function in the SQL editor (or via `apply-supabase-schema.ps1`) after pulling; the live project does not pick the function up from git.
+
+### Blank profile display names
+
+Older accounts can have a `profiles` row whose `display_name` is empty, so an invite cannot show the sender. Run once:
+
+```sql
+update public.profiles p
+set display_name = coalesce(
+      nullif(trim(u.raw_user_meta_data->>'display_name'), ''),
+      nullif(trim(u.raw_user_meta_data->>'full_name'), ''),
+      nullif(trim(u.raw_user_meta_data->>'name'), ''),
+      split_part(u.email, '@', 1)
+    ),
+    updated_at_epoch_ms = (extract(epoch from now()) * 1000)::bigint
+from auth.users u
+where u.id = p.id
+  and length(trim(p.display_name)) = 0;
+```
+
+This fills empty names from Auth metadata. It is a data repair, not a runtime name fallback.
+
 ## Known traps
 
 - **“Server database”** = this Supabase project (`SUPABASE_URL` in `local.properties`). The mail-service repo has no app ledger.

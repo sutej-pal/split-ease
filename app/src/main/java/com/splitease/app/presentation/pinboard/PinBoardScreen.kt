@@ -234,6 +234,7 @@ fun PinBoardScreen(
                                 KeyboardOptions(
                                     capitalization = KeyboardCapitalization.Sentences,
                                     imeAction = ImeAction.Default,
+                                    autoCorrectEnabled = false,
                                 ),
                         )
                     }

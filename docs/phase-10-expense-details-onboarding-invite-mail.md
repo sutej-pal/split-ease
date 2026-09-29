@@ -47,7 +47,7 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 | `onboarding_email_sent_{userId}` | Suppress duplicate welcome mails                     |
 
 **Supabase** (see [sql/migration_db.sql](sql/migration_db.sql)):
-- `get_invite_preview(p_token text) → jsonb`
+- `get_invite_preview(p_token text) → jsonb` — inviter name is `profiles.display_name` (empty string if none); members from profiles; no name fallbacks — inviter name is `profiles.display_name` (empty string if none); members from profiles; no name fallbacks
 - `accept_invite_by_token(p_token text) → integer`
 - Share-link burn heal + multi-use token accept included in the same file
 

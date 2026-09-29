@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -277,6 +278,7 @@ private fun AccountProfileHero(
                             .focusRequester(focusRequester),
                     enabled = enabled,
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                     textStyle =
                         seEntityHeaderStyle().copy(
                             fontWeight = FontWeight.Medium,

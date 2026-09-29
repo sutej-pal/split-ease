@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Dark-theme error text failed WCAG AA contrast.
+- Invite landing, share text, and invite mail now always use the sender's profile name. Removed group-creator and first-member substitutions. Invite creation fails if the sender's profile can't be synced; the landing screen shows generic copy when no name exists.
+- `get_invite_preview` now returns only `profiles.display_name` for the inviter (empty string when missing). Commit 55389ed rewrote that function and did not list it here.
 - Add Expense ad banner sits below the form at a capped adaptive height (`AdSize.getHeight()` after load) so expanding notes scroll instead of being covered.
 - Room upgrades apply incremental migrations 1–17; destructive recreate is only used when no migration path exists.
 - Delete-account button does not incorrectly spin while checking balances and remains disabled until checking completes.

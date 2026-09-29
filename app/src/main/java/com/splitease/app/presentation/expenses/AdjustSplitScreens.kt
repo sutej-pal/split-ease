@@ -491,7 +491,7 @@ private fun AmountInputRow(
                             color = SplitEaseColors.Navy,
                             textAlign = TextAlign.End,
                         ),
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = false),
                     cursorBrush = SolidColor(SplitEaseColors.Primary),
                 )
                 HorizontalDivider(

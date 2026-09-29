@@ -1,6 +1,7 @@
-﻿-- SplitEase DB migration (canonical — single file)
+﻿-- SplitEase DB schema (canonical — single file)
 -- Apply once in the Supabase SQL Editor. Safe to re-run
--- (IF NOT EXISTS / CREATE OR REPLACE / DROP POLICY IF EXISTS / ADD COLUMN IF NOT EXISTS).
+-- (IF NOT EXISTS / CREATE OR REPLACE / DROP POLICY IF EXISTS).
+-- Columns are declared on each CREATE TABLE. An existing table is left as-is.
 --
 -- Covers: profiles (incl. soft-delete), friends, groups, invites, expenses/splits
 -- (incl. FX snapshot + recurring), comments/photos, payments, realtime,
@@ -28,12 +29,6 @@ create table if not exists public.profiles (
 create unique index if not exists profiles_email_lower_idx
   on public.profiles (lower(email));
 
-alter table public.profiles
-  add column if not exists phone_country_code text,
-  add column if not exists phone_number text,
-  add column if not exists preferred_currency text,
-  add column if not exists deleted_at timestamptz;
-
 create index if not exists profiles_deleted_at_idx
   on public.profiles (deleted_at)
   where deleted_at is not null;
@@ -48,8 +43,6 @@ create table if not exists public.friends (
   unique (owner_user_id, friend_user_id)
 );
 
-create index if not exists friends_owner_idx on public.friends (owner_user_id);
-
 create table if not exists public.groups (
   id uuid primary key,
   name text not null,
@@ -58,8 +51,6 @@ create table if not exists public.groups (
   updated_at_epoch_ms bigint not null default 0,
   photo_url text
 );
-
-alter table public.groups drop column if exists cover_url;
 
 -- Leftover header-cover files from an old schema (`{groupId}/cover.jpg`).
 -- Postgres blocks direct DELETE on storage.objects; empty the bucket with
@@ -74,7 +65,6 @@ create table if not exists public.group_members (
   unique (group_id, user_id)
 );
 
-create index if not exists group_members_group_idx on public.group_members (group_id);
 create index if not exists group_members_user_idx on public.group_members (user_id);
 
 create table if not exists public.invites (
@@ -92,7 +82,6 @@ create table if not exists public.invites (
 
 create index if not exists invites_email_lower_idx on public.invites (lower(email));
 create index if not exists invites_inviter_idx on public.invites (inviter_user_id);
-create index if not exists invites_token_idx on public.invites (token);
 
 create table if not exists public.expenses (
   id uuid primary key,
@@ -117,16 +106,6 @@ create table if not exists public.expenses (
   recurring_template_id uuid references public.expenses (id) on delete set null
 );
 
-alter table public.expenses
-  add column if not exists original_amount text,
-  add column if not exists original_currency_code text,
-  add column if not exists rate_to_default_currency text,
-  add column if not exists rate_source text,
-  add column if not exists is_recurring boolean not null default false,
-  add column if not exists recurrence_frequency text not null default 'NONE',
-  add column if not exists next_occurrence_epoch_ms bigint,
-  add column if not exists recurring_template_id uuid references public.expenses (id) on delete set null;
-
 create index if not exists expenses_group_idx on public.expenses (group_id);
 create index if not exists expenses_paid_by_idx on public.expenses (paid_by_user_id);
 
@@ -142,11 +121,6 @@ create table if not exists public.expense_splits (
   unique (expense_id, user_id)
 );
 
-alter table public.expense_splits
-  add column if not exists paid_amount text,
-  add column if not exists adjustment_amount text;
-
-create index if not exists expense_splits_expense_idx on public.expense_splits (expense_id);
 create index if not exists expense_splits_user_idx on public.expense_splits (user_id);
 
 create table if not exists public.expense_comments (
@@ -230,21 +204,25 @@ create table if not exists public.activity_events (
   related_expense_id uuid references public.expenses (id) on delete set null,
   involved_user_ids text not null,
   sort_epoch_ms bigint not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  snapshot_description text,
+  snapshot_amount text,
+  snapshot_currency text,
+  snapshot_group_id text,
+  snapshot_group_name text,
+  snapshot_creator_user_id text,
+  snapshot_created_at_epoch_ms bigint,
+  snapshot_participant_user_ids text
 );
-
-alter table public.activity_events
-  add column if not exists snapshot_description text,
-  add column if not exists snapshot_amount text,
-  add column if not exists snapshot_currency text,
-  add column if not exists snapshot_group_id text,
-  add column if not exists snapshot_group_name text,
-  add column if not exists snapshot_creator_user_id text,
-  add column if not exists snapshot_created_at_epoch_ms bigint,
-  add column if not exists snapshot_participant_user_ids text;
 
 create index if not exists activity_events_sort_idx on public.activity_events (sort_epoch_ms);
 create index if not exists activity_events_actor_idx on public.activity_events (actor_user_id);
+
+-- Leftmost unique-index prefixes already serve these lookups.
+drop index if exists public.friends_owner_idx;
+drop index if exists public.group_members_group_idx;
+drop index if exists public.invites_token_idx;
+drop index if exists public.expense_splits_expense_idx;
 
 -- ============================================
 -- RLS helpers (SECURITY DEFINER — avoid 42P17 recursion)
@@ -280,6 +258,29 @@ as $$
   );
 $$;
 
+-- Uses the row's own columns so INSERT ... RETURNING policies can call it.
+-- can_access_expense() re-queries by id and cannot see the in-flight row.
+create or replace function public.expense_visible(
+  p_expense_id uuid,
+  p_paid_by uuid,
+  p_group_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    p_paid_by = auth.uid()
+    or exists (
+      select 1 from public.expense_splits s
+      where s.expense_id = p_expense_id and s.user_id = auth.uid()
+    )
+    or (p_group_id is not null and public.is_group_member(p_group_id))
+    or (p_group_id is not null and public.is_group_creator(p_group_id));
+$$;
+
 create or replace function public.can_access_expense(p_expense_id uuid)
 returns boolean
 language sql
@@ -288,29 +289,10 @@ security definer
 set search_path = public
 as $$
   select exists (
-    select 1 from public.expenses e
+    select 1
+    from public.expenses e
     where e.id = p_expense_id
-      and (
-        e.paid_by_user_id = auth.uid()
-        or exists (
-          select 1 from public.expense_splits s
-          where s.expense_id = e.id and s.user_id = auth.uid()
-        )
-        or (
-          e.group_id is not null
-          and exists (
-            select 1 from public.group_members gm
-            where gm.group_id = e.group_id and gm.user_id = auth.uid()
-          )
-        )
-        or (
-          e.group_id is not null
-          and exists (
-            select 1 from public.groups g
-            where g.id = e.group_id and g.created_by_user_id = auth.uid()
-          )
-        )
-      )
+      and public.expense_visible(e.id, e.paid_by_user_id, e.group_id)
   );
 $$;
 
@@ -418,11 +400,13 @@ $$;
 
 revoke all on function public.is_group_member(uuid) from public;
 revoke all on function public.is_group_creator(uuid) from public;
+revoke all on function public.expense_visible(uuid, uuid, uuid) from public;
 revoke all on function public.can_access_expense(uuid) from public;
 revoke all on function public.can_access_payment(uuid) from public;
 revoke all on function public.can_see_profile(uuid) from public;
 grant execute on function public.is_group_member(uuid) to authenticated;
 grant execute on function public.is_group_creator(uuid) to authenticated;
+grant execute on function public.expense_visible(uuid, uuid, uuid) to authenticated;
 grant execute on function public.can_access_expense(uuid) to authenticated;
 grant execute on function public.can_access_payment(uuid) to authenticated;
 grant execute on function public.can_see_profile(uuid) to authenticated;
@@ -563,8 +547,8 @@ create policy "invites_update_own"
   using (auth.uid() = inviter_user_id)
   with check (auth.uid() = inviter_user_id);
 
--- Inline column checks (not can_access_expense) so INSERT ... RETURNING works.
--- can_access_expense() re-queries expenses by id and cannot see the in-flight row.
+-- SELECT/UPDATE use expense_visible (in-flight columns). INSERT does not look
+-- at splits: a new expense has none yet, and can_access_expense cannot see it.
 drop policy if exists "expenses_select" on public.expenses;
 drop policy if exists "expenses_insert" on public.expenses;
 drop policy if exists "expenses_update" on public.expenses;
@@ -572,15 +556,7 @@ drop policy if exists "expenses_delete" on public.expenses;
 
 create policy "expenses_select"
   on public.expenses for select to authenticated
-  using (
-    paid_by_user_id = auth.uid()
-    or exists (
-      select 1 from public.expense_splits s
-      where s.expense_id = expenses.id and s.user_id = auth.uid()
-    )
-    or (group_id is not null and public.is_group_member(group_id))
-    or (group_id is not null and public.is_group_creator(group_id))
-  );
+  using (public.expense_visible(id, paid_by_user_id, group_id));
 
 create policy "expenses_insert"
   on public.expenses for insert to authenticated
@@ -592,24 +568,8 @@ create policy "expenses_insert"
 
 create policy "expenses_update"
   on public.expenses for update to authenticated
-  using (
-    paid_by_user_id = auth.uid()
-    or exists (
-      select 1 from public.expense_splits s
-      where s.expense_id = expenses.id and s.user_id = auth.uid()
-    )
-    or (group_id is not null and public.is_group_member(group_id))
-    or (group_id is not null and public.is_group_creator(group_id))
-  )
-  with check (
-    paid_by_user_id = auth.uid()
-    or exists (
-      select 1 from public.expense_splits s
-      where s.expense_id = expenses.id and s.user_id = auth.uid()
-    )
-    or (group_id is not null and public.is_group_member(group_id))
-    or (group_id is not null and public.is_group_creator(group_id))
-  );
+  using (public.expense_visible(id, paid_by_user_id, group_id))
+  with check (public.expense_visible(id, paid_by_user_id, group_id));
 
 create policy "expenses_delete"
   on public.expenses for delete to authenticated
@@ -846,39 +806,11 @@ begin
     return null;
   end if;
 
-  select coalesce(nullif(p.display_name, ''), split_part(p.email, '@', 1))
+  -- Inviter name is profiles.display_name only. Empty when the row is missing or blank.
+  select nullif(trim(p.display_name), '')
     into v_inviter_name
   from public.profiles p
   where p.id = inv.inviter_user_id;
-
-  if v_inviter_name is null or length(trim(v_inviter_name)) = 0 then
-    select coalesce(
-      nullif(u.raw_user_meta_data->>'display_name', ''),
-      nullif(u.raw_user_meta_data->>'full_name', ''),
-      split_part(u.email, '@', 1)
-    )
-      into v_inviter_name
-    from auth.users u
-    where u.id = inv.inviter_user_id;
-  end if;
-
-  if (v_inviter_name is null or length(trim(v_inviter_name)) = 0) and inv.group_id is not null then
-    select coalesce(
-      nullif(p.display_name, ''),
-      nullif(u.raw_user_meta_data->>'display_name', ''),
-      nullif(u.raw_user_meta_data->>'full_name', ''),
-      split_part(coalesce(p.email, u.email), '@', 1)
-    )
-      into v_inviter_name
-    from public.groups g
-    left join public.profiles p on p.id = g.created_by_user_id
-    left join auth.users u on u.id = g.created_by_user_id
-    where g.id = inv.group_id;
-  end if;
-
-  if v_inviter_name is null or length(trim(v_inviter_name)) = 0 then
-    v_inviter_name := 'A friend';
-  end if;
 
   if inv.group_id is not null then
     select g.name, g.photo_url
@@ -890,22 +822,15 @@ begin
       into v_members
     from (
       select
-        lower(coalesce(pr.display_name, u.raw_user_meta_data->>'display_name', u.raw_user_meta_data->>'full_name', pr.email, u.email, '')) as sort_name,
+        lower(coalesce(pr.display_name, pr.email, '')) as sort_name,
         jsonb_build_object(
           'display_name',
-          coalesce(
-            nullif(pr.display_name, ''),
-            nullif(u.raw_user_meta_data->>'display_name', ''),
-            nullif(u.raw_user_meta_data->>'full_name', ''),
-            split_part(coalesce(pr.email, u.email), '@', 1),
-            'Member'
-          ),
+          coalesce(nullif(pr.display_name, ''), split_part(pr.email, '@', 1), 'Member'),
           'already_joined',
           true
         ) as row_data
       from public.group_members gm
-      left join public.profiles pr on pr.id = gm.user_id
-      left join auth.users u on u.id = gm.user_id
+      join public.profiles pr on pr.id = gm.user_id
       where gm.group_id = inv.group_id
 
       union all
@@ -937,7 +862,7 @@ begin
     'token', inv.token,
     'kind', inv.kind,
     'email', inv.email,
-    'inviter_name', coalesce(v_inviter_name, 'A friend'),
+    'inviter_name', coalesce(v_inviter_name, ''),
     'group_id', inv.group_id,
     'group_name', v_group_name,
     'group_photo_url', v_group_photo_url,
@@ -948,28 +873,17 @@ $$;
 
 grant execute on function public.get_invite_preview(text) to anon, authenticated;
 
-create or replace function public.remap_placeholder_user(p_from uuid, p_to uuid)
+-- Moves ledger rows from a placeholder user id onto a real user id.
+-- Not granted to clients; accept/remap RPCs call it after their own auth checks.
+create or replace function public.se_reassign_user(p_from uuid, p_to uuid)
 returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
 begin
-  if auth.uid() is null then
-    raise exception 'Not authenticated';
-  end if;
-
   if p_from is null or p_to is null or p_from = p_to then
     return;
-  end if;
-
-  if not exists (
-    select 1
-    from public.friends f
-    where f.owner_user_id = auth.uid()
-      and f.friend_user_id in (p_from, p_to)
-  ) then
-    raise exception 'Not allowed to remap these users';
   end if;
 
   update public.expense_splits
@@ -1009,6 +923,36 @@ begin
   update public.payments
   set to_user_id = p_to
   where to_user_id = p_from;
+end;
+$$;
+
+revoke all on function public.se_reassign_user(uuid, uuid) from public, anon, authenticated;
+
+create or replace function public.remap_placeholder_user(p_from uuid, p_to uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if p_from is null or p_to is null or p_from = p_to then
+    return;
+  end if;
+
+  if not exists (
+    select 1
+    from public.friends f
+    where f.owner_user_id = auth.uid()
+      and f.friend_user_id in (p_from, p_to)
+  ) then
+    raise exception 'Not allowed to remap these users';
+  end if;
+
+  perform public.se_reassign_user(p_from, p_to);
 
   update public.friends
   set friend_user_id = p_to,
@@ -1108,8 +1052,6 @@ declare
   v_name text;
   inv record;
   old_friend_uid uuid;
-  inviter_email text;
-  inviter_name text;
   accepted_count integer := 0;
   now_ms bigint := (extract(epoch from now()) * 1000)::bigint;
 begin
@@ -1139,43 +1081,7 @@ begin
     from public.friends
     where id = inv.friend_row_id;
 
-    if old_friend_uid is not null and old_friend_uid <> v_uid then
-      update public.expense_splits
-      set user_id = v_uid
-      where user_id = old_friend_uid
-        and not exists (
-          select 1 from public.expense_splits s2
-          where s2.expense_id = expense_splits.expense_id
-            and s2.user_id = v_uid
-        );
-
-      delete from public.expense_splits
-      where user_id = old_friend_uid;
-
-      update public.expenses
-      set paid_by_user_id = v_uid
-      where paid_by_user_id = old_friend_uid;
-
-      update public.group_members
-      set user_id = v_uid
-      where user_id = old_friend_uid
-        and not exists (
-          select 1 from public.group_members gm2
-          where gm2.group_id = group_members.group_id
-            and gm2.user_id = v_uid
-        );
-
-      delete from public.group_members
-      where user_id = old_friend_uid;
-
-      update public.payments
-      set from_user_id = v_uid
-      where from_user_id = old_friend_uid;
-
-      update public.payments
-      set to_user_id = v_uid
-      where to_user_id = old_friend_uid;
-    end if;
+    perform public.se_reassign_user(old_friend_uid, v_uid);
 
     update public.friends
     set friend_user_id = v_uid,
@@ -1190,26 +1096,7 @@ begin
       on conflict (group_id, user_id) do nothing;
     end if;
 
-    select coalesce(p.email, ''), coalesce(p.display_name, 'Friend')
-      into inviter_email, inviter_name
-    from public.profiles p
-    where p.id = inv.inviter_user_id;
-
-    insert into public.friends (
-      id, owner_user_id, friend_user_id, email_snapshot, display_name_snapshot, updated_at_epoch_ms
-    )
-    values (
-      gen_random_uuid(),
-      v_uid,
-      inv.inviter_user_id,
-      coalesce(nullif(inviter_email, ''), inv.inviter_user_id::text),
-      coalesce(nullif(inviter_name, ''), 'Friend'),
-      now_ms
-    )
-    on conflict (owner_user_id, friend_user_id) do update
-    set email_snapshot = excluded.email_snapshot,
-        display_name_snapshot = excluded.display_name_snapshot,
-        updated_at_epoch_ms = excluded.updated_at_epoch_ms;
+    perform public.ensure_reciprocal_friend(v_uid, inv.inviter_user_id, null, null);
 
     update public.invites
     set status = 'ACCEPTED'
@@ -1236,8 +1123,6 @@ declare
   v_name text;
   inv record;
   old_friend_uid uuid;
-  inviter_email text;
-  inviter_name text;
   now_ms bigint := (extract(epoch from now()) * 1000)::bigint;
 begin
   if v_uid is null then
@@ -1280,43 +1165,7 @@ begin
     from public.friends
     where id = inv.friend_row_id;
 
-    if old_friend_uid is not null and old_friend_uid <> v_uid then
-      update public.expense_splits
-      set user_id = v_uid
-      where user_id = old_friend_uid
-        and not exists (
-          select 1 from public.expense_splits s2
-          where s2.expense_id = expense_splits.expense_id
-            and s2.user_id = v_uid
-        );
-
-      delete from public.expense_splits
-      where user_id = old_friend_uid;
-
-      update public.expenses
-      set paid_by_user_id = v_uid
-      where paid_by_user_id = old_friend_uid;
-
-      update public.group_members
-      set user_id = v_uid
-      where user_id = old_friend_uid
-        and not exists (
-          select 1 from public.group_members gm2
-          where gm2.group_id = group_members.group_id
-            and gm2.user_id = v_uid
-        );
-
-      delete from public.group_members
-      where user_id = old_friend_uid;
-
-      update public.payments
-      set from_user_id = v_uid
-      where from_user_id = old_friend_uid;
-
-      update public.payments
-      set to_user_id = v_uid
-      where to_user_id = old_friend_uid;
-    end if;
+    perform public.se_reassign_user(old_friend_uid, v_uid);
 
     update public.friends
     set friend_user_id = v_uid,
@@ -1333,26 +1182,7 @@ begin
   end if;
 
   if inv.friend_row_id is not null then
-    select coalesce(p.email, ''), coalesce(p.display_name, 'Friend')
-      into inviter_email, inviter_name
-    from public.profiles p
-    where p.id = inv.inviter_user_id;
-
-    insert into public.friends (
-      id, owner_user_id, friend_user_id, email_snapshot, display_name_snapshot, updated_at_epoch_ms
-    )
-    values (
-      gen_random_uuid(),
-      v_uid,
-      inv.inviter_user_id,
-      coalesce(nullif(inviter_email, ''), inv.inviter_user_id::text),
-      coalesce(nullif(inviter_name, ''), 'Friend'),
-      now_ms
-    )
-    on conflict (owner_user_id, friend_user_id) do update
-    set email_snapshot = excluded.email_snapshot,
-        display_name_snapshot = excluded.display_name_snapshot,
-        updated_at_epoch_ms = excluded.updated_at_epoch_ms;
+    perform public.ensure_reciprocal_friend(v_uid, inv.inviter_user_id, null, null);
 
     update public.invites
     set status = 'ACCEPTED',
@@ -1765,67 +1595,42 @@ drop policy if exists "group_covers_select" on storage.objects;
 drop policy if exists "group_covers_insert" on storage.objects;
 drop policy if exists "group_covers_update" on storage.objects;
 drop policy if exists "group_covers_delete" on storage.objects;
-
-create policy "group_covers_select"
-  on storage.objects for select to authenticated
-  using (bucket_id = 'group-covers');
-
-create policy "group_covers_insert"
-  on storage.objects for insert to authenticated
-  with check (
-    bucket_id = 'group-covers'
-    and public.is_group_member((storage.foldername(name))[1]::uuid)
-  );
-
-create policy "group_covers_update"
-  on storage.objects for update to authenticated
-  using (
-    bucket_id = 'group-covers'
-    and public.is_group_member((storage.foldername(name))[1]::uuid)
-  )
-  with check (
-    bucket_id = 'group-covers'
-    and public.is_group_member((storage.foldername(name))[1]::uuid)
-  );
-
-create policy "group_covers_delete"
-  on storage.objects for delete to authenticated
-  using (
-    bucket_id = 'group-covers'
-    and public.is_group_member((storage.foldername(name))[1]::uuid)
-  );
-
 drop policy if exists "pin_board_images_select" on storage.objects;
 drop policy if exists "pin_board_images_insert" on storage.objects;
 drop policy if exists "pin_board_images_update" on storage.objects;
 drop policy if exists "pin_board_images_delete" on storage.objects;
+drop policy if exists "group_media_select" on storage.objects;
+drop policy if exists "group_media_insert" on storage.objects;
+drop policy if exists "group_media_update" on storage.objects;
+drop policy if exists "group_media_delete" on storage.objects;
 
-create policy "pin_board_images_select"
+-- group-covers and pin-board-images share the same member path rule.
+create policy "group_media_select"
   on storage.objects for select to authenticated
-  using (bucket_id = 'pin-board-images');
+  using (bucket_id in ('group-covers', 'pin-board-images'));
 
-create policy "pin_board_images_insert"
+create policy "group_media_insert"
   on storage.objects for insert to authenticated
   with check (
-    bucket_id = 'pin-board-images'
+    bucket_id in ('group-covers', 'pin-board-images')
     and public.is_group_member((storage.foldername(name))[1]::uuid)
   );
 
-create policy "pin_board_images_update"
+create policy "group_media_update"
   on storage.objects for update to authenticated
   using (
-    bucket_id = 'pin-board-images'
+    bucket_id in ('group-covers', 'pin-board-images')
     and public.is_group_member((storage.foldername(name))[1]::uuid)
   )
   with check (
-    bucket_id = 'pin-board-images'
+    bucket_id in ('group-covers', 'pin-board-images')
     and public.is_group_member((storage.foldername(name))[1]::uuid)
   );
 
-create policy "pin_board_images_delete"
+create policy "group_media_delete"
   on storage.objects for delete to authenticated
   using (
-    bucket_id = 'pin-board-images'
+    bucket_id in ('group-covers', 'pin-board-images')
     and public.is_group_member((storage.foldername(name))[1]::uuid)
   );
 

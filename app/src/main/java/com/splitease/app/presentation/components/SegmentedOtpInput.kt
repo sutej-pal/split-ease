@@ -275,6 +275,7 @@ private fun OtpDigitBox(
                 KeyboardOptions(
                     keyboardType = KeyboardType.NumberPassword,
                     imeAction = ImeAction.Next,
+                    autoCorrectEnabled = false,
                 ),
             singleLine = true,
             cursorBrush = SolidColor(SplitEaseColors.Primary),

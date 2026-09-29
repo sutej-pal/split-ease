@@ -175,6 +175,8 @@ class ReviewFriendsViewModel
             ErrorMessages.log(TAG, error)
             val raw = error?.message.orEmpty()
             return when {
+                ErrorMessages.isInviteSenderProfileMissing(error) ->
+                    appContext.getString(R.string.msg_invite_sender_profile_missing)
                 raw.contains("FOREIGN KEY", ignoreCase = true) ||
                     raw.contains("SQLITE_CONSTRAINT_FOREIGNKEY", ignoreCase = true) ->
                     appContext.getString(R.string.msg_local_profile_missing)

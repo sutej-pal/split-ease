@@ -453,6 +453,8 @@
     <string name="invite_join_as_new">Join as someone new</string>
     <string name="invite_already_have_account">Already have a SplitEase account? Log in</string>
     <string name="invite_has_invited_you">has invited you</string>
+    <string name="invite_generic_no_name">You\'ve been invited to SplitEase</string>
+    <string name="invite_generic_group">You\'ve been invited to join \"%1$s\"</string>
     <string name="invite_to_group_prefix">to the group</string>
     <string name="invite_in_app_suffix">in SplitEase.</string>
     <string name="invite_already_joined">Already joined</string>
@@ -620,6 +622,7 @@
     <string name="settings_language_ja">日本語</string>
     <string name="msg_not_signed_in">Not signed in.</string>
     <string name="msg_local_profile_missing">Your local profile is missing. Sign out, sign in again, then retry.</string>
+    <string name="msg_invite_sender_profile_missing">Couldn\'t create this invite because your name isn\'t saved on your profile. Sign out, sign in again, then try again.</string>
     <string name="msg_group_sync_rls">Could\'t sync this group to the cloud. Create a new group while signed in, then try the invite link again.</string>
     <string name="msg_friend_added">Friend added.</string>
     <string name="msg_invite_ready">Invite ready — share the link so they can join.</string>

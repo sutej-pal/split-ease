@@ -11,7 +11,7 @@ data class InvitePreviewDto(
     val token: String,
     val kind: String,
     val email: String,
-    @SerialName("inviter_name") val inviterName: String,
+    @SerialName("inviter_name") val inviterName: String = "",
     @SerialName("group_id") val groupId: String? = null,
     @SerialName("group_name") val groupName: String? = null,
     @SerialName("group_photo_url") val groupPhotoUrl: String? = null,

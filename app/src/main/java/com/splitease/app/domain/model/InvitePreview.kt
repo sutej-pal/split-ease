@@ -6,7 +6,7 @@ package com.splitease.app.domain.model
  * @property token Opaque invite token from the link.
  * @property kind Friend vs group invite.
  * @property email Email the invite was originally addressed to (prefill hint).
- * @property inviterName Display name of the sender.
+ * @property inviterName Display name of the sender from `profiles.display_name`, or null when missing.
  * @property groupId Target group when [kind] is [InviteKind.GROUP].
  * @property groupName Target group name when applicable.
  * @property groupPhotoUrl Public Storage URL for the group list avatar when available.
@@ -16,7 +16,7 @@ data class InvitePreview(
     val token: String,
     val kind: InviteKind,
     val email: String,
-    val inviterName: String,
+    val inviterName: String?,
     val groupId: String? = null,
     val groupName: String? = null,
     val groupPhotoUrl: String? = null,

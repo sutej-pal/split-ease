@@ -388,6 +388,32 @@ class SupabaseAuthRepository
                 hydrateCloudData()
             }
 
+        override suspend fun ensureOwnProfileSynced() {
+            val info =
+                supabase.auth.currentUserOrNull()
+                    ?: error("Not signed in.")
+            val local =
+                userRepository.getUserById(info.id)
+                    ?: error(AuthRepository.INVITE_SENDER_PROFILE_MISSING)
+            val displayName = local.displayName.trim()
+            if (displayName.isEmpty()) {
+                error(AuthRepository.INVITE_SENDER_PROFILE_MISSING)
+            }
+            val now = System.currentTimeMillis()
+            socialRemote.upsertProfile(
+                ProfileDto(
+                    id = local.id,
+                    email = local.email,
+                    displayName = displayName,
+                    photoUrl = local.photoUrl?.takeIf { it.isRemoteMediaUrl() },
+                    phoneCountryCode = local.phoneCountryCode,
+                    phoneNumber = local.phoneNumber,
+                    preferredCurrency = local.preferredCurrency,
+                    updatedAtEpochMs = now,
+                ),
+            )
+        }
+
         private suspend fun hydrateCloudData() {
             val userId = supabase.auth.currentUserOrNull()?.id ?: return
             runCatching { syncInteractor.get().syncForUser(userId) }

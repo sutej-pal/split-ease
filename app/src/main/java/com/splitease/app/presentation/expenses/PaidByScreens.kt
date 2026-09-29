@@ -367,7 +367,7 @@ private fun PaidAmountRow(
                             color = SplitEaseColors.Navy,
                             textAlign = TextAlign.End,
                         ),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, autoCorrectEnabled = false),
                     cursorBrush = SolidColor(SplitEaseColors.Primary),
                 )
                 HorizontalDivider(

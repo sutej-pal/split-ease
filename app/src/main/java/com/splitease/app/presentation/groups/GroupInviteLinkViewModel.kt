@@ -224,6 +224,8 @@ class GroupInviteLinkViewModel
             val raw = error.message.orEmpty()
             val lower = raw.lowercase()
             return when {
+                ErrorMessages.isInviteSenderProfileMissing(error) ->
+                    appContext.getString(R.string.msg_invite_sender_profile_missing)
                 "row-level security" in lower || "42501" in lower ->
                     appContext.getString(R.string.msg_group_sync_rls)
                 else -> appContext.getString(ErrorMessages.GENERIC)

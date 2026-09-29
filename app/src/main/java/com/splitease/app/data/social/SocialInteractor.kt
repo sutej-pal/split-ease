@@ -28,6 +28,7 @@ import com.splitease.app.domain.model.InviteStatus
 import com.splitease.app.domain.model.MemberRole
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
+import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.FriendRepository
 import com.splitease.app.domain.repository.GroupRepository
@@ -69,6 +70,7 @@ class SocialInteractor
         private val expenseInteractor: com.splitease.app.data.expense.ExpenseInteractor,
         private val mailRepository: MailRepository,
         private val paymentRemote: PaymentRemoteDataSource,
+        private val authRepository: AuthRepository,
     ) {
         /**
          * Removes a friend, deletes non-group expenses/payments between the two users,
@@ -186,8 +188,7 @@ class SocialInteractor
                     val share =
                         if (existingInvite?.status == InviteStatus.PENDING) {
                             InviteLinks.friendShareText(
-                                inviterName =
-                                    userRepository.getUserById(ownerUserId)?.displayName ?: "A friend",
+                                inviterName = requireInviterName(ownerUserId),
                                 token = existingInvite.token,
                             )
                         } else {
@@ -262,7 +263,7 @@ class SocialInteractor
                     val share =
                         if (pendingInvite?.status == InviteStatus.PENDING) {
                             InviteLinks.friendShareText(
-                                inviterName = userRepository.getUserById(ownerUserId)?.displayName ?: "A friend",
+                                inviterName = requireInviterName(ownerUserId),
                                 token = pendingInvite.token,
                             )
                         } else {
@@ -345,6 +346,7 @@ class SocialInteractor
             runCatching {
                 val existing = inviteRepository.getGroupShareInvites(groupId).firstOrNull()
                 if (existing != null) {
+                    requireInviterName(ownerUserId)
                     if (existing.syncStatus != SyncStatus.SYNCED) {
                         pushInviteToCloud(existing)
                     }
@@ -376,6 +378,8 @@ class SocialInteractor
             val group =
                 groupRepository.getGroupById(groupId)
                     ?: throw IllegalStateException("Group not found.")
+            val groupName = requireGroupName(groupId, group.name)
+            val inviterName = requireInviterName(ownerUserId)
             // Must NOT use the inviter's real email: accept_pending_invites matches by
             // email and would auto-accept (burn) the share link on the inviter's next sync.
             // Token-only claim via accept_invite_by_token; placeholder never matches a user.
@@ -389,7 +393,11 @@ class SocialInteractor
                 )
             inviteRepository.upsert(invite)
             pushInviteToCloud(invite)
-            return toGroupShareLink(ownerUserId, groupId, invite.token, group.name)
+            return GroupShareLink(
+                groupName = groupName,
+                url = InviteLinks.clipboardLink(invite.token),
+                shareText = InviteLinks.groupShareText(inviterName, groupName, invite.token),
+            )
         }
 
         private suspend fun cancelPendingGroupShareLinks(groupId: String) {
@@ -405,11 +413,8 @@ class SocialInteractor
             token: String,
             knownGroupName: String? = null,
         ): GroupShareLink {
-            val groupName =
-                knownGroupName
-                    ?: groupRepository.getGroupById(groupId)?.name
-                    ?: "a group"
-            val inviterName = userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
+            val groupName = requireGroupName(groupId, knownGroupName)
+            val inviterName = requireInviterName(ownerUserId)
             return GroupShareLink(
                 groupName = groupName,
                 url = InviteLinks.clipboardLink(token),
@@ -546,10 +551,12 @@ class SocialInteractor
             val invite = inviteRepository.getByFriendRowId(friendRowId) ?: return null
             if (invite.status != InviteStatus.PENDING) return null
             val inviterName =
-                userRepository.getUserById(invite.inviterUserId)?.displayName ?: "A friend"
+                userRepository.getUserById(invite.inviterUserId)?.displayName?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: return null
             return if (!invite.groupId.isNullOrBlank()) {
                 val groupName =
-                    groupRepository.getGroupById(invite.groupId)?.name ?: "a group"
+                    groupRepository.getGroupById(invite.groupId)?.name?.trim()?.takeIf { it.isNotEmpty() }
+                        ?: return null
                 InviteLinks.groupShareText(inviterName, groupName, invite.token)
             } else {
                 InviteLinks.friendShareText(inviterName, invite.token)
@@ -567,12 +574,11 @@ class SocialInteractor
             val invite = inviteRepository.getByFriendRowId(friendRowId) ?: return null
             if (invite.status != InviteStatus.PENDING) return null
             val friend = friendRepository.getById(friendRowId) ?: return null
-            val inviterName =
-                userRepository.getUserById(invite.inviterUserId)?.displayName ?: "A friend"
+            val inviterName = requireInviterName(invite.inviterUserId)
             val groupName =
                 invite.groupId
                     ?.takeIf { it.isNotBlank() }
-                    ?.let { groupRepository.getGroupById(it)?.name ?: "a group" }
+                    ?.let { requireGroupName(it) }
             val shareText =
                 if (groupName != null) {
                     InviteLinks.groupShareText(inviterName, groupName, invite.token)
@@ -637,20 +643,11 @@ class SocialInteractor
                     )
                 }
 
-            var rawInviterName = dto.inviterName.trim()
-            if (rawInviterName.isBlank() || rawInviterName.equals("A friend", ignoreCase = true)) {
-                val fallbackJoinedMember =
-                    members.firstOrNull { it.alreadyJoined && !it.displayName.equals("Member", ignoreCase = true) }?.displayName
-                if (!fallbackJoinedMember.isNullOrBlank()) {
-                    rawInviterName = fallbackJoinedMember
-                }
-            }
-
             return InvitePreview(
                 token = dto.token,
                 kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
                 email = previewEmail,
-                inviterName = rawInviterName.ifBlank { "A friend" },
+                inviterName = dto.inviterName.trim().takeIf { it.isNotEmpty() },
                 groupId = dto.groupId,
                 groupName = dto.groupName,
                 groupPhotoUrl = dto.groupPhotoUrl?.trim()?.takeIf { it.isNotEmpty() },
@@ -1278,6 +1275,8 @@ class SocialInteractor
             val group =
                 groupRepository.getGroupById(groupId)
                     ?: error("Group not found.")
+            val groupName = requireGroupName(groupId, group.name)
+            val inviterName = requireInviterName(ownerUserId)
             val email = friend.emailSnapshot.trim()
             require(email.contains("@")) {
                 "This invite needs an email address before they can join the group."
@@ -1339,15 +1338,13 @@ class SocialInteractor
                 )
             }
 
-            val inviterName =
-                userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
-            val shareText = InviteLinks.groupShareText(inviterName, group.name, invite.token)
+            val shareText = InviteLinks.groupShareText(inviterName, groupName, invite.token)
             val emailSent =
                 if (shouldSendEmail) {
                     trySendInviteEmail(
                         toEmail = email,
                         inviterName = inviterName,
-                        groupName = group.name,
+                        groupName = groupName,
                         token = invite.token,
                     )
                 } else {
@@ -1894,6 +1891,13 @@ class SocialInteractor
             groupName: String? = null,
             displayNameOverride: String? = null,
         ): AddPersonOutcome {
+            val inviterName = requireInviterName(ownerUserId)
+            val resolvedGroupName =
+                if (groupId != null) {
+                    requireGroupName(groupId, groupName)
+                } else {
+                    null
+                }
             val now = System.currentTimeMillis()
             val placeholderId = UUID.randomUUID().toString()
             val localPart =
@@ -1970,10 +1974,9 @@ class SocialInteractor
             // Fail the whole invite if cloud sync fails; never share a token that isn't claimable.
             pushInviteToCloud(invite)
 
-            val inviterName = userRepository.getUserById(ownerUserId)?.displayName ?: "A friend"
             val shareText =
-                if (groupId != null) {
-                    InviteLinks.groupShareText(inviterName, groupName ?: "a group", invite.token)
+                if (resolvedGroupName != null) {
+                    InviteLinks.groupShareText(inviterName, resolvedGroupName, invite.token)
                 } else {
                     InviteLinks.friendShareText(inviterName, invite.token)
                 }
@@ -1981,7 +1984,7 @@ class SocialInteractor
                 trySendInviteEmail(
                     toEmail = email,
                     inviterName = inviterName,
-                    groupName = if (groupId != null) groupName ?: "a group" else null,
+                    groupName = resolvedGroupName,
                     token = invite.token,
                 )
 
@@ -2022,6 +2025,39 @@ class SocialInteractor
                 ).isSuccess
         }
 
+        /**
+         * Sender display name for invite share text and mail.
+         *
+         * @param userId Inviter user id.
+         * @return Trimmed [User.displayName].
+         * @throws IllegalStateException when the local profile is missing or the name is blank.
+         */
+        private suspend fun requireInviterName(userId: String): String {
+            val name = userRepository.getUserById(userId)?.displayName?.trim()
+            if (name.isNullOrEmpty()) {
+                error(AuthRepository.INVITE_SENDER_PROFILE_MISSING)
+            }
+            return name
+        }
+
+        /**
+         * Real group name for invite share text. Never substitutes a placeholder.
+         *
+         * @param groupId Target group.
+         * @param knownName Name already loaded by the caller, when available.
+         * @return Trimmed group name.
+         * @throws IllegalStateException when the group or its name is missing.
+         */
+        private suspend fun requireGroupName(
+            groupId: String,
+            knownName: String? = null,
+        ): String {
+            val name =
+                knownName?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: groupRepository.getGroupById(groupId)?.name?.trim()?.takeIf { it.isNotEmpty() }
+            return name ?: error("Group not found.")
+        }
+
         private fun newInviteToken(): String = UUID.randomUUID().toString().replace("-", "")
 
         companion object {
@@ -2059,6 +2095,7 @@ class SocialInteractor
          * @param invite Local pending invite to push.
          */
         private suspend fun pushInviteToCloud(invite: Invite) {
+            authRepository.ensureOwnProfileSynced()
             invite.groupId?.let { ensureGroupSyncedToCloud(it, invite.inviterUserId) }
             remote.upsertInvite(invite.toDto())
             inviteRepository.upsert(invite.copy(syncStatus = SyncStatus.SYNCED))

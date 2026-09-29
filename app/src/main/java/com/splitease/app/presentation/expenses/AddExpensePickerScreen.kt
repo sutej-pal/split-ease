@@ -280,7 +280,7 @@ private fun PickerSearchRow(
                 singleLine = true,
                 textStyle = textStyle,
                 cursorBrush = SolidColor(SplitEaseColors.Primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrectEnabled = false),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             )
         }

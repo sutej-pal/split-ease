@@ -752,7 +752,7 @@ fun AddExpenseScreen(
                             fontWeight = FontWeight.SemiBold,
                         ),
                     enabled = !uiState.isSubmitting,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, autoCorrectEnabled = false),
                     isError = amountError,
                     errorText =
                         if (amountError) {
@@ -1291,7 +1291,7 @@ private fun ExchangeRateRow(
                     color = SplitEaseColors.Navy,
                     fontWeight = FontWeight.Bold
                 ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, autoCorrectEnabled = false),
                 cursorBrush = SolidColor(underlineColor),
                 modifier = Modifier
                     .width(IntrinsicSize.Min)
@@ -1527,7 +1527,7 @@ private fun AddExpenseScreenPreview() {
                                     color = SplitEaseColors.NavyMuted,
                                     fontWeight = FontWeight.SemiBold,
                                 ),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, autoCorrectEnabled = false),
                             textStyle =
                                 MaterialTheme.typography.headlineMedium.copy(
                                     color = SplitEaseColors.Navy,

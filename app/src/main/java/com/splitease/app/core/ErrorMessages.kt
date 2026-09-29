@@ -23,7 +23,18 @@ object ErrorMessages {
         throwable: Throwable,
     ): String {
         log(tag, throwable)
+        if (isInviteSenderProfileMissing(throwable)) {
+            return context.getString(R.string.msg_invite_sender_profile_missing)
+        }
         return context.getString(GENERIC)
+    }
+
+    /**
+     * True when invite creation refused to invent a sender name.
+     */
+    fun isInviteSenderProfileMissing(throwable: Throwable?): Boolean {
+        val raw = throwable?.message ?: return false
+        return raw.contains("Invite sender profile is missing", ignoreCase = true)
     }
 
     /**
