@@ -4,7 +4,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
+
+private val bannerFriendsDarkToken = BannerFriendsDark
+private val bannerHomeDarkToken = BannerHomeDark
+private val bannerOtherDarkToken = BannerOtherDark
 
 /**
  * Convenience aliases for screens and `Se*` components.
@@ -90,12 +93,17 @@ object SplitEaseColors {
     // Group type tiles (glyph color; [SeIconTile] washes these into a pastel fill)
     val IconFriends = IndigoLight
     val IconHome = AmberLight
-    val IconOther = lerp(IndigoLight, Color.Gray, 0.38f)
+    val IconOther = Color(0xFF5F68C5) // other-group glyph
 
     // Light detail-header banners
     val BannerFriends = BannerFriendsLight
     val BannerHome = BannerHomeLight
     val BannerOther = BannerOtherLight
+
+    // Dark detail-header banners
+    val BannerFriendsDark = bannerFriendsDarkToken
+    val BannerHomeDark = bannerHomeDarkToken
+    val BannerOtherDark = bannerOtherDarkToken
 
     // Dark shell aliases (fixed dark tokens for forced-dark chrome)
     val ShellBackground = BackgroundDark

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Colour tokens are now explicit hex values (no runtime derivation); no visual change.
+
 ### Fixed
 - Add Expense ad banner sits below the form at a capped adaptive height (`AdSize.getHeight()` after load) so expanding notes scroll instead of being covered.
 - Room upgrades apply incremental migrations 1–17; destructive recreate is only used when no migration path exists.

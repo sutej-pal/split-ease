@@ -1,81 +1,83 @@
 package com.splitease.app.presentation.theme
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 
 /**
  * SplitEase brand palette. [IndigoLight] (primary) and [AmberLight] (secondary /
- * accent) are the only authored seeds; every other token is mixed from those
- * toward white or black so banners, fills, and chrome stay on-brand.
+ * accent) are the only authored seeds. All colours are explicit hex values. Do not derive colours at runtime.
  */
 
 // ============================================================
-// COLOR DERIVATION HELPERS
-// Used by both brand colors below and text/separator colors.
-// ============================================================
-private fun Color.wash(amount: Float): Color = lerp(this, Color.White, amount)
-
-private fun Color.shade(amount: Float): Color = lerp(this, Color.Black, amount)
-
-// ============================================================
-// BRAND SEEDS & DERIVED SURFACE COLORS
+// BRAND SEEDS & SURFACE COLORS
 // ============================================================
 
 /** Primary indigo — CTAs, focused fields, links, and other brand accents. */
-val IndigoLight = Color(0xFF4F46E5)
+val IndigoLight = Color(0xFF4F46E5) // primary brand
 
 /** Accent amber — highlights, "pending" states, home-group warmth. */
-val AmberLight = Color(0xFFFFA008)
+val AmberLight = Color(0xFFFFA008) // accent brand
 
-/** Soft indigo fill used on Friends + Other group banners and the friends header. */
-private val IndigoBannerWash = IndigoLight.wash(0.70f)
-
-// --- Light theme (derived from seeds) ---
+// --- Light theme ---
 
 /** Screen canvas — indigo washed almost to white. */
-val BackgroundLight = IndigoLight.wash(0.98f)
+val BackgroundLight = Color(0xFFFBFCFF) // light screen canvas
 
 /** Soft indigo fill for selected / muted brand accents (not screen backgrounds). */
-val PrimaryContainerLight = IndigoLight.wash(0.88f)
+val PrimaryContainerLight = Color(0xFFE6EAFF) // light primary container
 
 /** Cards, sheets, dialogs. */
-val SurfaceLight = Color.White
+val SurfaceLight = Color.White // light cards and sheets
 
 /** Grouped rows, unfocused fields, chip idle fills. */
-val SurfaceMutedLight = IndigoLight.wash(0.93f)
+val SurfaceMutedLight = Color(0xFFF1F3FF) // light muted surface
 
 /** Pastel detail-header banners. */
-val BannerFriendsLight = IndigoBannerWash
-val BannerHomeLight = AmberLight.wash(0.76f)
-val BannerOtherLight = IndigoBannerWash
+val BannerFriendsLight = Color(0xFFC3CBFC) // light friends banner
+val BannerHomeLight = Color(0xFFFFE9D1) // light home banner
+val BannerOtherLight = Color(0xFFC3CBFC) // light other banner
 
-// --- Dark theme (derived from the same seeds) ---
+// --- Dark theme ---
 
 /** Primary indigo — CTAs, focused fields, links, and other brand accents. */
-val IndigoDark = IndigoLight.wash(0.28f)
+val IndigoDark = Color(0xFF7781F1) // dark primary brand
 
 /** Accent amber — divider, CTAs, highlights, "pending" states. */
-val AmberDark = AmberLight.wash(0.14f)
+val AmberDark = Color(0xFFFFAE4C) // dark accent brand
 
 /** Screen backgrounds. */
-val BackgroundDark = IndigoLight.shade(0.88f)
+val BackgroundDark = Color(0xFF000004) // dark screen canvas
 
 /** Cards, sheets, input fields (one step lighter than background). */
-val SurfaceDark = IndigoLight.shade(0.78f)
+val SurfaceDark = Color(0xFF030217) // dark cards and sheets
+
+/** Friends, home, and other group banners in dark theme. */
+val BannerFriendsDark = Color(0xFF3D36B7) // dark friends banner
+val BannerHomeDark = Color(0xFFC37D2B) // dark home banner
+val BannerOtherDark = Color(0xFF49509E) // dark other banner
+
+/** Friend-detail header banner in dark theme. */
+val FriendDetailBannerDark = Color(0xFF747CF0) // dark friend-detail banner
+
+/**
+ * Non-group expenses header banner in dark theme.
+ * Keeps the previous rendered colour, which was mixed with the light-theme text colour.
+ * That mix may be unintended.
+ */
+val NonGroupBannerDark = Color(0xFF332C9B) // dark non-group banner
 
 // --- Semantic balance ---
 
 /** "You owe" / error — rose that stays readable on pale fills. */
-val OweRed = Color(0xFFC43D5A)
+val OweRed = Color(0xFFC43D5A) // you-owe balance
 
 /** Error / you-owe container. */
-val OweContainer = Color(0xFFFDE8EC)
+val OweContainer = Color(0xFFFDE8EC) // you-owe container
 
 /** "You're owed" / positive — teal. */
-val OwedTeal = Color(0xFF1B8A6B)
+val OwedTeal = Color(0xFF1B8A6B) // you're-owed balance
 
 /** Positive container. */
-val OwedContainer = Color(0xFFDDF6EE)
+val OwedContainer = Color(0xFFDDF6EE) // positive container
 
 // ============================================================
 // TEXT & SEPARATOR COLORS
@@ -85,25 +87,25 @@ val OwedContainer = Color(0xFFDDF6EE)
 // ============================================================
 
 /** Body/heading text on light backgrounds. */
-val TextPrimaryLight = IndigoLight.shade(0.72f)
+val TextPrimaryLight = Color(0xFF060424) // light primary text
 
 /** Captions, hints, timestamps, muted labels (light theme). */
-val TextSecondaryLight = lerp(IndigoLight.wash(0.40f), Color.Black, 0.28f)
+val TextSecondaryLight = Color(0xFF575F9E) // light secondary text
 
 /** Body/heading text on dark backgrounds. */
-val TextPrimaryDark = IndigoLight.wash(0.92f)
+val TextPrimaryDark = Color(0xFFEFF1FF) // dark primary text
 
 /** Captions, hints, timestamps, muted labels (dark theme). */
-val TextSecondaryDark = IndigoLight.wash(0.68f)
+val TextSecondaryDark = Color(0xFFBFC8FC) // dark secondary text
 
 /** Resting borders. */
-val OutlineLight = IndigoLight.wash(0.82f)
+val OutlineLight = Color(0xFFDAE0FE) // light resting border
 
 /** Hairline / card edges. */
-val OutlineVariantLight = IndigoLight.wash(0.90f)
+val OutlineVariantLight = Color(0xFFEBEEFF) // light hairline
 
 /** Resting borders (dark theme). */
-val OutlineDark = Color(0xFF4B465C)
+val OutlineDark = Color(0xFF4B465C) // dark resting border
 
 /** Hairline / card edges (dark theme). */
-val OutlineVariantDark = Color(0xFF3A3552)
+val OutlineVariantDark = Color(0xFF3A3552) // dark hairline

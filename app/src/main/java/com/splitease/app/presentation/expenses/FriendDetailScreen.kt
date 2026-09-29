@@ -46,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -67,6 +66,7 @@ import com.splitease.app.presentation.groups.BannerCircleIconButton
 import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
 import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.navigation.paddingAboveBottomBar
+import com.splitease.app.presentation.theme.FriendDetailBannerDark
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
@@ -104,7 +104,7 @@ fun FriendDetailScreen(
         if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
             SplitEaseColors.BannerFriends
         } else {
-            lerp(SplitEaseColors.IconFriends, SplitEaseColors.Navy, 0.28f)
+            FriendDetailBannerDark
         }
     val displayName = title.removeSuffix(" (invited)").trim()
     val canSettle =

@@ -64,7 +64,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -334,17 +333,16 @@ private fun GroupType.icon() =
         GroupType.OTHER -> Icons.AutoMirrored.Filled.List
     }
 
-private fun GroupType.tint() =
-    when (this) {
-        GroupType.FRIENDS -> SplitEaseColors.IconFriends
-        GroupType.HOME -> SplitEaseColors.IconHome
-        GroupType.OTHER -> SplitEaseColors.IconOther
-    }
-
 @Composable
 private fun GroupType.bannerColor(): Color {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    if (dark) return lerp(tint(), MaterialTheme.colorScheme.surface, 0.2f)
+    if (dark) {
+        return when (this) {
+            GroupType.FRIENDS -> SplitEaseColors.BannerFriendsDark
+            GroupType.HOME -> SplitEaseColors.BannerHomeDark
+            GroupType.OTHER -> SplitEaseColors.BannerOtherDark
+        }
+    }
     return when (this) {
         GroupType.FRIENDS -> SplitEaseColors.BannerFriends
         GroupType.HOME -> SplitEaseColors.BannerHome

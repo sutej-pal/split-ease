@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -57,9 +56,8 @@ import com.splitease.app.presentation.expenses.ledgerEntries
 import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
 import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.navigation.paddingAboveBottomBar
-import com.splitease.app.presentation.theme.IndigoLight
+import com.splitease.app.presentation.theme.NonGroupBannerDark
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.theme.TextPrimaryLight
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeActionChipRow
 import com.splitease.app.presentation.ui.SeConfirmDialog
@@ -114,7 +112,8 @@ fun NonGroupExpensesScreen(
         if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
             SplitEaseColors.BannerFriends
         } else {
-            lerp(IndigoLight, TextPrimaryLight, 0.35f)
+            // Previous blend mixed indigo with the light-theme text colour. Kept as-is; may be unintended.
+            NonGroupBannerDark
         }
     val currencyFallback = AppCurrencies.DEFAULT
 

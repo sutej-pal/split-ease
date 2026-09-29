@@ -6,44 +6,90 @@ Brand colors are tied to the app icon (two-tone indigo receipt with amber divide
 
 Source of truth in code: `presentation/theme/Color.kt` → `Theme.kt` `ColorScheme`.
 
+Colours are explicit hex; do not use lerp/wash/shade.
+
+## Authored seeds
+
+These values are written directly. Balance colours stay on these tokens.
+
+| Token | Hex | Use |
+| ----- | --- | --- |
+| `IndigoLight` | `#4F46E5` | Primary: buttons, focused fields, links |
+| `AmberLight` | `#FFA008` | Accent: highlights, pending, home-group warmth |
+| `OweRed` | `#C43D5A` | "You owe" balance |
+| `OweContainer` | `#FDE8EC` | You-owe / error container |
+| `OwedTeal` | `#1B8A6B` | "You're owed" / positive |
+| `OwedContainer` | `#DDF6EE` | Positive container |
+| `OutlineDark` | `#4B465C` | Dark resting borders |
+| `OutlineVariantDark` | `#3A3552` | Dark hairline / card edges |
+| `SurfaceLight` | `#FFFFFF` | Light cards, sheets, dialogs |
+
 ## Light theme
 
-| Role             | Hex       | Compose val        | Use                                                          |
-| ---------------- | --------- | ------------------ | ------------------------------------------------------------ |
-| Primary (indigo) | `#4F46E5` | `IndigoLight`      | Panel outlines, primary buttons, active states, icon strokes |
-| Accent (amber)   | `#FFA008` | `AmberLight`       | Divider, CTAs, highlights, "pending" states                  |
-| Background tint  | `#E8EAFE` | `BackgroundLight`  | Screen backgrounds, card fills, subtle sections              |
-| Surface          | `#FFFFFF` | `SurfaceLight`     | Cards, sheets, input fields                                  |
-| Text primary     | `#1E1B4B` | `TextPrimaryLight` | Body/heading text on light backgrounds                       |
+| Token | Hex | Use |
+| ----- | --- | --- |
+| `BackgroundLight` | `#FBFCFF` | Screen canvas |
+| `PrimaryContainerLight` | `#E6EAFF` | Selected / muted brand fill |
+| `SurfaceMutedLight` | `#F1F3FF` | Grouped rows, unfocused fields, chip idle fills |
+| `BannerFriendsLight` | `#C3CBFC` | Friends group banner |
+| `BannerHomeLight` | `#FFE9D1` | Home group banner |
+| `BannerOtherLight` | `#C3CBFC` | Other group banner |
+| `TextPrimaryLight` | `#060424` | Body and heading text |
+| `TextSecondaryLight` | `#575F9E` | Captions, hints, timestamps |
+| `OutlineLight` | `#DAE0FE` | Resting borders |
+| `OutlineVariantLight` | `#EBEEFF` | Hairline / card edges |
 
 ## Dark theme
 
-| Role             | Hex       | Compose val         | Use                                                          |
-| ---------------- | --------- | ------------------- | ------------------------------------------------------------ |
-| Primary (indigo) | `#818CF8` | `IndigoDark`        | Panel outlines, primary buttons, active states, icon strokes |
-| Accent (amber)   | `#FFB020` | `AmberDark`         | Divider, CTAs, highlights, "pending" states                  |
-| Background       | `#14121F` | `BackgroundDark`    | Screen backgrounds                                           |
-| Surface          | `#201C33` | `SurfaceDark`       | Cards, sheets, input fields                                  |
-| Text primary     | `#ECEAFB` | `TextPrimaryDark`   | Body/heading text on dark backgrounds                        |
-| Text secondary   | `#B4AFC7` | `TextSecondaryDark` | Captions, hints, timestamps, muted labels                    |
+| Token | Hex | Use |
+| ----- | --- | --- |
+| `IndigoDark` | `#7781F1` | Primary: buttons, focused fields, links |
+| `AmberDark` | `#FFAE4C` | Accent: highlights, pending |
+| `BackgroundDark` | `#000004` | Screen canvas |
+| `SurfaceDark` | `#030217` | Cards, sheets, input fields |
+| `BannerFriendsDark` | `#3D36B7` | Friends group banner |
+| `BannerHomeDark` | `#C37D2B` | Home group banner |
+| `BannerOtherDark` | `#49509E` | Other group banner |
+| `FriendDetailBannerDark` | `#747CF0` | Friend detail header banner |
+| `NonGroupBannerDark` | `#332C9B` | Non-group expenses header banner |
+| `TextPrimaryDark` | `#EFF1FF` | Body and heading text |
+| `TextSecondaryDark` | `#BFC8FC` | Captions, hints, timestamps |
+
+`NonGroupBannerDark` keeps the previous dark-banner colour. That blend used the light-theme text colour and may be unintended.
+
+## Other
+
+| Token | Hex | Use |
+| ----- | --- | --- |
+| `SplitEaseColors.IconFriends` | `#4F46E5` | Friends group glyph (`IndigoLight`) |
+| `SplitEaseColors.IconHome` | `#FFA008` | Home group glyph (`AmberLight`) |
+| `SplitEaseColors.IconOther` | `#5F68C5` | Other group glyph |
 
 ## Material 3 role mapping
 
-| Material role                    | Light                                          | Dark              |
-| -------------------------------- | ---------------------------------------------- | ----------------- |
-| `primary`                        | IndigoLight                                    | IndigoDark        |
-| `onPrimary`                      | White                                          | BackgroundDark    |
-| `tertiary` (accent)              | AmberLight                                     | AmberDark         |
-| `background`                     | BackgroundLight                                | BackgroundDark    |
-| `surface`                        | SurfaceLight                                   | SurfaceDark       |
-| `onBackground` / `onSurface`     | TextPrimaryLight                               | TextPrimaryDark   |
-| `onSurfaceVariant`               | soft indigo-gray (interim)                     | TextSecondaryDark |
-| `error` / `errorContainer`       | `OweRed` / `OweContainer`                      | `OweRed`          |
-| `positive` / `positiveContainer` | `OwedTeal` / `OwedContainer` (custom vals)     | same              |
+| Material role | Light | Dark |
+| ------------- | ----- | ---- |
+| `primary` | IndigoLight `#4F46E5` | IndigoDark `#7781F1` |
+| `onPrimary` | White | BackgroundDark `#000004` |
+| `primaryContainer` | PrimaryContainerLight `#E6EAFF` | SurfaceDark `#030217` |
+| `tertiary` (accent) | AmberLight `#FFA008` | AmberDark `#FFAE4C` |
+| `tertiaryContainer` | BannerHomeLight `#FFE9D1` | `#4A3400` |
+| `background` | BackgroundLight `#FBFCFF` | BackgroundDark `#000004` |
+| `surface` | SurfaceLight `#FFFFFF` | SurfaceDark `#030217` |
+| `surfaceVariant` | SurfaceMutedLight `#F1F3FF` | SurfaceDark `#030217` |
+| `onBackground` / `onSurface` | TextPrimaryLight `#060424` | TextPrimaryDark `#EFF1FF` |
+| `onSurfaceVariant` | TextSecondaryLight `#575F9E` | TextSecondaryDark `#BFC8FC` |
+| `outline` | OutlineLight `#DAE0FE` | OutlineDark `#4B465C` |
+| `outlineVariant` | OutlineVariantLight `#EBEEFF` | OutlineVariantDark `#3A3552` |
+| `error` | OweRed `#C43D5A` | OweRed `#C43D5A` |
+| `onError` | White | White |
+| `errorContainer` | OweContainer `#FDE8EC` | `#8C1D18` |
+| `onErrorContainer` | OweRed `#C43D5A` | OweContainer `#FDE8EC` |
+| `positive` / `positiveContainer` | OwedTeal `#1B8A6B` / OwedContainer `#DDF6EE` | same |
 
 ## Semantic balance colors
 
-Brand-permanent tokens in `Color.kt`: **OweRed** (`#C43D5A`) for "you owe" / error, **OwedTeal** (`#1B8A6B`) for "you're owed" / positive. Role aliases `SplitEaseColors.YouOwe` / `OwedToYou` map to those seeds.
+Brand-permanent tokens in `Color.kt`: **OweRed** (`#C43D5A`) for "you owe", **OwedTeal** (`#1B8A6B`) for "you're owed" / positive. Role aliases `SplitEaseColors.YouOwe` / `OwedToYou` map to those seeds.
 
 ## Screen chrome (back + title)
 
