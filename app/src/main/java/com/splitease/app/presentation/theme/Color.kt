@@ -116,6 +116,24 @@ val OutlineLight = Color(0xFFDAE0FE) // light resting border
 /** Hairline / card edges. */
 val OutlineVariantLight = Color(0xFFEBEEFF) // light hairline
 
+/** Empty-state card background (light theme). */
+val EmptyStateTintLight = Color(0xFFF0F1FF)
+
+/** Empty-state card border (light theme). */
+val EmptyStateBorderLight = Color(0xFFE1E4F8)
+
+/** Empty-state card border (dark theme). */
+val EmptyStateBorderDark = Color(0xFF2E2A45)
+
+/** Empty-state hint text (light theme). */
+val EmptyStateHintLight = Color(0xFF5B5880)
+
+/** Empty-state secondary button border (light theme). */
+val EmptyStateSecondaryBorderLight = Color(0xFFC9CDF5)
+
+/** Empty-state secondary button text (light theme). */
+val EmptyStateSecondaryTextLight = Color(0xFF4338CA)
+
 /** Resting borders (dark theme). */
 val OutlineDark = Color(0xFF4B465C) // dark resting border
 

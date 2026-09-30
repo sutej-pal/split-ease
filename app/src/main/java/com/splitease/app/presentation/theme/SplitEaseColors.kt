@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -111,4 +112,64 @@ object SplitEaseColors {
 
     /** Positive fill. */
     val Positive = OwedTeal
+
+    /** Empty-state card background (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateTint: Color
+        get() = if (isSystemInDarkTheme()) SurfaceDark else EmptyStateTintLight
+
+    /** Empty-state card border (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateBorder: Color
+        get() = if (isSystemInDarkTheme()) EmptyStateBorderDark else EmptyStateBorderLight
+
+    /** Empty-state icon circle background (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateIconBg: Color
+        get() = if (isSystemInDarkTheme()) BackgroundDark else Color.White
+
+    /** Empty-state icon tint (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateIconTint: Color
+        get() = if (isSystemInDarkTheme()) IndigoDark else IndigoLight
+
+    /** Empty-state title color (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateTitle: Color
+        get() = if (isSystemInDarkTheme()) TextPrimaryDark else Color(0xFF1E1B4B)
+
+    /** Empty-state hint color (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateHint: Color
+        get() = if (isSystemInDarkTheme()) TextSecondaryDark else EmptyStateHintLight
+
+    /** Empty-state secondary button background (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateSecondaryBg: Color
+        get() = if (isSystemInDarkTheme()) Color.Transparent else Color.White
+
+    /** Empty-state secondary button border (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateSecondaryBorder: Color
+        get() = if (isSystemInDarkTheme()) TextPrimaryDark.copy(alpha = 0.25f) else EmptyStateSecondaryBorderLight
+
+    /** Empty-state secondary button text (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateSecondaryText: Color
+        get() = if (isSystemInDarkTheme()) IndigoDark else EmptyStateSecondaryTextLight
+
+    /** Empty-state shadow color (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val EmptyStateShadowColor: Color
+        get() = if (isSystemInDarkTheme()) Color.Black.copy(alpha = 0.30f) else Color(0xFF4F46E5).copy(alpha = 0.12f)
 }

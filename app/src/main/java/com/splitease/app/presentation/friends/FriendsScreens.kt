@@ -159,6 +159,7 @@ fun FriendsListScreen(
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
+                putExtra(Intent.EXTRA_TITLE, shareInvite)
                 putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
                 if (html != null) {

@@ -76,7 +76,7 @@ fun GroupInviteLinkScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareInvite = stringResource(R.string.action_share_invite)
+    val shareTitle = stringResource(R.string.share_invite_link_title)
     val snackbarHostState = remember { SnackbarHostState() }
     var showChangeLinkConfirm by rememberSaveable { mutableStateOf(false) }
 
@@ -86,13 +86,14 @@ fun GroupInviteLinkScreen(
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
+                putExtra(Intent.EXTRA_TITLE, shareTitle)
                 putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
                 if (html != null) {
                     putExtra(Intent.EXTRA_HTML_TEXT, html)
                 }
             }
-        context.startActivity(Intent.createChooser(intent, shareInvite))
+        context.startActivity(Intent.createChooser(intent, shareTitle))
         viewModel.consumeShareText()
     }
 

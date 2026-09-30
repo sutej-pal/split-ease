@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -50,10 +52,11 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeListRow
-import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTopBar
 
 /**
  * Deep-link landing: who invited you, group members, join as someone new.
@@ -93,136 +96,149 @@ private fun InviteLandingContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(SplitEaseColors.Background)
-                .padding(20.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
+    val bg = SplitEaseColors.Background
+    val lightGlyphs = bg.luminance() > 0.5f
+
+    SeSystemBars(
+        statusBarColor = bg,
+        navigationBarColor = bg,
+        statusBarDarkIcons = lightGlyphs,
+        navigationBarDarkIcons = lightGlyphs,
+    )
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = bg,
+        topBar = {
+            SeTopBar(
+                title = "",
+                onBack = onDismiss,
+                containerColor = bg,
+            )
+        },
+    ) { padding ->
+        Box(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Image(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
-                contentDescription = stringResource(R.string.app_name),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(72.dp),
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineMedium,
-                color = SplitEaseColors.Primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = SplitEaseColors.Surface,
-                tonalElevation = 2.dp,
-                shadowElevation = 2.dp,
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .background(SplitEaseColors.PrimarySoft)
-                                .padding(vertical = 28.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        val preview = uiState.preview
-                        val (icon, tint) = inviteHeroIcon(preview?.kind)
-                        SeGroupIconTile(
-                            photoUrl = preview?.groupPhotoUrl,
-                            fallbackIcon = icon,
-                            fallbackTint = tint,
-                            size = 64,
-                        )
-                    }
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = stringResource(R.string.app_name),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(72.dp),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = SplitEaseColors.Primary,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.height(20.dp))
 
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        when {
-                            uiState.isLoading && uiState.preview == null -> {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 32.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = SplitEaseColors.Surface,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 2.dp,
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(SplitEaseColors.PrimarySoft)
+                                    .padding(vertical = 28.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val preview = uiState.preview
+                            val (icon, tint) = inviteHeroIcon(preview?.kind)
+                            SeGroupIconTile(
+                                photoUrl = preview?.groupPhotoUrl,
+                                fallbackIcon = icon,
+                                fallbackTint = tint,
+                                size = 64,
+                            )
+                        }
 
-                            uiState.preview != null -> {
-                                val preview = uiState.preview
-                                InviteMessage(preview = preview)
-                                Spacer(modifier = Modifier.height(20.dp))
-                                Text(
-                                    text = stringResource(R.string.invite_select_name),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SplitEaseColors.Navy,
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                if (preview.members.isEmpty()) {
-                                    Text(
-                                        text = stringResource(R.string.invite_members_empty),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = SplitEaseColors.NavyMuted,
-                                    )
-                                } else {
-                                    preview.members.forEachIndexed { index, member ->
-                                        InviteMemberRow(
-                                            member = member,
-                                            showDivider = index < preview.members.lastIndex,
-                                        )
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            when {
+                                uiState.isLoading && uiState.preview == null -> {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 32.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator()
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
-                                SePrimaryButton(
-                                    text = stringResource(R.string.invite_join_as_new),
-                                    onClick = onJoinAsNew,
-                                    enabled = !uiState.isLoading,
-                                )
-                            }
 
-                            else -> {
-                                SeErrorText(
-                                    text =
-                                        uiState.errorMessage
-                                            ?: stringResource(R.string.invite_not_found),
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                SeOutlinedButton(
-                                    text = stringResource(R.string.action_back_to_welcome),
-                                    onClick = onDismiss,
-                                )
+                                uiState.preview != null -> {
+                                    val preview = uiState.preview
+                                    InviteMessage(preview = preview)
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Text(
+                                        text = stringResource(R.string.invite_select_name),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SplitEaseColors.Navy,
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    if (preview.members.isEmpty()) {
+                                        Text(
+                                            text = stringResource(R.string.invite_members_empty),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = SplitEaseColors.NavyMuted,
+                                        )
+                                    } else {
+                                        preview.members.forEachIndexed { index, member ->
+                                            InviteMemberRow(
+                                                member = member,
+                                                showDivider = index < preview.members.lastIndex,
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    SePrimaryButton(
+                                        text = stringResource(R.string.invite_join_as_new),
+                                        onClick = onJoinAsNew,
+                                        enabled = !uiState.isLoading,
+                                    )
+                                }
+
+                                else -> {
+                                    SeErrorText(
+                                        text =
+                                            uiState.errorMessage
+                                                ?: stringResource(R.string.invite_not_found),
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if (uiState.preview != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                SeTextButton(
-                    text = stringResource(R.string.invite_already_have_account),
-                    onClick = onAlreadyHaveAccount,
-                )
-                SeTextButton(
-                    text = stringResource(R.string.action_back_to_welcome),
-                    onClick = onDismiss,
-                )
+                if (uiState.preview != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeTextButton(
+                        text = stringResource(R.string.invite_already_have_account),
+                        onClick = onAlreadyHaveAccount,
+                    )
+                }
             }
         }
     }

@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -60,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -112,6 +114,7 @@ import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
 import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.navigation.paddingAboveBottomBar
+import com.splitease.app.presentation.theme.SeTitleLarge
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeActionChipRow
@@ -125,6 +128,7 @@ import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeSecondaryButton
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextField
@@ -413,7 +417,7 @@ fun GroupDetailScreen(
     }
 
     val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareInvite = stringResource(R.string.action_share_invite)
+    val shareTitle = stringResource(R.string.share_invite_link_title)
 
     LaunchedEffect(uiState.pendingShareText) {
         val text = uiState.pendingShareText ?: return@LaunchedEffect
@@ -421,13 +425,14 @@ fun GroupDetailScreen(
         val intent =
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
+                putExtra(Intent.EXTRA_TITLE, shareTitle)
                 putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
                 putExtra(Intent.EXTRA_TEXT, text)
                 if (html != null) {
                     putExtra(Intent.EXTRA_HTML_TEXT, html)
                 }
             }
-        context.startActivity(Intent.createChooser(intent, shareInvite))
+        context.startActivity(Intent.createChooser(intent, shareTitle))
         viewModel.consumeShareText()
     }
 
@@ -1044,35 +1049,81 @@ private fun debtPhotoUrl(
 private fun GroupSoloEmptyState(
     onAddMembers: () -> Unit,
     onShareLink: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = SplitEaseColors.PrimarySoft),
-        shape = RoundedCornerShape(SeLayout.cardRadius),
+    val cardShape = RoundedCornerShape(20.dp)
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .shadow(
+                        elevation = 2.dp,
+                        shape = cardShape,
+                        ambientColor = SplitEaseColors.EmptyStateShadowColor,
+                        spotColor = SplitEaseColors.EmptyStateShadowColor,
+                        clip = false,
+                    )
+                    .clip(cardShape)
+                    .background(SplitEaseColors.EmptyStateTint)
+                    .border(1.dp, SplitEaseColors.EmptyStateBorder, cardShape)
+                    .padding(top = 22.dp, bottom = 18.dp, start = 18.dp, end = 18.dp),
         ) {
-            Text(
-                text = stringResource(R.string.group_solo_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = SplitEaseColors.Navy,
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            SePrimaryButton(
-                text = stringResource(R.string.action_add_group_members),
-                onClick = onAddMembers,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            SeOutlinedButton(
-                text = stringResource(R.string.action_share_group_link),
-                onClick = onShareLink,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(SplitEaseColors.EmptyStateIconBg),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Group,
+                        contentDescription = null,
+                        tint = SplitEaseColors.EmptyStateIconTint,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = stringResource(R.string.empty_group_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = SplitEaseColors.EmptyStateTitle,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = stringResource(R.string.empty_group_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.EmptyStateHint,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SePrimaryButton(
+                    text = stringResource(R.string.action_add_group_members),
+                    onClick = onAddMembers,
+                    shape = RoundedCornerShape(12.dp),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SeSecondaryButton(
+                    text = stringResource(R.string.action_share_group_link),
+                    onClick = onShareLink,
+                    shape = RoundedCornerShape(12.dp),
+                )
+            }
         }
     }
 }

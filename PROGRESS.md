@@ -30,6 +30,8 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
 
+**Post-phase:** Empty-group card restyled (2026-09-30) — Group detail solo empty state restyled with theme-aware background/border, indigo soft shadow, 52dp circle icon, title/hint text, and filled primary + outlined secondary buttons.
+
 ### Docs map
 - Index: [docs/README.md](docs/README.md)
 - Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)

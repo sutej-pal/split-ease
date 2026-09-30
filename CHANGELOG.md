@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Push notifications for group ledger changes: Android 13 permission prompt, Account → Notifications (mute all), Group settings mute, tap opens the group; Edge Function honors `notification_prefs` and drops stale FCM tokens ([fcm-setup.md](docs/fcm-setup.md))
 
 ### Changed
+- Empty-group card on group detail restyled with soft ambient shadow, centered 52dp group icon, title/hint text, and dedicated theme-aware primary/secondary buttons.
 - Paste-invite-link modal copy no longer mentions 'token'; title now reads 'Join SplitEase'.
 - Room ships incremental migrations 1–17. Schema bumps with no migration path still wipe the local cache (`fallbackToDestructiveMigration`); the next sync rehydrates from Supabase.
 - Added delete/trash icon to Account Settings "Delete account" button with 8dp spacing and destructive color.

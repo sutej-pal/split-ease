@@ -16,7 +16,7 @@
     <string name="action_get_started">Get started</string>
     <string name="action_have_invite_link">Have an invitation link?</string>
     <string name="invite_paste_title">Join SplitEase</string>
-    <string name="invite_paste_body">Paste the invite link shared with you</string>
+    <string name="invite_paste_body">Paste the invite link shared with you.</string>
     <string name="invite_paste_label">Invite link</string>
     <string name="invite_paste_continue">Continue</string>
     <string name="invite_paste_invalid">Could\'t find an invitation link in that text.</string>
@@ -193,6 +193,8 @@
     <string name="settings_currency_item">Currency</string>
     <string name="settings_currency_hint">Used for all new expenses and groups. Change it here only.</string>
     <string name="group_solo_title">You\'re the only one here!</string>
+    <string name="empty_group_title">You\'re the only one here</string>
+    <string name="empty_group_hint">Add people to start splitting expenses.</string>
     <string name="action_add_group_members">Add group members</string>
     <string name="action_share_group_link">Share group link</string>
     <string name="group_chip_balances">Balances</string>
@@ -442,6 +444,7 @@
     <string name="friends_you_owe">you owe</string>
     <string name="groups_title">Groups</string>
     <string name="action_share_invite">Share invite link</string>
+    <string name="share_invite_link_title">Share invite link</string>
     <string name="cd_copy_invite_link">Copy invite link</string>
     <string name="cd_share_invite_again">Share invite again</string>
     <string name="invite_link_copied">Invite link copied</string>
