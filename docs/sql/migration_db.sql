@@ -472,6 +472,7 @@ create policy "friends_delete_own"
 
 drop policy if exists "group_members_select" on public.group_members;
 drop policy if exists "group_members_insert" on public.group_members;
+drop policy if exists "group_members_update" on public.group_members;
 drop policy if exists "group_members_delete" on public.group_members;
 
 create policy "group_members_select"
@@ -488,6 +489,57 @@ create policy "group_members_insert"
     auth.uid() = user_id
     or public.is_group_creator(group_id)
   );
+
+-- Who may update. Column changes are enforced by group_members_guard_update:
+-- a member may refresh their own row, but only the group creator may change
+-- id, group, user, or role.
+create policy "group_members_update"
+  on public.group_members for update to authenticated
+  using (
+    user_id = auth.uid()
+    or public.is_group_creator(group_id)
+  )
+  with check (
+    user_id = auth.uid()
+    or public.is_group_creator(group_id)
+  );
+
+create or replace function public.group_members_guard_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  -- Security-definer remaps (se_reassign_user) run as the function owner.
+  -- Those must still be able to rewrite user_id.
+  if current_user is distinct from 'authenticated' then
+    return new;
+  end if;
+
+  if public.is_group_creator(old.group_id) then
+    return new;
+  end if;
+
+  if new.id is distinct from old.id
+     or new.group_id is distinct from old.group_id
+     or new.user_id is distinct from old.user_id
+     or new.role is distinct from old.role then
+    raise exception 'Members cannot change their role or group'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.group_members_guard_update() from public;
+grant execute on function public.group_members_guard_update() to authenticated, service_role;
+
+drop trigger if exists group_members_guard_update on public.group_members;
+create trigger group_members_guard_update
+  before update on public.group_members
+  for each row
+  execute function public.group_members_guard_update();
 
 create policy "group_members_delete"
   on public.group_members for delete to authenticated

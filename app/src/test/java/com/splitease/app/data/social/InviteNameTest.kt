@@ -142,6 +142,27 @@ class InviteNameTest {
             coVerify(exactly = 0) { inviteRepository.upsert(any()) }
         }
 
+    @Test
+    fun group_share_link_fails_when_invite_push_fails() =
+        runTest {
+            coEvery { inviteRepository.getGroupShareInvites("g1", any()) } returns emptyList()
+            coEvery { groupRepository.getGroupById("g1") } returns
+                Group(
+                    id = "g1",
+                    name = "Roommates",
+                    defaultCurrencyCode = "INR",
+                    createdByUserId = "me",
+                    createdAtEpochMs = 1L,
+                    updatedAtEpochMs = 1L,
+                )
+            coEvery { userRepository.getUserById("me") } returns user("me", displayName = "Ada")
+            coEvery { remote.upsertInvite(any()) } throws IllegalStateException("push failed")
+
+            val result = interactor.getOrCreateGroupShareLink("me", "g1")
+
+            assertTrue(result.isFailure)
+        }
+
     private fun user(
         id: String,
         displayName: String,
