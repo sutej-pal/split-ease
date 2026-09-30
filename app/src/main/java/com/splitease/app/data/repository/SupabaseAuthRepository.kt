@@ -392,23 +392,30 @@ class SupabaseAuthRepository
             val info =
                 supabase.auth.currentUserOrNull()
                     ?: error("Not signed in.")
-            val local =
-                userRepository.getUserById(info.id)
-                    ?: error(AuthRepository.INVITE_SENDER_PROFILE_MISSING)
-            val displayName = local.displayName.trim()
-            if (displayName.isEmpty()) {
-                error(AuthRepository.INVITE_SENDER_PROFILE_MISSING)
+            var local = userRepository.getUserById(info.id)
+            if (local == null || local.displayName.trim().isEmpty()) {
+                persistCurrentUser()
+                local = userRepository.getUserById(info.id)
             }
+            val displayName =
+                local?.displayName?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: info.userMetadata?.stringMeta("display_name")
+                    ?: info.userMetadata?.stringMeta("full_name")
+                    ?: info.userMetadata?.stringMeta("name")
+                    ?: info.email?.substringBefore('@')
+                    ?: "User"
+            val email = local?.email ?: info.email.orEmpty()
             val now = System.currentTimeMillis()
             socialRemote.upsertProfile(
                 ProfileDto(
-                    id = local.id,
-                    email = local.email,
+                    id = info.id,
+                    email = email,
                     displayName = displayName,
-                    photoUrl = local.photoUrl?.takeIf { it.isRemoteMediaUrl() },
-                    phoneCountryCode = local.phoneCountryCode,
-                    phoneNumber = local.phoneNumber,
-                    preferredCurrency = local.preferredCurrency,
+                    photoUrl = local?.photoUrl?.takeIf { it.isRemoteMediaUrl() }
+                        ?: info.userMetadata?.stringMeta("photo_url"),
+                    phoneCountryCode = local?.phoneCountryCode,
+                    phoneNumber = local?.phoneNumber,
+                    preferredCurrency = local?.preferredCurrency,
                     updatedAtEpochMs = now,
                 ),
             )

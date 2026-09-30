@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTextButton
+import kotlinx.coroutines.delay
 
 @Composable
 fun VerifyEmailScreen(
@@ -37,6 +39,15 @@ fun VerifyEmailScreen(
 ) {
     var code by rememberSaveable { mutableStateOf("") }
     var showValidation by rememberSaveable { mutableStateOf(false) }
+    var secondsLeft by rememberSaveable { mutableStateOf(30) }
+
+    LaunchedEffect(Unit) {
+        while (secondsLeft > 0) {
+            delay(1000L)
+            secondsLeft--
+        }
+    }
+
     val otpIncomplete = code.length != AuthViewModel.SIGNUP_OTP_LENGTH
     val otpIsError = formState.errorMessage != null || (showValidation && otpIncomplete)
     val displayEmail = remember(email) { truncateEmailForSubtitle(email) }
@@ -107,14 +118,17 @@ fun VerifyEmailScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
         SeTextButton(
-            text = stringResource(R.string.action_resend_confirmation),
-            onClick = onResend,
-            enabled = !formState.isLoading,
-        )
-        SeTextButton(
-            text = stringResource(R.string.action_back_to_login),
-            onClick = onBackToLogin,
-            enabled = !formState.isLoading,
+            text =
+                if (secondsLeft > 0) {
+                    stringResource(R.string.action_resend_confirmation_timer, secondsLeft)
+                } else {
+                    stringResource(R.string.action_resend_confirmation)
+                },
+            onClick = {
+                secondsLeft = 30
+                onResend()
+            },
+            enabled = secondsLeft == 0 && !formState.isLoading,
         )
     }
 }

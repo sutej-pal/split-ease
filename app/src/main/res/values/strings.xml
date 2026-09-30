@@ -441,7 +441,7 @@
     <string name="friends_owes_you">owes you</string>
     <string name="friends_you_owe">you owe</string>
     <string name="groups_title">Groups</string>
-    <string name="action_share_invite">Share invite</string>
+    <string name="action_share_invite">Share invite link</string>
     <string name="cd_copy_invite_link">Copy invite link</string>
     <string name="cd_share_invite_again">Share invite again</string>
     <string name="invite_link_copied">Invite link copied</string>
@@ -610,6 +610,7 @@
     <string name="verify_email_invalid_code">Enter a valid 6-digit code.</string>
     <string name="action_verify_code">Verify</string>
     <string name="action_resend_confirmation">Resend code</string>
+    <string name="action_resend_confirmation_timer">Resend code (%1$ds)</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_section">App language</string>
     <string name="settings_language_system">System default</string>

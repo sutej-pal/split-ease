@@ -294,7 +294,6 @@ private fun AccountScreenContent(
                 SeOutlinedButton(
                     text = stringResource(R.string.action_sign_out),
                     onClick = { showSignOutConfirm = true },
-                    isLoading = isSigningOut,
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
