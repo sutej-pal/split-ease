@@ -1,0 +1,12 @@
+---
+description: When asked to clear, wipe, reset, or refresh the SplitEase server/Supabase database, follow docs/supabase-reset.md and run those scripts. Do not improvise.
+alwaysApply: true
+---
+
+# Supabase reset
+
+When the user asks to clear / wipe / reset the **server database**, test with **fresh data**, or re-apply cloud schema after SQL changes:
+
+1. Read `docs/supabase-reset.md` (workspace path `app/docs/supabase-reset.md`).
+2. Implement that procedure. Do not invent a new wipe, drop the mail-service, or skip the local Room warning.
+3. Never print `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ACCESS_TOKEN`, or seed passwords in chat.

@@ -16,6 +16,12 @@ interface ExpenseRepository {
      */
     fun observeExpenses(groupId: String? = null): Flow<List<Expense>>
 
+    /** @param groupId Group filter. @return Group expense rows. */
+    suspend fun getExpensesByGroupId(groupId: String): List<Expense>
+
+    /** @return Friendship expense rows. */
+    suspend fun getFriendshipExpenses(userId: String, otherUserId: String): List<Expense>
+
     /**
      * Loads an expense by id.
      *
@@ -25,6 +31,21 @@ interface ExpenseRepository {
     suspend fun getExpenseById(id: String): Expense?
 
     /**
+     * Loads expenses by id.
+     *
+     * @param ids Local UUIDs.
+     * @return Map of id → expense (missing ids omitted).
+     */
+    suspend fun getExpensesByIds(ids: List<String>): Map<String, Expense>
+
+    /**
+     * Observes a single expense by id.
+     *
+     * @param id Local UUID.
+     */
+    fun observeExpenseById(id: String): Flow<Expense?>
+
+    /**
      * Persists an expense together with its split lines in one transaction.
      *
      * @param expense Parent expense.
@@ -32,6 +53,17 @@ interface ExpenseRepository {
      */
     suspend fun upsertExpenseWithSplits(
         expense: Expense,
+        splits: List<ExpenseSplit>,
+    )
+
+    /**
+     * Persists many expenses together with their split lines in one transaction.
+     *
+     * @param expenses Parent expenses.
+     * @param splits Participant split rows; must reference an id in [expenses].
+     */
+    suspend fun upsertExpensesWithSplits(
+        expenses: List<Expense>,
         splits: List<ExpenseSplit>,
     )
 
@@ -57,4 +89,128 @@ interface ExpenseRepository {
      * @return Current split rows.
      */
     suspend fun getSplits(expenseId: String): List<ExpenseSplit>
+
+    /**
+     * Observes 1:1 (non-group) expenses between two users.
+     *
+     * @param userId First user.
+     * @param otherUserId Second user.
+     * @return Cold [Flow] of expenses.
+     */
+    fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<Expense>>
+
+    /**
+     * Observes expenses where [userId] is the payer or a split participant.
+     *
+     * @param userId User id.
+     * @return Cold [Flow] of expenses newest-first.
+     */
+    fun observeInvolvingUser(userId: String): Flow<List<Expense>>
+
+    /**
+     * Newest [limit] expenses involving [userId] (UI feeds; balances use [observeInvolvingUser]).
+     */
+    fun observeRecentInvolvingUser(
+        userId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
+     * Newest [limit] expenses shared with [otherUserId] (any group).
+     */
+    fun observeRecentSharedWithUser(
+        userId: String,
+        otherUserId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
+     * Newest [limit] non-group expenses involving [userId].
+     */
+    fun observeRecentNonGroupInvolvingUser(
+        userId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
+     * Newest [limit] expenses in [groupId] (ledger UI).
+     */
+    fun observeRecentByGroup(
+        groupId: String,
+        limit: Int = FeedQueryLimits.UI_FEED,
+    ): Flow<List<Expense>>
+
+    /**
+     * Loads split rows for many expenses.
+     *
+     * @param expenseIds Parent expense ids.
+     * @return Map of expenseId → splits (missing ids map to empty lists).
+     */
+    suspend fun getSplitsForExpenses(expenseIds: List<String>): Map<String, List<ExpenseSplit>>
+
+    /**
+     * Observes splits for all expenses in [groupId].
+     *
+     * @param groupId Group filter.
+     * @return Flow of expenseId → splits.
+     */
+    fun observeSplitsByGroup(groupId: String): Flow<Map<String, List<ExpenseSplit>>>
+
+    /**
+     * Observes splits for [expenseIds]. Empty [expenseIds] emits an empty map.
+     *
+     * @param expenseIds Parent expense ids.
+     * @return Flow of expenseId → splits.
+     */
+    fun observeSplitsForExpenses(expenseIds: List<String>): Flow<Map<String, List<ExpenseSplit>>>
+
+    /**
+     * Remaps payer and split participant ids after an invite placeholder becomes a real user.
+     *
+     * @param fromUserId Placeholder user id.
+     * @param toUserId Real auth user id.
+     */
+    suspend fun remapUserId(fromUserId: String, toUserId: String)
+
+    /**
+     * Loads recurring templates whose next occurrence is due.
+     *
+     * @param nowEpochMs Current time.
+     * @return Due template expenses.
+     */
+    suspend fun getDueRecurringTemplates(nowEpochMs: Long): List<Expense>
+
+    /**
+     * Observes expenses matching [query] in description or notes.
+     *
+     * @param query Search substring.
+     */
+    fun search(query: String): Flow<List<Expense>>
+
+    /**
+     * Observes expenses in a date window.
+     *
+     * @param fromEpochMs Inclusive start.
+     * @param toEpochMs Inclusive end.
+     */
+    fun observeInPeriod(fromEpochMs: Long, toEpochMs: Long): Flow<List<Expense>>
+
+    /**
+     * Loads expenses that still need cloud sync.
+     */
+    suspend fun getPendingSync(): List<Expense>
+
+    /**
+     * SYNCED expense ids for [groupId] (used to prune remote deletes).
+     *
+     * @param groupId Group filter.
+     */
+    suspend fun getSyncedIdsByGroup(groupId: String): List<String>
+
+    /**
+     * SYNCED non-group expense ids involving [userId] (used to prune remote deletes).
+     *
+     * @param userId User id.
+     */
+    suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String>
 }

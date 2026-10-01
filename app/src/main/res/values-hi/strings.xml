@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="msg_group_export_share_failed">यह CSV शेयर नहीं हो सका.</string>
+    <string name="ledger_not_synced">अभी सिंक नहीं हुआ</string>
+    <plurals name="group_member_count">
+        <item quantity="one">%1$d व्यक्ति</item>
+        <item quantity="other">%1$d लोग</item>
+    </plurals>
+</resources>
