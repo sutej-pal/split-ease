@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,7 +26,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +43,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.model.InviteKind
@@ -72,13 +74,16 @@ fun InviteLandingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(token) {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.onInviteToken(token)
     }
 
     InviteLandingContent(
         uiState = uiState,
         onJoinAsNew = onJoinAsNew,
+        onPendingMemberSelected = { member ->
+            viewModel.onPendingMemberSelected(member) { onJoinAsNew() }
+        },
         onAlreadyHaveAccount = onAlreadyHaveAccount,
         onDismiss = {
             viewModel.dismissInvite()
@@ -92,6 +97,7 @@ fun InviteLandingScreen(
 private fun InviteLandingContent(
     uiState: InviteJoinUiState,
     onJoinAsNew: () -> Unit,
+    onPendingMemberSelected: (InvitePreviewMember) -> Unit,
     onAlreadyHaveAccount: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -209,6 +215,9 @@ private fun InviteLandingContent(
                                             InviteMemberRow(
                                                 member = member,
                                                 showDivider = index < preview.members.lastIndex,
+                                                onPendingMemberSelected = {
+                                                    onPendingMemberSelected(member)
+                                                },
                                             )
                                         }
                                     }
@@ -297,6 +306,7 @@ private fun InviteMessage(preview: InvitePreview) {
 private fun InviteMemberRow(
     member: InvitePreviewMember,
     showDivider: Boolean,
+    onPendingMemberSelected: () -> Unit,
 ) {
     val initial =
         member.displayName
@@ -305,6 +315,7 @@ private fun InviteMemberRow(
             ?.uppercaseChar()
             ?.toString()
             ?: "?"
+    val tappable = !member.alreadyJoined && !member.inviteToken.isNullOrBlank()
     SeListRow(
         title = member.displayName,
         subtitle =
@@ -312,6 +323,13 @@ private fun InviteMemberRow(
                 stringResource(R.string.invite_already_joined)
             } else {
                 stringResource(R.string.invite_pending_member)
+            },
+        onClick = if (tappable) onPendingMemberSelected else null,
+        onClickLabel =
+            if (tappable) {
+                stringResource(R.string.invite_member_tap_label, member.displayName)
+            } else {
+                null
             },
         leading = {
             Box(
@@ -331,16 +349,26 @@ private fun InviteMemberRow(
             }
         },
         trailing =
-            if (member.alreadyJoined) {
-                {
-                    Icon(
-                        imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = null,
-                        tint = SplitEaseColors.Positive,
-                    )
+            when {
+                member.alreadyJoined -> {
+                    {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = SplitEaseColors.Positive,
+                        )
+                    }
                 }
-            } else {
-                null
+                tappable -> {
+                    {
+                        Icon(
+                            imageVector = Icons.Filled.ChevronRight,
+                            contentDescription = null,
+                            tint = SplitEaseColors.NavyMuted,
+                        )
+                    }
+                }
+                else -> null
             },
         showDivider = showDivider,
     )
@@ -369,6 +397,7 @@ private fun InviteLandingPreview() {
                         ),
                 ),
             onJoinAsNew = {},
+            onPendingMemberSelected = {},
             onAlreadyHaveAccount = {},
             onDismiss = {},
         )
@@ -393,6 +422,41 @@ private fun InviteLandingNoNamePreview() {
                         ),
                 ),
             onJoinAsNew = {},
+            onPendingMemberSelected = {},
+            onAlreadyHaveAccount = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 720, name = "Pending member")
+@Composable
+private fun InviteLandingPendingMemberPreview() {
+    SePreview {
+        InviteLandingContent(
+            uiState =
+                InviteJoinUiState(
+                    token = "abc",
+                    preview =
+                        InvitePreview(
+                            token = "abc",
+                            kind = InviteKind.GROUP,
+                            email = "",
+                            inviterName = "Alex",
+                            groupName = "Roommates",
+                            members =
+                                listOf(
+                                    InvitePreviewMember("Alex", alreadyJoined = true),
+                                    InvitePreviewMember(
+                                        displayName = "Sam",
+                                        alreadyJoined = false,
+                                        inviteToken = "sam-token",
+                                    ),
+                                ),
+                        ),
+                ),
+            onJoinAsNew = {},
+            onPendingMemberSelected = {},
             onAlreadyHaveAccount = {},
             onDismiss = {},
         )

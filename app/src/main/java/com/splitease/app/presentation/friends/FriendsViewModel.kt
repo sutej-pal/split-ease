@@ -10,6 +10,7 @@ import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.balance.BalanceInteractor
 import com.splitease.app.data.balance.OverallBalancesUi
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
@@ -42,6 +43,8 @@ data class FriendsUiState(
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingShareText: String? = null,
+    val invitePhone: String? = null,
+    val showSmsPrompt: Boolean = false,
 )
 
 /** Invite-derived pending state for friend list rows. */
@@ -137,7 +140,13 @@ class FriendsViewModel
         }
 
         fun consumeShareText() {
-            _uiState.update { it.copy(pendingShareText = null) }
+            _uiState.update {
+                it.copy(
+                    pendingShareText = null,
+                    invitePhone = null,
+                    showSmsPrompt = false,
+                )
+            }
         }
 
         /**
@@ -197,12 +206,16 @@ class FriendsViewModel
                 _uiState.update {
                     it.copy(
                         pendingShareText = outcome.inviteShareText,
+                        invitePhone = outcome.invitePhone,
+                        showSmsPrompt =
+                            !outcome.invitePhone.isNullOrBlank() &&
+                                !outcome.inviteShareText.isNullOrBlank(),
                         errorMessage = null,
                         infoMessage =
                             if (outcome.inviteEmailSent) {
                                 appContext.getString(
                                     R.string.msg_invite_email_resent,
-                                    outcome.friend.emailSnapshot,
+                                    ContactIdentifier.displayContact(outcome.friend.emailSnapshot),
                                 )
                             } else {
                                 null
@@ -266,7 +279,7 @@ class FriendsViewModel
                                 outcome.inviteEmailSent ->
                                     appContext.getString(
                                         R.string.msg_invite_email_sent,
-                                        outcome.friend.emailSnapshot,
+                                        ContactIdentifier.displayContact(outcome.friend.emailSnapshot),
                                     )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)

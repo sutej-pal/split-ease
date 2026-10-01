@@ -206,7 +206,7 @@ Unique index: `(expenseId, userId)`.
 | friends                       | id                    | UUID (PK) | no       | Friendship id                                                                              |
 | friends                       | owner_user_id         | UUID      | no       | Owner                                                                                      |
 | friends                       | friend_user_id        | UUID      | no       | Friend user                                                                                |
-| friends                       | email_snapshot        | TEXT      | no       | Cached email                                                                               |
+| friends                       | email_snapshot        | TEXT      | no       | Cached contact: real email, `<e164>@mobile.splitease.com` phone placeholder, or a legacy raw phone string |
 | friends                       | display_name_snapshot | TEXT      | no       | Cached name                                                                                |
 | friends                       | updated_at_epoch_ms   | BIGINT    | no       | Last update                                                                                |
 | groups                        | id                    | UUID (PK) | no       | Group id                                                                                   |
@@ -232,7 +232,7 @@ Unique index: `(expenseId, userId)`.
 | invites                       | id                    | UUID (PK) | no       | Invite id                                                                                  |
 | invites                       | token                 | TEXT      | no       | Unique invite token                                                                        |
 | invites                       | inviter_user_id       | UUID      | no       | Sender                                                                                     |
-| invites                       | email                 | TEXT      | no       | Recipient email (person invite) or `group-share@splitease.invalid` for generic share links |
+| invites                       | email                 | TEXT      | no       | Recipient contact: a real email, `<e164>@mobile.splitease.com` for a phone (for example `+919876543210@mobile.splitease.com`), or `group-share@splitease.invalid` for generic share links |
 | invites                       | kind                  | TEXT      | no       | FRIEND / GROUP                                                                             |
 | invites                       | group_id              | UUID      | yes      | Target group                                                                               |
 | invites                       | friend_row_id         | UUID      | yes      | Related friends row                                                                        |
@@ -251,7 +251,7 @@ Unique index: `(expenseId, userId)`.
 - INSERT / UPDATE: actor only (`isSeen` is not a cloud column)
 
 **Invite join RPCs** (see [sql/migration_db.sql](sql/migration_db.sql)):
-- `get_invite_preview(p_token)` — public (anon) preview for landing UI. Inviter name is `profiles.display_name` for `invites.inviter_user_id` (empty string when that profile is missing or blank). Member names come from `profiles` (inner join). No auth-metadata, group-creator, email local-part, or "A friend" fallbacks for the inviter.. Inviter name is `profiles.display_name` for `invites.inviter_user_id` (empty string when that profile is missing or blank). Joined members come from `profiles` (inner join). No auth-metadata, group-creator, email local-part, or "A friend" fallbacks for the inviter.
+- `get_invite_preview(p_token)` — public (anon) preview for landing UI. Inviter name is `profiles.display_name` for `invites.inviter_user_id` (empty string when that profile is missing or blank). `invitee_name` is that invite's friend display name with ` (invited)` removed, or `''`. Joined members come from `profiles` (inner join) and have no `invite_token`. Pending members (other invites in the group with `friend_row_id`) include `invite_token`; a phone placeholder whose local part starts with `+` is named `Guest` instead of the placeholder. No auth-metadata, group-creator, email local-part, or "A friend" fallbacks for the inviter. Re-apply this function in Supabase after pulling; git does not update the live project.
 - `accept_invite_by_token(p_token)` — authenticated accept for deep-link join-as-new (share links stay `PENDING` / multi-use; inviter self-claim returns 0)
 - `accept_pending_invites()` — email-based accept for person invites only (`friend_row_id` required; skips generic share links)
 

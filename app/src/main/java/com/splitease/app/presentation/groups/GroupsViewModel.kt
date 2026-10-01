@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.exports.GroupExportInteractor
 import com.splitease.app.data.push.NotificationPrefsCoordinator
 import com.splitease.app.data.social.SocialInteractor
@@ -58,6 +59,8 @@ data class GroupsUiState(
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingShareText: String? = null,
+    val invitePhone: String? = null,
+    val showSmsPrompt: Boolean = false,
     val pendingFileShare: PendingFileShare? = null,
 )
 
@@ -128,7 +131,13 @@ class GroupsViewModel
         }
 
         fun consumeShareText() {
-            _uiState.update { it.copy(pendingShareText = null) }
+            _uiState.update {
+                it.copy(
+                    pendingShareText = null,
+                    invitePhone = null,
+                    showSmsPrompt = false,
+                )
+            }
         }
 
         fun consumeFileShare() {
@@ -239,6 +248,8 @@ class GroupsViewModel
                         errorMessage = null,
                         infoMessage = null,
                         pendingShareText = null,
+                        invitePhone = null,
+                        showSmsPrompt = false,
                     )
                 }
                 val result = socialInteractor.createGroupShareLink(ownerId, groupId)
@@ -249,6 +260,8 @@ class GroupsViewModel
                         errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
                         infoMessage = null,
                         pendingShareText = shareText,
+                        invitePhone = null,
+                        showSmsPrompt = false,
                     )
                 }
             }
@@ -327,12 +340,16 @@ class GroupsViewModel
                 _uiState.update {
                     it.copy(
                         pendingShareText = outcome.inviteShareText,
+                        invitePhone = outcome.invitePhone,
+                        showSmsPrompt =
+                            !outcome.invitePhone.isNullOrBlank() &&
+                                !outcome.inviteShareText.isNullOrBlank(),
                         errorMessage = null,
                         infoMessage =
                             if (outcome.inviteEmailSent) {
                                 appContext.getString(
                                     R.string.msg_invite_email_resent,
-                                    outcome.friend.emailSnapshot,
+                                    ContactIdentifier.displayContact(outcome.friend.emailSnapshot),
                                 )
                             } else {
                                 null
@@ -534,10 +551,14 @@ class GroupsViewModel
                         errorMessage = null,
                         infoMessage = null,
                         pendingShareText = null,
+                        invitePhone = null,
+                        showSmsPrompt = false,
                     )
                 }
                 val result = socialInteractor.inviteToGroupByEmail(ownerId, groupId, email)
                 val outcome = result.getOrNull()
+                val phone = outcome?.invitePhone
+                val shareText = outcome?.inviteShareText
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
@@ -548,13 +569,15 @@ class GroupsViewModel
                                 outcome.inviteEmailSent ->
                                     appContext.getString(
                                         R.string.msg_invite_email_sent,
-                                        outcome.friend.emailSnapshot,
+                                        ContactIdentifier.displayContact(outcome.friend.emailSnapshot),
                                     )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)
                                 else -> appContext.getString(R.string.msg_member_added)
                             },
-                        pendingShareText = outcome?.inviteShareText,
+                        pendingShareText = shareText,
+                        invitePhone = phone,
+                        showSmsPrompt = !phone.isNullOrBlank() && !shareText.isNullOrBlank(),
                     )
                 }
             }

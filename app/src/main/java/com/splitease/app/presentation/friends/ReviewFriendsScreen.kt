@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.friends
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -29,19 +28,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
-import com.splitease.app.data.social.InviteLinks
+import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
@@ -61,28 +58,19 @@ fun ReviewFriendsScreen(
 ) {
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareInvite = stringResource(R.string.action_share_invite)
+    val firstShare = uiState.pendingShareText
+    val smsPhone = uiState.pendingSmsPhone
 
-    LaunchedEffect(uiState.pendingShareTexts) {
-        val texts = uiState.pendingShareTexts
-        if (texts.isEmpty()) return@LaunchedEffect
-        // Share the first invite; remaining invites stay pending in Friends for resend.
-        val text = texts.first()
-        val html = InviteLinks.htmlForShareText(text)
-        val intent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
-                putExtra(Intent.EXTRA_TEXT, text)
-                if (html != null) {
-                    putExtra(Intent.EXTRA_HTML_TEXT, html)
-                }
-            }
-        context.startActivity(Intent.createChooser(intent, shareInvite))
-        viewModel.consumeShareTexts()
-        onDone()
+    if (!firstShare.isNullOrBlank()) {
+        InviteDeliveryHandler(
+            shareText = firstShare,
+            phone = smsPhone,
+            showSmsPrompt = uiState.showSmsPrompt,
+            onFinished = {
+                viewModel.consumeShareTexts()
+                onDone()
+            },
+        )
     }
 
     Scaffold(

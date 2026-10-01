@@ -1,9 +1,11 @@
 package com.splitease.app.presentation.settlements
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
@@ -12,7 +14,6 @@ import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.presentation.common.MoneyFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -223,7 +224,7 @@ class SendReminderViewModel
         }
 
         private fun isUsableEmail(email: String): Boolean =
-            email.contains("@") && !email.endsWith("@splitease.invalid", ignoreCase = true)
+            ContactIdentifier.isRealEmail(email)
 
         private fun String.toBigDecimalOrZero(): BigDecimal =
             trim().toBigDecimalOrNull() ?: BigDecimal.ZERO

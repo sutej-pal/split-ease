@@ -47,7 +47,7 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 | `onboarding_email_sent_{userId}` | Suppress duplicate welcome mails                     |
 
 **Supabase** (see [sql/migration_db.sql](sql/migration_db.sql)):
-- `get_invite_preview(p_token text) → jsonb` — inviter name is `profiles.display_name` (empty string if none); members from profiles; no name fallbacks — inviter name is `profiles.display_name` (empty string if none); members from profiles; no name fallbacks
+- `get_invite_preview(p_token text) → jsonb` — inviter name is `profiles.display_name` (empty string if none). `invitee_name` is the token's friend display name without ` (invited)`. Joined members have no `invite_token`. Pending members include `invite_token`; a phone placeholder local part that starts with `+` is shown as Guest. Re-apply the function in Supabase after pulling.
 - `accept_invite_by_token(p_token text) → integer`
 - Share-link burn heal + multi-use token accept included in the same file
 
@@ -67,6 +67,8 @@ After core phases 0–9, harden day-to-day product flows: editable expense histo
 - Intent-filters + `MainActivity` token intake; `InviteLandingScreen` + `InviteJoinSignUpScreen`
 - Play Install Referrer deferred-invite path when app was not installed
 - After accept → invited group detail (or Friends for friend-only invites)
+- Pending member rows on the landing screen open the same sign-up route with the member's invite token, name, and phone or email prefilled. The original group preview is restored when the landing screen resumes.
+- Phone contacts are stored as `<e164>@mobile.splitease.com`. Invite mail is skipped; the app opens the user's SMS app with the existing https invite link.
 
 **Onboarding mail**
 - `MAIL_SERVICE_BASE_URL` / `MAIL_SERVICE_API_KEY` BuildConfig

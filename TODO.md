@@ -13,6 +13,21 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 - [x] **Onboarding-complete cloud flag** — Not needed. The post-signup setup wizard was removed; users go straight to the app after OTP. The unused local `onboarding_complete` preference was dropped.
 - [x] **Profile photo in onboarding** — Optional avatar on Sign up (crop + 512px JPEG). Compressed into app storage at signup, uploaded after OTP. Google photos are compressed into `user-avatars` on first hydrate.
 
+## Review follow-ups (2026-10-01)
+
+Phone invites (staged) and the empty-group card (`1bbb662`). Detail: [docs/review-2026-10-01-phone-invite-empty-group.md](docs/review-2026-10-01-phone-invite-empty-group.md).
+
+- [ ] **TODO(invite-token-disclosure)** — Public `get_invite_preview` returns other pending members' invite tokens. Deferred on purpose; do not change until this is picked up.
+- [ ] **TODO(group-resend-sms-dialog)** — Group settings resend still shows the SMS confirm dialog. Friend resend does not.
+- [ ] **TODO(invite-landing-resume)** — Invite landing reloads on every resume and can overwrite the pending member token.
+- [ ] **TODO(phone-embedded-country-code)** — A number that already includes the country code without `+` or `00` gets a second dial prefix.
+- [ ] **TODO(share-chooser-once)** — Email share sheet can open twice on rotation. SMS is already guarded.
+- [ ] **TODO(unknown-dial-prefill)** — Calling codes outside the ten-country list never prefill sign-up.
+- [ ] **TODO(dial-plus-one-flag)** — `+1` always shows the US flag, including for Canada.
+- [ ] **TODO(text-secondary-light-scope)** — Confirm or revert the app-wide `TextSecondaryLight` change (`#575F9E` → `#3A3F69`).
+- [ ] **TODO(empty-state-theme-mode)** — Empty-group card colors follow the system theme, not in-app `ThemeMode`.
+- [ ] **TODO(primary-button-height-scope)** — Confirm `SePrimaryButton` min height `48.dp` (was fixed `56.dp`) for every primary button.
+
 ## Invites & App Links
 
 - [x] **Invite email delivery** — Add people / Review sends invite mail via mail-service when the contact is an email; phone contacts still fall back to the share sheet.

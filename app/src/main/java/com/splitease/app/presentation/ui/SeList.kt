@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,9 +57,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Leading icon well (pastel fill) with **16.dp rounded corners**.
@@ -389,6 +391,7 @@ fun SeListRow(
     leading: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
     showDivider: Boolean = true,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -396,7 +399,19 @@ fun SeListRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                    .then(
+                        if (onClick != null) {
+                            Modifier
+                                .heightIn(min = 48.dp)
+                                .clickable(
+                                    onClick = onClick,
+                                    role = Role.Button,
+                                    onClickLabel = onClickLabel,
+                                )
+                        } else {
+                            Modifier
+                        },
+                    )
                     .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

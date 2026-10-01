@@ -16,6 +16,7 @@ data class InvitePreviewDto(
     @SerialName("group_name") val groupName: String? = null,
     @SerialName("group_photo_url") val groupPhotoUrl: String? = null,
     val members: List<InvitePreviewMemberDto> = emptyList(),
+    @SerialName("invitee_name") val inviteeName: String = "",
 )
 
 /**
@@ -25,4 +26,5 @@ data class InvitePreviewDto(
 data class InvitePreviewMemberDto(
     @SerialName("display_name") val displayName: String,
     @SerialName("already_joined") val alreadyJoined: Boolean = false,
+    @SerialName("invite_token") val inviteToken: String? = null,
 )

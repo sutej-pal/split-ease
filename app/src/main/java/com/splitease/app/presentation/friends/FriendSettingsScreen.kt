@@ -16,17 +16,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Report
-import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,13 +39,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
-import com.splitease.app.data.social.InviteLinks
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
+import com.splitease.app.presentation.invite.InviteDeliveryHandler
+import com.splitease.app.presentation.invite.InviteDeliveryPolicy
 import com.splitease.app.presentation.theme.AmberLight
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
@@ -55,6 +58,7 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
@@ -78,8 +82,6 @@ fun FriendSettingsScreen(
     var showBlockConfirm by rememberSaveable { mutableStateOf(false) }
     var showReportConfirm by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareInvite = stringResource(R.string.action_share_invite)
     val displayName =
         friend
             ?.displayNameSnapshot
@@ -89,21 +91,13 @@ fun FriendSettingsScreen(
     val firstName = viewModel.firstName()
     val personLabel = displayName.ifBlank { firstName }
 
-    LaunchedEffect(uiState.pendingShareText) {
-        val text = uiState.pendingShareText ?: return@LaunchedEffect
-        val html = InviteLinks.htmlForShareText(text)
-        val intent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
-                putExtra(Intent.EXTRA_TEXT, text)
-                if (html != null) {
-                    putExtra(Intent.EXTRA_HTML_TEXT, html)
-                }
-            }
-        context.startActivity(Intent.createChooser(intent, shareInvite))
-        viewModel.consumeShareText()
-    }
+    InviteDeliveryHandler(
+        shareText = uiState.pendingShareText,
+        phone = uiState.invitePhone,
+        showSmsPrompt = uiState.showSmsPrompt,
+        onFinished = viewModel::consumeShareText,
+        confirmBeforeOpening = InviteDeliveryPolicy.RESEND_SKIPS_DIALOG,
+    )
 
     SeScreen(
         title = stringResource(R.string.friend_settings_title),
@@ -124,7 +118,8 @@ fun FriendSettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     PendingInviteCard(
                         firstName = firstName,
-                        contact = friend!!.emailSnapshot,
+                        contact = ContactIdentifier.displayContact(friend!!.emailSnapshot),
+                        isPhone = ContactIdentifier.phoneFromStored(friend!!.emailSnapshot) != null,
                         onEditContact = onEditContact,
                         onResendInvite = viewModel::resendInvite,
                     )
@@ -278,7 +273,7 @@ private fun FriendSettingsHeader(
         ?.removeSuffix(" (invited)")
         ?.trim()
         .orEmpty()
-    val contact = friend?.emailSnapshot.orEmpty()
+    val contact = ContactIdentifier.displayContact(friend?.emailSnapshot.orEmpty())
     Row(
         modifier =
             Modifier
@@ -313,6 +308,7 @@ private fun FriendSettingsHeader(
 private fun PendingInviteCard(
     firstName: String,
     contact: String,
+    isPhone: Boolean,
     onEditContact: () -> Unit,
     onResendInvite: () -> Unit,
 ) {
@@ -324,10 +320,30 @@ private fun PendingInviteCard(
                 .background(PendingInviteCardBg)
                 .padding(16.dp),
     ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Outlined.Schedule,
+                contentDescription = null,
+                tint = SplitEaseColors.Navy,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.friend_invite_pending_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = SplitEaseColors.Navy,
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text =
                 stringResource(
-                    R.string.friend_invite_pending_card,
+                    if (isPhone) {
+                        R.string.friend_invite_pending_card_phone
+                    } else {
+                        R.string.friend_invite_pending_card_email
+                    },
                     firstName,
                     contact,
                 ),
@@ -435,6 +451,22 @@ private fun ManageActionRow(
         }
         if (showDivider) {
             androidx.compose.material3.HorizontalDivider(color = SplitEaseColors.Outline)
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Pending invite card")
+@Composable
+private fun PendingInviteCardPreview() {
+    SePreview {
+        Column(modifier = Modifier.padding(20.dp)) {
+            PendingInviteCard(
+                firstName = "Sam",
+                contact = "+91 98765 43210",
+                isPhone = true,
+                onEditContact = {},
+                onResendInvite = {},
+            )
         }
     }
 }

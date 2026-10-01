@@ -64,7 +64,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.FriendBalanceUi
 import com.splitease.app.data.balance.FriendContextBalanceUi
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.social.InviteLinks
+import com.splitease.app.presentation.invite.InviteDeliveryHandler
+import com.splitease.app.presentation.invite.InviteDeliveryPolicy
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.common.shortDisplayName
@@ -112,9 +115,6 @@ fun FriendsListScreen(
     val balances by viewModel.overallBalances.collectAsStateWithLifecycle()
     val currencyCode by viewModel.currencyCode.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareInvite = stringResource(R.string.action_share_invite)
 
     var listFilter by remember { mutableStateOf(FriendsListFilter.OUTSTANDING) }
     var showSettledFriends by remember { mutableStateOf(false) }
@@ -153,22 +153,13 @@ fun FriendsListScreen(
     val canHideSettled =
         outstandingWithSettledHidden && showSettledFriends && settledFriends.isNotEmpty()
 
-    LaunchedEffect(uiState.pendingShareText) {
-        val text = uiState.pendingShareText ?: return@LaunchedEffect
-        val html = InviteLinks.htmlForShareText(text)
-        val intent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TITLE, shareInvite)
-                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
-                putExtra(Intent.EXTRA_TEXT, text)
-                if (html != null) {
-                    putExtra(Intent.EXTRA_HTML_TEXT, html)
-                }
-            }
-        context.startActivity(Intent.createChooser(intent, shareInvite))
-        viewModel.consumeShareText()
-    }
+    InviteDeliveryHandler(
+        shareText = uiState.pendingShareText,
+        phone = uiState.invitePhone,
+        showSmsPrompt = uiState.showSmsPrompt,
+        onFinished = viewModel::consumeShareText,
+        confirmBeforeOpening = InviteDeliveryPolicy.RESEND_SKIPS_DIALOG,
+    )
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -448,7 +439,7 @@ private fun FriendBalanceListItem(
                     pending ->
                         Text(
                             text =
-                                "${friend.emailSnapshot} · ${stringResource(R.string.invite_pending_label)}",
+                                "${ContactIdentifier.displayContact(friend.emailSnapshot)} · ${stringResource(R.string.invite_pending_label)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

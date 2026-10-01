@@ -515,8 +515,14 @@ fun SplitEaseNavHost(
                 composable(Routes.INVITE_JOIN_SIGN_UP) {
                     InviteJoinSignUpScreen(
                         formState = formState,
-                        onSignUp = { email, password, displayName ->
-                            authViewModel.signUp(email, password, displayName)
+                        onSignUp = { email, password, displayName, phoneCountryCode, phoneNumber ->
+                            authViewModel.signUp(
+                                email = email,
+                                password = password,
+                                displayName = displayName,
+                                phoneCountryCode = phoneCountryCode,
+                                phoneNumber = phoneNumber,
+                            )
                         },
                         onBack = {
                             authViewModel.clearMessages()

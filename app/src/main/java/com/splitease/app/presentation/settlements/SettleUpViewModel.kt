@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.payment.RecordPaymentInput
@@ -278,7 +279,7 @@ class SettleUpViewModel
             val email =
                 listOfNotNull(user?.email, friend?.emailSnapshot)
                     .map { it.trim() }
-                    .firstOrNull { it.contains("@") && !it.endsWith("@splitease.invalid", true) }
+                    .firstOrNull { ContactIdentifier.isRealEmail(it) }
             val photo = user?.photoUrl?.trim()?.takeIf { it.isNotEmpty() }
             return SettlePartyUi(
                 userId = userId,

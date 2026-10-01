@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.groups
 
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -96,7 +95,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
-import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.settings.AppCurrencies
@@ -109,6 +107,7 @@ import com.splitease.app.presentation.expenses.ExpensesViewModel
 import com.splitease.app.presentation.expenses.LedgerBalanceSide
 import com.splitease.app.presentation.expenses.LedgerListItem
 import com.splitease.app.presentation.expenses.ledgerEntries
+import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
@@ -416,25 +415,13 @@ fun GroupDetailScreen(
         }
     }
 
-    val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareTitle = stringResource(R.string.share_invite_link_title)
-
-    LaunchedEffect(uiState.pendingShareText) {
-        val text = uiState.pendingShareText ?: return@LaunchedEffect
-        val html = InviteLinks.htmlForShareText(text)
-        val intent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TITLE, shareTitle)
-                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
-                putExtra(Intent.EXTRA_TEXT, text)
-                if (html != null) {
-                    putExtra(Intent.EXTRA_HTML_TEXT, html)
-                }
-            }
-        context.startActivity(Intent.createChooser(intent, shareTitle))
-        viewModel.consumeShareText()
-    }
+    InviteDeliveryHandler(
+        shareText = uiState.pendingShareText,
+        phone = uiState.invitePhone,
+        showSmsPrompt = uiState.showSmsPrompt,
+        onFinished = viewModel::consumeShareText,
+        chooserTitle = stringResource(R.string.share_invite_link_title),
+    )
 
     fun openSettle() {
         onNavigateSettleSelection(groupId)

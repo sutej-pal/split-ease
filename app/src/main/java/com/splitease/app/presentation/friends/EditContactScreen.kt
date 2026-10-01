@@ -1,7 +1,8 @@
 package com.splitease.app.presentation.friends
 
-import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,9 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,27 +30,36 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
-import com.splitease.app.data.social.InviteLinks
+import com.splitease.app.data.social.ContactIdentifier
+import com.splitease.app.data.social.ContactKind
+import com.splitease.app.presentation.invite.InviteDeliveryHandler
+import com.splitease.app.presentation.invite.InviteDeliveryPolicy
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.DialCodePickerDialog
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTopBarActionButton
@@ -59,34 +72,20 @@ fun EditContactScreen(
     viewModel: EditContactViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareInvite = stringResource(R.string.action_share_invite)
-    val canSubmit =
-        !uiState.isSubmitting &&
-            !uiState.isLoading &&
-            uiState.name.isNotBlank() &&
-            selectedContactReady(uiState)
     var showValidation by rememberSaveable { mutableStateOf(false) }
+    var showDialPicker by rememberSaveable { mutableStateOf(false) }
     val nameError = showValidation && uiState.name.isBlank()
-    val contactError = showValidation && !selectedContactReady(uiState)
 
-    LaunchedEffect(uiState.pendingShareText) {
-        val text = uiState.pendingShareText ?: return@LaunchedEffect
-        val html = InviteLinks.htmlForShareText(text)
-        val intent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
-                putExtra(Intent.EXTRA_TEXT, text)
-                if (html != null) {
-                    putExtra(Intent.EXTRA_HTML_TEXT, html)
-                }
-            }
-        context.startActivity(Intent.createChooser(intent, shareInvite))
-        viewModel.consumeShareText()
-        onDone()
-    }
+    InviteDeliveryHandler(
+        shareText = uiState.pendingShareText,
+        phone = uiState.invitePhone,
+        showSmsPrompt = uiState.showSmsPrompt,
+        onFinished = {
+            viewModel.consumeShareText()
+            onDone()
+        },
+        confirmBeforeOpening = InviteDeliveryPolicy.EDIT_CONTACT_CONFIRMS,
+    )
 
     SeScreen(
         title = stringResource(R.string.edit_contact_title),
@@ -96,7 +95,8 @@ fun EditContactScreen(
             SeTopBarActionButton(
                 onClick = {
                     showValidation = true
-                    if (!canSubmit) return@SeTopBarActionButton
+                    if (uiState.isSubmitting || uiState.isLoading) return@SeTopBarActionButton
+                    if (uiState.name.isBlank()) return@SeTopBarActionButton
                     viewModel.submit(
                         onLinked = onDone,
                         onConfirmedForReview = onConfirmedForReview,
@@ -159,30 +159,42 @@ fun EditContactScreen(
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(
-                    text = stringResource(R.string.label_phone_or_email),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = SplitEaseColors.NavyMuted,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                uiState.options.forEach { option ->
-                    ContactMethodRow(
-                        option = option,
-                        selected = option.id == uiState.selectedOptionId,
-                        newPhone = uiState.newPhone,
-                        newEmail = uiState.newEmail,
-                        enabled = !uiState.isSubmitting,
-                        showContactError = contactError,
-                        onSelect = { viewModel.selectOption(option.id) },
-                        onNewPhoneChange = viewModel::setNewPhone,
-                        onNewEmailChange = viewModel::setNewEmail,
+                if (uiState.mode == EditContactMode.DEVICE_CONTACT) {
+                    Text(
+                        text = stringResource(R.string.label_phone_or_email),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = SplitEaseColors.NavyMuted,
+                        fontWeight = FontWeight.SemiBold,
                     )
-                }
-                if (contactError) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    SeErrorText(stringResource(R.string.msg_contact_required))
+                    uiState.options.forEach { option ->
+                        ContactMethodRow(
+                            option = option,
+                            selected = option.id == uiState.selectedOptionId,
+                            newPhone = uiState.newPhone,
+                            newEmail = uiState.newEmail,
+                            enabled = !uiState.isSubmitting,
+                            showContactError = showValidation && !selectedContactReady(uiState),
+                            onSelect = { viewModel.selectOption(option.id) },
+                            onNewPhoneChange = viewModel::setNewPhone,
+                            onNewEmailChange = viewModel::setNewEmail,
+                        )
+                    }
+                    if (showValidation && !selectedContactReady(uiState)) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SeErrorText(stringResource(R.string.msg_contact_required))
+                    }
+                    uiState.contactError?.let {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SeErrorText(it)
+                    }
+                } else {
+                    EditContactSingleField(
+                        value = uiState.contactInput,
+                        enabled = !uiState.isSubmitting,
+                        errorText = uiState.contactError,
+                        onValueChange = viewModel::setContactInput,
+                    )
                 }
 
                 if (uiState.confirmOnly) {
@@ -204,6 +216,178 @@ fun EditContactScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     SeInfoText(it)
                 }
+            }
+        },
+    )
+
+    val confirm = uiState.phoneConfirm
+    if (confirm != null) {
+        PhoneConfirmDialog(
+            state = confirm,
+            onNumberChange = viewModel::setPhoneConfirmNumber,
+            onDialClick = { showDialPicker = true },
+            onContinue = {
+                viewModel.continuePhoneConfirm(
+                    onLinked = onDone,
+                    onConfirmedForReview = onConfirmedForReview,
+                )
+            },
+            onDismiss = viewModel::dismissPhoneConfirm,
+        )
+    }
+    if (showDialPicker && confirm != null) {
+        DialCodePickerDialog(
+            selectedCode = confirm.dialCode,
+            selectedFlag = confirm.flag,
+            onSelect = { option ->
+                viewModel.setPhoneConfirmDial(option.code, option.flag)
+                showDialPicker = false
+            },
+            onDismiss = { showDialPicker = false },
+        )
+    }
+}
+
+@Composable
+private fun EditContactSingleField(
+    value: String,
+    enabled: Boolean,
+    errorText: String?,
+    onValueChange: (String) -> Unit,
+) {
+    val kind = ContactIdentifier.classify(value)
+    val hint =
+        when {
+            errorText != null -> errorText
+            kind == ContactKind.EMAIL -> stringResource(R.string.contact_hint_email)
+            else -> null
+        }
+    SeTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = stringResource(R.string.label_phone_or_email),
+        enabled = enabled,
+        isError = errorText != null,
+        supportingText = hint,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false),
+        leadingIcon = {
+            Icon(
+                imageVector = contactLeadingIcon(kind),
+                contentDescription = null,
+                tint = SplitEaseColors.NavyMuted,
+            )
+        },
+        trailingIcon =
+            if (value.isNotEmpty()) {
+                {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(
+                            Icons.Filled.Clear,
+                            contentDescription = stringResource(R.string.cd_clear_field),
+                            tint = SplitEaseColors.NavyMuted,
+                        )
+                    }
+                }
+            } else {
+                null
+            },
+    )
+}
+
+private fun contactLeadingIcon(kind: ContactKind): ImageVector =
+    when (kind) {
+        ContactKind.PHONE -> Icons.Filled.Phone
+        ContactKind.EMAIL -> Icons.Filled.Email
+        ContactKind.INVALID -> Icons.Outlined.Person
+    }
+
+@Composable
+private fun PhoneConfirmDialog(
+    state: PhoneConfirmState,
+    onNumberChange: (String) -> Unit,
+    onDialClick: () -> Unit,
+    onContinue: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val canContinue = ContactIdentifier.isConfirmablePhoneLength(state.dialCode, state.number)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        titleContentColor = SplitEaseColors.Navy,
+        textContentColor = SplitEaseColors.Navy,
+        title = {
+            Text(
+                text = stringResource(R.string.phone_confirm_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = SplitEaseColors.Navy,
+            )
+        },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier =
+                        Modifier
+                            .clickable(onClick = onDialClick)
+                            .padding(end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "${state.flag}  ${state.dialCode}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = SplitEaseColors.Navy,
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = stringResource(R.string.signup_pick_country_title),
+                        tint = SplitEaseColors.NavyMuted,
+                    )
+                }
+                Box(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 8.dp)
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(SplitEaseColors.OutlineStrong),
+                )
+                TextField(
+                    value = state.number,
+                    onValueChange = onNumberChange,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = KeyboardType.Phone,
+                            autoCorrectEnabled = false,
+                        ),
+                    colors =
+                        TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            focusedIndicatorColor = SplitEaseColors.Primary,
+                            unfocusedIndicatorColor = SplitEaseColors.OutlineStrong,
+                            cursorColor = SplitEaseColors.Primary,
+                            focusedTextColor = SplitEaseColors.Navy,
+                            unfocusedTextColor = SplitEaseColors.Navy,
+                        ),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onContinue, enabled = canContinue) {
+                Text(
+                    text = stringResource(R.string.action_continue),
+                    color = if (canContinue) SplitEaseColors.Primary else SplitEaseColors.NavyMuted,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.action_cancel))
             }
         },
     )
@@ -320,5 +504,39 @@ private fun selectedContactReady(state: EditContactUiState): Boolean {
             selected.value.isNotBlank()
         ContactMethodKind.NEW_PHONE -> state.newPhone.isNotBlank()
         ContactMethodKind.NEW_EMAIL -> state.newEmail.isNotBlank()
+    }
+}
+
+@Preview(showBackground = true, name = "Edit contact · phone or email")
+@Composable
+private fun EditContactSingleFieldPreview() {
+    SePreview {
+        Column(modifier = Modifier.padding(20.dp)) {
+            EditContactSingleField(
+                value = "70172 22030",
+                enabled = true,
+                errorText = null,
+                onValueChange = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Confirm phone number")
+@Composable
+private fun PhoneConfirmDialogPreview() {
+    SePreview {
+        PhoneConfirmDialog(
+            state =
+                PhoneConfirmState(
+                    dialCode = ContactIdentifier.DEFAULT_DIAL_CODE,
+                    flag = "🇮🇳",
+                    number = "70172 22030",
+                ),
+            onNumberChange = {},
+            onDialClick = {},
+            onContinue = {},
+            onDismiss = {},
+        )
     }
 }

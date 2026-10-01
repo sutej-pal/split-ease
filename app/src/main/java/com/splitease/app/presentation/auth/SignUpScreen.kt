@@ -1,7 +1,6 @@
 package com.splitease.app.presentation.auth
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,21 +17,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
@@ -66,6 +60,8 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.DialCodePickerDialog
+import com.splitease.app.presentation.ui.PhoneNumberRow
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -75,30 +71,8 @@ import com.splitease.app.presentation.ui.SeTextField
 import java.util.Currency
 import java.util.Locale
 
-private data class DialCodeOption(
-    val flag: String,
-    val code: String,
-    val label: String,
-)
-
 /** Avatar diameter; matches Material single-line outlined field height beside it. */
 private val ProfilePhotoSize = 56.dp
-
-private val FieldShape = RoundedCornerShape(10.dp)
-
-private val DialCodeOptions =
-    listOf(
-        DialCodeOption("🇮🇳", "+91", "India"),
-        DialCodeOption("🇺🇸", "+1", "United States"),
-        DialCodeOption("🇬🇧", "+44", "United Kingdom"),
-        DialCodeOption("🇨🇦", "+1", "Canada"),
-        DialCodeOption("🇦🇺", "+61", "Australia"),
-        DialCodeOption("🇦🇪", "+971", "United Arab Emirates"),
-        DialCodeOption("🇸🇬", "+65", "Singapore"),
-        DialCodeOption("🇩🇪", "+49", "Germany"),
-        DialCodeOption("🇫🇷", "+33", "France"),
-        DialCodeOption("🇯🇵", "+81", "Japan"),
-    )
 
 @Composable
 fun SignUpScreen(
@@ -364,74 +338,6 @@ private fun ProfilePhotoButton(
 }
 
 @Composable
-private fun PhoneNumberRow(
-    dialFlag: String,
-    dialCode: String,
-    phoneNumber: String,
-    enabled: Boolean,
-    onDialClick: () -> Unit,
-    onPhoneChange: (String) -> Unit,
-) {
-    OutlinedTextField(
-        value = phoneNumber,
-        onValueChange = onPhoneChange,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(FieldShape),
-        label = { Text(stringResource(R.string.label_phone_number)) },
-        enabled = enabled,
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, autoCorrectEnabled = false),
-        leadingIcon = {
-            Row(
-                modifier =
-                    Modifier
-                        .clickable(enabled = enabled, onClick = onDialClick)
-                        .padding(start = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "$dialFlag $dialCode",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (enabled) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
-                )
-                Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = stringResource(R.string.signup_pick_country_title),
-                    tint = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.size(20.dp),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .padding(start = 8.dp, end = 4.dp)
-                            .width(1.dp)
-                            .height(28.dp)
-                            .background(SplitEaseColors.OutlineStrong),
-                )
-            }
-        },
-        shape = FieldShape,
-        colors =
-            OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = SplitEaseColors.Primary,
-                unfocusedBorderColor = SplitEaseColors.OutlineStrong,
-                disabledBorderColor = SplitEaseColors.OutlineStrong.copy(alpha = 0.5f),
-                focusedLabelColor = SplitEaseColors.Primary,
-                unfocusedLabelColor = SplitEaseColors.NavyMuted,
-                cursorColor = SplitEaseColors.Primary,
-                focusedTextColor = SplitEaseColors.Navy,
-                unfocusedTextColor = SplitEaseColors.Navy,
-                focusedContainerColor = SplitEaseColors.Surface,
-                unfocusedContainerColor = SplitEaseColors.Surface,
-                disabledContainerColor = SplitEaseColors.Surface,
-                errorContainerColor = SplitEaseColors.Surface,
-            ),
-    )
-}
-
-@Composable
 private fun CurrencyPreferenceLine(
     currencyCode: String,
     enabled: Boolean,
@@ -551,52 +457,6 @@ private fun CurrencyPickerDialog(
                     }
                 }
                 HorizontalDivider(color = SplitEaseColors.Outline)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DialCodePickerDialog(
-    selectedCode: String,
-    selectedFlag: String,
-    onSelect: (DialCodeOption) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    SeModal(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.signup_pick_country_title),
-        icon = Icons.Filled.Public,
-        dismissLabel = stringResource(R.string.action_cancel),
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 360.dp)
-                    .verticalScroll(rememberScrollState()),
-        ) {
-            DialCodeOptions.forEach { option ->
-                val selected = option.code == selectedCode && option.flag == selectedFlag
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(option) }
-                            .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(
-                        selected = selected,
-                        onClick = { onSelect(option) },
-                        colors = RadioButtonDefaults.colors(selectedColor = SplitEaseColors.Primary),
-                    )
-                    Text(
-                        text = "${option.flag}  ${option.code}  ${option.label}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SplitEaseColors.Navy,
-                    )
-                }
             }
         }
     }

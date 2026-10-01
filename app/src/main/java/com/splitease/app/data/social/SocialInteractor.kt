@@ -138,8 +138,11 @@ class SocialInteractor
                     friendRepository
                         .getByOwnerAndFriendUserId(ownerUserId, friendUserId)
                         ?: error("Friend not found.")
-                val normalized = contact.trim()
-                require(normalized.isNotBlank()) { "Email or phone is required." }
+                val trimmedContact = contact.trim()
+                require(trimmedContact.isNotBlank()) { "Email or phone is required." }
+                val normalized =
+                    ContactIdentifier.toStoredContact(trimmedContact)
+                        ?: error("Enter a valid email or phone number.")
                 val name = displayName.trim().ifBlank { friend.displayNameSnapshot }
                 val pending =
                     friend.displayNameSnapshot.contains("(invited)", ignoreCase = true) ||
@@ -198,6 +201,7 @@ class SocialInteractor
                         friend = updated,
                         inviteShareText = share,
                         isInvitePending = share != null,
+                        invitePhone = invitePhoneFor(friend.emailSnapshot, emailSent = false, shareText = share),
                     )
                 }
 
@@ -233,18 +237,20 @@ class SocialInteractor
             groupId: String? = null,
         ): Result<AddPersonOutcome> =
             runCatching {
-                val normalized = contact.trim()
-                require(normalized.isNotBlank()) { "Email or phone is required." }
-                val looksLikeEmail = normalized.contains("@")
-                require(looksLikeEmail || normalized.any { it.isDigit() }) {
-                    "Enter a valid email or phone number."
-                }
+                val trimmedContact = contact.trim()
+                require(trimmedContact.isNotBlank()) { "Email or phone is required." }
+                val normalized =
+                    ContactIdentifier.toStoredContact(trimmedContact)
+                        ?: error("Enter a valid email or phone number.")
+                val realEmail = ContactIdentifier.isRealEmail(normalized)
                 // Friendship rows FK to users(ownerUserId). Rebuild the local owner profile
                 // before writes so Review/Add friends never fails with raw FK errors.
                 ensureLocalUserExists(ownerUserId)
-                val selfEmail = userRepository.getUserById(ownerUserId)?.email
-                require(!normalized.equals(selfEmail, ignoreCase = true)) {
-                    "You can't add yourself."
+                if (realEmail) {
+                    val selfEmail = userRepository.getUserById(ownerUserId)?.email
+                    require(!normalized.equals(selfEmail, ignoreCase = true)) {
+                        "You can't add yourself."
+                    }
                 }
 
                 if (groupId != null) {
@@ -273,10 +279,11 @@ class SocialInteractor
                         friend = existing,
                         inviteShareText = share,
                         isInvitePending = share != null,
+                        invitePhone = invitePhoneFor(existing.emailSnapshot, emailSent = false, shareText = share),
                     )
                 }
 
-                if (looksLikeEmail) {
+                if (realEmail) {
                     val profile = remote.findProfileByEmail(normalized)
                     if (profile != null) {
                         require(profile.id != ownerUserId) { "You can't add yourself." }
@@ -441,7 +448,7 @@ class SocialInteractor
                 "You can't invite yourself."
             }
 
-            if (normalized.contains("@")) {
+            if (ContactIdentifier.isRealEmail(normalized)) {
                 // Reuse a local pending invite placeholder instead of creating a duplicate.
                 friendRepository.getByOwnerAndEmail(ownerUserId, normalized)?.let { existing ->
                     val pendingInvite = inviteRepository.getByFriendRowId(existing.id)
@@ -592,11 +599,13 @@ class SocialInteractor
                     groupName = groupName,
                     token = invite.token,
                 )
+            val share = if (emailSent) null else shareText
             return AddPersonOutcome(
                 friend = friend,
-                inviteShareText = if (emailSent) null else shareText,
+                inviteShareText = share,
                 isInvitePending = true,
                 inviteEmailSent = emailSent,
+                invitePhone = invitePhoneFor(invite.email, emailSent, share),
             )
         }
 
@@ -630,16 +639,16 @@ class SocialInteractor
                 }
             // Generic group share links store a non-user placeholder so email-based
             // accept cannot burn the token; never prefill that into signup.
-            val previewEmail =
-                dto.email.trim().takeUnless {
-                    it.equals(GROUP_SHARE_LINK_EMAIL, ignoreCase = true) ||
-                        it.endsWith("@splitease.invalid", ignoreCase = true)
-                }.orEmpty()
+            val rawEmail = dto.email.trim()
+            val storedPhone = ContactIdentifier.phoneFromStored(rawEmail)
+            val dialSplit = storedPhone?.let { ContactIdentifier.splitDialCode(it) }
+            val previewEmail = if (ContactIdentifier.isRealEmail(rawEmail)) rawEmail else ""
             val members =
                 dto.members.map { member ->
                     InvitePreviewMember(
                         displayName = member.displayName,
                         alreadyJoined = member.alreadyJoined,
+                        inviteToken = member.inviteToken?.trim()?.takeIf { it.isNotEmpty() },
                     )
                 }
 
@@ -648,6 +657,9 @@ class SocialInteractor
                 kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
                 email = previewEmail,
                 inviterName = dto.inviterName.trim().takeIf { it.isNotEmpty() },
+                inviteeName = dto.inviteeName.trim().takeIf { it.isNotEmpty() },
+                phoneCountryCode = dialSplit?.first,
+                phoneNumber = dialSplit?.second,
                 groupId = dto.groupId,
                 groupName = dto.groupName,
                 groupPhotoUrl = dto.groupPhotoUrl?.trim()?.takeIf { it.isNotEmpty() },
@@ -765,7 +777,7 @@ class SocialInteractor
         ) {
             val friendRowId = invite.friendRowId ?: return
             val contact = invite.email.trim()
-            if (!contact.contains("@")) return
+            if (!ContactIdentifier.isRealEmail(contact)) return
             val profile =
                 runCatching { remote.findProfileByEmail(contact) }.getOrNull() ?: return
             if (profile.id == ownerUserId) return
@@ -1159,7 +1171,7 @@ class SocialInteractor
 
                 if (isPending) {
                     val email = friend.emailSnapshot.trim()
-                    if (email.contains("@")) {
+                    if (ContactIdentifier.isRealEmail(email)) {
                         val profile = runCatching { remote.findProfileByEmail(email) }.getOrNull()
                         if (profile != null && profile.id != ownerUserId) {
                             if (pendingInvite != null) {
@@ -1278,7 +1290,9 @@ class SocialInteractor
             val groupName = requireGroupName(groupId, group.name)
             val inviterName = requireInviterName(ownerUserId)
             val email = friend.emailSnapshot.trim()
-            require(email.contains("@")) {
+            require(
+                ContactIdentifier.isRealEmail(email) || ContactIdentifier.phoneFromStored(email) != null,
+            ) {
                 "This invite needs an email address before they can join the group."
             }
 
@@ -1350,12 +1364,14 @@ class SocialInteractor
                 } else {
                     false
                 }
+            val share = if (emailSent || !shouldSendEmail) null else shareText
             return AddPersonOutcome(
                 friend = friend,
                 // Already-synced reuse must not look like a failed email (share sheet).
-                inviteShareText = if (emailSent || !shouldSendEmail) null else shareText,
+                inviteShareText = share,
                 isInvitePending = true,
                 inviteEmailSent = emailSent,
+                invitePhone = invitePhoneFor(email, emailSent, share),
             )
         }
 
@@ -1900,8 +1916,10 @@ class SocialInteractor
                 }
             val now = System.currentTimeMillis()
             val placeholderId = UUID.randomUUID().toString()
+            val phoneLabel = ContactIdentifier.phoneFromStored(email)?.let { ContactIdentifier.displayContact(email) }
             val localPart =
                 displayNameOverride?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: phoneLabel
                     ?: email.substringBefore("@").ifBlank { "Friend" }
             val displayName =
                 if (localPart.contains("(invited)", ignoreCase = true)) {
@@ -1988,11 +2006,18 @@ class SocialInteractor
                     token = invite.token,
                 )
 
+            val share =
+                if (emailSent) {
+                    null
+                } else {
+                    shareText
+                }
             return AddPersonOutcome(
                 friend = friend,
-                inviteShareText = if (emailSent) null else shareText,
+                inviteShareText = share,
                 isInvitePending = true,
                 inviteEmailSent = emailSent,
+                invitePhone = invitePhoneFor(email, emailSent, share),
             )
         }
 
@@ -2013,9 +2038,7 @@ class SocialInteractor
             token: String,
         ): Boolean {
             val normalized = toEmail.trim()
-            if (!normalized.contains("@")) return false
-            if (normalized.equals(GROUP_SHARE_LINK_EMAIL, ignoreCase = true)) return false
-            if (normalized.endsWith("@splitease.invalid", ignoreCase = true)) return false
+            if (!ContactIdentifier.isRealEmail(normalized)) return false
             return mailRepository
                 .sendInviteEmail(
                     toEmail = normalized,
@@ -2023,6 +2046,15 @@ class SocialInteractor
                     groupName = groupName,
                     token = token,
                 ).isSuccess
+        }
+
+        private fun invitePhoneFor(
+            contact: String,
+            emailSent: Boolean,
+            shareText: String?,
+        ): String? {
+            if (emailSent || shareText.isNullOrBlank()) return null
+            return ContactIdentifier.phoneFromStored(contact)
         }
 
         /**

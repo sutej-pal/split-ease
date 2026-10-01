@@ -37,9 +37,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.core.DialCodes
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.presentation.auth.AuthFormState
 import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.DialCodePickerDialog
+import com.splitease.app.presentation.ui.PhoneNumberRow
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -55,7 +59,13 @@ import com.splitease.app.presentation.ui.SeTextField
 @Composable
 fun InviteJoinSignUpScreen(
     formState: AuthFormState,
-    onSignUp: (email: String, password: String, displayName: String) -> Unit,
+    onSignUp: (
+        email: String,
+        password: String,
+        displayName: String,
+        phoneCountryCode: String,
+        phoneNumber: String,
+    ) -> Unit,
     onBack: () -> Unit,
     onContinueWithGoogle: () -> Unit,
     modifier: Modifier = Modifier,
@@ -68,25 +78,54 @@ fun InviteJoinSignUpScreen(
             ?.email
             .orEmpty()
             .trim()
-            .takeUnless { it.endsWith("@splitease.invalid", ignoreCase = true) }
+            .takeIf { ContactIdentifier.isRealEmail(it) }
             .orEmpty()
+    val inviteeName = uiState.preview?.inviteeName?.trim().orEmpty()
+    val prefillPhone = uiState.preview?.phoneNumber?.trim().orEmpty()
+    val prefillDial = uiState.preview?.phoneCountryCode?.trim().orEmpty()
 
     var displayName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var phoneNumber by rememberSaveable { mutableStateOf("") }
+    var dialCode by rememberSaveable { mutableStateOf(ContactIdentifier.DEFAULT_DIAL_CODE) }
+    var dialFlag by rememberSaveable { mutableStateOf(DialCodes.flagFor(ContactIdentifier.DEFAULT_DIAL_CODE)) }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var showValidation by rememberSaveable { mutableStateOf(false) }
+    var showDialPicker by rememberSaveable { mutableStateOf(false) }
     val nameError = showValidation && displayName.isBlank()
     val emailError = showValidation && email.isBlank()
     val passwordError =
         showValidation && password.length < AuthViewModel.MIN_SIGNUP_PASSWORD_LENGTH
+    val showPhone = prefillPhone.isNotBlank() || phoneNumber.isNotBlank()
 
+    LaunchedEffect(inviteeName) {
+        if (displayName.isBlank() && inviteeName.isNotBlank()) {
+            displayName = inviteeName
+        }
+    }
     LaunchedEffect(prefillEmail) {
-        if (email.trim().endsWith("@splitease.invalid", ignoreCase = true)) {
+        if (
+            email.isNotBlank() &&
+            !ContactIdentifier.isRealEmail(email) &&
+            (
+                ContactIdentifier.isMobilePlaceholder(email) ||
+                    email.endsWith("@splitease.invalid", ignoreCase = true)
+            )
+        ) {
             email = ""
         }
         if (email.isBlank() && prefillEmail.isNotBlank()) {
             email = prefillEmail
+        }
+    }
+    LaunchedEffect(prefillPhone, prefillDial) {
+        if (phoneNumber.isBlank() && prefillPhone.isNotBlank()) {
+            phoneNumber = prefillPhone
+            if (prefillDial.isNotBlank()) {
+                dialCode = prefillDial
+                dialFlag = DialCodes.flagFor(prefillDial)
+            }
         }
     }
 
@@ -146,6 +185,17 @@ fun InviteJoinSignUpScreen(
                 supportingText =
                     if (emailError) stringResource(R.string.msg_email_required) else null,
             )
+            if (showPhone) {
+                Spacer(modifier = Modifier.height(16.dp))
+                PhoneNumberRow(
+                    dialFlag = dialFlag,
+                    dialCode = dialCode,
+                    phoneNumber = phoneNumber,
+                    enabled = !formState.isLoading,
+                    onDialClick = { showDialPicker = true },
+                    onPhoneChange = { phoneNumber = it.filter { ch -> ch.isDigit() || ch == ' ' } },
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
@@ -205,7 +255,13 @@ fun InviteJoinSignUpScreen(
                     ) {
                         return@SePrimaryButton
                     }
-                    onSignUp(email.trim(), password, displayName.trim())
+                    onSignUp(
+                        email.trim(),
+                        password,
+                        displayName.trim(),
+                        if (showPhone) dialCode else ContactIdentifier.DEFAULT_DIAL_CODE,
+                        if (showPhone) phoneNumber.trim() else "",
+                    )
                 },
                 enabled = !isBusy,
                 isLoading = isEmailLoading,
@@ -241,6 +297,19 @@ fun InviteJoinSignUpScreen(
             }
         }
     }
+
+    if (showDialPicker) {
+        DialCodePickerDialog(
+            selectedCode = dialCode,
+            selectedFlag = dialFlag,
+            onSelect = { option ->
+                dialCode = option.code
+                dialFlag = option.flag
+                showDialPicker = false
+            },
+            onDismiss = { showDialPicker = false },
+        )
+    }
 }
 
 @Preview(showBackground = true, heightDp = 720)
@@ -249,7 +318,7 @@ private fun InviteJoinSignUpPreview() {
     SePreview {
         InviteJoinSignUpScreen(
             formState = AuthFormState(),
-            onSignUp = { _, _, _ -> },
+            onSignUp = { _, _, _, _, _ -> },
             onBack = {},
             onContinueWithGoogle = {},
         )

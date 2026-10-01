@@ -1,6 +1,7 @@
 package com.splitease.app.data.repository
 
 import com.splitease.app.data.remote.MailRemoteDataSource
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.MailRepository
@@ -81,7 +82,7 @@ class RemoteMailRepository
                 val recipients =
                     toEmails
                         .map { it.trim() }
-                        .filter { it.contains("@") && !it.endsWith("@splitease.invalid", ignoreCase = true) }
+                        .filter { ContactIdentifier.isRealEmail(it) }
                         .distinctBy { it.lowercase() }
                 require(recipients.isNotEmpty()) { "No valid email addresses to remind." }
 

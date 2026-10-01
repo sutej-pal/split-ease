@@ -46,6 +46,7 @@ import com.splitease.app.R
 import com.splitease.app.data.contacts.DeviceContact
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Friend
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
@@ -376,7 +377,7 @@ private fun FriendPickRow(
                 }
                 friend.emailSnapshot.isNotBlank() -> {
                     Text(
-                        text = friend.emailSnapshot,
+                        text = ContactIdentifier.displayContact(friend.emailSnapshot),
                         style = MaterialTheme.typography.bodySmall,
                         color = SplitEaseColors.NavyMuted,
                     )

@@ -37,7 +37,7 @@ class ColorTokensFrozenTest {
         assertHex(0xFF1B8A6B, OwedTeal)
         assertHex(0xFFDDF6EE, OwedContainer)
         assertHex(0xFF060424, TextPrimaryLight)
-        assertHex(0xFF575F9E, TextSecondaryLight)
+        assertHex(0xFF3A3F69, TextSecondaryLight)
         assertHex(0xFFEFF1FF, TextPrimaryDark)
         assertHex(0xFFBFC8FC, TextSecondaryDark)
         assertHex(0xFFDAE0FE, OutlineLight)

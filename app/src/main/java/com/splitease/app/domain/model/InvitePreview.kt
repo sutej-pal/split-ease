@@ -11,6 +11,9 @@ package com.splitease.app.domain.model
  * @property groupName Target group name when applicable.
  * @property groupPhotoUrl Public Storage URL for the group list avatar when available.
  * @property members Existing / pending people shown for context.
+ * @property inviteeName Name from the invite's own friend row, when the landing token is a person invite.
+ * @property phoneCountryCode Dial code when the invite contact is a phone placeholder.
+ * @property phoneNumber National digits when the invite contact is a phone placeholder.
  */
 data class InvitePreview(
     val token: String,
@@ -21,6 +24,9 @@ data class InvitePreview(
     val groupName: String? = null,
     val groupPhotoUrl: String? = null,
     val members: List<InvitePreviewMember> = emptyList(),
+    val inviteeName: String? = null,
+    val phoneCountryCode: String? = null,
+    val phoneNumber: String? = null,
 )
 
 /**
@@ -28,10 +34,12 @@ data class InvitePreview(
  *
  * @property displayName Name shown on the landing screen.
  * @property alreadyJoined True when the person already has a real membership.
+ * @property inviteToken Person-invite token for a pending member. Null for people who already joined.
  */
 data class InvitePreviewMember(
     val displayName: String,
     val alreadyJoined: Boolean,
+    val inviteToken: String? = null,
 )
 
 /**

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
@@ -36,6 +37,8 @@ data class FriendSettingsUiState(
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val pendingShareText: String? = null,
+    val invitePhone: String? = null,
+    val showSmsPrompt: Boolean = false,
     val removed: Boolean = false,
 )
 
@@ -99,7 +102,13 @@ class FriendSettingsViewModel
         val uiState: StateFlow<FriendSettingsUiState> = _uiState.asStateFlow()
 
         fun consumeShareText() {
-            _uiState.update { it.copy(pendingShareText = null) }
+            _uiState.update {
+                it.copy(
+                    pendingShareText = null,
+                    invitePhone = null,
+                    showSmsPrompt = false,
+                )
+            }
         }
 
         fun clearMessages() {
@@ -129,12 +138,16 @@ class FriendSettingsViewModel
                 _uiState.update {
                     it.copy(
                         pendingShareText = outcome.inviteShareText,
+                        invitePhone = outcome.invitePhone,
+                        showSmsPrompt =
+                            !outcome.invitePhone.isNullOrBlank() &&
+                                !outcome.inviteShareText.isNullOrBlank(),
                         errorMessage = null,
                         infoMessage =
                             if (outcome.inviteEmailSent) {
                                 appContext.getString(
                                     R.string.msg_invite_email_resent,
-                                    outcome.friend.emailSnapshot,
+                                    ContactIdentifier.displayContact(outcome.friend.emailSnapshot),
                                 )
                             } else {
                                 appContext.getString(R.string.msg_invite_resent)

@@ -30,6 +30,10 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
 
+**Post-phase:** Pending-invite title and direct resend SMS (2026-10-01) — the friend settings card titles a pending invite "Invite pending". Resend opens the messages app immediately; Edit Contact still confirms with "Send invite by SMS?" first.
+
+**Post-phase:** Phone contacts and tappable pending members (2026-10-01) — one Phone or email field stores phones as `<e164>@mobile.splitease.com` (default dial code `+91` when the number has no country code; Edit Contact confirms the code first). Phone invites open the user's own SMS app; no SMS backend. Pending landing rows carry `invite_token` and open sign-up with name and phone or email filled. Re-apply `get_invite_preview` in Supabase (git does not update the live project).
+
 **Post-phase:** Empty-group card restyled (2026-09-30) — Group detail solo empty state restyled with theme-aware background/border, indigo soft shadow, 52dp circle icon, title/hint text, and filled primary + outlined secondary buttons.
 
 ### Docs map
@@ -40,6 +44,7 @@ Track development phases. Always check this file at the start of a session to de
 - Ordered Supabase follow-ups: [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md)
 
 ### Carried-forward TODOs
+- **Review follow-ups (2026-10-01)** — Phone invites and the empty-group card. Open items, including deferred invite-token disclosure: [docs/review-2026-10-01-phone-invite-empty-group.md](docs/review-2026-10-01-phone-invite-empty-group.md) and [TODO.md](TODO.md).
 - **Screen-level loaders removed**: All screen-level loaders/skeletons were removed app-wide in favor of instant cache-backed rendering + empty states; only in-progress action buttons (save/delete/change-link) still show a loading indicator.
 - **Supabase architecture TODOs (ordered)** — ~~Remote delete tombstones~~ → ~~conflict policy~~ → ~~category sync (defaults)~~ → ~~pin-board boundary~~ → Edge Functions non-CRUD → ops hygiene ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md)).
 - **OTP ops** — App OTP flows shipped; live Confirm email / templates / SMTP stay on [release-checklist.md](docs/release-checklist.md) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
@@ -47,7 +52,7 @@ Track development phases. Always check this file at the start of a session to de
 - **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
 - **Semantic balance colors** — `OweRed` / `OwedTeal` brand tokens ([phase-0](docs/phase-0-project-setup-and-brand-theme.md)).
 - **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run. Wipe + re-apply for a clean test: [supabase-reset.md](docs/supabase-reset.md).
-- **Invite email delivery** — Email contacts get invite mail via mail-service; phone contacts and generic share links use the system share sheet.
+- **Invite email delivery** — Email contacts get invite mail via mail-service. Phone contacts are stored as `<e164>@mobile.splitease.com` and open the user's own SMS app with the invite link (no SMS service). Generic share links use the system share sheet.
 - **SplitEase Server (separate repo)** — lives at `C:\splitease\server` beside the Android app at `C:\splitease\app` ([docs/splitease-server-repo.md](docs/splitease-server-repo.md)). Deployed on Vercel; uses Brevo HTTPS when `BREVO_API_KEY` is set, otherwise Nodemailer SMTP locally.
 - **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md)).
 - **App Links / invite https** — share links use `MAIL_SERVICE_BASE_URL/invite/{token}` when set, else `splitease.app`. Host [docs/assetlinks.json](docs/assetlinks.json) for verified Open-by-default links ([app-links-setup.md](docs/app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification.

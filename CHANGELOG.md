@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Phone contacts use one Phone or email field. Numbers are stored as `<e164>@mobile.splitease.com` and never emailed. A number without a country code is confirmed first (default +91). Saving a phone asks to open the user's own messages app with the invite link; Not now leaves the invite pending.
+- Invite landing pending members are tappable and open sign-up with their name and mobile or email filled in. Re-apply `get_invite_preview` in Supabase so pending rows include `invite_token` and the preview includes `invitee_name`.
+
 ### Changed
+- Friend settings pending-invite card shows an "Invite pending" title. Resending a phone invite opens the messages app directly; Edit Contact still asks "Send invite by SMS?" first.
 - Colour tokens are now explicit hex values (no runtime derivation); no visual change.
 - Error text uses a new red with AA contrast in light and dark, and one consistent size (bodySmall).
 

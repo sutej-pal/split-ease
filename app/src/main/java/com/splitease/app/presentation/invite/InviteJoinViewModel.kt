@@ -7,6 +7,7 @@ import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.InvitePreview
+import com.splitease.app.domain.model.InvitePreviewMember
 import com.splitease.app.domain.model.pendingOpenTarget
 import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -69,6 +70,20 @@ class InviteJoinViewModel
             viewModelScope.launch {
                 appSettingsRepository.setPendingInviteToken(trimmed)
                 loadPreview(trimmed)
+            }
+        }
+
+        /**
+         * Stores a pending member's own invite token, then [onReady] (navigate to sign-up).
+         * Joined rows and rows without a token are ignored. Does not reload the landing preview.
+         */
+        fun onPendingMemberSelected(member: InvitePreviewMember, onReady: () -> Unit) {
+            if (member.alreadyJoined) return
+            val token = member.inviteToken?.trim().orEmpty()
+            if (token.isEmpty()) return
+            viewModelScope.launch {
+                appSettingsRepository.setPendingInviteToken(token)
+                onReady()
             }
         }
 

@@ -102,7 +102,7 @@ val ErrorDark = Color(0xFFFF8A80) // dark error
 val TextPrimaryLight = Color(0xFF060424) // light primary text
 
 /** Captions, hints, timestamps, muted labels (light theme). */
-val TextSecondaryLight = Color(0xFF575F9E) // light secondary text
+val TextSecondaryLight = Color(0xFF3A3F69) // light secondary text
 
 /** Body/heading text on dark backgrounds. */
 val TextPrimaryDark = Color(0xFFEFF1FF) // dark primary text

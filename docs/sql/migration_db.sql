@@ -842,6 +842,7 @@ declare
   v_group_name text;
   v_group_photo_url text;
   v_members jsonb;
+  v_invitee_name text;
 begin
   if p_token is null or length(trim(p_token)) = 0 then
     return null;
@@ -863,6 +864,11 @@ begin
     into v_inviter_name
   from public.profiles p
   where p.id = inv.inviter_user_id;
+
+  select nullif(trim(replace(f.display_name_snapshot, ' (invited)', '')), '')
+    into v_invitee_name
+  from public.friends f
+  where f.id = inv.friend_row_id;
 
   if inv.group_id is not null then
     select g.name, g.photo_url
@@ -893,11 +899,16 @@ begin
           'display_name',
           coalesce(
             nullif(replace(f.display_name_snapshot, ' (invited)', ''), ''),
-            split_part(i.email, '@', 1),
+            case
+              when left(split_part(i.email, '@', 1), 1) = '+' then 'Guest'
+              else nullif(split_part(i.email, '@', 1), '')
+            end,
             'Guest'
           ),
           'already_joined',
-          false
+          false,
+          'invite_token',
+          i.token
         ) as row_data
       from public.invites i
       left join public.friends f on f.id = i.friend_row_id
@@ -918,6 +929,7 @@ begin
     'group_id', inv.group_id,
     'group_name', v_group_name,
     'group_photo_url', v_group_photo_url,
+    'invitee_name', coalesce(v_invitee_name, ''),
     'members', coalesce(v_members, '[]'::jsonb)
   );
 end;

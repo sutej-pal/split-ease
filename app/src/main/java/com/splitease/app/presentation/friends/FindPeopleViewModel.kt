@@ -10,6 +10,7 @@ import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.contacts.DeviceContact
 import com.splitease.app.data.contacts.DeviceContactsDataSource
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.social.SocialInteractor
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.Friend
@@ -241,7 +242,8 @@ class FindPeopleViewModel
             if (q.isEmpty()) return all
             return all.filter {
                 it.displayNameSnapshot.lowercase().contains(q) ||
-                    it.emailSnapshot.lowercase().contains(q)
+                    it.emailSnapshot.lowercase().contains(q) ||
+                    ContactIdentifier.matchesPhoneQuery(it.emailSnapshot, q)
             }
         }
 
@@ -291,7 +293,7 @@ class FindPeopleViewModel
                                 outcome.inviteEmailSent ->
                                     appContext.getString(
                                         R.string.msg_invite_email_sent,
-                                        outcome.friend.emailSnapshot,
+                                        ContactIdentifier.displayContact(outcome.friend.emailSnapshot),
                                     )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)
@@ -344,7 +346,7 @@ class FindPeopleViewModel
                                 outcome.inviteEmailSent ->
                                     appContext.getString(
                                         R.string.msg_invite_email_sent,
-                                        outcome.friend.emailSnapshot,
+                                        ContactIdentifier.displayContact(outcome.friend.emailSnapshot),
                                     )
                                 outcome.isInvitePending ->
                                     appContext.getString(R.string.msg_invite_ready)

@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.groups
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +30,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Person
@@ -65,10 +65,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
-import com.splitease.app.data.social.InviteLinks
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.balances.BalancesViewModel
+import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -149,25 +150,13 @@ fun GroupSettingsScreen(
             viewModel.updateGroupPhoto(groupId, uri)
         }
 
-    val inviteSubject = stringResource(R.string.invite_email_subject)
-    val shareTitle = stringResource(R.string.share_invite_link_title)
-
-    LaunchedEffect(uiState.pendingShareText) {
-        val text = uiState.pendingShareText ?: return@LaunchedEffect
-        val html = InviteLinks.htmlForShareText(text)
-        val intent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TITLE, shareTitle)
-                putExtra(Intent.EXTRA_SUBJECT, inviteSubject)
-                putExtra(Intent.EXTRA_TEXT, text)
-                if (html != null) {
-                    putExtra(Intent.EXTRA_HTML_TEXT, html)
-                }
-            }
-        context.startActivity(Intent.createChooser(intent, shareTitle))
-        viewModel.consumeShareText()
-    }
+    InviteDeliveryHandler(
+        shareText = uiState.pendingShareText,
+        phone = uiState.invitePhone,
+        showSmsPrompt = uiState.showSmsPrompt,
+        onFinished = viewModel::consumeShareText,
+        chooserTitle = stringResource(R.string.share_invite_link_title),
+    )
 
     LaunchedEffect(uiState.pendingFileShare) {
         val share = uiState.pendingFileShare ?: return@LaunchedEffect
@@ -181,11 +170,13 @@ fun GroupSettingsScreen(
     SeScreen(
         title = stringResource(R.string.group_settings_title),
         onBack = onBack,
+        topBarContainerColor = Color.White,
         content = { padding ->
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        .background(Color.White)
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
                         .padding(bottom = 24.dp),
@@ -249,10 +240,13 @@ fun GroupSettingsScreen(
                             when {
                                 pending ->
                                     listOfNotNull(
-                                        friend.emailSnapshot,
+                                        friend.emailSnapshot
+                                            .let { ContactIdentifier.displayContact(it) }
+                                            .takeIf { it.isNotBlank() },
                                         stringResource(R.string.invite_pending_label),
                                     ).joinToString(" · ")
-                                else -> friend?.emailSnapshot
+                                else ->
+                                    friend?.emailSnapshot?.let { ContactIdentifier.displayContact(it) }
                             },
                         leading = {
                             SeAvatarBadge(
@@ -316,7 +310,10 @@ fun GroupSettingsScreen(
                                         SelectedGroupMember(
                                             userId = member.userId,
                                             displayName = rawName.ifBlank { title },
-                                            email = friend?.emailSnapshot,
+                                            email =
+                                                friend?.emailSnapshot?.let {
+                                                    ContactIdentifier.displayContact(it)
+                                                },
                                             pending = pending,
                                             photoUrl = userPhotoUrls[member.userId],
                                         )
@@ -587,16 +584,16 @@ private fun GroupMemberActionsSheet(
             icon = Icons.Outlined.Person,
             title = stringResource(R.string.action_view_settings),
             onClick = onViewSettings,
+            showDivider = false,
         )
         MemberSheetActionRow(
-            icon = Icons.AutoMirrored.Filled.ExitToApp,
+            icon = Icons.Filled.PersonRemove,
             title = stringResource(R.string.action_remove_from_group),
             titleColor = SplitEaseColors.YouOwe,
             iconTint = SplitEaseColors.YouOwe,
             enabled = canRemove,
             onClick = onRemove,
             showDivider = false,
-            dimWhenDisabled = false,
         )
         if (!canRemove) {
             Text(

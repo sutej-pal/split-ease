@@ -24,7 +24,9 @@ import javax.inject.Inject
 data class ReviewFriendsUiState(
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
-    val pendingShareTexts: List<String> = emptyList(),
+    val pendingShareText: String? = null,
+    val pendingSmsPhone: String? = null,
+    val showSmsPrompt: Boolean = false,
     val completed: Boolean = false,
 )
 
@@ -59,7 +61,13 @@ class ReviewFriendsViewModel
         }
 
         fun consumeShareTexts() {
-            _uiState.update { it.copy(pendingShareTexts = emptyList()) }
+            _uiState.update {
+                it.copy(
+                    pendingShareText = null,
+                    pendingSmsPhone = null,
+                    showSmsPrompt = false,
+                )
+            }
         }
 
         fun clearMessages() {
@@ -103,11 +111,14 @@ class ReviewFriendsViewModel
                     it.copy(
                         isSubmitting = true,
                         errorMessage = null,
-                        pendingShareTexts = emptyList(),
+                        pendingShareText = null,
+                        pendingSmsPhone = null,
+                        showSmsPrompt = false,
                     )
                 }
 
-                val shareTexts = mutableListOf<String>()
+                var shareText: String? = null
+                var smsPhone: String? = null
                 var emailsSent = 0
                 var firstError: String? = null
                 val groupId = reviewStore.groupId.value
@@ -131,8 +142,11 @@ class ReviewFriendsViewModel
                     reviewStore.remove(draft.id)
                     if (outcome.inviteEmailSent) {
                         emailsSent += 1
-                    } else {
-                        outcome.inviteShareText?.takeIf { it.isNotBlank() }?.let { shareTexts += it }
+                    } else if (shareText == null) {
+                        outcome.inviteShareText?.takeIf { it.isNotBlank() }?.let { text ->
+                            shareText = text
+                            smsPhone = outcome.invitePhone
+                        }
                     }
                 }
 
@@ -156,11 +170,13 @@ class ReviewFriendsViewModel
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        pendingShareTexts = shareTexts,
+                        pendingShareText = shareText,
+                        pendingSmsPhone = smsPhone,
+                        showSmsPrompt = !smsPhone.isNullOrBlank() && !shareText.isNullOrBlank(),
                         completed = true,
                     )
                 }
-                if (shareTexts.isEmpty()) {
+                if (shareText.isNullOrBlank()) {
                     onAllDone()
                 }
             }

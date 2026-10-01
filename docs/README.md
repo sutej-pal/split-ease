@@ -23,6 +23,7 @@ Use this order to stay fast and consistent.
 - Release: [release-checklist.md](release-checklist.md), [store-listing.md](store-listing.md), [../RELEASES.md](../RELEASES.md)
 - Extras backlog: [extras-group-live-updates-notifications.md](extras-group-live-updates-notifications.md)
 - Supabase architecture TODOs (ordered): [supabase-architecture-todos.md](supabase-architecture-todos.md)
+- Phone-invite and empty-group review TODOs (2026-10-01): [review-2026-10-01-phone-invite-empty-group.md](review-2026-10-01-phone-invite-empty-group.md)
 - FCM / Realtime ops: [fcm-setup.md](fcm-setup.md)
 - Wipe / re-apply Supabase for a fresh test: [supabase-reset.md](supabase-reset.md)
 - Design tokens: [design-tokens.md](design-tokens.md)
