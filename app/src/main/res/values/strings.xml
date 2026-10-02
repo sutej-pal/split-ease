@@ -469,9 +469,9 @@
     <string name="invite_already_joined">Already joined</string>
     <string name="invite_pending_member">Invite pending</string>
     <string name="invite_member_tap_label">Join as %1$s</string>
-    <string name="invite_sms_title">Send invite by SMS?</string>
-    <string name="invite_sms_body">Open your messages app to text the invite link to %1$s.</string>
-    <string name="invite_sms_confirm">Send SMS</string>
+    <string name="invite_sms_title">Invite to SplitEase?</string>
+    <string name="invite_sms_body">This number isn\'t on SplitEase yet. Text them an invite link at %1$s so you can split expenses together.</string>
+    <string name="invite_sms_confirm">Send invite</string>
     <string name="invite_sms_dismiss">Not now</string>
     <string name="invite_signup_name_label">Hi there! My name is</string>
     <string name="invite_signup_email_label">Here\'s my email address:</string>

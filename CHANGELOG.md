@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Invite landing pending members are tappable and open sign-up with their name and mobile or email filled in. Re-apply `get_invite_preview` in Supabase so pending rows include `invite_token` and the preview includes `invitee_name`.
 
 ### Changed
-- Friend settings pending-invite card shows an "Invite pending" title. Resending a phone invite opens the messages app directly; Edit Contact still asks "Send invite by SMS?" first.
+- Phone-invite SMS confirm dialog copy: title "Invite to SplitEase?", body explains the number is not on SplitEase yet, confirm is "Send invite" (dismiss stays "Not now").
+- Friend settings pending-invite card shows an "Invite pending" title. Resending a phone invite opens the messages app directly; Edit Contact / Review still confirms before opening Messages.
 - Colour tokens are now explicit hex values (no runtime derivation); no visual change.
 - Error text uses a new red with AA contrast in light and dark, and one consistent size (bodySmall).
 

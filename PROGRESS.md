@@ -30,7 +30,9 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
 
-**Post-phase:** Pending-invite title and direct resend SMS (2026-10-01) — the friend settings card titles a pending invite "Invite pending". Resend opens the messages app immediately; Edit Contact still confirms with "Send invite by SMS?" first.
+**Post-phase:** Pending-invite title and direct resend SMS (2026-10-01) — the friend settings card titles a pending invite "Invite pending". Resend opens the messages app immediately; Edit Contact / Review still confirms with "Invite to SplitEase?" first.
+
+**Post-phase:** Invite SMS dialog copy (2026-10-03) — confirm dialog title/body/confirm updated to "Invite to SplitEase?" / non-user explanation with formatted phone / "Send invite".
 
 **Post-phase:** Phone contacts and tappable pending members (2026-10-01) — one Phone or email field stores phones as `<e164>@mobile.splitease.com` (default dial code `+91` when the number has no country code; Edit Contact confirms the code first). Phone invites open the user's own SMS app; no SMS backend. Pending landing rows carry `invite_token` and open sign-up with name and phone or email filled. Re-apply `get_invite_preview` in Supabase (git does not update the live project).
 
