@@ -203,6 +203,7 @@ Unique index: `(expenseId, userId)`.
 | profiles                      | preferred_currency    | TEXT      | yes      | ISO 4217 from signup                                                                       |
 | profiles                      | updated_at_epoch_ms   | BIGINT    | no       | Last update                                                                                |
 | profiles                      | deleted_at            | TIMESTAMPTZ | yes    | Set by `delete_own_account()`; null while the account is active                            |
+| profiles                      | deactivated_at        | TIMESTAMPTZ | yes    | Set by `deactivate_own_account()`; null while active                                       |
 | friends                       | id                    | UUID (PK) | no       | Friendship id                                                                              |
 | friends                       | owner_user_id         | UUID      | no       | Owner                                                                                      |
 | friends                       | friend_user_id        | UUID      | no       | Friend user                                                                                |
@@ -261,6 +262,7 @@ Unique index: `(expenseId, userId)`.
 
 **Account deletion RPC** (authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
 - `delete_own_account()` — caller only (`auth.uid()`). Recomputes per-group nets at scale 2; raises `ACCOUNT_HAS_BALANCE` with `{id, name}` groups when any net is non-zero (includes the non-group ledger). Otherwise anonymizes `profiles` in place (`display_name` → `Deleted user`, email scrambled, phone/photo cleared, `deleted_at` set), bans Auth (`banned_until = infinity`, identities/sessions dropped), and does **not** delete `profiles` / `auth.users` or cascade expenses/splits/payments. Dropping `auth.identities` is what lets the same Google account sign up again as a new user.
+- `deactivate_own_account()` — caller only (`auth.uid()`). Sets `profiles.deactivated_at = clock_timestamp()`, deletes caller's FCM `device_tokens`, bans Auth (`banned_until = infinity`), and drops sessions without modifying profile name, email, phone, identities, expenses, or balances. Manual reactivation by admin: set `banned_until = null` and `deactivated_at = null`.
 - `can_see_profile(p_profile_id)` — RLS helper: active profiles stay directory-visible; deleted profiles are readable only by people who share a group, expense, payment, or friendship so history still resolves as “Deleted user”.
 - `account_deletion_blocking_groups(p_user_id)` — internal helper used by the RPC (not granted to clients).
 

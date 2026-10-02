@@ -1573,6 +1573,56 @@ $$;
 revoke all on function public.delete_own_account() from public;
 grant execute on function public.delete_own_account() to authenticated;
 
+alter table public.profiles add column if not exists deactivated_at timestamptz;
+
+-- Manual reactivation instructions for admin/support:
+-- To reactivate a deactivated user account, execute in Supabase SQL editor:
+--   update auth.users set banned_until = null where id = '<user_uuid>';
+--   update public.profiles set deactivated_at = null where id = '<user_uuid>';
+
+create or replace function public.deactivate_own_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  update public.profiles
+  set deactivated_at = clock_timestamp()
+  where id = v_uid;
+
+  delete from public.device_tokens where user_id = v_uid;
+
+  update auth.users
+  set banned_until = 'infinity'::timestamptz
+  where id = v_uid;
+
+  begin
+    delete from auth.sessions where user_id = v_uid;
+  exception
+    when undefined_table then
+      null;
+  end;
+
+  begin
+    -- GoTrue stores refresh_tokens.user_id as varchar, not uuid.
+    delete from auth.refresh_tokens where user_id = v_uid::text;
+  exception
+    when undefined_table then
+      null;
+  end;
+end;
+$$;
+
+revoke all on function public.deactivate_own_account() from public;
+grant execute on function public.deactivate_own_account() to authenticated;
+
 -- ============================================
 -- Storage: avatars, group photos, receipts, pin board
 -- ============================================

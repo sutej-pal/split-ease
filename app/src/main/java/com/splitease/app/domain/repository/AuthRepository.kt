@@ -187,6 +187,24 @@ interface AuthRepository {
     suspend fun deleteOwnAccount(): Result<Unit>
 
     /**
+     * Deactivates the signed-in account via the `deactivate_own_account` RPC, then signs
+     * this device out and wipes local Room data.
+     *
+     * Deactivation is reversible by support/admin.
+     *
+     * @return [Result] success or failure with message.
+     */
+    suspend fun deactivateOwnAccount(): Result<Unit>
+
+    /**
+     * Signs out the current user across all active sessions/devices using global scope,
+     * then wipes local Room data on this device.
+     *
+     * @return [Result] success or failure with message.
+     */
+    suspend fun signOutAllDevices(): Result<Unit>
+
+    /**
      * Updates the signed-in user's display name in Supabase metadata, local Room, and
      * the remote `profiles` table (best-effort).
      *

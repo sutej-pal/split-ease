@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Close account screen with reversible account deactivation and option to permanently delete account.
+- "Log out on all devices" option in Account settings.
+- Clear error message when a deactivated user attempts to log in.
+- Note: run the new SQL section in `docs/sql/migration_db.sql` (`deactivate_own_account` RPC and `profiles.deactivated_at` column) in Supabase.
 - Phone contacts use one Phone or email field. Numbers are stored as `<e164>@mobile.splitease.com` and never emailed. A number without a country code is confirmed first (default +91). Saving a phone asks to open the user's own messages app with the invite link; Not now leaves the invite pending.
 - Invite landing pending members are tappable and open sign-up with their name and mobile or email filled in. Re-apply `get_invite_preview` in Supabase so pending rows include `invite_token` and the preview includes `invitee_name`.
 

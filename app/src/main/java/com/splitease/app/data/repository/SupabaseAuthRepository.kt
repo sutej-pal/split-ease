@@ -26,6 +26,7 @@ import com.splitease.app.domain.settings.AppCurrencies
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.OtpType
+import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -359,6 +360,19 @@ class SupabaseAuthRepository
                 localUserDataCleanup.clearAll()
             }
 
+        override suspend fun signOutAllDevices(): Result<Unit> =
+            runCatching {
+                // Push local PENDING rows while the session still has a token.
+                runCatching { syncInteractor.get().flushBeforeSignOut() }
+                // Drop in-flight persist callbacks before wipe (and before auth token is gone).
+                runCatching { syncInteractor.get().discardLocalWrites() }
+                supabase.auth.signOut(SignOutScope.GLOBAL)
+                lastProfileUpsertUserId = null
+                lastProfileUpsertAtMs = 0L
+                // Drop Room + media + user prefs so the next account cannot see leftovers.
+                localUserDataCleanup.clearAll()
+            }
+
         override suspend fun deleteOwnAccount(): Result<Unit> =
             runCatching {
                 withContext(Dispatchers.IO) {
@@ -379,6 +393,24 @@ class SupabaseAuthRepository
                 }
             }.recoverCatching { err ->
                 throw AccountDeletionErrors.map(err)
+            }
+
+        override suspend fun deactivateOwnAccount(): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    check(supabase.auth.currentUserOrNull() != null) { "Not signed in." }
+                    runCatching { syncInteractor.get().flushBeforeSignOut() }
+                    supabase.postgrest.rpc("deactivate_own_account")
+                    withContext(NonCancellable) {
+                        runCatching { syncInteractor.get().discardLocalWrites() }
+                        lastProfileUpsertUserId = null
+                        lastProfileUpsertAtMs = 0L
+                        // RPC already banned the user and dropped sessions — signOut may fail.
+                        runCatching { supabase.auth.signOut() }
+                        runCatching { supabase.auth.clearSession() }
+                        localUserDataCleanup.clearAll()
+                    }
+                }
             }
 
         override suspend fun ensureLocalProfile(): Result<Unit> =

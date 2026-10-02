@@ -154,6 +154,20 @@ class AccountViewModel
             }
         }
 
+        fun signOutAllDevices() {
+            if (_settings.value.isSaving) return
+            viewModelScope.launch {
+                _settings.update { it.copy(isSaving = true, errorMessage = null, infoMessage = null) }
+                val result = authRepository.signOutAllDevices()
+                _settings.update {
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
+                    )
+                }
+            }
+        }
+
         private companion object {
             const val TAG = "AccountViewModel"
         }

@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Payments
@@ -62,10 +63,11 @@ import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeConfirmDialog
+import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
-import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
@@ -77,7 +79,7 @@ fun AccountProfileSettingsScreen(
     onBack: () -> Unit,
     onOpenCurrency: () -> Unit,
     onOpenLanguage: () -> Unit,
-    onOpenDeleteAccount: () -> Unit = {},
+    onOpenCloseAccount: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -88,6 +90,7 @@ fun AccountProfileSettingsScreen(
     val currencyLabel = AppCurrencies.labelOf(currency)
     var draftHydrated by remember { mutableStateOf(false) }
     var showValidation by remember { mutableStateOf(false) }
+    var showSignOutAllConfirm by remember { mutableStateOf(false) }
     val nameError = showValidation && settings.displayNameDraft.isBlank()
     val canSaveName =
         settings.displayNameDraft != profile.displayName && settings.displayNameDraft.isNotBlank()
@@ -188,19 +191,58 @@ fun AccountProfileSettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-            SeOutlinedButton(
-                text = stringResource(R.string.account_delete_title),
-                onClick = onOpenDeleteAccount,
-                contentColor = SplitEaseColors.YouOwe,
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Filled.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                },
-            )
+            SeSectionHeader(text = stringResource(R.string.account_advanced_section))
+            AccountSettingsCard {
+                SeListRow(
+                    title = stringResource(R.string.account_logout_all_title),
+                    subtitle = stringResource(R.string.account_logout_all_subtitle),
+                    leading = {
+                        SeIconTile(
+                            icon = Icons.AutoMirrored.Filled.Logout,
+                            tint = SplitEaseColors.IconOther,
+                            size = 40,
+                        )
+                    },
+                    trailing = { AccountSettingsChevron() },
+                    onClick = { showSignOutAllConfirm = true },
+                    showDivider = false,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 1.dp,
+                    color = SplitEaseColors.Outline,
+                )
+                SeListRow(
+                    title = stringResource(R.string.account_close_title),
+                    subtitle = stringResource(R.string.account_close_subtitle),
+                    leading = {
+                        SeIconTile(
+                            icon = Icons.Filled.Delete,
+                            tint = SplitEaseColors.YouOwe,
+                            size = 40,
+                        )
+                    },
+                    trailing = { AccountSettingsChevron() },
+                    onClick = onOpenCloseAccount,
+                    showDivider = false,
+                )
+            }
         }
+    }
+
+    if (showSignOutAllConfirm) {
+        SeConfirmDialog(
+            title = stringResource(R.string.account_logout_all_title),
+            body = stringResource(R.string.account_logout_all_confirm_body),
+            confirmLabel = stringResource(R.string.account_logout_all_confirm_action),
+            onDismissRequest = {
+                if (!settings.isSaving) showSignOutAllConfirm = false
+            },
+            onConfirm = { viewModel.signOutAllDevices() },
+            icon = Icons.AutoMirrored.Filled.Logout,
+            tone = SeConfirmTone.Primary,
+            confirmBusy = settings.isSaving,
+        )
     }
 }
 
