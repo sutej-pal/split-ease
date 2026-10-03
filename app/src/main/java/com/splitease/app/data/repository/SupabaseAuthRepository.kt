@@ -17,12 +17,15 @@ import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.model.SocialSignInResult
+import com.splitease.app.BuildConfig
+import com.splitease.app.domain.model.SecondaryEmail
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.OtpType
@@ -36,16 +39,26 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.json.JSONObject
 import java.io.File
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -69,6 +82,7 @@ class SupabaseAuthRepository
         private val mediaStorageCleanup: MediaStorageCleanup,
         private val localUserDataCleanup: LocalUserDataCleanup,
         private val syncInteractor: Provider<SyncInteractor>,
+        private val appSettingsRepository: AppSettingsRepository,
     ) : AuthRepository {
         private val persistUserMutex = Mutex()
 
@@ -413,6 +427,150 @@ class SupabaseAuthRepository
                 }
             }
 
+        override suspend fun updatePhone(countryCode: String, number: String): Result<Unit> =
+            runCatching {
+                val code = countryCode.trim().ifEmpty { "+91" }
+                val num = number.filter { it.isDigit() }
+                require(num.length in 7..15) { "Enter a valid phone number (7-15 digits)." }
+                val currentUser = supabase.auth.currentUserOrNull() ?: error("Not signed in.")
+
+                val isRegistered = supabase.postgrest.rpc(
+                    "auth_phone_registered",
+                    buildJsonObject {
+                        put("p_country_code", code)
+                        put("p_phone", num)
+                        put("p_exclude_user_id", currentUser.id)
+                    },
+                ).decodeAs<Boolean>()
+
+                if (isRegistered) {
+                    error("Phone number is already registered.")
+                }
+
+                supabase.auth.updateUser {
+                    data = buildJsonObject {
+                        put("phone_country_code", code)
+                        put("phone_number", num)
+                    }
+                }
+                val existing = userRepository.getUserById(currentUser.id)
+                if (existing != null) {
+                    userRepository.upsert(
+                        existing.copy(
+                            phoneCountryCode = code,
+                            phoneNumber = num,
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+                persistCurrentUser(forceRemoteUpsert = true)
+            }
+
+        override suspend fun verifyCurrentPassword(password: String): Result<Unit> =
+            runCatching {
+                val currentEmail = supabase.auth.currentUserOrNull()?.email
+                    ?: error("Not signed in.")
+                runCatching {
+                    supabase.auth.signInWith(Email) {
+                        email = currentEmail
+                        this.password = password.trim()
+                    }
+                }.getOrElse {
+                    throw IllegalArgumentException("That password isn't right.")
+                }
+                Unit
+            }
+
+        override suspend fun addSecondaryEmail(email: String, currentPassword: String?): Result<Unit> =
+            runCatching {
+                val trimmedEmail = email.trim().lowercase()
+                require(trimmedEmail.contains("@") && trimmedEmail.contains(".")) {
+                    "Please enter a valid email address."
+                }
+                val currentUser = supabase.auth.currentUserOrNull() ?: error("Not signed in.")
+                val isGoogleOnly = currentUser.identities?.let { list ->
+                    list.any { it.provider.equals("google", ignoreCase = true) } &&
+                        list.none { it.provider.equals("email", ignoreCase = true) }
+                } ?: false
+
+                if (!isGoogleOnly) {
+                    val pass = currentPassword?.trim().orEmpty()
+                    require(pass.isNotEmpty()) { "Please enter your current password." }
+                    verifyCurrentPassword(pass).getOrThrow()
+                }
+
+                callSecondaryEmailEdgeFunction("add", mapOf("email" to trimmedEmail))
+            }
+
+        override suspend fun resendSecondaryEmail(id: String): Result<Unit> =
+            runCatching {
+                callSecondaryEmailEdgeFunction("resend", mapOf("id" to id))
+            }
+
+        override suspend fun verifySecondaryEmail(id: String, code: String): Result<Unit> =
+            runCatching {
+                val trimmedCode = code.trim()
+                require(trimmedCode.length == 6) { "Enter a valid 6-digit code." }
+                callSecondaryEmailEdgeFunction("verify", mapOf("id" to id, "code" to trimmedCode))
+            }
+
+        override suspend fun removeSecondaryEmail(id: String): Result<Unit> =
+            runCatching {
+                callSecondaryEmailEdgeFunction("remove", mapOf("id" to id))
+            }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        override fun observeSecondaryEmails(): Flow<List<SecondaryEmail>> =
+            supabase.auth.sessionStatus.flatMapLatest { status ->
+                val userId = (status as? SessionStatus.Authenticated)?.session?.user?.id
+                if (userId == null) {
+                    flowOf(emptyList())
+                } else {
+                    flow {
+                        val result: List<SecondaryEmail> = runCatching {
+                            supabase.postgrest.from("user_emails")
+                                .select {
+                                    filter {
+                                        eq("user_id", userId)
+                                    }
+                                }
+                                .decodeList<UserEmailDto>()
+                                .map { it.toSecondaryEmail() }
+                        }.getOrDefault(emptyList())
+                        emit(result)
+                    }
+                }
+            }
+
+        override suspend fun updateTimeZone(timeZoneId: String): Result<Unit> =
+            runCatching {
+                val validId = timeZoneId.trim().takeIf { it.isNotEmpty() } ?: TimeZone.getDefault().id
+                appSettingsRepository.setTimeZone(validId)
+                val userId = supabase.auth.currentUserOrNull()?.id
+                if (userId != null) {
+                    runCatching {
+                        supabase.postgrest.from("profiles")
+                            .update(buildJsonObject { put("time_zone", validId) }) {
+                                filter { eq("id", userId) }
+                            }
+                    }
+                }
+            }
+
+        override suspend fun updateAllowFriendSuggestions(enabled: Boolean): Result<Unit> =
+            runCatching {
+                appSettingsRepository.setAllowFriendSuggestions(enabled)
+                val userId = supabase.auth.currentUserOrNull()?.id
+                if (userId != null) {
+                    runCatching {
+                        supabase.postgrest.from("profiles")
+                            .update(buildJsonObject { put("allow_friend_suggestions", enabled) }) {
+                                filter { eq("id", userId) }
+                            }
+                    }
+                }
+            }
+
         override suspend fun ensureLocalProfile(): Result<Unit> =
             runCatching {
                 persistCurrentUser()
@@ -667,7 +825,72 @@ class SupabaseAuthRepository
             LocalMediaCleanup.deleteUserAvatars(appContext, userId, keepNewest = 2)
             return path
         }
+
+        private suspend fun callSecondaryEmailEdgeFunction(
+            action: String,
+            params: Map<String, String>,
+        ) {
+            withContext(Dispatchers.IO) {
+                val session = (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
+                    ?: error("Not signed in.")
+                val baseUrl = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
+                val anonKey = BuildConfig.SUPABASE_ANON_KEY.trim()
+                val url = URL("$baseUrl/functions/v1/secondary-email")
+
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 15_000
+                    readTimeout = 30_000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+                    if (anonKey.isNotEmpty()) {
+                        setRequestProperty("apikey", anonKey)
+                    }
+                }
+
+                val payload = JSONObject().apply {
+                    put("action", action)
+                    params.forEach { (k, v) -> put(k, v) }
+                }
+
+                try {
+                    OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                        writer.write(payload.toString())
+                    }
+                    val status = connection.responseCode
+                    val responseText = runCatching {
+                        connection.inputStream?.bufferedReader()?.use { it.readText() }
+                    }.getOrElse {
+                        connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    } ?: ""
+                    val responseJson = runCatching { JSONObject(responseText) }.getOrNull()
+                    if (status !in 200..299) {
+                        val err = responseJson?.optString("error")?.takeIf { it.isNotBlank() }
+                            ?: "Secondary email operation failed."
+                        error(err)
+                    }
+                } finally {
+                    connection.disconnect()
+                }
+            }
+        }
     }
+
+@Serializable
+private data class UserEmailDto(
+    val id: String,
+    val email: String,
+    val verified_at: String? = null,
+    val created_at: String? = null,
+) {
+    fun toSecondaryEmail(): SecondaryEmail =
+        SecondaryEmail(
+            id = id,
+            email = email,
+            isVerified = verified_at != null,
+        )
+}
 
 private fun kotlinx.serialization.json.JsonObject?.stringMeta(key: String): String? =
     this
@@ -683,11 +906,16 @@ private fun UserInfo.toAuthUser(): AuthUser {
             ?: userMetadata.stringMeta("full_name")
             ?: userMetadata.stringMeta("name")
     val fallback = emailValue.substringBefore("@").ifBlank { "Friend" }
+    val googleOnly = identities?.let { list ->
+        list.any { it.provider.equals("google", ignoreCase = true) } &&
+            list.none { it.provider.equals("email", ignoreCase = true) }
+    } ?: false
     return AuthUser(
         userId = id,
         email = emailValue,
         displayName = metaName ?: fallback,
         emailConfirmed = emailConfirmedAt != null,
+        isGoogleOnly = googleOnly,
     )
 }
 

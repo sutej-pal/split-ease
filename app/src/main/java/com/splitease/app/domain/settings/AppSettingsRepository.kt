@@ -355,6 +355,40 @@ interface AppSettingsRepository {
     suspend fun setNotificationPermissionPrompted(prompted: Boolean)
 
     /**
+     * Observes the active time zone ID (e.g. `"Asia/Kolkata"`).
+     *
+     * @return Cold [Flow]; defaults to system default time zone ID.
+     */
+    fun observeTimeZone(): Flow<String>
+
+    /**
+     * Reads the current time zone ID once.
+     */
+    suspend fun getTimeZone(): String
+
+    /**
+     * Persists the time zone ID.
+     */
+    suspend fun setTimeZone(timeZoneId: String)
+
+    /**
+     * Observes whether friend suggestions are allowed.
+     *
+     * @return Cold [Flow]; defaults to `true`.
+     */
+    fun observeAllowFriendSuggestions(): Flow<Boolean>
+
+    /**
+     * Reads the allow friend suggestions setting once.
+     */
+    suspend fun getAllowFriendSuggestions(): Boolean
+
+    /**
+     * Persists the allow friend suggestions setting.
+     */
+    suspend fun setAllowFriendSuggestions(enabled: Boolean)
+
+    /**
      * Clears user-scoped preferences on sign-out.
      *
      * Keeps device-level choices (theme, locale, install-referrer bootstrap), any

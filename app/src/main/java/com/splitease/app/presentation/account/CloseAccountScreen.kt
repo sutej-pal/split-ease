@@ -15,8 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.presentation.theme.SeBodyMedium
+import com.splitease.app.presentation.theme.SeBodySmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
@@ -90,9 +90,8 @@ private fun CloseAccountContent(
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 24.dp),
         ) {
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.account_close_intro),
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.NavyMuted,
             )
 
@@ -106,15 +105,13 @@ private fun CloseAccountContent(
                         .background(SplitEaseColors.Surface)
                         .padding(16.dp),
             ) {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.account_deactivate_body_1),
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.Navy,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
+                SeBodySmall(
                     text = stringResource(R.string.account_deactivate_body_2),
-                    style = MaterialTheme.typography.bodySmall,
                     color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -143,9 +140,8 @@ private fun CloseAccountContent(
                         .background(SplitEaseColors.Surface)
                         .padding(16.dp),
             ) {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.account_delete_permanent_body),
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.Navy,
                 )
                 Spacer(modifier = Modifier.height(16.dp))

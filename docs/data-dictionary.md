@@ -202,8 +202,14 @@ Unique index: `(expenseId, userId)`.
 | profiles                      | phone_number          | TEXT      | yes      | National phone number                                                                      |
 | profiles                      | preferred_currency    | TEXT      | yes      | ISO 4217 from signup                                                                       |
 | profiles                      | updated_at_epoch_ms   | BIGINT    | no       | Last update                                                                                |
+| profiles                      | time_zone             | TEXT      | yes      | IANA time zone ID (e.g. `Asia/Kolkata`)                                                    |
+| profiles                      | allow_friend_suggestions | BOOLEAN | no       | Defaults to `true`; controls friend recommendation visibility                             |
 | profiles                      | deleted_at            | TIMESTAMPTZ | yes    | Set by `delete_own_account()`; null while the account is active                            |
 | profiles                      | deactivated_at        | TIMESTAMPTZ | yes    | Set by `deactivate_own_account()`; null while active                                       |
+| user_emails                   | id                    | UUID (PK) | no       | Secondary email row ID                                                                     |
+| user_emails                   | user_id               | UUID (FK) | no       | Auth user ID                                                                               |
+| user_emails                   | email                 | TEXT      | no       | Secondary email address                                                                    |
+| user_emails                   | verified_at           | TIMESTAMPTZ | yes    | Timestamp when verified via 6-digit code                                                   |
 | friends                       | id                    | UUID (PK) | no       | Friendship id                                                                              |
 | friends                       | owner_user_id         | UUID      | no       | Owner                                                                                      |
 | friends                       | friend_user_id        | UUID      | no       | Friend user                                                                                |

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Account settings borderless design with inline accordion rows for Email, Phone number, and Password.
+- Secondary email management with 6-digit verification code sent via `secondary-email` Edge Function.
+- Searchable Time zone picker screen (`account_time_zone` route) storing IANA time zone ID.
+- Friend suggestion privacy toggle stored on `profiles.allow_friend_suggestions`.
+- Patch SQL script in `docs/sql/patch_account_settings.sql` for existing Supabase databases.
 - Close account screen with reversible account deactivation and option to permanently delete account.
 - "Log out on all devices" option in Account settings.
 - Clear error message when a deactivated user attempts to log in.

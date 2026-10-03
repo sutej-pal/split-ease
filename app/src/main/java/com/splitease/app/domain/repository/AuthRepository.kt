@@ -2,6 +2,7 @@ package com.splitease.app.domain.repository
 
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
+import com.splitease.app.domain.model.SecondaryEmail
 import com.splitease.app.domain.model.SignUpResult
 import com.splitease.app.domain.model.SocialSignInResult
 import com.splitease.app.domain.settings.AppCurrencies
@@ -203,6 +204,82 @@ interface AuthRepository {
      * @return [Result] success or failure with message.
      */
     suspend fun signOutAllDevices(): Result<Unit>
+
+    /**
+     * Updates the signed-in user's phone country code and national phone number in Supabase metadata,
+     * Room, and remote `profiles`. Checks uniqueness before updating.
+     *
+     * @param countryCode Dialing code (e.g. `+91`).
+     * @param number National phone number digits.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun updatePhone(countryCode: String, number: String): Result<Unit>
+
+    /**
+     * Re-authenticates the signed-in user with their current password without running the login OTP gate.
+     *
+     * @param password Current password.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun verifyCurrentPassword(password: String): Result<Unit>
+
+    /**
+     * Requests adding a secondary email address linked to the user account.
+     * Sends a 6-digit OTP to the secondary email.
+     *
+     * @param email Secondary email address.
+     * @param currentPassword Current password (required for password-authenticated users).
+     * @return [Result] success or failure with message.
+     */
+    suspend fun addSecondaryEmail(email: String, currentPassword: String? = null): Result<Unit>
+
+    /**
+     * Resends the verification code for a pending secondary email address.
+     *
+     * @param id Secondary email row ID.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun resendSecondaryEmail(id: String): Result<Unit>
+
+    /**
+     * Verifies the 6-digit OTP code for a secondary email address.
+     *
+     * @param id Secondary email row ID.
+     * @param code 6-digit OTP code.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun verifySecondaryEmail(id: String, code: String): Result<Unit>
+
+    /**
+     * Removes a secondary email address linked to the user account.
+     *
+     * @param id Secondary email row ID.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun removeSecondaryEmail(id: String): Result<Unit>
+
+    /**
+     * Observes the list of secondary email addresses linked to the signed-in user account.
+     *
+     * @return Cold [Flow] of secondary email list.
+     */
+    fun observeSecondaryEmails(): Flow<List<SecondaryEmail>>
+
+    /**
+     * Updates the signed-in user's time zone preference.
+     *
+     * @param timeZoneId IANA time zone ID (e.g. `"Asia/Kolkata"`).
+     * @return [Result] success or failure with message.
+     */
+    suspend fun updateTimeZone(timeZoneId: String): Result<Unit>
+
+    /**
+     * Updates the signed-in user's allow friend suggestions preference.
+     *
+     * @param enabled True when friend suggestions are allowed.
+     * @return [Result] success or failure with message.
+     */
+    suspend fun updateAllowFriendSuggestions(enabled: Boolean): Result<Unit>
 
     /**
      * Updates the signed-in user's display name in Supabase metadata, local Room, and

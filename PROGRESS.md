@@ -28,6 +28,8 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Explicit colour tokens and error text (2026-09-29) — brand colours are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colours stay `OweRed` / `OwedTeal`.
 
+**Post-phase:** Account settings expansion (2026-10-03) — Borderless Splitwise-style accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), phone management, time zone picker screen (`account_time_zone`), and friend-suggestion privacy toggle.
+
 **Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
 
 **Post-phase:** Pending-invite title and direct resend SMS (2026-10-01) — the friend settings card titles a pending invite "Invite pending". Resend opens the messages app immediately; Edit Contact / Review still confirms with "Invite to SplitEase?" first.
