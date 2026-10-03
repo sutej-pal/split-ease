@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,6 +44,8 @@ class SharedPreferencesAppSettingsRepository
             MutableStateFlow(readPendingNotificationGroupId())
         private val muteAllFlow = MutableStateFlow(readMuteAll())
         private val mutedGroupIdsFlow = MutableStateFlow(readMutedGroupIds())
+        private val timeZoneFlow = MutableStateFlow(readTimeZone())
+        private val allowFriendSuggestionsFlow = MutableStateFlow(readAllowFriendSuggestions())
 
         override fun observeCurrencyCode(): Flow<String> = currencyFlow.asStateFlow()
 
@@ -401,6 +404,42 @@ class SharedPreferencesAppSettingsRepository
             AppCompatDelegate.setApplicationLocales(locales)
         }
 
+        override fun observeTimeZone(): Flow<String> = timeZoneFlow.asStateFlow()
+
+        override suspend fun getTimeZone(): String =
+            withContext(Dispatchers.IO) {
+                readTimeZone()
+            }
+
+        override suspend fun setTimeZone(timeZoneId: String) {
+            val validId = timeZoneId.trim().takeIf { it.isNotEmpty() } ?: TimeZone.getDefault().id
+            withContext(Dispatchers.IO) {
+                prefs.edit { putString(KEY_TIME_ZONE, validId) }
+            }
+            timeZoneFlow.value = validId
+        }
+
+        override fun observeAllowFriendSuggestions(): Flow<Boolean> = allowFriendSuggestionsFlow.asStateFlow()
+
+        override suspend fun getAllowFriendSuggestions(): Boolean =
+            withContext(Dispatchers.IO) {
+                readAllowFriendSuggestions()
+            }
+
+        override suspend fun setAllowFriendSuggestions(enabled: Boolean) {
+            withContext(Dispatchers.IO) {
+                prefs.edit { putBoolean(KEY_ALLOW_FRIEND_SUGGESTIONS, enabled) }
+            }
+            allowFriendSuggestionsFlow.value = enabled
+        }
+
+        private fun readTimeZone(): String =
+            prefs.getString(KEY_TIME_ZONE, TimeZone.getDefault().id)
+                ?: TimeZone.getDefault().id
+
+        private fun readAllowFriendSuggestions(): Boolean =
+            prefs.getBoolean(KEY_ALLOW_FRIEND_SUGGESTIONS, true)
+
         private fun readCurrency(): String =
             AppCurrencies.normalizeOrDefault(prefs.getString(KEY_CURRENCY, AppCurrencies.DEFAULT))
 
@@ -455,6 +494,8 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_NOTIFICATION_PREFS_UPDATED_AT = "notifications_prefs_updated_at"
             private const val KEY_NOTIFICATION_PERMISSION_PROMPTED = "notifications_permission_prompted"
             private const val KEY_INSTALL_REFERRER_CHECKED = "install_referrer_checked"
+            private const val KEY_TIME_ZONE = "time_zone_id"
+            private const val KEY_ALLOW_FRIEND_SUGGESTIONS = "allow_friend_suggestions"
             private const val KEY_SIMPLIFY_PREFIX = "simplify_debts_"
             private const val KEY_ONBOARDING_EMAIL_SENT_PREFIX = "onboarding_email_sent_"
             private const val KEY_PENDING_WELCOME_EMAIL_USER_ID = "pending_welcome_email_user_id"
