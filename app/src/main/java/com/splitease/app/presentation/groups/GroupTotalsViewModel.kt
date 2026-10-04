@@ -9,6 +9,7 @@ import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.ExpenseRepository
 import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.domain.spending.GroupMonthSpending
 import com.splitease.app.domain.spending.GroupSpendingCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +25,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import java.math.BigDecimal
 import java.util.Calendar
-import java.util.TimeZone
 import javax.inject.Inject
 
 data class CurrencyTotal(
@@ -61,7 +61,6 @@ class GroupTotalsViewModel
         expenseRepository: ExpenseRepository,
     ) : ViewModel() {
         private val groupId: String = savedStateHandle.get<String>("groupId").orEmpty()
-        private val timeZone: TimeZone = TimeZone.getDefault()
 
         private val userId =
             authRepository
@@ -73,8 +72,8 @@ class GroupTotalsViewModel
             MutableStateFlow(
                 PeriodState(
                     allTime = false,
-                    year = Calendar.getInstance(timeZone).get(Calendar.YEAR),
-                    month = Calendar.getInstance(timeZone).get(Calendar.MONTH),
+                    year = Calendar.getInstance(AppTimeZone.timeZone()).get(Calendar.YEAR),
+                    month = Calendar.getInstance(AppTimeZone.timeZone()).get(Calendar.MONTH),
                 ),
             )
 
@@ -104,7 +103,7 @@ class GroupTotalsViewModel
                 val fromMs: Long
                 val toMs: Long
                 if (periodState.allTime) {
-                    val now = Calendar.getInstance(timeZone)
+                    val now = Calendar.getInstance(AppTimeZone.timeZone())
                     chartEndYear = now.get(Calendar.YEAR)
                     chartEndMonth = now.get(Calendar.MONTH)
                     fromMs = 0L
@@ -116,7 +115,7 @@ class GroupTotalsViewModel
                         GroupSpendingCalculator.monthBounds(
                             periodState.year,
                             periodState.month,
-                            timeZone,
+                            AppTimeZone.timeZone(),
                         )
                     fromMs = bounds.first
                     toMs = bounds.second
@@ -163,7 +162,7 @@ class GroupTotalsViewModel
                             endYear = chartEndYear,
                             endMonth = chartEndMonth,
                             monthCount = 3,
-                            timeZone = timeZone,
+                            timeZone = AppTimeZone.timeZone(),
                         )
                     }
                 GroupTotalsUi(
@@ -198,7 +197,7 @@ class GroupTotalsViewModel
         fun previousMonth() {
             period.update { state ->
                 val cal =
-                    Calendar.getInstance(timeZone).apply {
+                    Calendar.getInstance(AppTimeZone.timeZone()).apply {
                         set(Calendar.YEAR, state.year)
                         set(Calendar.MONTH, state.month)
                         add(Calendar.MONTH, -1)
@@ -214,12 +213,12 @@ class GroupTotalsViewModel
         fun nextMonth() {
             period.update { state ->
                 val cal =
-                    Calendar.getInstance(timeZone).apply {
+                    Calendar.getInstance(AppTimeZone.timeZone()).apply {
                         set(Calendar.YEAR, state.year)
                         set(Calendar.MONTH, state.month)
                         add(Calendar.MONTH, 1)
                     }
-                val now = Calendar.getInstance(timeZone)
+                val now = Calendar.getInstance(AppTimeZone.timeZone())
                 // Don't navigate past the current calendar month.
                 if (cal.get(Calendar.YEAR) > now.get(Calendar.YEAR) ||
                     (

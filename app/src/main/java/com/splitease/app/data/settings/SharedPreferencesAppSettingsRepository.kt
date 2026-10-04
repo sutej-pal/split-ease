@@ -7,6 +7,7 @@ import androidx.core.os.LocaleListCompat
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AppSettingsRepository
+import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.domain.settings.AuthTimeout
 import com.splitease.app.domain.settings.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,6 +47,10 @@ class SharedPreferencesAppSettingsRepository
         private val mutedGroupIdsFlow = MutableStateFlow(readMutedGroupIds())
         private val timeZoneFlow = MutableStateFlow(readTimeZone())
         private val allowFriendSuggestionsFlow = MutableStateFlow(readAllowFriendSuggestions())
+
+        init {
+            AppTimeZone.apply(timeZoneFlow.value)
+        }
 
         override fun observeCurrencyCode(): Flow<String> = currencyFlow.asStateFlow()
 
@@ -387,6 +392,10 @@ class SharedPreferencesAppSettingsRepository
             pendingNotificationGroupIdFlow.value = null
             muteAllFlow.value = false
             mutedGroupIdsFlow.value = emptySet()
+            val deviceZone = TimeZone.getDefault().id
+            timeZoneFlow.value = deviceZone
+            allowFriendSuggestionsFlow.value = true
+            AppTimeZone.apply(deviceZone)
         }
 
         /** Applies the stored locale at process start (before Compose). */
@@ -417,6 +426,7 @@ class SharedPreferencesAppSettingsRepository
                 prefs.edit { putString(KEY_TIME_ZONE, validId) }
             }
             timeZoneFlow.value = validId
+            AppTimeZone.apply(validId)
         }
 
         override fun observeAllowFriendSuggestions(): Flow<Boolean> = allowFriendSuggestionsFlow.asStateFlow()

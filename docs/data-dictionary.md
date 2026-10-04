@@ -210,6 +210,10 @@ Unique index: `(expenseId, userId)`.
 | user_emails                   | user_id               | UUID (FK) | no       | Auth user ID                                                                               |
 | user_emails                   | email                 | TEXT      | no       | Secondary email address                                                                    |
 | user_emails                   | verified_at           | TIMESTAMPTZ | yes    | Timestamp when verified via 6-digit code                                                   |
+| user_emails                   | code_hash             | TEXT      | yes      | HMAC of the current code. Not granted to the client                                       |
+| user_emails                   | last_sent_at          | TIMESTAMPTZ | yes    | Last time a code was handed to the mail service                                            |
+| user_email_send_log           | user_id               | UUID      | no       | Sender. Service role only; used for the 5-per-hour cap                                    |
+| user_email_send_log           | sent_at               | TIMESTAMPTZ | no     | When that send was recorded                                                                |
 | friends                       | id                    | UUID (PK) | no       | Friendship id                                                                              |
 | friends                       | owner_user_id         | UUID      | no       | Owner                                                                                      |
 | friends                       | friend_user_id        | UUID      | no       | Friend user                                                                                |
@@ -264,12 +268,12 @@ Unique index: `(expenseId, userId)`.
 
 **Auth lookup RPCs** (anon + authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
 - `auth_email_registered(p_email)` — whether `auth.users` already has that email (skips banned / deleted Auth rows)
-- `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number (skips `profiles.deleted_at` rows and banned Auth users)
+- `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number (skips `profiles.deleted_at` rows and banned Auth users). A signed-in caller is excluded with `auth.uid()`; anon callers cannot exclude anyone. The 3-argument overload must not exist.
 
 **Account deletion RPC** (authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
 - `delete_own_account()` — caller only (`auth.uid()`). Recomputes per-group nets at scale 2; raises `ACCOUNT_HAS_BALANCE` with `{id, name}` groups when any net is non-zero (includes the non-group ledger). Otherwise anonymizes `profiles` in place (`display_name` → `Deleted user`, email scrambled, phone/photo cleared, `deleted_at` set), bans Auth (`banned_until = infinity`, identities/sessions dropped), and does **not** delete `profiles` / `auth.users` or cascade expenses/splits/payments. Dropping `auth.identities` is what lets the same Google account sign up again as a new user.
 - `deactivate_own_account()` — caller only (`auth.uid()`). Sets `profiles.deactivated_at = clock_timestamp()`, deletes caller's FCM `device_tokens`, bans Auth (`banned_until = infinity`), and drops sessions without modifying profile name, email, phone, identities, expenses, or balances. Manual reactivation by admin: set `banned_until = null` and `deactivated_at = null`.
-- `can_see_profile(p_profile_id)` — RLS helper: active profiles stay directory-visible; deleted profiles are readable only by people who share a group, expense, payment, or friendship so history still resolves as “Deleted user”.
+- `can_see_profile(p_profile_id)` — RLS helper. Directory search sees a profile only when it is not deleted, not deactivated, and `allow_friend_suggestions` is true. Otherwise only the owner and people who already share a friend, group, expense, or payment can read it, so history still resolves.
 - `account_deletion_blocking_groups(p_user_id)` — internal helper used by the RPC (not granted to clients).
 
 Share-link burn heal + multi-use token accept: included in [sql/migration_db.sql](sql/migration_db.sql)

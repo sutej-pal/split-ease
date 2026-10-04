@@ -10,13 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Account settings borderless design with inline accordion rows for Email, Phone number, and Password.
 - Secondary email management with 6-digit verification code sent via `secondary-email` Edge Function.
-- Searchable Time zone picker screen (`account_time_zone` route) storing IANA time zone ID.
-- Friend suggestion privacy toggle stored on `profiles.allow_friend_suggestions`.
-- Patch SQL script in `docs/sql/patch_account_settings.sql` for existing Supabase databases.
+- Searchable Time zone picker screen (`account_time_zone` route). The chosen IANA zone is used for expense, activity, spending, and CSV dates.
+- Friend suggestion privacy toggle stored on `profiles.allow_friend_suggestions`. Turning it off hides the profile from directory lookup; people who already share a group, expense, payment, or friendship can still see it.
+- Patch SQL script in `docs/sql/patch_account_settings.sql` for existing Supabase databases (deactivation RPC, phone lookup, secondary email, and profile visibility).
 - Close account screen with reversible account deactivation and option to permanently delete account.
 - "Log out on all devices" option in Account settings.
 - Clear error message when a deactivated user attempts to log in.
-- Note: run the new SQL section in `docs/sql/migration_db.sql` (`deactivate_own_account` RPC and `profiles.deactivated_at` column) in Supabase.
+- Note: run `docs/sql/patch_account_settings.sql` in the Supabase SQL editor before shipping this build. Deploy the `secondary-email` Edge Function with the existing mail secrets.
 - Phone contacts use one Phone or email field. Numbers are stored as `<e164>@mobile.splitease.com` and never emailed. A number without a country code is confirmed first (default +91). Saving a phone asks to open the user's own messages app with the invite link; Not now leaves the invite pending.
 - Invite landing pending members are tappable and open sign-up with their name and mobile or email filled in. Re-apply `get_invite_preview` in Supabase so pending rows include `invite_token` and the preview includes `invitee_name`.
 

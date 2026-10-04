@@ -159,9 +159,15 @@ interface AuthRepository {
      * Updates the signed-in user's password (call after [verifyRecoveryOtp] or while signed in).
      *
      * @param newPassword New password (min length enforced by Supabase / callers).
+     * @param hydrateSession When true, reloads the local profile after the change.
+     * Password recovery needs that. A signed-in settings change should pass false so
+     * the existing session is not re-hydrated.
      * @return [Result] success or failure with message.
      */
-    suspend fun updatePassword(newPassword: String): Result<Unit>
+    suspend fun updatePassword(
+        newPassword: String,
+        hydrateSession: Boolean = true,
+    ): Result<Unit>
 
     /**
      * Signs out the current user and clears the local session.

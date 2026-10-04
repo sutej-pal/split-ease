@@ -318,7 +318,7 @@ class AccountViewModel
                     }
                     return@launch
                 }
-                val updateRes = authRepository.updatePassword(newPass)
+                val updateRes = authRepository.updatePassword(newPass, hydrateSession = false)
                 if (updateRes.isSuccess) {
                     _settings.update {
                         it.copy(
@@ -400,12 +400,24 @@ class AccountViewModel
             val email = profile.value.email
             if (email.isBlank()) return
             viewModelScope.launch {
-                authRepository.resendSignupConfirmation(email)
+                val res = authRepository.resendSignupConfirmation(email)
                 _settings.update {
-                    it.copy(
-                        showPrimaryOtpInput = true,
-                        infoMessage = appContext.getString(R.string.verify_email_sent),
-                    )
+                    if (res.isSuccess) {
+                        it.copy(
+                            showPrimaryOtpInput = true,
+                            emailError = null,
+                            infoMessage = appContext.getString(R.string.verify_email_sent),
+                        )
+                    } else {
+                        it.copy(
+                            emailError = ErrorMessages.message(
+                                appContext,
+                                TAG,
+                                res.exceptionOrNull() ?: Exception("Failed"),
+                            ),
+                            infoMessage = null,
+                        )
+                    }
                 }
             }
         }
@@ -498,17 +510,30 @@ class AccountViewModel
             }
         }
 
-        fun updateTimeZone(id: String) {
-            viewModelScope.launch {
-                authRepository.updateTimeZone(id)
-                _settings.update { it.copy(timeZoneId = id) }
+        /**
+         * @return true when the zone was saved on the profile and applied locally.
+         */
+        suspend fun updateTimeZone(id: String): Boolean {
+            val result = authRepository.updateTimeZone(id)
+            _settings.update {
+                it.copy(
+                    timeZoneId = if (result.isSuccess) id else it.timeZoneId,
+                    errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
+                )
             }
+            return result.isSuccess
         }
 
         fun updateAllowFriendSuggestions(enabled: Boolean) {
             viewModelScope.launch {
-                authRepository.updateAllowFriendSuggestions(enabled)
-                _settings.update { it.copy(allowFriendSuggestions = enabled) }
+                val result = authRepository.updateAllowFriendSuggestions(enabled)
+                if (result.isFailure) {
+                    _settings.update {
+                        it.copy(
+                            errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
+                        )
+                    }
+                }
             }
         }
 

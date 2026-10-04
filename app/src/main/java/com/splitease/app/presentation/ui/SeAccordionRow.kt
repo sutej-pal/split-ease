@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SeLabelSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -72,11 +73,13 @@ fun SeAccordionRow(
                     color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                SeBodyMedium(
-                    text = value,
-                    fontWeight = FontWeight.Medium,
-                    color = SplitEaseColors.Navy,
-                )
+                    SeBodyMedium(
+                        text = value,
+                        fontWeight = FontWeight.Medium,
+                        color = SplitEaseColors.Navy,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
             }
             if (trailingChip != null) {
                 trailingChip()

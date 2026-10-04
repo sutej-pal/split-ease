@@ -57,7 +57,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.time.Instant
-import java.time.ZoneId
+import com.splitease.app.domain.settings.AppTimeZone
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Date
@@ -834,12 +834,15 @@ class ActivityViewModel
             }
         }
 
-        private fun formatDateTime(epochMs: Long): String =
-            DATE_TIME_FORMAT.get().format(Date(epochMs))
+        private fun formatDateTime(epochMs: Long): String {
+            val format = DATE_TIME_FORMAT.get() ?: return ""
+            format.timeZone = AppTimeZone.timeZone()
+            return format.format(Date(epochMs))
+        }
 
         private fun formatTimeLabel(epochMs: Long): String =
             timeFormatter().format(
-                Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()),
+                Instant.ofEpochMilli(epochMs).atZone(AppTimeZone.zoneId()),
             )
 
         private fun timeFormatter(): DateTimeFormatter {
@@ -973,7 +976,7 @@ private fun buildActivityListEntries(items: List<ActivityUiItem>): List<Activity
         }
 
 private fun dayKey(epochMs: Long): java.time.LocalDate =
-    Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
+    Instant.ofEpochMilli(epochMs).atZone(AppTimeZone.zoneId()).toLocalDate()
 
 internal fun ActivityListEntry.stableKey(): String =
     when (this) {

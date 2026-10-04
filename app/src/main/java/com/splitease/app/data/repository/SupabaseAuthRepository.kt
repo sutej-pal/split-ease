@@ -38,15 +38,18 @@ import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -65,6 +68,7 @@ import javax.inject.Singleton
 
 private const val PENDING_SIGNUP_PHOTO_NAME = "pending_signup.jpg"
 private const val PROFILE_UPSERT_COALESCE_MS = 2_000L
+private val SECONDARY_EMAIL_COLUMNS = Columns.list("id", "email", "verified_at", "created_at")
 
 /**
  * Supabase-backed [AuthRepository] that upserts local Room [User] and remote `profiles`.
@@ -85,6 +89,7 @@ class SupabaseAuthRepository
         private val appSettingsRepository: AppSettingsRepository,
     ) : AuthRepository {
         private val persistUserMutex = Mutex()
+        private val secondaryEmailRevision = MutableStateFlow(0)
 
         @Volatile
         private var lastProfileUpsertUserId: String? = null
@@ -339,7 +344,10 @@ class SupabaseAuthRepository
                 }
             }
 
-        override suspend fun updatePassword(newPassword: String): Result<Unit> =
+        override suspend fun updatePassword(
+            newPassword: String,
+            hydrateSession: Boolean,
+        ): Result<Unit> =
             runCatching {
                 val trimmed = newPassword.trim()
                 require(trimmed.length >= 8) { "Password must be at least 8 characters." }
@@ -349,6 +357,7 @@ class SupabaseAuthRepository
                 supabase.auth.updateUser {
                     password = trimmed
                 }
+                if (!hydrateSession) return@runCatching
                 // Password is already changed on the server — don't fail the whole
                 // reset if local profile hydrate hiccups (e.g. offline / RLS).
                 runCatching { finalizeAuthenticatedSession() }
@@ -439,7 +448,6 @@ class SupabaseAuthRepository
                     buildJsonObject {
                         put("p_country_code", code)
                         put("p_phone", num)
-                        put("p_exclude_user_id", currentUser.id)
                     },
                 ).decodeAs<Boolean>()
 
@@ -470,15 +478,11 @@ class SupabaseAuthRepository
             runCatching {
                 val currentEmail = supabase.auth.currentUserOrNull()?.email
                     ?: error("Not signed in.")
-                runCatching {
-                    supabase.auth.signInWith(Email) {
-                        email = currentEmail
-                        this.password = password.trim()
-                    }
-                }.getOrElse {
-                    throw IllegalArgumentException("That password isn't right.")
+                val pass = password.trim()
+                require(pass.isNotEmpty()) { "Please enter your current password." }
+                withContext(Dispatchers.IO) {
+                    verifyPasswordWithoutReplacingSession(currentEmail, pass)
                 }
-                Unit
             }
 
         override suspend fun addSecondaryEmail(email: String, currentPassword: String?): Result<Unit> =
@@ -500,11 +504,13 @@ class SupabaseAuthRepository
                 }
 
                 callSecondaryEmailEdgeFunction("add", mapOf("email" to trimmedEmail))
+                bumpSecondaryEmails()
             }
 
         override suspend fun resendSecondaryEmail(id: String): Result<Unit> =
             runCatching {
                 callSecondaryEmailEdgeFunction("resend", mapOf("id" to id))
+                bumpSecondaryEmails()
             }
 
         override suspend fun verifySecondaryEmail(id: String, code: String): Result<Unit> =
@@ -512,11 +518,13 @@ class SupabaseAuthRepository
                 val trimmedCode = code.trim()
                 require(trimmedCode.length == 6) { "Enter a valid 6-digit code." }
                 callSecondaryEmailEdgeFunction("verify", mapOf("id" to id, "code" to trimmedCode))
+                bumpSecondaryEmails()
             }
 
         override suspend fun removeSecondaryEmail(id: String): Result<Unit> =
             runCatching {
                 callSecondaryEmailEdgeFunction("remove", mapOf("id" to id))
+                bumpSecondaryEmails()
             }
 
         @OptIn(ExperimentalCoroutinesApi::class)
@@ -526,18 +534,20 @@ class SupabaseAuthRepository
                 if (userId == null) {
                     flowOf(emptyList())
                 } else {
-                    flow {
-                        val result: List<SecondaryEmail> = runCatching {
-                            supabase.postgrest.from("user_emails")
-                                .select {
-                                    filter {
-                                        eq("user_id", userId)
+                    secondaryEmailRevision.flatMapLatest {
+                        flow {
+                            val result: List<SecondaryEmail> = runCatching {
+                                supabase.postgrest.from("user_emails")
+                                    .select(SECONDARY_EMAIL_COLUMNS) {
+                                        filter {
+                                            eq("user_id", userId)
+                                        }
                                     }
-                                }
-                                .decodeList<UserEmailDto>()
-                                .map { it.toSecondaryEmail() }
-                        }.getOrDefault(emptyList())
-                        emit(result)
+                                    .decodeList<UserEmailDto>()
+                                    .map { it.toSecondaryEmail() }
+                            }.getOrDefault(emptyList())
+                            emit(result)
+                        }
                     }
                 }
             }
@@ -545,30 +555,26 @@ class SupabaseAuthRepository
         override suspend fun updateTimeZone(timeZoneId: String): Result<Unit> =
             runCatching {
                 val validId = timeZoneId.trim().takeIf { it.isNotEmpty() } ?: TimeZone.getDefault().id
-                appSettingsRepository.setTimeZone(validId)
                 val userId = supabase.auth.currentUserOrNull()?.id
                 if (userId != null) {
-                    runCatching {
-                        supabase.postgrest.from("profiles")
-                            .update(buildJsonObject { put("time_zone", validId) }) {
-                                filter { eq("id", userId) }
-                            }
-                    }
+                    supabase.postgrest.from("profiles")
+                        .update(buildJsonObject { put("time_zone", validId) }) {
+                            filter { eq("id", userId) }
+                        }
                 }
+                appSettingsRepository.setTimeZone(validId)
             }
 
         override suspend fun updateAllowFriendSuggestions(enabled: Boolean): Result<Unit> =
             runCatching {
-                appSettingsRepository.setAllowFriendSuggestions(enabled)
                 val userId = supabase.auth.currentUserOrNull()?.id
                 if (userId != null) {
-                    runCatching {
-                        supabase.postgrest.from("profiles")
-                            .update(buildJsonObject { put("allow_friend_suggestions", enabled) }) {
-                                filter { eq("id", userId) }
-                            }
-                    }
+                    supabase.postgrest.from("profiles")
+                        .update(buildJsonObject { put("allow_friend_suggestions", enabled) }) {
+                            filter { eq("id", userId) }
+                        }
                 }
+                appSettingsRepository.setAllowFriendSuggestions(enabled)
             }
 
         override suspend fun ensureLocalProfile(): Result<Unit> =
@@ -711,6 +717,91 @@ class SupabaseAuthRepository
                         updatedAtEpochMs = now,
                     ),
                 )
+            }
+            hydrateAccountPreferences(authUser.userId)
+        }
+
+        /**
+         * Copies the server time zone and friend-suggestion flag into local prefs.
+         * Profile upserts omit those fields, so this read is what a second device sees.
+         */
+        private suspend fun hydrateAccountPreferences(userId: String) {
+            val remote = runCatching { socialRemote.fetchProfileById(userId) }.getOrNull() ?: return
+            remote.timeZone?.trim()?.takeIf { it.isNotEmpty() }?.let { zone ->
+                appSettingsRepository.setTimeZone(zone)
+            }
+            remote.allowFriendSuggestions?.let { enabled ->
+                appSettingsRepository.setAllowFriendSuggestions(enabled)
+            }
+        }
+
+        private fun bumpSecondaryEmails() {
+            secondaryEmailRevision.update { it + 1 }
+        }
+
+        /**
+         * Checks the password with a one-off GoTrue token request, then revokes that
+         * extra session. The app's current session is left in place.
+         */
+        private fun verifyPasswordWithoutReplacingSession(email: String, password: String) {
+            val baseUrl = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
+            val anonKey = BuildConfig.SUPABASE_ANON_KEY.trim()
+            val connection = (URL("$baseUrl/auth/v1/token?grant_type=password").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 15_000
+                readTimeout = 30_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                if (anonKey.isNotEmpty()) {
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $anonKey")
+                }
+            }
+            val payload = JSONObject().apply {
+                put("email", email)
+                put("password", password)
+            }
+            try {
+                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                    writer.write(payload.toString())
+                }
+                val status = connection.responseCode
+                val responseText = runCatching {
+                    connection.inputStream?.bufferedReader()?.use { it.readText() }
+                }.getOrElse {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                } ?: ""
+                if (status !in 200..299) {
+                    throw IllegalArgumentException("That password isn't right.")
+                }
+                val accessToken = runCatching { JSONObject(responseText).optString("access_token") }
+                    .getOrNull()
+                    .orEmpty()
+                if (accessToken.isNotBlank()) {
+                    revokeAccessToken(baseUrl, anonKey, accessToken)
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        private fun revokeAccessToken(baseUrl: String, anonKey: String, accessToken: String) {
+            val connection = (URL("$baseUrl/auth/v1/logout").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 15_000
+                readTimeout = 15_000
+                setRequestProperty("Authorization", "Bearer $accessToken")
+                if (anonKey.isNotEmpty()) {
+                    setRequestProperty("apikey", anonKey)
+                }
+            }
+            try {
+                connection.responseCode
+            } catch (_: Exception) {
+                // The password was already accepted. A leftover verification session
+                // expires on its own if logout cannot be reached.
+            } finally {
+                connection.disconnect()
             }
         }
 
