@@ -89,7 +89,7 @@ import com.splitease.app.presentation.ui.SeTopBar
 import java.math.BigDecimal
 import java.text.DateFormatSymbols
 import java.time.Instant
-import java.time.ZoneId
+import com.splitease.app.domain.settings.AppTimeZone
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -945,7 +945,7 @@ private fun formatExpenseAddedDate(epochMs: Long): String {
     val date =
         Instant
             .ofEpochMilli(epochMs)
-            .atZone(ZoneId.systemDefault())
+            .atZone(AppTimeZone.zoneId())
             .toLocalDate()
     return DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()).format(date)
 }
@@ -954,7 +954,7 @@ private fun formatCommentTime(epochMs: Long): String {
     val dateTime =
         Instant
             .ofEpochMilli(epochMs)
-            .atZone(ZoneId.systemDefault())
+            .atZone(AppTimeZone.zoneId())
     return DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.getDefault()).format(dateTime)
 }
 

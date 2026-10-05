@@ -1,6 +1,7 @@
 package com.splitease.app.data.exports
 
 import com.splitease.app.domain.exports.GroupExportFileNames
+import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.domain.exports.GroupLedgerCsvExporter
 import com.splitease.app.domain.exports.GroupLedgerExportInput
 import com.splitease.app.domain.repository.CategoryRepository
@@ -51,7 +52,7 @@ class GroupExportInteractor
             groupId: String,
             viewerUserId: String,
             exportedAtEpochMs: Long = System.currentTimeMillis(),
-            zoneId: ZoneId = ZoneId.systemDefault(),
+            zoneId: ZoneId = AppTimeZone.zoneId(),
         ): Result<GroupCsvExport> =
             runCatching {
                 val group =

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
@@ -261,7 +262,7 @@ fun categoryIcon(iconKey: String?): ImageVector =
 
 private fun ledgerDateParts(
     epochMs: Long,
-    zone: ZoneId = ZoneId.systemDefault(),
+    zone: ZoneId = AppTimeZone.zoneId(),
 ): Pair<String, String> {
     val date = Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate()
     val month = DateTimeFormatter.ofPattern("MMM", Locale.getDefault()).format(date)
@@ -270,7 +271,7 @@ private fun ledgerDateParts(
 }
 
 private fun List<LedgerListItem>.groupByMonth(
-    zone: ZoneId = ZoneId.systemDefault(),
+    zone: ZoneId = AppTimeZone.zoneId(),
 ): List<Pair<String, List<LedgerListItem>>> {
     val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
     return groupBy { item ->

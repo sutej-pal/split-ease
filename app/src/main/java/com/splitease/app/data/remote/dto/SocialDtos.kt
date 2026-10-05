@@ -17,6 +17,18 @@ data class ProfileDto(
     @SerialName("phone_number") val phoneNumber: String? = null,
     @SerialName("preferred_currency") val preferredCurrency: String? = null,
     @SerialName("updated_at_epoch_ms") val updatedAtEpochMs: Long,
+    /**
+     * Omitted on upsert when null so a name/phone write does not clear the stored zone.
+     */
+    @SerialName("time_zone")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val timeZone: String? = null,
+    /**
+     * Omitted on upsert when null so a name/phone write does not reset the privacy flag.
+     */
+    @SerialName("allow_friend_suggestions")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val allowFriendSuggestions: Boolean? = null,
 )
 
 /**

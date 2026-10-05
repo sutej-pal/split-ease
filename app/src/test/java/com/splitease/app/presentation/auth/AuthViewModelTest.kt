@@ -474,7 +474,7 @@ class AuthViewModelTest {
         runTest {
             coEvery { repository.requestPasswordReset(any()) } returns Result.success(Unit)
             coEvery { repository.verifyRecoveryOtp(any(), any()) } returns Result.success(Unit)
-            coEvery { repository.updatePassword(any()) } returns Result.success(Unit)
+            coEvery { repository.updatePassword(any(), any()) } returns Result.success(Unit)
             viewModel.requestPasswordReset("a@b.com")
             advanceUntilIdle()
             viewModel.completePasswordReset(
@@ -488,7 +488,7 @@ class AuthViewModelTest {
             assertNull(viewModel.formState.value.pendingOtpPurpose)
             assertEquals(msg(AuthMessages.RESET_PASSWORD_SUCCESS), viewModel.formState.value.infoMessage)
             coVerify(exactly = 1) { repository.verifyRecoveryOtp("a@b.com", "123456") }
-            coVerify(exactly = 1) { repository.updatePassword("Secret12") }
+            coVerify(exactly = 1) { repository.updatePassword("Secret12", true) }
         }
 
     @Test
@@ -511,7 +511,7 @@ class AuthViewModelTest {
                 viewModel.formState.value.errorMessage,
             )
             assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
-            coVerify(exactly = 0) { repository.updatePassword(any()) }
+            coVerify(exactly = 0) { repository.updatePassword(any(), any()) }
         }
 
     @Test
@@ -532,7 +532,7 @@ class AuthViewModelTest {
                 viewModel.formState.value.errorMessage,
             )
             coVerify(exactly = 0) { repository.verifyRecoveryOtp(any(), any()) }
-            coVerify(exactly = 0) { repository.updatePassword(any()) }
+            coVerify(exactly = 0) { repository.updatePassword(any(), any()) }
         }
 
     @Test
@@ -560,9 +560,9 @@ class AuthViewModelTest {
         runTest {
             coEvery { repository.requestPasswordReset(any()) } returns Result.success(Unit)
             coEvery { repository.verifyRecoveryOtp(any(), any()) } returns Result.success(Unit)
-            coEvery { repository.updatePassword("Badpass1") } returns
+            coEvery { repository.updatePassword("Badpass1", any()) } returns
                 Result.failure(IllegalStateException("weak"))
-            coEvery { repository.updatePassword("Secret12") } returns Result.success(Unit)
+            coEvery { repository.updatePassword("Secret12", any()) } returns Result.success(Unit)
             viewModel.requestPasswordReset("a@b.com")
             advanceUntilIdle()
             viewModel.completePasswordReset(
@@ -582,7 +582,7 @@ class AuthViewModelTest {
             )
             advanceUntilIdle()
             coVerify(exactly = 1) { repository.verifyRecoveryOtp("a@b.com", "123456") }
-            coVerify(exactly = 1) { repository.updatePassword("Secret12") }
+            coVerify(exactly = 1) { repository.updatePassword("Secret12", true) }
             assertNull(viewModel.formState.value.pendingConfirmationEmail)
         }
 
