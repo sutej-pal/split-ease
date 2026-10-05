@@ -6,4 +6,5 @@
         <item quantity="one">%1$d व्यक्ति</item>
         <item quantity="other">%1$d लोग</item>
     </plurals>
+    <string name="totals_share_caption">%1$s कुल ग्रुप खर्च का</string>
 </resources>

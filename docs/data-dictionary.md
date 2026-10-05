@@ -202,8 +202,6 @@ Unique index: `(expenseId, userId)`.
 | profiles                      | phone_number          | TEXT      | yes      | National phone number                                                                      |
 | profiles                      | preferred_currency    | TEXT      | yes      | ISO 4217 from signup                                                                       |
 | profiles                      | updated_at_epoch_ms   | BIGINT    | no       | Last update                                                                                |
-| profiles                      | time_zone             | TEXT      | yes      | IANA time zone ID (e.g. `Asia/Kolkata`)                                                    |
-| profiles                      | allow_friend_suggestions | BOOLEAN | no       | Defaults to `true`; controls friend recommendation visibility                             |
 | profiles                      | deleted_at            | TIMESTAMPTZ | yes    | Set by `delete_own_account()`; null while the account is active                            |
 | profiles                      | deactivated_at        | TIMESTAMPTZ | yes    | Set by `deactivate_own_account()`; null while active                                       |
 | user_emails                   | id                    | UUID (PK) | no       | Secondary email row ID                                                                     |
@@ -267,13 +265,13 @@ Unique index: `(expenseId, userId)`.
 - `accept_pending_invites()` — email-based accept for person invites only (`friend_row_id` required; skips generic share links)
 
 **Auth lookup RPCs** (anon + authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
-- `auth_email_registered(p_email)` — whether `auth.users` already has that email (skips banned / deleted Auth rows)
+- `auth_email_registered(p_email)` — whether `auth.users` or a verified `user_emails` row already has that email (skips banned / deleted Auth rows; unverified secondary rows do not count)
 - `auth_phone_registered(p_country_code, p_phone)` — whether profiles / auth metadata already use that dial+national number (skips `profiles.deleted_at` rows and banned Auth users). A signed-in caller is excluded with `auth.uid()`; anon callers cannot exclude anyone. The 3-argument overload must not exist.
 
 **Account deletion RPC** (authenticated; see [sql/migration_db.sql](sql/migration_db.sql)):
 - `delete_own_account()` — caller only (`auth.uid()`). Recomputes per-group nets at scale 2; raises `ACCOUNT_HAS_BALANCE` with `{id, name}` groups when any net is non-zero (includes the non-group ledger). Otherwise anonymizes `profiles` in place (`display_name` → `Deleted user`, email scrambled, phone/photo cleared, `deleted_at` set), bans Auth (`banned_until = infinity`, identities/sessions dropped), and does **not** delete `profiles` / `auth.users` or cascade expenses/splits/payments. Dropping `auth.identities` is what lets the same Google account sign up again as a new user.
 - `deactivate_own_account()` — caller only (`auth.uid()`). Sets `profiles.deactivated_at = clock_timestamp()`, deletes caller's FCM `device_tokens`, bans Auth (`banned_until = infinity`), and drops sessions without modifying profile name, email, phone, identities, expenses, or balances. Manual reactivation by admin: set `banned_until = null` and `deactivated_at = null`.
-- `can_see_profile(p_profile_id)` — RLS helper. Directory search sees a profile only when it is not deleted, not deactivated, and `allow_friend_suggestions` is true. Otherwise only the owner and people who already share a friend, group, expense, or payment can read it, so history still resolves.
+- `can_see_profile(p_profile_id)` — RLS helper. Directory search sees a profile only when it is not deleted and not deactivated. Otherwise only the owner and people who already share a friend, group, expense, or payment can read it, so history still resolves.
 - `account_deletion_blocking_groups(p_user_id)` — internal helper used by the RPC (not granted to clients).
 
 Share-link burn heal + multi-use token accept: included in [sql/migration_db.sql](sql/migration_db.sql)

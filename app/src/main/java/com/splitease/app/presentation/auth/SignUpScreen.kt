@@ -160,7 +160,7 @@ fun SignUpScreen(
                                     Icon(
                                         imageVector = Icons.Outlined.Clear,
                                         contentDescription = stringResource(R.string.cd_clear_field),
-                                        tint = SplitEaseColors.NavyMuted,
+                                        tint = SplitEaseColors.IconDefault,
                                     )
                                 }
                             }
@@ -331,7 +331,7 @@ private fun ProfilePhotoButton(
             Icon(
                 imageVector = Icons.Outlined.AddAPhoto,
                 contentDescription = stringResource(R.string.cd_add_profile_photo),
-                tint = SplitEaseColors.NavyMuted,
+                tint = SplitEaseColors.IconDefault,
             )
         }
     }

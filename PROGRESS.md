@@ -28,7 +28,7 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Explicit colour tokens and error text (2026-09-29) — brand colours are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colours stay `OweRed` / `OwedTeal`.
 
-**Post-phase:** Account settings expansion (2026-10-03) — Borderless Splitwise-style accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), phone management, time zone picker screen (`account_time_zone`), and friend-suggestion privacy toggle.
+**Post-phase:** Account settings expansion (2026-10-03) — Borderless Splitwise-style accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), and phone management. Dates stay UTC instants and render in the device time zone.
 
 **Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
 
@@ -37,6 +37,10 @@ Track development phases. Always check this file at the start of a session to de
 **Post-phase:** Invite SMS dialog copy (2026-10-03) — confirm dialog title/body/confirm updated to "Invite to SplitEase?" / non-user explanation with formatted phone / "Send invite".
 
 **Post-phase:** Phone contacts and tappable pending members (2026-10-01) — one Phone or email field stores phones as `<e164>@mobile.splitease.com` (default dial code `+91` when the number has no country code; Edit Contact confirms the code first). Phone invites open the user's own SMS app; no SMS backend. Pending landing rows carry `invite_token` and open sign-up with name and phone or email filled. Re-apply `get_invite_preview` in Supabase (git does not update the live project).
+
+**Post-phase:** App-wide icon tint update (2026-10-04) — Configured `#353B3E` (`SplitEaseColors.IconDefault`) for the help (`?`) buttons on the Group Totals screen and all neutral icons app-wide.
+
+**Post-phase:** Group Totals screen fixes (2026-10-04) — Added top bar title ("Totals"), removed unbounded ripple from chart tap, kept the chart always showing three months (even for new groups), and fixed the "%%" percentage caption formatting using `%1$s` and `signum()` zero checks across main and currency breakdown rows.
 
 **Post-phase:** Empty-group card restyled (2026-09-30) — Group detail solo empty state restyled with theme-aware background/border, indigo soft shadow, 52dp circle icon, title/hint text, and filled primary + outlined secondary buttons.
 

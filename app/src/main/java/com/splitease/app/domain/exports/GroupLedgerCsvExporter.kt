@@ -1,7 +1,6 @@
 package com.splitease.app.domain.exports
 
 import com.splitease.app.domain.balance.BalanceCalculator
-import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
 import com.splitease.app.domain.model.Payment
@@ -67,7 +66,7 @@ object GroupLedgerCsvExporter {
      */
     fun export(
         input: GroupLedgerExportInput,
-        zoneId: ZoneId = AppTimeZone.zoneId(),
+        zoneId: ZoneId = ZoneId.systemDefault(),
     ): String {
         val memberHeaders =
             input.memberIdsInOrder.map { id -> csvText(labelOf(id, input.memberLabels)) }

@@ -48,7 +48,7 @@ These values are written directly. Balance colours stay on these tokens.
 | `BackgroundDark` | `#000004` | Screen canvas |
 | `SurfaceDark` | `#030217` | Cards, sheets, input fields |
 | `BannerFriendsDark` | `#3D36B7` | Friends group banner |
-| `BannerHomeDark` | `#C37D2B` | Home group banner |
+| `BannerHomeDark` | `#1E1B4B` | Home group banner |
 | `BannerOtherDark` | `#49509E` | Other group banner |
 | `FriendDetailBannerDark` | `#747CF0` | Friend detail header banner |
 | `NonGroupBannerDark` | `#332C9B` | Non-group expenses header banner |

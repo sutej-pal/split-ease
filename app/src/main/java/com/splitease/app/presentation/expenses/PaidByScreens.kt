@@ -280,7 +280,7 @@ private fun WhoPaidRow(
                 Icon(
                     imageVector = leadingIcon,
                     contentDescription = null,
-                    tint = if (selected) SplitEaseColors.Primary else SplitEaseColors.NavyMuted,
+                    tint = if (selected) SplitEaseColors.Primary else SplitEaseColors.IconDefault,
                     modifier = Modifier.size(24.dp),
                 )
             }

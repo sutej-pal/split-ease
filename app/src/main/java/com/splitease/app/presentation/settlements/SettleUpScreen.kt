@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -170,7 +171,7 @@ fun SettleUpScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
-                            tint = SplitEaseColors.Navy,
+                            tint = SplitEaseColors.IconDefault,
                             modifier =
                                 Modifier
                                     .padding(horizontal = 16.dp)
@@ -303,9 +304,11 @@ private fun SettleAmountEditor(
     isError: Boolean = false,
     errorText: String? = null,
 ) {
+    val configuration = LocalConfiguration.current
+    val locale = configuration.locales.get(0)
     val symbol =
         runCatching {
-            Currency.getInstance(currencyCode.ifBlank { "INR" }).getSymbol(Locale.getDefault())
+            Currency.getInstance(currencyCode.ifBlank { "INR" }).getSymbol(locale)
         }.getOrElse { currencyCode.ifBlank { "₹" } }
     
     val textStyle =

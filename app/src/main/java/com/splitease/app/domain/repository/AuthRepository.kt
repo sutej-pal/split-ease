@@ -272,22 +272,6 @@ interface AuthRepository {
     fun observeSecondaryEmails(): Flow<List<SecondaryEmail>>
 
     /**
-     * Updates the signed-in user's time zone preference.
-     *
-     * @param timeZoneId IANA time zone ID (e.g. `"Asia/Kolkata"`).
-     * @return [Result] success or failure with message.
-     */
-    suspend fun updateTimeZone(timeZoneId: String): Result<Unit>
-
-    /**
-     * Updates the signed-in user's allow friend suggestions preference.
-     *
-     * @param enabled True when friend suggestions are allowed.
-     * @return [Result] success or failure with message.
-     */
-    suspend fun updateAllowFriendSuggestions(enabled: Boolean): Result<Unit>
-
-    /**
      * Updates the signed-in user's display name in Supabase metadata, local Room, and
      * the remote `profiles` table (best-effort).
      *

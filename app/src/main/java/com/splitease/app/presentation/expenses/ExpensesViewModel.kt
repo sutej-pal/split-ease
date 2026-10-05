@@ -39,7 +39,6 @@ import com.splitease.app.domain.repository.GroupRepository
 import com.splitease.app.domain.repository.PaymentRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
-import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.domain.spending.GroupMonthSpending
 import com.splitease.app.domain.spending.GroupSpendingCalculator
@@ -64,6 +63,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.util.Calendar
+import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
@@ -936,7 +936,7 @@ class ExpensesViewModel
                                             core.expense.categoryId?.let { cid ->
                                                 core.categories.firstOrNull { it.id == cid }
                                             }
-                                        val now = Calendar.getInstance(AppTimeZone.timeZone())
+                                        val now = Calendar.getInstance(TimeZone.getDefault())
                                         val trendMonths =
                                             if (groupId == null) {
                                                 emptyList()

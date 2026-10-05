@@ -334,7 +334,7 @@ private fun FriendsFilterMenu(
                 Icon(
                     Icons.Filled.Tune,
                     contentDescription = stringResource(R.string.cd_filter_friends),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
             DropdownMenu(

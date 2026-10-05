@@ -81,6 +81,8 @@ Write-Host "Clearing app tables at $SupabaseUrl ..."
 # Child tables first (FK order). Includes later-phase tables.
 # pin_boards / notification_prefs PKs are not always `id`.
 $tables = @(
+    @{ Name = 'user_email_send_log'; Pk = 'id' },
+    @{ Name = 'user_emails'; Pk = 'id' },
     @{ Name = 'activity_events'; Pk = 'id' },
     @{ Name = 'expense_comments'; Pk = 'id' },
     @{ Name = 'expense_photos'; Pk = 'id' },

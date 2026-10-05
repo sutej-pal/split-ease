@@ -170,7 +170,7 @@ fun FindPeopleScreen(
                         Icon(
                             Icons.Filled.Search,
                             contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
+                            tint = SplitEaseColors.IconDefault,
                         )
                     },
                 )

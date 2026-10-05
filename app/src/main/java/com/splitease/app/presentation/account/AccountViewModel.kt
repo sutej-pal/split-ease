@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.TimeZone
 import javax.inject.Inject
 
 enum class AccountRow {
@@ -51,8 +50,6 @@ data class AccountSettingsUiState(
     val expandedRow: AccountRow? = null,
     val currencyCode: String = AppCurrencies.DEFAULT,
     val appLocale: AppLocale = AppLocale.DEFAULT,
-    val timeZoneId: String = TimeZone.getDefault().id,
-    val allowFriendSuggestions: Boolean = true,
     val secondaryEmails: List<SecondaryEmail> = emptyList(),
     val isGoogleOnly: Boolean = false,
 
@@ -136,15 +133,11 @@ class AccountViewModel
         init {
             viewModelScope.launch {
                 combine(
-                    appSettingsRepository.observeTimeZone(),
-                    appSettingsRepository.observeAllowFriendSuggestions(),
                     authRepository.observeSecondaryEmails(),
                     profile,
-                ) { timeZone, allowSuggestions, secondaries, prof ->
+                ) { secondaries, prof ->
                     _settings.update {
                         it.copy(
-                            timeZoneId = timeZone,
-                            allowFriendSuggestions = allowSuggestions,
                             secondaryEmails = secondaries,
                             isGoogleOnly = prof.isGoogleOnly,
                             phoneCountryCodeDraft = if (it.expandedRow != AccountRow.PHONE) prof.phoneCountryCode else it.phoneCountryCodeDraft,
@@ -506,33 +499,6 @@ class AccountViewModel
                         infoMessage = if (res.isSuccess) appContext.getString(R.string.msg_email_removed) else null,
                         emailError = ErrorMessages.messageOrNull(appContext, TAG, res.exceptionOrNull()),
                     )
-                }
-            }
-        }
-
-        /**
-         * @return true when the zone was saved on the profile and applied locally.
-         */
-        suspend fun updateTimeZone(id: String): Boolean {
-            val result = authRepository.updateTimeZone(id)
-            _settings.update {
-                it.copy(
-                    timeZoneId = if (result.isSuccess) id else it.timeZoneId,
-                    errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
-                )
-            }
-            return result.isSuccess
-        }
-
-        fun updateAllowFriendSuggestions(enabled: Boolean) {
-            viewModelScope.launch {
-                val result = authRepository.updateAllowFriendSuggestions(enabled)
-                if (result.isFailure) {
-                    _settings.update {
-                        it.copy(
-                            errorMessage = ErrorMessages.messageOrNull(appContext, TAG, result.exceptionOrNull()),
-                        )
-                    }
                 }
             }
         }

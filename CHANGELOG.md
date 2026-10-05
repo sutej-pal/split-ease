@@ -10,9 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Account settings borderless design with inline accordion rows for Email, Phone number, and Password.
 - Secondary email management with 6-digit verification code sent via `secondary-email` Edge Function.
-- Searchable Time zone picker screen (`account_time_zone` route). The chosen IANA zone is used for expense, activity, spending, and CSV dates.
-- Friend suggestion privacy toggle stored on `profiles.allow_friend_suggestions`. Turning it off hides the profile from directory lookup; people who already share a group, expense, payment, or friendship can still see it.
-- Patch SQL script in `docs/sql/patch_account_settings.sql` for existing Supabase databases (deactivation RPC, phone lookup, secondary email, and profile visibility).
+- Patch SQL script in `docs/sql/patch_account_settings.sql` for existing Supabase databases (deactivation RPC, phone lookup, secondary email, and hiding deactivated profiles from directory search).
 - Close account screen with reversible account deactivation and option to permanently delete account.
 - "Log out on all devices" option in Account settings.
 - Clear error message when a deactivated user attempts to log in.
@@ -20,13 +18,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phone contacts use one Phone or email field. Numbers are stored as `<e164>@mobile.splitease.com` and never emailed. A number without a country code is confirmed first (default +91). Saving a phone asks to open the user's own messages app with the invite link; Not now leaves the invite pending.
 - Invite landing pending members are tappable and open sign-up with their name and mobile or email filled in. Re-apply `get_invite_preview` in Supabase so pending rows include `invite_token` and the preview includes `invitee_name`.
 
+### Removed
+- Account time zone picker. Expense, activity, spending, and CSV dates stay stored as UTC instants and are shown in the device time zone.
+- Friend-suggestion privacy toggle.
+
 ### Changed
+- App-wide neutral icons (including the help/`?` buttons on the Group Totals screen) now use `#353B3E` (`SplitEaseColors.IconDefault`).
 - Phone-invite SMS confirm dialog copy: title "Invite to SplitEase?", body explains the number is not on SplitEase yet, confirm is "Send invite" (dismiss stays "Not now").
 - Friend settings pending-invite card shows an "Invite pending" title. Resending a phone invite opens the messages app directly; Edit Contact / Review still confirms before opening Messages.
 - Colour tokens are now explicit hex values (no runtime derivation); no visual change.
 - Error text uses a new red with AA contrast in light and dark, and one consistent size (bodySmall).
 
 ### Fixed
+- A verified secondary email counts as registered, so it cannot also be used to sign up. An unverified secondary email no longer reserves that address for everyone else.
+- Profile updates from the app cannot set or clear `deleted_at` or `deactivated_at`. Close account and delete account still can.
+- Group Totals screen: added title ("Totals"), removed unbounded ripple from chart tap, kept the chart always showing three months (even for new groups), and fixed the "%%" percentage caption formatting using `%1$s` and `signum()` zero checks across main and currency breakdown rows.
 - Dark-theme error text failed WCAG AA contrast.
 - Invite landing, share text, and invite mail now always use the sender's profile name. Removed group-creator and first-member substitutions. Invite creation fails if the sender's profile can't be synced; the landing screen shows generic copy when no name exists.
 - `get_invite_preview` now returns only `profiles.display_name` for the inviter (empty string when missing). Commit 55389ed rewrote that function and did not list it here.

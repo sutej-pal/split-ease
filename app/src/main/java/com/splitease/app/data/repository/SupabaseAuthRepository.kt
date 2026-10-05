@@ -25,7 +25,6 @@ import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppCurrencies
-import com.splitease.app.domain.settings.AppSettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.OtpType
@@ -61,7 +60,6 @@ import java.io.File
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -86,7 +84,6 @@ class SupabaseAuthRepository
         private val mediaStorageCleanup: MediaStorageCleanup,
         private val localUserDataCleanup: LocalUserDataCleanup,
         private val syncInteractor: Provider<SyncInteractor>,
-        private val appSettingsRepository: AppSettingsRepository,
     ) : AuthRepository {
         private val persistUserMutex = Mutex()
         private val secondaryEmailRevision = MutableStateFlow(0)
@@ -552,31 +549,6 @@ class SupabaseAuthRepository
                 }
             }
 
-        override suspend fun updateTimeZone(timeZoneId: String): Result<Unit> =
-            runCatching {
-                val validId = timeZoneId.trim().takeIf { it.isNotEmpty() } ?: TimeZone.getDefault().id
-                val userId = supabase.auth.currentUserOrNull()?.id
-                if (userId != null) {
-                    supabase.postgrest.from("profiles")
-                        .update(buildJsonObject { put("time_zone", validId) }) {
-                            filter { eq("id", userId) }
-                        }
-                }
-                appSettingsRepository.setTimeZone(validId)
-            }
-
-        override suspend fun updateAllowFriendSuggestions(enabled: Boolean): Result<Unit> =
-            runCatching {
-                val userId = supabase.auth.currentUserOrNull()?.id
-                if (userId != null) {
-                    supabase.postgrest.from("profiles")
-                        .update(buildJsonObject { put("allow_friend_suggestions", enabled) }) {
-                            filter { eq("id", userId) }
-                        }
-                }
-                appSettingsRepository.setAllowFriendSuggestions(enabled)
-            }
-
         override suspend fun ensureLocalProfile(): Result<Unit> =
             runCatching {
                 persistCurrentUser()
@@ -717,21 +689,6 @@ class SupabaseAuthRepository
                         updatedAtEpochMs = now,
                     ),
                 )
-            }
-            hydrateAccountPreferences(authUser.userId)
-        }
-
-        /**
-         * Copies the server time zone and friend-suggestion flag into local prefs.
-         * Profile upserts omit those fields, so this read is what a second device sees.
-         */
-        private suspend fun hydrateAccountPreferences(userId: String) {
-            val remote = runCatching { socialRemote.fetchProfileById(userId) }.getOrNull() ?: return
-            remote.timeZone?.trim()?.takeIf { it.isNotEmpty() }?.let { zone ->
-                appSettingsRepository.setTimeZone(zone)
-            }
-            remote.allowFriendSuggestions?.let { enabled ->
-                appSettingsRepository.setAllowFriendSuggestions(enabled)
             }
         }
 

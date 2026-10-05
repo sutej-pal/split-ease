@@ -636,7 +636,7 @@ private fun MemberSheetActionRow(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = (iconTint ?: SplitEaseColors.NavyMuted).copy(alpha = alpha),
+                tint = (iconTint ?: SplitEaseColors.IconDefault).copy(alpha = alpha),
                 modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(14.dp))
@@ -749,7 +749,7 @@ private fun GroupSettingsHeader(
             Icon(
                 imageVector = Icons.Filled.Edit,
                 contentDescription = stringResource(R.string.action_edit),
-                tint = SplitEaseColors.Navy,
+                tint = SplitEaseColors.IconDefault,
             )
         }
     }
@@ -769,7 +769,7 @@ private fun SettingsActionRow(
     showDivider: Boolean = false,
 ) {
     val resolvedTitleColor = titleColor ?: SplitEaseColors.Navy
-    val resolvedIconTint = iconTint ?: SplitEaseColors.NavyMuted
+    val resolvedIconTint = iconTint ?: SplitEaseColors.IconDefault
     val alpha = if (enabled) 1f else 0.55f
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -857,7 +857,7 @@ private fun SettingsToggleRow(
                 .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = SplitEaseColors.NavyMuted, modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = null, tint = SplitEaseColors.IconDefault, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = title,

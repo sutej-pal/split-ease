@@ -164,7 +164,7 @@ private fun AccountScreenContent(
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = null,
-                                tint = SplitEaseColors.NavyMuted,
+                                tint = SplitEaseColors.IconDefault,
                                 modifier = Modifier.size(16.dp),
                             )
                         },
@@ -199,7 +199,7 @@ private fun AccountScreenContent(
                         leading = {
                             SeIconTile(
                                 icon = Icons.Filled.DarkMode,
-                                tint = SplitEaseColors.IconOther,
+                                tint = SplitEaseColors.Primary,
                                 size = 40,
                             )
                         },
@@ -218,7 +218,7 @@ private fun AccountScreenContent(
                         leading = {
                             SeIconTile(
                                 icon = Icons.Filled.Notifications,
-                                tint = SplitEaseColors.IconFriends,
+                                tint = SplitEaseColors.Primary,
                                 size = 40,
                             )
                         },
@@ -236,7 +236,7 @@ private fun AccountScreenContent(
                         leading = {
                             SeIconTile(
                                 icon = Icons.Filled.Lock,
-                                tint = SplitEaseColors.IconHome,
+                                tint = SplitEaseColors.Primary,
                                 size = 40,
                             )
                         },
@@ -254,7 +254,7 @@ private fun AccountScreenContent(
                         leading = {
                             SeIconTile(
                                 icon = Icons.Filled.NewReleases,
-                                tint = SplitEaseColors.IconFriends,
+                                tint = SplitEaseColors.Primary,
                                 size = 40,
                             )
                         },
@@ -329,7 +329,7 @@ private fun AccountChevron() {
     Icon(
         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
         contentDescription = null,
-        tint = SplitEaseColors.NavyMuted,
+        tint = SplitEaseColors.IconDefault,
     )
 }
 

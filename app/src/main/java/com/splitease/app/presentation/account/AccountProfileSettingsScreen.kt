@@ -27,15 +27,15 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,11 +65,9 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
-import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SeBodySmall
 import com.splitease.app.presentation.theme.SeLabelSmall
-import com.splitease.app.presentation.theme.SeTitleMedium
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.DialCodePickerDialog
 import com.splitease.app.presentation.ui.PhoneNumberRow
@@ -80,6 +78,7 @@ import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeListRowLabelStyle
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -94,7 +93,6 @@ fun AccountProfileSettingsScreen(
     onBack: () -> Unit,
     onOpenCurrency: () -> Unit,
     onOpenLanguage: () -> Unit,
-    onOpenTimeZone: () -> Unit,
     onOpenCloseAccount: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
@@ -187,6 +185,13 @@ fun AccountProfileSettingsScreen(
                     value = emailValue,
                     expanded = settings.expandedRow == AccountRow.EMAIL,
                     onToggle = { viewModel.toggleRow(AccountRow.EMAIL) },
+                    leading = {
+                        SeIconTile(
+                            icon = Icons.Filled.Email,
+                            tint = SplitEaseColors.Primary,
+                            size = 40,
+                        )
+                    },
                     trailingChip = {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             if (!profile.emailConfirmed) {
@@ -387,6 +392,13 @@ fun AccountProfileSettingsScreen(
                     value = phoneDisplay,
                     expanded = settings.expandedRow == AccountRow.PHONE,
                     onToggle = { viewModel.toggleRow(AccountRow.PHONE) },
+                    leading = {
+                        SeIconTile(
+                            icon = Icons.Filled.Phone,
+                            tint = SplitEaseColors.Primary,
+                            size = 40,
+                        )
+                    },
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         PhoneNumberRow(
@@ -425,6 +437,13 @@ fun AccountProfileSettingsScreen(
                         value = "••••••••",
                         expanded = settings.expandedRow == AccountRow.PASSWORD,
                         onToggle = { viewModel.toggleRow(AccountRow.PASSWORD) },
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Filled.Lock,
+                                tint = SplitEaseColors.Primary,
+                                size = 40,
+                            )
+                        },
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             SeTextField(
@@ -466,26 +485,13 @@ fun AccountProfileSettingsScreen(
             SeSectionHeader(text = stringResource(R.string.account_preferences_section))
             AccountSettingsCard {
                 SeListRow(
-                    title = stringResource(R.string.account_time_zone_title),
-                    subtitle = formatTimeZoneDisplay(settings.timeZoneId).let { "${it.first} ${it.second}" },
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Public,
-                            tint = SplitEaseColors.IconOther,
-                            size = 40,
-                        )
-                    },
-                    trailing = { AccountSettingsChevron() },
-                    onClick = onOpenTimeZone,
-                    showDivider = false,
-                )
-                SeListRow(
                     title = stringResource(R.string.settings_currency_item),
                     subtitle = "$currency · $currencyLabel",
                     leading = { CurrencyLeading(code = currency) },
                     trailing = { AccountSettingsChevron() },
                     onClick = onOpenCurrency,
                     showDivider = false,
+                    labelStyle = SeListRowLabelStyle.Field,
                 )
                 SeListRow(
                     title = stringResource(R.string.settings_language),
@@ -493,49 +499,15 @@ fun AccountProfileSettingsScreen(
                     leading = {
                         SeIconTile(
                             icon = Icons.Filled.Translate,
-                            tint = SplitEaseColors.IconOther,
+                            tint = SplitEaseColors.Primary,
                             size = 40,
                         )
                     },
                     trailing = { AccountSettingsChevron() },
                     onClick = onOpenLanguage,
                     showDivider = false,
+                    labelStyle = SeListRowLabelStyle.Field,
                 )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-            SeSectionHeader(text = stringResource(R.string.account_privacy_section))
-            AccountSettingsCard {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        SeTitleMedium(
-                            text = stringResource(R.string.account_suggest_friend_title),
-                            fontWeight = FontWeight.SemiBold,
-                            color = SplitEaseColors.Navy,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        SeBodyMedium(
-                            text = stringResource(R.string.account_suggest_friend_caption),
-                            color = SplitEaseColors.NavyMuted,
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Switch(
-                        checked = settings.allowFriendSuggestions,
-                        onCheckedChange = viewModel::updateAllowFriendSuggestions,
-                        colors =
-                            SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                checkedTrackColor = SplitEaseColors.Primary,
-                            ),
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -547,13 +519,14 @@ fun AccountProfileSettingsScreen(
                     leading = {
                         SeIconTile(
                             icon = Icons.AutoMirrored.Filled.Logout,
-                            tint = SplitEaseColors.IconOther,
+                            tint = SplitEaseColors.Primary,
                             size = 40,
                         )
                     },
                     trailing = { AccountSettingsChevron() },
                     onClick = { showSignOutAllConfirm = true },
                     showDivider = false,
+                    labelStyle = SeListRowLabelStyle.Field,
                 )
                 SeListRow(
                     title = stringResource(R.string.account_close_title),
@@ -568,6 +541,7 @@ fun AccountProfileSettingsScreen(
                     trailing = { AccountSettingsChevron() },
                     onClick = onOpenCloseAccount,
                     showDivider = false,
+                    labelStyle = SeListRowLabelStyle.Field,
                 )
             }
         }
@@ -665,7 +639,7 @@ private fun AccountProfileHero(
                     Icon(
                         imageVector = Icons.Filled.PhotoCamera,
                         contentDescription = stringResource(R.string.cd_change_profile_photo),
-                        tint = SplitEaseColors.Navy,
+                        tint = SplitEaseColors.IconDefault,
                         modifier = Modifier.size(14.dp),
                     )
                 }
@@ -733,7 +707,7 @@ private fun AccountSettingsChevron() {
     Icon(
         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
         contentDescription = null,
-        tint = SplitEaseColors.NavyMuted,
+        tint = SplitEaseColors.IconDefault,
     )
 }
 
@@ -743,7 +717,7 @@ private fun CurrencyLeading(code: String) {
     if (flag == null) {
         SeIconTile(
             icon = Icons.Filled.Payments,
-            tint = SplitEaseColors.IconFriends,
+            tint = SplitEaseColors.Primary,
             size = 40,
         )
         return
@@ -754,7 +728,7 @@ private fun CurrencyLeading(code: String) {
             Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(SplitEaseColors.IconFriends.copy(alpha = fillAlpha)),
+                .background(SplitEaseColors.Primary.copy(alpha = fillAlpha)),
         contentAlignment = Alignment.Center,
     ) {
         Text(text = flag, fontSize = 20.sp)

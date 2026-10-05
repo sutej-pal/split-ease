@@ -211,8 +211,7 @@
     <string name="totals_your_share">Your share</string>
     <string name="totals_currency_breakdown">Currency breakdown</string>
     <string name="cd_unread_activity">%1$d unread activity items</string>
-    <string name="totals_share_percent">%1$d%% of total group spending</string>
-    <string name="totals_share_percent_unknown">--%% of total group spending</string>
+    <string name="totals_share_caption">%1$s of total group spending</string>
     <string name="totals_all_time">All time</string>
     <string name="totals_terms_title">What do these terms mean?</string>
     <string name="totals_terms_total_spent_body">the total cost of every expense added to the group for the time period specified</string>
@@ -451,11 +450,6 @@
     <string name="account_new_password_label">New password</string>
     <string name="account_update_password_action">Update password</string>
     <string name="account_password_updated_toast">Password updated</string>
-    <string name="account_privacy_section">Privacy</string>
-    <string name="account_suggest_friend_title">Suggest me as a friend</string>
-    <string name="account_suggest_friend_caption">Only people who already have your email or phone in their contacts will see you.</string>
-    <string name="account_time_zone_title">Time zone</string>
-    <string name="account_time_zone_search">Search city or time zone…</string>
     <string name="signup_error_phone_invalid">Enter a valid phone number (7–15 digits).</string>
     <string name="msg_profile_phone_saved">Phone number updated.</string>
     <string name="error_password_required">Enter your password.</string>

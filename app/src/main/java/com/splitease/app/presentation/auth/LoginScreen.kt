@@ -29,6 +29,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
+import com.splitease.app.data.social.ContactIdentifier
+import com.splitease.app.data.social.ContactKind
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
@@ -56,7 +58,13 @@ fun LoginScreen(
     val isGoogleLoading = formState.isGoogleLoading
     val isEmailLoading = isBusy && !isGoogleLoading
     val focusManager = LocalFocusManager.current
-    val emailError = showValidation && email.isBlank()
+    val trimmedEmail = email.trim()
+    val emailMissing = showValidation && trimmedEmail.isBlank()
+    val emailFormatError =
+        showValidation &&
+            trimmedEmail.isNotBlank() &&
+            ContactIdentifier.classify(trimmedEmail) != ContactKind.EMAIL
+    val emailError = emailMissing || emailFormatError
     val passwordError = showValidation && password.isBlank()
 
     LaunchedEffect(isBusy) {
@@ -93,7 +101,11 @@ fun LoginScreen(
                 enabled = !isBusy,
                 isError = emailError,
                 supportingText =
-                    if (emailError) stringResource(R.string.msg_email_required) else null,
+                    when {
+                        emailMissing -> stringResource(R.string.msg_email_required)
+                        emailFormatError -> stringResource(R.string.error_invalid_email)
+                        else -> null
+                    },
             )
             Spacer(modifier = Modifier.height(12.dp))
             PasswordSeTextField(
@@ -121,8 +133,12 @@ fun LoginScreen(
             text = stringResource(R.string.action_log_in),
             onClick = {
                 showValidation = true
-                if (email.isBlank() || password.isBlank()) return@SePrimaryButton
-                onSignIn(email.trim(), password)
+                val submittedEmail = email.trim()
+                if (submittedEmail.isBlank() || password.isBlank()) return@SePrimaryButton
+                if (ContactIdentifier.classify(submittedEmail) != ContactKind.EMAIL) {
+                    return@SePrimaryButton
+                }
+                onSignIn(submittedEmail, password)
             },
             enabled = !isBusy,
             isLoading = isEmailLoading,

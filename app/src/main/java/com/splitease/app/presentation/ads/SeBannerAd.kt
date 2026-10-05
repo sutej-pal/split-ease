@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -119,7 +120,7 @@ fun SeBannerAd(
         // Recreate AdView when width/orientation changes; AdSize cannot be updated in place.
         key(adUnitId, size, adWidthDp, resolvedAdSize) {
             var loadFailed by remember { mutableStateOf(false) }
-            var loadedHeightDp by remember { mutableStateOf(0) }
+            var loadedHeightDp by remember { mutableIntStateOf(0) }
             val displayHeightDp = when {
                 loadFailed -> 0
                 loadedHeightDp > 0 -> loadedHeightDp

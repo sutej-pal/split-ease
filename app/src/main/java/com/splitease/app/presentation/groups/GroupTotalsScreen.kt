@@ -1,5 +1,7 @@
 package com.splitease.app.presentation.groups
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -71,6 +73,7 @@ import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.seDetailHorizontal
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
+import kotlinx.coroutines.yield
 import java.text.DateFormatSymbols
 import java.util.Locale
 
@@ -94,7 +97,7 @@ fun GroupTotalsScreen(
 
     LaunchedEffect(groupId, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            kotlinx.coroutines.yield()
+            yield()
             expensesViewModel.refreshGroupFromCloud(groupId)
         }
     }
@@ -110,14 +113,14 @@ fun GroupTotalsScreen(
         containerColor = bg,
         topBar = {
             SeTopBar(
-                title = "",
+                title = stringResource(R.string.group_chip_totals),
                 onBack = onBack,
                 actions = {
                     IconButton(onClick = { showTerms = true }) {
                         Icon(
                             imageVector = Icons.Filled.HelpOutline,
                             contentDescription = stringResource(R.string.cd_totals_help),
-                            tint = SplitEaseColors.Navy,
+                            tint = SplitEaseColors.IconDefault,
                         )
                     }
                 },
@@ -206,16 +209,16 @@ fun GroupTotalsScreen(
                     onHelp = { showTerms = true },
                 )
                 Spacer(modifier = Modifier.height(20.dp))
+                val shareCaptionValue =
+                    if (ui.totalSpent.signum() == 0 || ui.yourShare.signum() == 0) "--%"
+                    else "${ui.sharePercent}%"
                 TotalsStatRow(
                     label = stringResource(R.string.totals_your_share),
                     amount = MoneyFormat.format(ui.yourShare, ui.currencyCode),
                     amountColor = SplitEaseColors.Navy,
                     pillColor = SplitEaseColors.Navy,
                     onHelp = { showTerms = true },
-                    caption =
-                        ui.sharePercent?.let {
-                            stringResource(R.string.totals_share_percent, it)
-                        } ?: stringResource(R.string.totals_share_percent_unknown),
+                    caption = stringResource(R.string.totals_share_caption, shareCaptionValue),
                 )
 
                 if (ui.totalsByCurrency.size > 1) {
@@ -291,7 +294,7 @@ private fun TotalsMonthChart(
                                 .fillMaxHeight()
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = false),
+                                    indication = null,
                                     role = Role.Button,
                                     onClick = { onSelectMonth(bar.year, bar.month) },
                                 ),
@@ -314,13 +317,18 @@ private fun TotalsMonthChart(
                                         .background(trackColor.copy(alpha = 0.55f)),
                             )
                             // Fill
+                            val fillColor by animateColorAsState(
+                                targetValue = if (selected) selectedFill else mutedFill,
+                                animationSpec = tween(150),
+                                label = "chartBarColor",
+                            )
                             Box(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
                                         .fillMaxHeight(fraction.coerceAtLeast(0.02f))
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (selected) selectedFill else mutedFill),
+                                        .background(fillColor),
                             )
                         }
                     }
@@ -368,7 +376,7 @@ private fun TotalsStatRow(
             Icon(
                 imageVector = Icons.Filled.HelpOutline,
                 contentDescription = stringResource(R.string.cd_totals_help),
-                tint = SplitEaseColors.NavyMuted,
+                tint = SplitEaseColors.IconDefault,
                 modifier =
                     Modifier
                         .size(18.dp)
@@ -478,7 +486,7 @@ private fun TotalsPeriodBar(
                 Icon(
                     Icons.Filled.ChevronLeft,
                     contentDescription = stringResource(R.string.cd_totals_prev_month),
-                    tint = SplitEaseColors.Navy,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
             Row(
@@ -494,7 +502,7 @@ private fun TotalsPeriodBar(
                 Icon(
                     Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = SplitEaseColors.NavyMuted,
+                    tint = SplitEaseColors.IconDefault,
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -502,7 +510,7 @@ private fun TotalsPeriodBar(
                 Icon(
                     Icons.Filled.ChevronRight,
                     contentDescription = stringResource(R.string.cd_totals_next_month),
-                    tint = SplitEaseColors.Navy,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
         }
@@ -565,11 +573,12 @@ private fun formatMonthYear(year: Int, month: Int): String {
 @Composable
 private fun TotalsCurrencyRow(total: CurrencyTotal) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(SplitEaseColors.SurfaceMuted)
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(SplitEaseColors.SurfaceMuted)
+                .padding(16.dp),
     ) {
         Text(
             text = AppCurrencies.labelOf(total.currencyCode),
@@ -585,7 +594,7 @@ private fun TotalsCurrencyRow(total: CurrencyTotal) {
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column {
                 Text(
@@ -611,6 +620,15 @@ private fun TotalsCurrencyRow(total: CurrencyTotal) {
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                val currencyCaptionValue =
+                    if (total.totalSpent.signum() == 0 || total.yourShare.signum() == 0) "--%"
+                    else "${total.sharePercent}%"
+                Text(
+                    text = stringResource(R.string.totals_share_caption, currencyCaptionValue),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
                 )
             }
         }

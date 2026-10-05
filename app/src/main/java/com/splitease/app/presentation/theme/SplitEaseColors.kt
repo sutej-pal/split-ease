@@ -92,6 +92,7 @@ object SplitEaseColors {
         get() = MaterialTheme.colorScheme.onSurfaceVariant
 
     // Group type tiles (glyph color; [SeIconTile] washes these into a pastel fill)
+    val IconDefault = Color(0xFF353B3E)
     val IconFriends = IndigoLight
     val IconHome = AmberLight
     val IconOther = Color(0xFF5F68C5) // other-group glyph

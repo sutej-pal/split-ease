@@ -231,7 +231,7 @@ private fun DeleteAccountContent(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = null,
-                                tint = SplitEaseColors.NavyMuted,
+                                tint = SplitEaseColors.IconDefault,
                                 modifier = Modifier.size(20.dp),
                             )
                         }

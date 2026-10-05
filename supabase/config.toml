@@ -3,3 +3,6 @@ project_id = "adcshfmveuskukfobius"
 
 [functions.notify-group-members]
 verify_jwt = true
+
+[functions.secondary-email]
+verify_jwt = true
