@@ -363,7 +363,7 @@ internal fun PasswordSeTextField(
                 Icon(
                     imageVector = icon,
                     contentDescription = description,
-                    tint = SplitEaseColors.NavyMuted,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
         },

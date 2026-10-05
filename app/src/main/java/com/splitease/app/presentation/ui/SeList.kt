@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.presentation.theme.SeBodyMedium
+import com.splitease.app.presentation.theme.SeLabelSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -383,6 +385,15 @@ fun SeLedgerRow(
     }
 }
 
+/** How [SeListRow] lays out [title] and [subtitle]. */
+enum class SeListRowLabelStyle {
+    /** Bold title over muted subtitle (navigation lists). */
+    Navigation,
+
+    /** Small muted label over semibold value ([SeAccordionRow] settings fields). */
+    Field,
+}
+
 @Composable
 fun SeListRow(
     title: String,
@@ -393,6 +404,7 @@ fun SeListRow(
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
     showDivider: Boolean = true,
+    labelStyle: SeListRowLabelStyle = SeListRowLabelStyle.Navigation,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -420,19 +432,34 @@ fun SeListRow(
                 Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                when (labelStyle) {
+                    SeListRowLabelStyle.Navigation -> {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        if (subtitle != null) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    SeListRowLabelStyle.Field -> {
+                        SeLabelSmall(text = title)
+                        if (subtitle != null) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            SeBodyMedium(
+                                text = subtitle,
+                                fontWeight = FontWeight.Medium,
+                                color = SplitEaseColors.Navy,
+                            )
+                        }
+                    }
                 }
             }
             if (trailing != null) {

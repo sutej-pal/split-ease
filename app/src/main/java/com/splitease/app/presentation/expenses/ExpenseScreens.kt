@@ -1111,7 +1111,7 @@ private fun ExpenseUnderlineField(
                     Icon(
                         imageVector = icon,
                         contentDescription = iconContentDescription,
-                        tint = SplitEaseColors.NavyMuted,
+                        tint = SplitEaseColors.IconDefault,
                         modifier = Modifier.size(26.dp),
                     )
             }

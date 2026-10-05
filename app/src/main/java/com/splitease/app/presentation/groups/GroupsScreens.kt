@@ -809,7 +809,7 @@ internal fun BannerCircleIconButton(
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
-            tint = SplitEaseColors.Navy,
+            tint = SplitEaseColors.IconDefault,
             modifier = Modifier.size(22.dp),
         )
     }
@@ -867,7 +867,7 @@ internal fun GroupOverallBalanceBlock(
                                 Icons.Filled.KeyboardArrowDown
                             },
                         contentDescription = stringResource(R.string.cd_toggle_balance_details),
-                        tint = SplitEaseColors.NavyMuted,
+                        tint = SplitEaseColors.IconDefault,
                     )
                 }
             }

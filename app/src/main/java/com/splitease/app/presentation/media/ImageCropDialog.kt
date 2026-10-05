@@ -428,7 +428,7 @@ private fun CropActions(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.RotateRight,
                     contentDescription = stringResource(R.string.cd_rotate_photo),
-                    tint = MaterialTheme.colorScheme.onSurface,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
         } else {

@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
-import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
@@ -168,7 +167,7 @@ fun LedgerEntryRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = SplitEaseColors.Navy.copy(alpha = 0.65f),
+                tint = SplitEaseColors.IconDefault.copy(alpha = 0.65f),
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -262,7 +261,7 @@ fun categoryIcon(iconKey: String?): ImageVector =
 
 private fun ledgerDateParts(
     epochMs: Long,
-    zone: ZoneId = AppTimeZone.zoneId(),
+    zone: ZoneId = ZoneId.systemDefault(),
 ): Pair<String, String> {
     val date = Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate()
     val month = DateTimeFormatter.ofPattern("MMM", Locale.getDefault()).format(date)
@@ -271,7 +270,7 @@ private fun ledgerDateParts(
 }
 
 private fun List<LedgerListItem>.groupByMonth(
-    zone: ZoneId = AppTimeZone.zoneId(),
+    zone: ZoneId = ZoneId.systemDefault(),
 ): List<Pair<String, List<LedgerListItem>>> {
     val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
     return groupBy { item ->

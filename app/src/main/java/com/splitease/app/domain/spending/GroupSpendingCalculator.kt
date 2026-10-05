@@ -2,7 +2,6 @@ package com.splitease.app.domain.spending
 
 import com.splitease.app.domain.model.Expense
 import com.splitease.app.domain.model.ExpenseSplit
-import com.splitease.app.domain.settings.AppTimeZone
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.Calendar
@@ -93,7 +92,7 @@ object GroupSpendingCalculator {
         endYear: Int,
         endMonth: Int,
         monthCount: Int = 3,
-        timeZone: TimeZone = AppTimeZone.timeZone(),
+        timeZone: TimeZone = TimeZone.getDefault(),
     ): List<GroupMonthSpending> {
         require(monthCount > 0)
         val cal =
@@ -140,7 +139,7 @@ object GroupSpendingCalculator {
     fun monthBounds(
         year: Int,
         month: Int,
-        timeZone: TimeZone = AppTimeZone.timeZone(),
+        timeZone: TimeZone = TimeZone.getDefault(),
     ): Pair<Long, Long> {
         val start =
             Calendar.getInstance(timeZone).apply {

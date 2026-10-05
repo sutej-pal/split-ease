@@ -79,7 +79,7 @@ fun PhoneNumberRow(
                 Icon(
                     imageVector = Icons.Outlined.KeyboardArrowDown,
                     contentDescription = stringResource(R.string.signup_pick_country_title),
-                    tint = SplitEaseColors.NavyMuted,
+                    tint = SplitEaseColors.IconDefault,
                     modifier = Modifier.size(20.dp),
                 )
                 Box(

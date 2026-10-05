@@ -5,6 +5,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.core.ErrorMessages
+import com.splitease.app.data.social.ContactIdentifier
+import com.splitease.app.data.social.ContactKind
 import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.SignUpResult
@@ -211,6 +213,15 @@ class AuthViewModel
                 _formState.update {
                     it.copy(
                         errorMessage = msg(AuthMessages.LOGIN_FIELDS_REQUIRED),
+                        infoMessage = null,
+                    )
+                }
+                return
+            }
+            if (ContactIdentifier.classify(trimmedEmail) != ContactKind.EMAIL) {
+                _formState.update {
+                    it.copy(
+                        errorMessage = msg(AuthMessages.INVALID_EMAIL),
                         infoMessage = null,
                     )
                 }

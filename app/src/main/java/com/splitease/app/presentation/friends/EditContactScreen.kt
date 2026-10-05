@@ -149,7 +149,7 @@ fun EditContactScreen(
                                     Icon(
                                         Icons.Filled.Clear,
                                         contentDescription = stringResource(R.string.cd_clear_name),
-                                        tint = SplitEaseColors.NavyMuted,
+                                        tint = SplitEaseColors.IconDefault,
                                     )
                                 }
                             }
@@ -274,7 +274,7 @@ private fun EditContactSingleField(
             Icon(
                 imageVector = contactLeadingIcon(kind),
                 contentDescription = null,
-                tint = SplitEaseColors.NavyMuted,
+                tint = SplitEaseColors.IconDefault,
             )
         },
         trailingIcon =
@@ -284,7 +284,7 @@ private fun EditContactSingleField(
                         Icon(
                             Icons.Filled.Clear,
                             contentDescription = stringResource(R.string.cd_clear_field),
-                            tint = SplitEaseColors.NavyMuted,
+                            tint = SplitEaseColors.IconDefault,
                         )
                     }
                 }
@@ -342,7 +342,7 @@ private fun PhoneConfirmDialog(
                     Icon(
                         imageVector = Icons.Outlined.KeyboardArrowDown,
                         contentDescription = stringResource(R.string.signup_pick_country_title),
-                        tint = SplitEaseColors.NavyMuted,
+                        tint = SplitEaseColors.IconDefault,
                     )
                 }
                 Box(
@@ -430,7 +430,7 @@ private fun ContactMethodRow(
                     Icon(
                         Icons.Filled.Phone,
                         contentDescription = null,
-                        tint = SplitEaseColors.NavyMuted,
+                        tint = SplitEaseColors.IconDefault,
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -444,7 +444,7 @@ private fun ContactMethodRow(
                     Icon(
                         Icons.Filled.Email,
                         contentDescription = null,
-                        tint = SplitEaseColors.NavyMuted,
+                        tint = SplitEaseColors.IconDefault,
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(10.dp))

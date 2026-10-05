@@ -188,7 +188,7 @@ fun SeSoftIconButton(
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
-            tint = SplitEaseColors.Navy,
+            tint = SplitEaseColors.IconDefault,
             modifier = Modifier.size(22.dp),
         )
     }
@@ -282,7 +282,7 @@ fun SeTopBar(
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Close",
-                            tint = SplitEaseColors.NavyMuted,
+                            tint = SplitEaseColors.IconDefault,
                         )
                     }
                 onBack != null ->
@@ -425,7 +425,7 @@ private fun SeTopBarBackButton(
             imageVector = Icons.Filled.ChevronLeft,
             contentDescription = contentDescription,
             // Muted vs title so the chevron stays secondary chrome.
-            tint = SplitEaseColors.NavyMuted,
+            tint = SplitEaseColors.IconDefault,
             // ChevronLeft’s glyph sits slightly right in the 24dp viewport; nudge left.
             modifier = Modifier.size(22.dp).offset(x = (-1).dp),
         )

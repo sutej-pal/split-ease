@@ -89,7 +89,7 @@ import com.splitease.app.presentation.ui.SeTopBar
 import java.math.BigDecimal
 import java.text.DateFormatSymbols
 import java.time.Instant
-import com.splitease.app.domain.settings.AppTimeZone
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -175,21 +175,21 @@ fun ExpenseDetailScreen(
                             Icon(
                                 Icons.Filled.AddAPhoto,
                                 contentDescription = stringResource(R.string.cd_add_expense_photo),
-                                tint = SplitEaseColors.Navy,
+                                tint = SplitEaseColors.IconDefault,
                             )
                         }
                         IconButton(onClick = { showDeleteConfirm = true }) {
                             Icon(
                                 Icons.Filled.Delete,
                                 contentDescription = stringResource(R.string.cd_delete_expense),
-                                tint = SplitEaseColors.Navy,
+                                tint = SplitEaseColors.IconDefault,
                             )
                         }
                         IconButton(onClick = { onEdit(expenseId) }) {
                             Icon(
                                 Icons.Filled.Edit,
                                 contentDescription = stringResource(R.string.cd_edit_expense),
-                                tint = SplitEaseColors.Navy,
+                                tint = SplitEaseColors.IconDefault,
                             )
                         }
                     }
@@ -580,14 +580,14 @@ private fun CategoryChip(
             Icon(
                 imageVector = categoryIcon(iconKey),
                 contentDescription = stringResource(R.string.cd_expense_category),
-                tint = SplitEaseColors.Navy.copy(alpha = 0.7f),
+                tint = SplitEaseColors.IconDefault.copy(alpha = 0.7f),
                 modifier = Modifier.size(20.dp),
             )
         }
         Icon(
             imageVector = Icons.Filled.ArrowDropDown,
             contentDescription = null,
-            tint = SplitEaseColors.NavyMuted,
+            tint = SplitEaseColors.IconDefault,
             modifier = Modifier.size(22.dp),
         )
     }
@@ -945,7 +945,7 @@ private fun formatExpenseAddedDate(epochMs: Long): String {
     val date =
         Instant
             .ofEpochMilli(epochMs)
-            .atZone(AppTimeZone.zoneId())
+            .atZone(ZoneId.systemDefault())
             .toLocalDate()
     return DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()).format(date)
 }
@@ -954,7 +954,7 @@ private fun formatCommentTime(epochMs: Long): String {
     val dateTime =
         Instant
             .ofEpochMilli(epochMs)
-            .atZone(AppTimeZone.zoneId())
+            .atZone(ZoneId.systemDefault())
     return DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.getDefault()).format(dateTime)
 }
 

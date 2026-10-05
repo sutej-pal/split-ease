@@ -73,9 +73,57 @@ class GroupSpendingCalculatorTest {
     }
 
     @Test
+    fun monthly_buckets_always_returns_three_items_including_year_boundary() {
+        val bars =
+            GroupSpendingCalculator.monthlyBuckets(
+                viewerUserId = "me",
+                expenses = emptyList(),
+                splitsByExpenseId = emptyMap(),
+                currencyCode = "INR",
+                endYear = 2026,
+                endMonth = Calendar.FEBRUARY,
+                monthCount = 3,
+                timeZone = tz,
+            )
+        assertEquals(3, bars.size)
+        assertEquals(Calendar.DECEMBER, bars[0].month)
+        assertEquals(2025, bars[0].year)
+        assertEquals(Calendar.JANUARY, bars[1].month)
+        assertEquals(2026, bars[1].year)
+        assertEquals(Calendar.FEBRUARY, bars[2].month)
+        assertEquals(2026, bars[2].year)
+    }
+
+    @Test
+    fun monthly_buckets_returns_three_buckets_even_for_new_group() {
+        val bars =
+            GroupSpendingCalculator.monthlyBuckets(
+                viewerUserId = "me",
+                expenses = emptyList(),
+                splitsByExpenseId = emptyMap(),
+                currencyCode = "INR",
+                endYear = 2026,
+                endMonth = Calendar.AUGUST,
+                monthCount = 3,
+                timeZone = tz,
+            )
+        assertEquals(3, bars.size)
+        assertEquals(Calendar.JUNE, bars[0].month)
+        assertEquals(Calendar.JULY, bars[1].month)
+        assertEquals(Calendar.AUGUST, bars[2].month)
+        assertEquals(BigDecimal("0.00"), bars[0].totalSpent)
+        assertEquals(BigDecimal("0.00"), bars[1].totalSpent)
+        assertEquals(BigDecimal("0.00"), bars[2].totalSpent)
+    }
+
+    @Test
     fun share_percent_null_when_total_zero() {
         assertNull(
             GroupSpendingCalculator.sharePercent(BigDecimal.ZERO, BigDecimal("10.00")),
+        )
+        assertEquals(
+            0,
+            GroupSpendingCalculator.sharePercent(BigDecimal("100.00"), BigDecimal.ZERO),
         )
         assertEquals(
             40,

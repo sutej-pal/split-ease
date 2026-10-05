@@ -90,6 +90,8 @@ fun FriendSettingsScreen(
             .orEmpty()
     val firstName = viewModel.firstName()
     val personLabel = displayName.ifBlank { firstName }
+    val supportEmail = stringResource(R.string.support_email)
+    val subject = stringResource(R.string.support_email_subject)
 
     InviteDeliveryHandler(
         shareText = uiState.pendingShareText,
@@ -247,8 +249,6 @@ fun FriendSettingsScreen(
             dismissLabel = stringResource(R.string.action_other_customer_support),
             onDismissClick = {
                 showReportConfirm = false
-                val supportEmail = context.getString(R.string.support_email)
-                val subject = context.getString(R.string.support_email_subject)
                 val intent =
                     Intent(Intent.ACTION_SENDTO).apply {
                         data = android.net.Uri.parse("mailto:")
@@ -324,7 +324,7 @@ private fun PendingInviteCard(
             Icon(
                 imageVector = Icons.Outlined.Schedule,
                 contentDescription = null,
-                tint = SplitEaseColors.Navy,
+                tint = SplitEaseColors.IconDefault,
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -430,7 +430,7 @@ private fun ManageActionRow(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = iconTint ?: SplitEaseColors.NavyMuted,
+                tint = iconTint ?: SplitEaseColors.IconDefault,
                 modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(14.dp))

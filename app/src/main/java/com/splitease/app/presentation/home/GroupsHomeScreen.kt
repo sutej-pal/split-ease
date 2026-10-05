@@ -430,7 +430,7 @@ private fun GroupsFilterMenu(
                 Icon(
                     Icons.Filled.Tune,
                     contentDescription = stringResource(R.string.cd_filter_groups),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
             DropdownMenu(

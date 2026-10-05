@@ -138,9 +138,9 @@ fun FriendDetailScreen(
                 modifier = Modifier.paddingAboveBottomBar(),
             )
         },
-    ) { _ ->
+    ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
             contentPadding = PaddingValues(bottom = bottomBarScrollPadding(includeFab = true)),
         ) {
             item {
@@ -271,7 +271,7 @@ private fun FriendDetailHeader(
             Icon(
                 imageVector = Icons.Filled.Email,
                 contentDescription = null,
-                tint = SplitEaseColors.NavyMuted,
+                tint = SplitEaseColors.IconDefault,
                 modifier = Modifier.size(40.dp),
             )
         }
@@ -322,7 +322,7 @@ private fun FriendBalanceSummary(
                     imageVector =
                         if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = SplitEaseColors.NavyMuted,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
         }

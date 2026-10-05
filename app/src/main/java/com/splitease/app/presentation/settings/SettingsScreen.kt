@@ -377,7 +377,7 @@ fun SecuritySettingsScreen(
                             Icon(
                                 imageVector = Icons.Filled.KeyboardArrowDown,
                                 contentDescription = null,
-                                tint = SplitEaseColors.NavyMuted,
+                                tint = SplitEaseColors.IconDefault,
                             )
                         }
                     },

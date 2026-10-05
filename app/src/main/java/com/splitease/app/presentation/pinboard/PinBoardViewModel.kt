@@ -244,7 +244,6 @@ class PinBoardViewModel
                     interactor.sync(gid)
                 }
             }
-            super.onCleared()
         }
 
         private companion object {

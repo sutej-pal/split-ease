@@ -139,7 +139,7 @@ fun NonGroupExpensesScreen(
                 modifier = Modifier.paddingAboveBottomBar(),
             )
         },
-    ) { _ ->
+    ) { paddingValues ->
         SeSystemBars(
             statusBarColor = bannerColor,
             // Keep dark system-nav glyphs on the light content/FAB area at the bottom.
@@ -148,7 +148,7 @@ fun NonGroupExpensesScreen(
             navigationBarDarkIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f,
         )
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
             NonGroupDetailBanner(
                 bannerColor = bannerColor,

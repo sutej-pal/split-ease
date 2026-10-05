@@ -22,8 +22,6 @@ create table if not exists public.profiles (
   phone_country_code text,
   phone_number text,
   preferred_currency text,
-  time_zone text,
-  allow_friend_suggestions boolean not null default true,
   updated_at_epoch_ms bigint not null default 0,
   deleted_at timestamptz,
   deactivated_at timestamptz
@@ -323,14 +321,12 @@ as $$
   );
 $$;
 
-alter table public.profiles add column if not exists time_zone text;
-alter table public.profiles add column if not exists allow_friend_suggestions boolean not null default true;
 alter table public.profiles add column if not exists deactivated_at timestamptz;
 
--- Directory search shows active profiles that allow friend suggestions.
--- Deleted, deactivated, or suggestion-opt-out profiles stay readable only by
--- the owner and people who already share a friend, group, expense, or payment,
--- so history still resolves their name.
+-- Directory search shows active profiles.
+-- Deleted or deactivated profiles stay readable only by the owner and people
+-- who already share a friend, group, expense, or payment, so history still
+-- resolves their name.
 create or replace function public.can_see_profile(p_profile_id uuid)
 returns boolean
 language sql
@@ -346,7 +342,6 @@ as $$
         (
           p.deleted_at is null
           and p.deactivated_at is null
-          and coalesce(p.allow_friend_suggestions, true)
         )
         or p.id = auth.uid()
         or exists (
@@ -423,6 +418,9 @@ grant execute on function public.expense_visible(uuid, uuid, uuid) to authentica
 grant execute on function public.can_access_expense(uuid) to authenticated;
 grant execute on function public.can_access_payment(uuid) to authenticated;
 grant execute on function public.can_see_profile(uuid) to authenticated;
+
+alter table public.profiles drop column if exists time_zone;
+alter table public.profiles drop column if exists allow_friend_suggestions;
 
 -- ============================================
 -- Row level security
@@ -1606,6 +1604,8 @@ alter table public.profiles add column if not exists deactivated_at timestamptz;
 -- To reactivate a deactivated user account, execute in Supabase SQL editor:
 --   update auth.users set banned_until = null where id = '<user_uuid>';
 --   update public.profiles set deactivated_at = null where id = '<user_uuid>';
+-- The SQL editor runs as the database owner, so it can change deactivated_at.
+-- The authenticated app role cannot; see protect_profile_lifecycle.
 
 create or replace function public.deactivate_own_account()
 returns void
@@ -1650,8 +1650,34 @@ $$;
 revoke all on function public.deactivate_own_account() from public;
 grant execute on function public.deactivate_own_account() to authenticated;
 
-alter table public.profiles add column if not exists time_zone text;
-alter table public.profiles add column if not exists allow_friend_suggestions boolean not null default true;
+-- The app role can update its own profile, but not deleted_at / deactivated_at.
+-- Security-definer RPCs and the SQL editor run as the function/database owner,
+-- so delete_own_account and deactivate_own_account still set those columns.
+create or replace function public.protect_profile_lifecycle()
+returns trigger
+language plpgsql
+as $$
+begin
+  if current_user not in ('authenticated', 'anon') then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    new.deleted_at := null;
+    new.deactivated_at := null;
+    return new;
+  end if;
+  new.deleted_at := old.deleted_at;
+  new.deactivated_at := old.deactivated_at;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_protect_lifecycle on public.profiles;
+create trigger profiles_protect_lifecycle
+  before insert or update on public.profiles
+  for each row execute function public.protect_profile_lifecycle();
+
+revoke all on function public.protect_profile_lifecycle() from public;
 
 -- Secondary emails table (managed by Edge Function secondary-email / service role).
 -- code_hash is an HMAC of the 6-digit code. Clients must not be able to read it.
@@ -1669,15 +1695,44 @@ create table if not exists public.user_emails (
 
 alter table public.user_emails add column if not exists last_sent_at timestamptz default now();
 
-create unique index if not exists idx_user_emails_email_lower
-  on public.user_emails (lower(email));
+-- Pending rows must not reserve an address. Only a verified secondary email is unique.
+drop index if exists public.idx_user_emails_email_lower;
 
 create unique index if not exists idx_user_emails_verified_email
   on public.user_emails (lower(email))
   where verified_at is not null;
 
+create unique index if not exists idx_user_emails_user_email
+  on public.user_emails (user_id, lower(email));
+
 create index if not exists idx_user_emails_user_id
   on public.user_emails (user_id);
+
+-- Signup duplicate check. Verified secondary emails count as taken.
+-- Unverified rows do not. Banned / deleted Auth rows stay reusable.
+create or replace function public.auth_email_registered(p_email text)
+returns boolean
+language sql
+security definer
+set search_path = public, auth
+stable
+as $$
+  select exists (
+    select 1
+    from auth.users u
+    where lower(u.email) = lower(trim(p_email))
+      and coalesce(u.banned_until, '-infinity'::timestamptz) <= now()
+  )
+  or exists (
+    select 1
+    from public.user_emails e
+    where e.verified_at is not null
+      and lower(e.email) = lower(trim(p_email))
+  );
+$$;
+
+revoke all on function public.auth_email_registered(text) from public;
+grant execute on function public.auth_email_registered(text) to anon, authenticated;
 
 alter table public.user_emails enable row level security;
 

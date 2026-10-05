@@ -360,7 +360,7 @@ private fun RemindSheetOption(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = SplitEaseColors.Navy,
+            tint = SplitEaseColors.IconDefault,
             modifier =
                 Modifier
                     .padding(top = 2.dp)
@@ -548,7 +548,7 @@ private fun MemberBalanceAccordion(
                             Icons.Filled.KeyboardArrowDown
                         },
                     contentDescription = stringResource(R.string.cd_toggle_balance_details),
-                    tint = SplitEaseColors.NavyMuted,
+                    tint = SplitEaseColors.IconDefault,
                 )
             }
         }

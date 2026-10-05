@@ -140,6 +140,19 @@ class AuthViewModelTest {
         }
 
     @Test
+    fun `signIn malformed email skips api`() =
+        runTest {
+            viewModel.signIn("i", "secret1")
+            advanceUntilIdle()
+            assertEquals(
+                msg(AuthMessages.INVALID_EMAIL),
+                viewModel.formState.value.errorMessage,
+            )
+            coVerify(exactly = 0) { repository.signIn(any(), any()) }
+            coVerify(exactly = 0) { repository.isEmailRegistered(any()) }
+        }
+
+    @Test
     fun `signIn blank password skips api`() =
         runTest {
             viewModel.signIn("a@b.com", "  ")

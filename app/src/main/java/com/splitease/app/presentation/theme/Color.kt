@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * SplitEase brand palette. [IndigoLight] (primary) and [AmberLight] (secondary /
- * accent) are the only authored seeds. All colours are explicit hex values. Do not derive colours at runtime.
+ * accent) are the only authored seeds. All colors are explicit hex values. Do not derive colors at runtime.
  */
 
 // ============================================================
@@ -19,8 +19,8 @@ val AmberLight = Color(0xFFFFA008) // accent brand
 
 // --- Light theme ---
 
-/** Screen canvas — indigo washed almost to white. */
-val BackgroundLight = Color(0xFFFBFCFF) // light screen canvas
+/** Screen canvas. */
+val BackgroundLight = Color(0xFFFFFFFF) // light screen canvas
 
 /** Soft indigo fill for selected / muted brand accents (not screen backgrounds). */
 val PrimaryContainerLight = Color(0xFFE6EAFF) // light primary container
@@ -33,7 +33,7 @@ val SurfaceMutedLight = Color(0xFFF1F3FF) // light muted surface
 
 /** Pastel detail-header banners. */
 val BannerFriendsLight = Color(0xFFC3CBFC) // light friends banner
-val BannerHomeLight = Color(0xFFFFE9D1) // light home banner
+val BannerHomeLight = PrimaryContainerLight // light home banner (very light shade of primary)
 val BannerOtherLight = Color(0xFFC3CBFC) // light other banner
 
 // --- Dark theme ---
@@ -52,7 +52,7 @@ val SurfaceDark = Color(0xFF030217) // dark cards and sheets
 
 /** Friends, home, and other group banners in dark theme. */
 val BannerFriendsDark = Color(0xFF3D36B7) // dark friends banner
-val BannerHomeDark = Color(0xFFC37D2B) // dark home banner
+val BannerHomeDark = Color(0xFF1E1B4B) // dark home banner (dark shade of primary)
 val BannerOtherDark = Color(0xFF49509E) // dark other banner
 
 /** Friend-detail header banner in dark theme. */
@@ -60,17 +60,17 @@ val FriendDetailBannerDark = Color(0xFF747CF0) // dark friend-detail banner
 
 /**
  * Non-group expenses header banner in dark theme.
- * Keeps the previous rendered colour, which was mixed with the light-theme text colour.
+ * Keeps the previous rendered color, which was mixed with the light-theme text color.
  * That mix may be unintended.
  */
 val NonGroupBannerDark = Color(0xFF332C9B) // dark non-group banner
 
 // --- Semantic balance ---
 
-/** "You owe" — rose balance colour. Not used for error text. */
+/** "You owe" — rose balance color. Not used for error text. */
 val OweRed = Color(0xFFC43D5A) // you-owe balance
 
-/** You-owe container. Also the light-theme error container. */
+/** You-owe container. Also, the light-theme error container. */
 val OweContainer = Color(0xFFFDE8EC) // you-owe container
 
 /** "You're owed" / positive — teal. */
@@ -81,7 +81,7 @@ val OwedContainer = Color(0xFFDDF6EE) // positive container
 
 /**
  * Error text and icons in light theme.
- * Contrast: 6.37:1 on BackgroundLight, 6.54:1 on white, 5.92:1 on SurfaceMutedLight.
+ * Contrast: 6.54:1 on BackgroundLight, 5.92:1 on SurfaceMutedLight.
  */
 val ErrorLight = Color(0xFFB3261E) // light error
 
@@ -139,3 +139,6 @@ val OutlineDark = Color(0xFF4B465C) // dark resting border
 
 /** Hairline / card edges (dark theme). */
 val OutlineVariantDark = Color(0xFF3A3552) // dark hairline
+
+/** Default icon color app-wide. */
+val IconDefault = Color(0xFF353B3E)

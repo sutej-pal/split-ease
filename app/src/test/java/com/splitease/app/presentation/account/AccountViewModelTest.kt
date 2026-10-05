@@ -56,8 +56,6 @@ class AccountViewModelTest {
         every { userRepository.observeUsers() } returns flowOf(emptyList())
         every { appSettingsRepository.observeCurrencyCode() } returns flowOf("INR")
         every { appSettingsRepository.observeAppLocale() } returns flowOf(AppLocale.DEFAULT)
-        every { appSettingsRepository.observeTimeZone() } returns flowOf("Asia/Kolkata")
-        every { appSettingsRepository.observeAllowFriendSuggestions() } returns flowOf(true)
 
         every { context.getString(R.string.signup_error_phone_invalid) } returns "Invalid phone"
         every { context.getString(R.string.signup_error_password_short) } returns "Password short"

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,7 +40,7 @@ fun VerifyEmailScreen(
 ) {
     var code by rememberSaveable { mutableStateOf("") }
     var showValidation by rememberSaveable { mutableStateOf(false) }
-    var secondsLeft by rememberSaveable { mutableStateOf(30) }
+    var secondsLeft by rememberSaveable { mutableIntStateOf(30) }
 
     LaunchedEffect(Unit) {
         while (secondsLeft > 0) {

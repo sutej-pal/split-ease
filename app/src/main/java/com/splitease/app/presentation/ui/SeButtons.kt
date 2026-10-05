@@ -23,13 +23,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -44,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.splitease.app.presentation.theme.SeLabelLarge
 import com.splitease.app.presentation.theme.SplitEaseColors
 
 private val ButtonShape = RoundedCornerShape(16.dp)
@@ -97,9 +96,10 @@ fun SePrimaryButton(
                     strokeWidth = 2.dp,
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
+                SeLabelLarge(
+                    text = text,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
             }
         } else {
@@ -116,9 +116,10 @@ fun SePrimaryButton(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(
-                    text,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
+                SeLabelLarge(
+                    text = text,
+                    fontWeight = FontWeight.Medium,
+                    color = LocalContentColor.current,
                 )
             }
         }
@@ -160,9 +161,10 @@ fun SeSecondaryButton(
                 strokeWidth = 2.dp,
             )
         } else {
-            Text(
+            SeLabelLarge(
                 text = text,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
+                fontWeight = FontWeight.Medium,
+                color = contentColor,
             )
         }
     }
@@ -209,7 +211,10 @@ fun SeOutlinedButton(
                     leadingIcon()
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(text, style = MaterialTheme.typography.labelLarge)
+                SeLabelLarge(
+                    text = text,
+                    color = contentColor,
+                )
             }
         }
     }
@@ -264,12 +269,9 @@ fun SeTextButton(
             )
             Spacer(modifier = Modifier.width(8.dp))
         }
-        Text(
+        SeLabelLarge(
             text = text,
-            style =
-                MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Medium,
-                ),
+            fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Medium,
             color =
                 if (interactive || isLoading) {
                     labelColor
@@ -289,7 +291,12 @@ fun SeExtendedFab(
     expanded: Boolean = true,
 ) {
     ExtendedFloatingActionButton(
-        text = { Text(text, style = MaterialTheme.typography.labelLarge) },
+        text = {
+            SeLabelLarge(
+                text = text,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        },
         icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp)) },
         onClick = onClick,
         expanded = expanded,

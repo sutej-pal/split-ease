@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.data.spending.SpendingInteractor
 import com.splitease.app.domain.model.AuthSession
-import com.splitease.app.domain.settings.AppTimeZone
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.spending.CategorySpending
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +20,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.util.Calendar
+import java.util.TimeZone
 import javax.inject.Inject
 
 enum class SpendingPeriod {
@@ -74,7 +74,7 @@ class SpendingTotalsViewModel
                 SpendingPeriod.LAST_30_DAYS -> (now - 30L * 24 * 60 * 60 * 1000) to now
                 SpendingPeriod.THIS_MONTH -> {
                     val cal =
-                        Calendar.getInstance(AppTimeZone.timeZone()).apply {
+                        Calendar.getInstance(TimeZone.getDefault()).apply {
                             set(Calendar.DAY_OF_MONTH, 1)
                             set(Calendar.HOUR_OF_DAY, 0)
                             set(Calendar.MINUTE, 0)

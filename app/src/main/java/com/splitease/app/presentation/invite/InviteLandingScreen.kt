@@ -364,7 +364,7 @@ private fun InviteMemberRow(
                         Icon(
                             imageVector = Icons.Filled.ChevronRight,
                             contentDescription = null,
-                            tint = SplitEaseColors.NavyMuted,
+                            tint = SplitEaseColors.IconDefault,
                         )
                     }
                 }

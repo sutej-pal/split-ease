@@ -19,6 +19,7 @@ type ActionBody = {
 const SEND_LIMIT_PER_HOUR = 5;
 const RESEND_COOLDOWN_MS = 60_000;
 const MAX_ATTEMPTS = 5;
+const MAX_UNVERIFIED = 5;
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -69,38 +70,84 @@ Deno.serve(async (req) => {
         return json({ error: "Too many email requests. Try again later." }, 429);
       }
 
+      await deleteExpiredUnverified(adminClient, email);
+
       const code = generate6DigitCode();
       const codeHash = await hashCode(code, serviceKey);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const nowIso = new Date().toISOString();
+
+      const { data: existing, error: existingError } = await adminClient
+        .from("user_emails")
+        .select("id, verified_at")
+        .eq("user_id", userId)
+        .ilike("email", ilikeExact(email))
+        .maybeSingle();
+      if (existingError) {
+        return json({ error: "Failed to add email address." }, 500);
+      }
+      if (existing?.verified_at) {
+        return json({ error: "That email can't be added." }, 400);
+      }
+
+      let rowId = existing?.id as string | undefined;
+      let insertedNew = false;
+      if (rowId) {
+        const { error: updateError } = await adminClient
+          .from("user_emails")
+          .update({
+            code_hash: codeHash,
+            code_expires_at: expiresAt,
+            attempts: 0,
+          })
+          .eq("id", rowId)
+          .eq("user_id", userId);
+        if (updateError) {
+          return json({ error: "Failed to add email address." }, 500);
+        }
+      } else {
+        if (await unverifiedCount(adminClient, userId) >= MAX_UNVERIFIED) {
+          return json({ error: "Too many email requests. Try again later." }, 429);
+        }
+        const { data: inserted, error: insertError } = await adminClient
+          .from("user_emails")
+          .insert({
+            user_id: userId,
+            email,
+            code_hash: codeHash,
+            code_expires_at: expiresAt,
+            attempts: 0,
+            last_sent_at: nowIso,
+          })
+          .select("id")
+          .single();
+        if (insertError || !inserted) {
+          const duplicate = (insertError as { code?: string } | null)?.code === "23505";
+          return json(
+            { error: duplicate ? "That email can't be added." : "Failed to add email address." },
+            duplicate ? 400 : 500,
+          );
+        }
+        rowId = inserted.id;
+        insertedNew = true;
+      }
 
       try {
         await sendVerificationEmail(email, code);
       } catch {
+        if (insertedNew && rowId) {
+          await adminClient.from("user_emails").delete().eq("id", rowId).eq("user_id", userId);
+        }
         return json({ error: "Could not send the verification email." }, 502);
       }
 
-      const { data: inserted, error: insertError } = await adminClient
+      await adminClient
         .from("user_emails")
-        .insert({
-          user_id: userId,
-          email,
-          code_hash: codeHash,
-          code_expires_at: expiresAt,
-          attempts: 0,
-          last_sent_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
-      if (insertError || !inserted) {
-        const duplicate = (insertError as { code?: string } | null)?.code === "23505";
-        return json(
-          { error: duplicate ? "That email can't be added." : "Failed to add email address." },
-          duplicate ? 400 : 500,
-        );
-      }
+        .update({ last_sent_at: new Date().toISOString() })
+        .eq("id", rowId)
+        .eq("user_id", userId);
       await recordSend(adminClient, userId);
-      return json({ ok: true, id: inserted.id });
+      return json({ ok: true, id: rowId });
     }
 
     case "resend": {
@@ -132,26 +179,30 @@ Deno.serve(async (req) => {
       const codeHash = await hashCode(code, serviceKey);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-      try {
-        await sendVerificationEmail(record.email, code);
-      } catch {
-        return json({ error: "Could not send the verification email." }, 502);
-      }
-
       const { error: updateError } = await adminClient
         .from("user_emails")
         .update({
           code_hash: codeHash,
           code_expires_at: expiresAt,
           attempts: 0,
-          last_sent_at: new Date().toISOString(),
         })
         .eq("id", emailId)
         .eq("user_id", userId);
-
       if (updateError) {
         return json({ error: "Could not send the verification email." }, 500);
       }
+
+      try {
+        await sendVerificationEmail(record.email, code);
+      } catch {
+        return json({ error: "Could not send the verification email." }, 502);
+      }
+
+      await adminClient
+        .from("user_emails")
+        .update({ last_sent_at: new Date().toISOString() })
+        .eq("id", emailId)
+        .eq("user_id", userId);
       await recordSend(adminClient, userId);
       return json({ ok: true });
     }
@@ -211,6 +262,12 @@ Deno.serve(async (req) => {
       if (updateError || !updated || updated.length === 0) {
         return json({ error: "That email can't be added." }, 400);
       }
+      await adminClient
+        .from("user_emails")
+        .delete()
+        .ilike("email", ilikeExact(record.email))
+        .is("verified_at", null)
+        .neq("id", emailId);
       return json({ ok: true });
     }
 
@@ -253,6 +310,25 @@ function ilikeExact(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }
 
+async function deleteExpiredUnverified(adminClient: SupabaseClient, email: string) {
+  await adminClient
+    .from("user_emails")
+    .delete()
+    .ilike("email", ilikeExact(email))
+    .is("verified_at", null)
+    .lt("code_expires_at", new Date().toISOString());
+}
+
+async function unverifiedCount(adminClient: SupabaseClient, userId: string): Promise<number> {
+  const { count, error } = await adminClient
+    .from("user_emails")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("verified_at", null);
+  if (error) return MAX_UNVERIFIED;
+  return count ?? 0;
+}
+
 type Taken = "free" | "taken" | "error";
 
 async function emailTaken(
@@ -271,6 +347,7 @@ async function emailTaken(
     .from("profiles")
     .select("id")
     .ilike("email", ilikeExact(email))
+    .is("deleted_at", null)
     .limit(1);
   if (profileError) return "error";
   if (profiles && profiles.length > 0) return "taken";
@@ -279,6 +356,7 @@ async function emailTaken(
     .from("user_emails")
     .select("id")
     .ilike("email", ilikeExact(email))
+    .not("verified_at", "is", null)
     .limit(1);
   if (ignoreRowId) {
     secondaryQuery = secondaryQuery.neq("id", ignoreRowId);

@@ -53,7 +53,6 @@ import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.account.CloseAccountScreen
-import com.splitease.app.presentation.account.TimeZonePickerScreen
 import com.splitease.app.presentation.account.DeleteAccountScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
@@ -123,7 +122,6 @@ object Routes {
     const val TAB_ACCOUNT = "tab_account"
 
     const val ACCOUNT_PROFILE_SETTINGS = "account_profile_settings"
-    const val ACCOUNT_TIME_ZONE = "account_time_zone"
     const val CLOSE_ACCOUNT = "close_account"
     const val WHATS_NEW = "whats_new"
     const val DELETE_ACCOUNT = "delete_account"
@@ -766,13 +764,7 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onOpenCurrency = { navController.navigate(Routes.CURRENCY_SETTINGS) },
                     onOpenLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
-                    onOpenTimeZone = { navController.navigate(Routes.ACCOUNT_TIME_ZONE) },
                     onOpenCloseAccount = { navController.navigate(Routes.CLOSE_ACCOUNT) },
-                )
-            }
-            composable(Routes.ACCOUNT_TIME_ZONE) {
-                TimeZonePickerScreen(
-                    onBack = { navController.popBackStack() },
                 )
             }
             composable(Routes.CLOSE_ACCOUNT) {
