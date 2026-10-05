@@ -13,7 +13,6 @@ data class AuthUser(
     val email: String,
     val displayName: String,
     val emailConfirmed: Boolean = true,
-    val isGoogleOnly: Boolean = false,
 )
 
 /**

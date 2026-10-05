@@ -986,8 +986,6 @@ class AuthViewModel
                     msg(AuthMessages.RESET_PASSWORD_SAME_AS_OLD)
                 isRecoverySessionMissing(throwable) ->
                     msg(AuthMessages.RESET_PASSWORD_SESSION_EXPIRED)
-                isAccountDeactivated(lower) ->
-                    msg(AuthMessages.ACCOUNT_DEACTIVATED)
                 isInvalidCredentials(throwable) ->
                     msg(AuthMessages.INVALID_CREDENTIALS)
                 isEmailRateLimited(lower) ->
@@ -1020,9 +1018,6 @@ class AuthViewModel
             }
             return parts.joinToString("\n")
         }
-
-        private fun isAccountDeactivated(lower: String): Boolean =
-            "user_banned" in lower || "user is banned" in lower
 
         private fun isAlreadyRegistered(lower: String): Boolean =
             "user already registered" in lower ||
