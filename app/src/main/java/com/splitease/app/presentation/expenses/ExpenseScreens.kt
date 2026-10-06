@@ -120,8 +120,9 @@ fun AddExpenseScreen(
     val targetDefaultCurrency = group?.defaultCurrencyCode ?: userCurrency
 
     val categories by viewModel.categories.collectAsStateWithLifecycle()
-    val editingExpense by
+    val editingLoad by
         viewModel.observeExpenseDetail(expenseId.orEmpty()).collectAsStateWithLifecycle()
+    val editingExpense = editingLoad.detailOrNull
     val fxState by viewModel.exchangeRateState.collectAsStateWithLifecycle()
 
     val isEdit = !expenseId.isNullOrBlank()
@@ -1157,12 +1158,32 @@ private fun ExpenseUnderlineField(
 }
 
 @Composable
-private fun CategoryPickerDialog(
+internal fun CategoryPickerDialog(
     categories: List<Category>,
     selectedCategoryId: String,
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
+    val displayCategories =
+        remember(categories) {
+            val defaults = DefaultCategories.ALL.map { DefaultCategories.toCategory(it) }
+            val defaultNamesLower = DefaultCategories.ALL.map { it.name.lowercase() }.toSet()
+            val customCategories =
+                categories.filter { category ->
+                    !DefaultCategories.isStableId(category.id) &&
+                        category.name.lowercase() !in defaultNamesLower
+                }
+            defaults + customCategories
+        }
+
+    val activeStableId =
+        remember(selectedCategoryId) {
+            DefaultCategories.byId(selectedCategoryId)?.id
+                ?: DefaultCategories.stableIdForName(
+                    categories.firstOrNull { it.id == selectedCategoryId }?.name.orEmpty(),
+                ) ?: selectedCategoryId
+        }
+
     SeModal(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.action_pick_category),
@@ -1175,11 +1196,12 @@ private fun CategoryPickerDialog(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            categories.forEach { category ->
-                val selected = category.id == selectedCategoryId
+            displayCategories.forEach { category ->
+                val stableId = DefaultCategories.stableIdForName(category.name) ?: category.id
+                val selected = activeStableId == stableId || selectedCategoryId == category.id
                 FilterChip(
                     selected = selected,
-                    onClick = { onSelect(category.id) },
+                    onClick = { onSelect(stableId) },
                     label = { Text(category.name) },
                     modifier = Modifier.heightIn(min = 40.dp),
                     leadingIcon = {

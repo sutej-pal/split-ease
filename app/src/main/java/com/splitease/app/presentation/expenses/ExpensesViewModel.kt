@@ -11,6 +11,7 @@ import com.splitease.app.data.expense.resolvedDisplayUri
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.sync.GroupLiveSync
 import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.domain.category.DefaultCategories
 import com.splitease.app.domain.balance.BalanceCalculator
 import com.splitease.app.domain.model.ActivityEvent
 import com.splitease.app.domain.model.AuthSession
@@ -160,6 +161,20 @@ data class ExpenseDetailUi(
     val lastUpdatedByLabel: String? = null,
     val lastUpdatedAtEpochMs: Long? = null,
 )
+
+/** Detail screen load. [Loading] is not a missing expense. */
+sealed interface ExpenseDetailLoadState {
+    data object Loading : ExpenseDetailLoadState
+
+    data object NotFound : ExpenseDetailLoadState
+
+    data class Ready(
+        val detail: ExpenseDetailUi,
+    ) : ExpenseDetailLoadState
+}
+
+val ExpenseDetailLoadState.detailOrNull: ExpenseDetailUi?
+    get() = (this as? ExpenseDetailLoadState.Ready)?.detail
 
 data class ExpenseCommentUi(
     val id: String,
@@ -366,10 +381,10 @@ class ExpensesViewModel
 
         private val groupLedgerFlows = ConcurrentHashMap<String, StateFlow<List<LedgerListItem>>>()
         private val friendLedgerFlows = ConcurrentHashMap<String, StateFlow<List<LedgerListItem>>>()
-        private val expenseDetailFlows = ConcurrentHashMap<String, StateFlow<ExpenseDetailUi?>>()
+        private val expenseDetailFlows = ConcurrentHashMap<String, StateFlow<ExpenseDetailLoadState>>()
         private val expenseCommentFlows = ConcurrentHashMap<String, StateFlow<List<ExpenseCommentUi>>>()
         private val expensePhotoFlows = ConcurrentHashMap<String, StateFlow<List<ExpensePhotoUi>>>()
-        private val emptyExpenseDetail = MutableStateFlow<ExpenseDetailUi?>(null)
+        private val emptyExpenseDetail = MutableStateFlow<ExpenseDetailLoadState>(ExpenseDetailLoadState.NotFound)
         private val emptyExpenseComments = MutableStateFlow<List<ExpenseCommentUi>>(emptyList())
         private val emptyExpensePhotos = MutableStateFlow<List<ExpensePhotoUi>>(emptyList())
         private var nonGroupLedgerFlow: StateFlow<List<LedgerListItem>>? = null
@@ -861,19 +876,22 @@ class ExpensesViewModel
 
         /**
          * Observes a single expense with labeled splits for the detail screen.
+         *
+         * Stays [ExpenseDetailLoadState.Loading] until the signed-in user and the
+         * local row are known, so the detail screen does not flash "not found".
          */
         @OptIn(ExperimentalCoroutinesApi::class)
-        fun observeExpenseDetail(expenseId: String): StateFlow<ExpenseDetailUi?> {
+        fun observeExpenseDetail(expenseId: String): StateFlow<ExpenseDetailLoadState> {
             if (expenseId.isBlank()) return emptyExpenseDetail
             return expenseDetailFlows.getOrPut(expenseId) {
                 userId
                     .flatMapLatest { me ->
                         if (me == null) {
-                            flowOf(null)
+                            flowOf(ExpenseDetailLoadState.Loading)
                         } else {
                             expenseRepository.observeExpenseById(expenseId).flatMapLatest { expense ->
                                 if (expense == null) {
-                                    flowOf(null)
+                                    flowOf(ExpenseDetailLoadState.NotFound)
                                 } else {
                                     val groupId = expense.groupId
                                     val groupExpensesFlow =
@@ -1023,11 +1041,15 @@ class ExpensesViewModel
                                             lastUpdatedByLabel = lastUpdatedByLabel,
                                             lastUpdatedAtEpochMs = lastUpdatedAtEpochMs,
                                         )
-                                    }
+                                    }.map { ExpenseDetailLoadState.Ready(it) }
                                 }
                             }
                         }
-                    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+                    }.stateIn(
+                        viewModelScope,
+                        SharingStarted.WhileSubscribed(5_000),
+                        ExpenseDetailLoadState.Loading,
+                    )
             }
         }
 
@@ -1234,6 +1256,38 @@ class ExpensesViewModel
             val categories: List<Category>,
             val comments: List<ExpenseComment> = emptyList(),
         )
+
+        fun observeCategories(): StateFlow<List<Category>> =
+            categoryRepository
+                .observeCategories()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        init {
+            viewModelScope.launch {
+                runCatching { categoryRepository.ensureDefaults() }
+            }
+        }
+
+        fun updateExpenseCategory(
+            expenseId: String,
+            categoryId: String,
+        ) {
+            viewModelScope.launch {
+                val stableCategoryId = DefaultCategories.byId(categoryId)?.id ?: categoryId
+                val result =
+                    expenseInteractor.updateExpenseCategory(
+                        expenseId = expenseId,
+                        categoryId = stableCategoryId,
+                        actorUserId = userId.value,
+                    )
+                result.exceptionOrNull()?.let { err ->
+                    ErrorMessages.log(TAG, err)
+                    _uiState.update { state ->
+                        state.copy(errorMessage = ErrorMessages.message(appContext, TAG, err))
+                    }
+                }
+            }
+        }
 
         fun updateExpense(
             expenseId: String,

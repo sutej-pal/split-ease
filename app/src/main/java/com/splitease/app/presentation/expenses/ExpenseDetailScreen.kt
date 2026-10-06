@@ -80,6 +80,7 @@ import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeLoadingOverlay
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
@@ -118,11 +119,14 @@ fun ExpenseDetailScreen(
     onOpenAttachments: (expenseId: String, startIndex: Int) -> Unit = { _, _ -> },
     viewModel: ExpensesViewModel = hiltViewModel(),
 ) {
-    val detail by viewModel.observeExpenseDetail(expenseId).collectAsStateWithLifecycle()
+    val loadState by viewModel.observeExpenseDetail(expenseId).collectAsStateWithLifecycle()
+    val detail = loadState.detailOrNull
     val comments by viewModel.observeExpenseComments(expenseId).collectAsStateWithLifecycle()
     val attachments by viewModel.observeExpensePhotos(expenseId).collectAsStateWithLifecycle()
+    val categories by viewModel.observeCategories().collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(value = false) }
+    var showCategoryPicker by remember { mutableStateOf(value = false) }
     var commentDraft by remember { mutableStateOf("") }
     val hasExpense = detail != null
     val me = viewModel.currentUserId()
@@ -162,7 +166,7 @@ fun ExpenseDetailScreen(
                     if (detailSnapshot != null) {
                         Spacer(modifier = Modifier.width(4.dp))
                         CategoryChip(iconKey = detailSnapshot.categoryIconKey) {
-                            onEdit(expenseId)
+                            showCategoryPicker = true
                         }
                     }
                 },
@@ -213,18 +217,30 @@ fun ExpenseDetailScreen(
     ) { padding ->
         val snapshot = detail
         if (snapshot == null) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = SeLayout.detailHorizontal),
-            ) {
-                SeErrorText(uiState.errorMessage ?: stringResource(R.string.expense_not_found))
-                Spacer(modifier = Modifier.height(16.dp))
-                SeTextButton(
-                    text = stringResource(R.string.cd_back),
-                    onClick = onBack,
-                )
+            if (loadState is ExpenseDetailLoadState.Loading) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SeInlineLoader()
+                }
+            } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = SeLayout.detailHorizontal),
+                ) {
+                    SeErrorText(uiState.errorMessage ?: stringResource(R.string.expense_not_found))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SeTextButton(
+                        text = stringResource(R.string.cd_back),
+                        onClick = onBack,
+                    )
+                }
             }
             return@Scaffold
         }
@@ -371,6 +387,18 @@ fun ExpenseDetailScreen(
             },
             icon = Icons.Filled.Delete,
             tone = SeConfirmTone.Danger,
+        )
+    }
+
+    if (showCategoryPicker && detail != null) {
+        CategoryPickerDialog(
+            categories = categories,
+            selectedCategoryId = detail.expense.categoryId ?: "cat_general",
+            onDismiss = { showCategoryPicker = false },
+            onSelect = { newCategoryId ->
+                showCategoryPicker = false
+                viewModel.updateExpenseCategory(expenseId, newCategoryId)
+            },
         )
     }
     }

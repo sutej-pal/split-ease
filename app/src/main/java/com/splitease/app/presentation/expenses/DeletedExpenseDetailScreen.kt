@@ -52,7 +52,7 @@ fun DeletedExpenseDetailScreen(
 ) {
     val event by viewModel.observeActivityEvent(eventId).collectAsStateWithLifecycle()
     val relatedExpenseId = event?.relatedExpenseId.orEmpty()
-    val relatedExpense by viewModel.observeExpenseDetail(relatedExpenseId).collectAsStateWithLifecycle()
+    val relatedExpenseLoad by viewModel.observeExpenseDetail(relatedExpenseId).collectAsStateWithLifecycle()
     val comments by viewModel.observeExpenseComments(relatedExpenseId).collectAsStateWithLifecycle()
     val addedBy by viewModel.observeUserLabel(event?.snapshotCreatorUserId.orEmpty())
         .collectAsStateWithLifecycle()
@@ -62,10 +62,9 @@ fun DeletedExpenseDetailScreen(
     var commentDraft by remember { mutableStateOf("") }
     val bg = MaterialTheme.colorScheme.background
     val lightIconsOnBars = bg.luminance() > 0.5f
-    val alreadyRestored = relatedExpense != null
     val canRestore =
         event?.kind == ActivityEventKind.EXPENSE_DELETED &&
-            !alreadyRestored &&
+            relatedExpenseLoad is ExpenseDetailLoadState.NotFound &&
             !uiState.isSubmitting
 
     SeSystemBars(
@@ -105,7 +104,11 @@ fun DeletedExpenseDetailScreen(
             )
         },
         bottomBar = {
-            if (event != null && relatedExpenseId.isNotBlank() && !alreadyRestored) {
+            if (
+                event != null &&
+                relatedExpenseId.isNotBlank() &&
+                relatedExpenseLoad is ExpenseDetailLoadState.NotFound
+            ) {
                 ExpenseCommentBar(
                     value = commentDraft,
                     onValueChange = { commentDraft = it },

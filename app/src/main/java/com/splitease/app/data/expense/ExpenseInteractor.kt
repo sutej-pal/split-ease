@@ -206,6 +206,51 @@ class ExpenseInteractor
             }
 
         /**
+         * Updates only the category of an existing expense (preserves all splits and details).
+         *
+         * @param expenseId Expense id.
+         * @param categoryId New category id.
+         * @param actorUserId User performing the update.
+         * @return Updated [Expense].
+         */
+        suspend fun updateExpenseCategory(
+            expenseId: String,
+            categoryId: String,
+            actorUserId: String? = null,
+        ): Result<Expense> =
+            runCatching {
+                val existing =
+                    expenseRepository.getExpenseById(expenseId)
+                        ?: error("Expense not found.")
+                if (existing.categoryId == categoryId) return@runCatching existing
+                val existingSplits = expenseRepository.getSplits(expenseId)
+                val now = System.currentTimeMillis()
+                val updatedExpense =
+                    existing.copy(
+                        categoryId = categoryId,
+                        updatedAtEpochMs = now,
+                        syncStatus = SyncStatus.PENDING,
+                    )
+                expenseRepository.upsertExpenseWithSplits(updatedExpense, existingSplits)
+                val actor = actorUserId?.takeIf { it.isNotBlank() } ?: existing.paidByUserId
+                recordExpenseActivity(
+                    kind = ActivityEventKind.EXPENSE_UPDATED,
+                    expense = updatedExpense,
+                    participantIds = existingSplits.map { it.userId },
+                    actorUserId = actor,
+                )
+                recordExpenseUpdateComment(
+                    before = existing,
+                    beforeSplits = existingSplits,
+                    after = updatedExpense,
+                    afterSplits = existingSplits,
+                    actorUserId = actor,
+                )
+                scheduleCloudPush(updatedExpense.id)
+                updatedExpense
+            }
+
+        /**
          * Creates an expense on a background scope so the call survives navigation pop.
          */
         fun enqueueCreateExpense(
