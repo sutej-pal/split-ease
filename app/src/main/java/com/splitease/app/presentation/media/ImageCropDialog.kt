@@ -55,6 +55,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.splitease.app.R
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeSystemBars
 import java.io.File
@@ -159,16 +160,14 @@ fun ImageCropDialog(
                         .padding(horizontal = SeLayout.detailHorizontal)
                         .padding(top = 8.dp, bottom = 4.dp),
             ) {
-                Text(
+                SeHeadlineSmall(
                     text = cropTitle,
-                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(
+                SeBodyMedium(
                     text = cropBody,
-                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.68f),
                 )
             }
@@ -182,9 +181,8 @@ fun ImageCropDialog(
                             .padding(horizontal = SeLayout.detailHorizontal),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
+                    SeBodyLarge(
                         text = stringResource(R.string.msg_image_load_failed),
-                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
@@ -417,7 +415,7 @@ private fun CropActions(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onCancel) {
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.action_cancel),
                 color = SplitEaseColors.Primary,
             )
@@ -437,7 +435,7 @@ private fun CropActions(
 
         if (onUsePhoto != null) {
             TextButton(onClick = onUsePhoto) {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.action_done),
                     color = SplitEaseColors.Primary,
                 )

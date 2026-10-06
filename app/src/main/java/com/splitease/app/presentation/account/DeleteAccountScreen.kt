@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.account.AccountDeletionBlockingGroup
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
@@ -123,16 +124,13 @@ private fun DeleteAccountContent(
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 24.dp),
         ) {
-            Text(
+            SeBodyLarge(
                 text = stringResource(R.string.account_delete_intro),
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.account_delete_retained),
-                style = MaterialTheme.typography.bodyMedium,
-                color = SplitEaseColors.NavyMuted,
             )
 
             if (isRefreshingBalances && !isDeleting) {
@@ -152,9 +150,9 @@ private fun DeleteAccountContent(
                         color = SplitEaseColors.Primary,
                     )
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text(
+                    SeBodyMedium(
                         text = stringResource(R.string.account_delete_refreshing),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        fontWeight = FontWeight.Medium,
                         color = SplitEaseColors.Primary,
                     )
                 }
@@ -173,20 +171,13 @@ private fun DeleteAccountContent(
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
+                    SeTitleSmall(
                         text = stringResource(R.string.account_delete_blocked_section).uppercase(),
-                        style =
-                            MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp,
-                            ),
                         color = SplitEaseColors.YouOwe,
                     )
                 }
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.account_delete_blocked_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Column(
@@ -221,9 +212,8 @@ private fun DeleteAccountContent(
                                 size = 32,
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(
+                            SeBodyLarge(
                                 text = group.groupName,
-                                style = MaterialTheme.typography.bodyLarge,
                                 color = SplitEaseColors.Navy,
                                 modifier = Modifier.weight(1f),
                             )

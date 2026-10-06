@@ -24,7 +24,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -358,9 +358,8 @@ private fun NonGroupDetailBanner(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
+            SeHeadlineMedium(
                 text = stringResource(R.string.non_group_expenses),
-                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color =
                     if (bannerColor.luminance() > 0.5f) SplitEaseColors.Navy else Color.White,

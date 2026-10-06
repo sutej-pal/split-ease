@@ -34,7 +34,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,7 +54,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.social.InviteLinks
-import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
@@ -131,13 +130,12 @@ fun GroupInviteLinkScreen(
                             .padding(horizontal = 20.dp),
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
+                    SeBodyLarge(
                         text =
                             stringResource(
                                 R.string.invite_link_trust_body,
                                 uiState.groupName.ifBlank { stringResource(R.string.this_group_label) },
                             ),
-                        style = MaterialTheme.typography.bodyLarge,
                         color = SplitEaseColors.Navy,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
@@ -163,9 +161,8 @@ fun GroupInviteLinkScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
-                            Text(
+                            SeBodyLarge(
                                 text = uiState.inviteUrl.orEmpty(),
-                                style = MaterialTheme.typography.bodyLarge,
                                 color = SplitEaseColors.Navy,
                                 modifier = Modifier.weight(1f),
                             )
@@ -266,12 +263,11 @@ private fun InviteLinkCopyRow(
                 }
             }
             Spacer(modifier = Modifier.width(14.dp))
-            Text(
+            SeTitleMedium(
                 text =
                     stringResource(
                         if (isCopied) R.string.action_link_copied else R.string.action_copy_link,
                     ),
-                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color =
                     when {
@@ -320,9 +316,8 @@ private fun InviteLinkActionRow(
             )
         }
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color =
                 if (enabled) {

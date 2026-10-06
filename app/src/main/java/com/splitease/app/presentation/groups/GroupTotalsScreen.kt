@@ -31,7 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,7 +72,6 @@ import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.seDetailHorizontal
-import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import kotlinx.coroutines.yield
 import java.text.DateFormatSymbols
 import java.util.Locale
@@ -164,12 +163,12 @@ fun GroupTotalsScreen(
                         .padding(bottom = 8.dp)
                         .seDetailHorizontal(),
             ) {
-                Text(
+                SeHeadlineSmall(
                     text = ui.groupName.ifBlank { stringResource(R.string.group_chip_totals) },
-                    style = seEntityHeaderStyle(),
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
+                SeBodyLarge(
                     text =
                         if (ui.allTime) {
                             stringResource(R.string.totals_subtitle_all_time)
@@ -179,7 +178,6 @@ fun GroupTotalsScreen(
                                 formatMonthYear(ui.selectedYear, ui.selectedMonth),
                             )
                         },
-                    style = MaterialTheme.typography.bodyLarge,
                     color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.height(28.dp))
@@ -223,9 +221,8 @@ fun GroupTotalsScreen(
 
                 if (ui.totalsByCurrency.size > 1) {
                     Spacer(modifier = Modifier.height(32.dp))
-                    Text(
+                    SeTitleMedium(
                         text = stringResource(R.string.totals_currency_breakdown),
-                        style = MaterialTheme.typography.titleMedium,
                         color = SplitEaseColors.Navy,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -343,9 +340,8 @@ private fun TotalsMonthChart(
             bars.forEach { bar ->
                 val selected =
                     !allTime && bar.year == selectedYear && bar.month == selectedMonth
-                Text(
+                SeLabelLarge(
                     text = shortMonthLabel(bar.month),
-                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                     color = if (selected) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
                     textAlign = TextAlign.Center,
@@ -367,9 +363,8 @@ private fun TotalsStatRow(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
+            SeTitleMedium(
                 text = label,
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -399,18 +394,16 @@ private fun TotalsStatRow(
                         .background(pillColor),
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
+            SeHeadlineMedium(
                 text = amount,
-                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = amountColor,
             )
         }
         if (!caption.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
+            SeBodyMedium(
                 text = caption,
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.NavyMuted,
                 modifier = Modifier.padding(start = 18.dp),
             )
@@ -457,9 +450,8 @@ private fun TotalsPeriodBar(
                     .clickable(onClick = onAllTime),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
+            SeTitleSmall(
                 text = stringResource(R.string.totals_all_time),
-                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.Navy,
             )
@@ -493,9 +485,8 @@ private fun TotalsPeriodBar(
                 modifier = Modifier.clickable(onClick = onMonthMode),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
+                SeTitleSmall(
                     text = formatMonthYear(year, month),
-                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
                 )
@@ -542,7 +533,7 @@ private fun TermsLine(
     term: String,
     definition: String,
 ) {
-    Text(
+    SeBodyLarge(
         text =
             buildAnnotatedString {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = SplitEaseColors.Navy)) {
@@ -553,7 +544,6 @@ private fun TermsLine(
                     append(definition)
                 }
             },
-        style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Start,
     )
@@ -580,15 +570,13 @@ private fun TotalsCurrencyRow(total: CurrencyTotal) {
                 .background(SplitEaseColors.SurfaceMuted)
                 .padding(16.dp),
     ) {
-        Text(
+        SeTitleMedium(
             text = AppCurrencies.labelOf(total.currencyCode),
-            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = SplitEaseColors.Navy,
         )
-        Text(
+        SeBodySmall(
             text = total.currencyCode,
-            style = MaterialTheme.typography.bodySmall,
             color = SplitEaseColors.NavyMuted,
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -597,27 +585,23 @@ private fun TotalsCurrencyRow(total: CurrencyTotal) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column {
-                Text(
+                SeBodySmall(
                     text = stringResource(R.string.totals_total_spent),
-                    style = MaterialTheme.typography.bodySmall,
                     color = SplitEaseColors.NavyMuted,
                 )
-                Text(
+                SeBodyLarge(
                     text = MoneyFormat.format(total.totalSpent, total.currencyCode),
-                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Secondary,
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
+                SeBodySmall(
                     text = stringResource(R.string.totals_your_share),
-                    style = MaterialTheme.typography.bodySmall,
                     color = SplitEaseColors.NavyMuted,
                 )
-                Text(
+                SeBodyLarge(
                     text = MoneyFormat.format(total.yourShare, total.currencyCode),
-                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
                 )
@@ -625,9 +609,8 @@ private fun TotalsCurrencyRow(total: CurrencyTotal) {
                 val currencyCaptionValue =
                     if (total.totalSpent.signum() == 0 || total.yourShare.signum() == 0) "--%"
                     else "${total.sharePercent}%"
-                Text(
+                SeBodySmall(
                     text = stringResource(R.string.totals_share_caption, currencyCaptionValue),
-                    style = MaterialTheme.typography.bodySmall,
                     color = SplitEaseColors.NavyMuted,
                 )
             }

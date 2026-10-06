@@ -78,6 +78,7 @@ import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
 import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
@@ -374,7 +375,7 @@ private fun ActivityFilterButton(
         ) {
             ActivityListFilter.entries.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(text = stringResource(option.labelRes)) },
+                    text = { SeBodyMedium(text = stringResource(option.labelRes)) },
                     onClick = {
                         onFilterSelected(option)
                         menuExpanded = false
@@ -438,9 +439,8 @@ private fun ActivityDayHeader(day: LocalDate) {
             today.minusDays(1) -> stringResource(R.string.activity_section_yesterday)
             else -> formattedDay
         }
-    Text(
+    SeTitleMedium(
         text = label,
-        style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = SplitEaseColors.Navy,
         modifier =
@@ -518,11 +518,8 @@ private fun ActivityRow(
                 }
                 if (showsBalanceSlot) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
+                    SeBodyMedium(
                         text = item.balanceLabel.orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            textDecoration = if (item.kind == ActivityKind.EXPENSE_DELETED) TextDecoration.LineThrough else null
-                        ),
                         fontWeight = FontWeight.SemiBold,
                         color =
                             if (item.balanceLabel.isNullOrBlank()) {
@@ -539,9 +536,8 @@ private fun ActivityRow(
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
+            SeLabelMedium(
                 text = item.timeLabel,
-                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
                 color = SplitEaseColors.NavyMuted,
             )
@@ -558,9 +554,8 @@ private fun ActivityRowTitle(
     item: ActivityUiItem,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    SeTitleMedium(
         text = item.annotatedTitle,
-        style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,

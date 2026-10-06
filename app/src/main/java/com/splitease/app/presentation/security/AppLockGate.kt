@@ -13,8 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -137,16 +136,12 @@ private fun AppLockOverlay(onUnlocked: () -> Unit) {
             tint = SplitEaseColors.Primary,
             modifier = Modifier.padding(bottom = 16.dp),
         )
-        Text(
+        SeHeadlineSmall(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
-            color = SplitEaseColors.Navy,
         )
-        Text(
+        SeBodyMedium(
             text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = SplitEaseColors.NavyMuted,
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
         )
         if (promptError != null) {

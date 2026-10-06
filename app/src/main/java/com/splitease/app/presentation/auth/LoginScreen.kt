@@ -10,8 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -149,10 +148,8 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth().alpha(if (isBusy) 0.5f else 1f),
         ) {
             HorizontalDivider(modifier = Modifier.weight(1f), color = SplitEaseColors.Outline)
-            Text(
+            SeLabelMedium(
                 text = stringResource(R.string.label_or),
-                style = MaterialTheme.typography.labelMedium,
-                color = SplitEaseColors.NavyMuted,
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
             HorizontalDivider(modifier = Modifier.weight(1f), color = SplitEaseColors.Outline)
@@ -176,10 +173,8 @@ fun LoginScreen(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.label_no_account),
-                style = MaterialTheme.typography.bodyMedium,
-                color = SplitEaseColors.NavyMuted,
             )
             SeTextButton(
                 text = stringResource(R.string.action_sign_up),

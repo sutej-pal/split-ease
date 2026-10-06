@@ -34,6 +34,7 @@ import com.splitease.app.domain.model.ActivityEventKind
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
@@ -97,7 +98,10 @@ fun DeletedExpenseDetailScreen(
                                 color = Color.White,
                             )
                         } else {
-                            Text(stringResource(R.string.action_restore), color = Color.White)
+                            SeLabelLarge(
+                                text = stringResource(R.string.action_restore),
+                                color = Color.White,
+                            )
                         }
                     }
                 },
@@ -157,18 +161,16 @@ fun DeletedExpenseDetailScreen(
                 .padding(horizontal = SeLayout.detailHorizontal)
                 .padding(top = 8.dp, bottom = 24.dp),
         ) {
-            Text(
+            SeHeadlineSmall(
                 text = description,
-                style = seEntityHeaderStyle(),
+                color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(6.dp))
-            Text(
+            SeHeadlineLarge(
                 text = MoneyFormat.format(amountNum, currency),
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    textDecoration = TextDecoration.LineThrough,
-                ),
                 fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.YouOwe,
+                textDecoration = TextDecoration.LineThrough,
             )
             Spacer(modifier = Modifier.height(16.dp))
             ParticipantChip(
@@ -179,15 +181,12 @@ fun DeletedExpenseDetailScreen(
             Spacer(modifier = Modifier.height(24.dp))
             HorizontalDivider(color = SplitEaseColors.Outline)
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.activity_added_by, addedBy.ifBlank { someone }, addedDate),
-                style = MaterialTheme.typography.bodyMedium,
-                color = SplitEaseColors.NavyMuted,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.activity_deleted_by, deletedBy.ifBlank { someone }, deletedDate),
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.YouOwe,
             )
             uiState.errorMessage?.let { msg ->
@@ -198,11 +197,10 @@ fun DeletedExpenseDetailScreen(
                 Spacer(modifier = Modifier.height(32.dp))
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
+                SeTitleMedium(
                     text = stringResource(R.string.expense_comments_section),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
                     color = SplitEaseColors.Navy,
+                    fontWeight = FontWeight.Bold,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 comments.forEach { comment ->

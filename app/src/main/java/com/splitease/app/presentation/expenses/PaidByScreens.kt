@@ -47,6 +47,7 @@ import com.splitease.app.R
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeScreen
@@ -200,14 +201,13 @@ fun EnterPaidAmountsScreen(
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
+                    SeTitleMedium(
                         text =
                             stringResource(
                                 R.string.expense_paid_of_total,
                                 MoneyFormat.format(enteredSum, currencyCode),
                                 MoneyFormat.format(total, currencyCode),
                             ),
-                        style = MaterialTheme.typography.titleMedium,
                         color = SplitEaseColors.Navy,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -230,9 +230,8 @@ fun EnterPaidAmountsScreen(
                                     MoneyFormat.format(BigDecimal.ZERO.setScale(2), currencyCode),
                                 )
                         }
-                    Text(
+                    SeBodyMedium(
                         text = remainderLabel,
-                        style = MaterialTheme.typography.bodyMedium,
                         color =
                             if (remaining.compareTo(BigDecimal.ZERO) == 0) {
                                 SplitEaseColors.NavyMuted
@@ -293,10 +292,9 @@ private fun WhoPaidRow(
             )
         }
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = name,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleMedium,
             color = labelColor,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
@@ -334,25 +332,22 @@ private fun PaidAmountRow(
             size = 44.dp,
             borderWidth = 0.dp,
         )
-        Text(
+        SeTitleMedium(
             text = name,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleMedium,
             color = SplitEaseColors.Navy,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
+            SeTitleMedium(
                 text = currencySymbol,
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.NavyMuted,
             )
             Spacer(modifier = Modifier.width(4.dp))
             Box(modifier = Modifier.width(88.dp)) {
                 if (value.isEmpty()) {
-                    Text(
+                    SeTitleMedium(
                         text = placeholder,
                         modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.titleMedium,
                         color = SplitEaseColors.NavyMuted,
                         textAlign = TextAlign.End,
                     )

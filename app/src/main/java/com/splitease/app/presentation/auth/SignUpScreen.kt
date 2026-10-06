@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -200,9 +201,8 @@ fun SignUpScreen(
                         },
                 )
                 if (!passwordError) {
-                    Text(
+                    SeBodySmall(
                         text = stringResource(R.string.signup_password_hint),
-                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 16.dp, top = 6.dp),
                     )
@@ -355,15 +355,12 @@ private fun CurrencyPreferenceLine(
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
+        SeBodyMedium(
             text = stringResource(R.string.signup_currency_line, currencyLabel),
-            style = MaterialTheme.typography.bodyMedium,
-            color = SplitEaseColors.Navy,
         )
         Spacer(modifier = Modifier.width(6.dp))
-        Text(
+        SeBodyMedium(
             text = stringResource(R.string.signup_currency_change),
-            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = SplitEaseColors.Primary,
             modifier = Modifier.clickable(enabled = enabled, onClick = onChangeClick),
@@ -397,9 +394,8 @@ private fun SignupTermsText() {
             }
             append(".")
         }
-    Text(
+    SeBodySmall(
         text = annotated,
-        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Start,
         modifier = Modifier.fillMaxWidth(),
@@ -448,10 +444,9 @@ private fun CurrencyPickerDialog(
                         colors = RadioButtonDefaults.colors(selectedColor = SplitEaseColors.Primary),
                     )
                     Column(modifier = Modifier.padding(start = 4.dp)) {
-                        Text(text = code, style = MaterialTheme.typography.titleSmall)
-                        Text(
+                        SeTitleSmall(text = code)
+                        SeBodyMedium(
                             text = label,
-                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

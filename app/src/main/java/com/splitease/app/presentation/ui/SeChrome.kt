@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 
 /**
  * Applies window status / navigation bar colors and icon contrast.
@@ -144,17 +145,15 @@ fun SePageHeader(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeHeadlineLarge(
                 text = title,
-                style = MaterialTheme.typography.headlineLarge,
                 color = SplitEaseColors.Navy,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (!subtitle.isNullOrBlank()) {
-                Text(
+                SeBodyMedium(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -371,9 +370,9 @@ fun SeScreen(
                         .padding(horizontal = SeLayout.screenHorizontal)
                         .padding(top = SeLayout.screenTop),
             ) {
-                Text(
+                SeBodyMedium(
                     text = subtitle,
-                    style = seScreenSubtitleStyle(),
+                    color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(SeLayout.headerToContent))
@@ -465,10 +464,9 @@ private fun SeTopBarTitleText(
     textAlign: TextAlign = TextAlign.Start,
     maxLines: Int = 1,
 ) {
-    Text(
+    SeTitleLarge(
         text = text,
         modifier = modifier,
-        style = seScreenTitleStyle(),
         textAlign = textAlign,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
@@ -504,7 +502,7 @@ private fun SeScreenPreview() {
             onBack = {},
             subtitle = "Manage your profile and preferences.",
             content = {
-                Text(text = "Account body")
+                SeBodyMedium(text = "Account body", color = SplitEaseColors.NavyMuted)
             },
         )
     }

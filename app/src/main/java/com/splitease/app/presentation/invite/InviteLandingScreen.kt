@@ -21,10 +21,9 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -145,9 +144,8 @@ private fun InviteLandingContent(
                     modifier = Modifier.size(72.dp),
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
+                SeHeadlineMedium(
                     text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.headlineMedium,
                     color = SplitEaseColors.Primary,
                     fontWeight = FontWeight.Bold,
                 )
@@ -197,17 +195,15 @@ private fun InviteLandingContent(
                                     val preview = uiState.preview
                                     InviteMessage(preview = preview)
                                     Spacer(modifier = Modifier.height(20.dp))
-                                    Text(
+                                    SeTitleMedium(
                                         text = stringResource(R.string.invite_select_name),
-                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = SplitEaseColors.Navy,
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     if (preview.members.isEmpty()) {
-                                        Text(
+                                        SeBodyMedium(
                                             text = stringResource(R.string.invite_members_empty),
-                                            style = MaterialTheme.typography.bodyMedium,
                                             color = SplitEaseColors.NavyMuted,
                                         )
                                     } else {
@@ -265,14 +261,13 @@ private fun InviteMessage(preview: InvitePreview) {
     val groupLabel = preview.groupName?.takeIf { it.isNotBlank() }
     val inviterName = preview.inviterName?.trim()?.takeIf { it.isNotEmpty() }
     if (inviterName == null) {
-        Text(
+        SeBodyLarge(
             text =
                 if (groupLabel != null) {
                     stringResource(R.string.invite_generic_group, groupLabel)
                 } else {
                     stringResource(R.string.invite_generic_no_name)
                 },
-            style = MaterialTheme.typography.bodyLarge,
             color = SplitEaseColors.Navy,
         )
         return
@@ -295,9 +290,8 @@ private fun InviteMessage(preview: InvitePreview) {
             append(" ")
             append(stringResource(R.string.invite_in_app_suffix))
         }
-    Text(
+    SeBodyLarge(
         text = annotated,
-        style = MaterialTheme.typography.bodyLarge,
         color = SplitEaseColors.Navy,
     )
 }
@@ -340,9 +334,8 @@ private fun InviteMemberRow(
                         .background(SplitEaseColors.PrimarySoft),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
+                SeTitleMedium(
                     text = initial,
-                    style = MaterialTheme.typography.titleMedium,
                     color = SplitEaseColors.Primary,
                     fontWeight = FontWeight.Bold,
                 )

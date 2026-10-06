@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
@@ -113,16 +114,14 @@ fun WelcomeScreen(
                 )
             }
             Spacer(modifier = Modifier.height(28.dp))
-            Text(
+            SeDisplayMedium(
                 text = stringResource(R.string.welcome_title),
-                style = MaterialTheme.typography.displayMedium,
                 color = SplitEaseColors.Primary,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Text(
+            SeBodyLarge(
                 text = stringResource(R.string.welcome_tagline),
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.NavyMuted,
                 textAlign = TextAlign.Center,
             )

@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -96,9 +96,8 @@ private fun MemberPickerRow(
     ) {
         SeAvatarBadge(name = name, photoUrl = photoUrl, size = 48.dp, borderWidth = 0.dp)
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
+        SeBodyLarge(
             text = name,
-            style = MaterialTheme.typography.bodyLarge,
             color = SplitEaseColors.Navy
         )
     }

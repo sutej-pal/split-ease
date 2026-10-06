@@ -90,6 +90,7 @@ import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.ads.SeBannerAd
 import com.splitease.app.presentation.ads.SeBannerAdSize
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
@@ -628,9 +629,8 @@ fun AddExpenseScreen(
                             .bringIntoViewRequester(participantsFocus),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    SeBodyLarge(
                         text = stringResource(R.string.expense_with_you_and),
-                        style = MaterialTheme.typography.bodyLarge,
                         color = SplitEaseColors.Navy,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -867,12 +867,12 @@ fun AddExpenseScreen(
                         showTimePicker = true
                     },
                 ) {
-                    Text(stringResource(R.string.action_done))
+                    SeLabelLarge(stringResource(R.string.action_done))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.action_close))
+                    SeLabelLarge(stringResource(R.string.action_close))
                 }
             },
         ) {
@@ -928,7 +928,7 @@ internal fun ParticipantChip(
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label) },
+        label = { SeBodyMedium(label) },
         modifier = Modifier.heightIn(min = 40.dp),
         shape = RoundedCornerShape(20.dp),
         colors =
@@ -989,9 +989,8 @@ private fun PaidBySplitPhrase(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
+        SeBodyLarge(
             text = lead,
-            style = MaterialTheme.typography.bodyLarge,
             color = SplitEaseColors.Navy,
             maxLines = 1,
         )
@@ -1021,14 +1020,12 @@ private fun ChoicePill(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(
+        SeLabelLarge(
             text = text,
-            style = MaterialTheme.typography.labelLarge,
             color = SplitEaseColors.Primary,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            softWrap = false,
         )
     }
 }
@@ -1092,20 +1089,11 @@ private fun ExpenseUnderlineField(
         ) {
             when {
                 leadingLabel != null -> {
-                    val adjustedStyle =
-                        when {
-                            leadingLabel.length >= 4 -> MaterialTheme.typography.labelSmall
-                            leadingLabel.length == 3 -> MaterialTheme.typography.labelMedium
-                            leadingLabel.length == 2 -> MaterialTheme.typography.titleMedium
-                            else -> leadingTextStyle ?: MaterialTheme.typography.titleLarge
-                        }
-                    Text(
+                    SeLabelMedium(
                         text = leadingLabel,
-                        style = adjustedStyle,
                         fontWeight = FontWeight.SemiBold,
                         color = SplitEaseColors.NavyMuted,
                         maxLines = 1,
-                        softWrap = false,
                     )
                 }
                 icon != null ->
@@ -1121,9 +1109,9 @@ private fun ExpenseUnderlineField(
         Column(modifier = Modifier.weight(1f)) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (value.isEmpty()) {
-                    Text(
+                    SeBodyLarge(
                         text = placeholder,
-                        style = textStyle.copy(color = SplitEaseColors.NavyMuted),
+                        color = SplitEaseColors.NavyMuted,
                     )
                 }
                 BasicTextField(
@@ -1202,7 +1190,7 @@ internal fun CategoryPickerDialog(
                 FilterChip(
                     selected = selected,
                     onClick = { onSelect(stableId) },
-                    label = { Text(category.name) },
+                    label = { SeBodyMedium(category.name) },
                     modifier = Modifier.heightIn(min = 40.dp),
                     leadingIcon = {
                         Icon(
@@ -1271,18 +1259,16 @@ private fun ExchangeRateRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
+            SeLabelMedium(
                 text = stringResource(R.string.label_exchange_rate),
-                style = MaterialTheme.typography.labelMedium,
                 color = SplitEaseColors.NavyMuted
             )
             if (!fxState.isLoading) {
-                Text(
+                SeLabelSmall(
                     text = if (fxState.source == ExchangeRateSource.LIVE)
                         stringResource(R.string.rate_source_live)
                     else
                         stringResource(R.string.rate_source_custom),
-                    style = MaterialTheme.typography.labelSmall,
                     color = SplitEaseColors.Primary,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -1299,9 +1285,8 @@ private fun ExchangeRateRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
+            SeBodyLarge(
                 text = "1 ${fxState.fromCurrency} =",
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -1330,9 +1315,8 @@ private fun ExchangeRateRow(
                     }
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
+            SeBodyLarge(
                 text = fxState.toCurrency,
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy
             )
         }
@@ -1346,14 +1330,12 @@ private fun ExchangeRateRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.label_total_after_exchange),
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted
                 )
-                Text(
+                SeBodyMedium(
                     text = MoneyFormat.format(convertedTotal, toCurrency),
-                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = SplitEaseColors.Navy
                 )
@@ -1391,16 +1373,14 @@ private fun CurrencyPickerDialog(
                             .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
+                        SeTitleMedium(
                             text = code,
-                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (code == selected) SplitEaseColors.Primary else SplitEaseColors.Navy,
                             modifier = Modifier.width(50.dp)
                         )
-                        Text(
+                        SeBodyLarge(
                             text = name,
-                            style = MaterialTheme.typography.bodyLarge,
                             color = SplitEaseColors.NavyMuted
                         )
                     }
@@ -1513,9 +1493,8 @@ private fun AddExpenseScreenPreview() {
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
+                            SeBodyLarge(
                                 text = stringResource(R.string.expense_with_you_and),
-                                style = MaterialTheme.typography.bodyLarge,
                                 color = SplitEaseColors.Navy,
                             )
                             Spacer(modifier = Modifier.width(8.dp))

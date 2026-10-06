@@ -75,6 +75,7 @@ import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
 import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
@@ -276,10 +277,9 @@ fun FriendsListScreen(
                     item {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text(
+                            SeBodySmall(
                                 text = stringResource(R.string.friends_hiding_settled),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = SplitEaseColors.NavyMuted,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             SeOutlinedButton(
@@ -343,7 +343,7 @@ private fun FriendsFilterMenu(
             ) {
                 FriendsListFilter.entries.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(text = stringResource(option.labelRes)) },
+                        text = { SeBodyMedium(text = stringResource(option.labelRes)) },
                         onClick = {
                             onFilterSelected(option)
                             menuExpanded = false
@@ -421,7 +421,7 @@ private fun FriendBalanceListItem(
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                SeTitleMedium(
                     text =
                         if (pending) {
                             friend.displayNameSnapshot
@@ -431,17 +431,13 @@ private fun FriendBalanceListItem(
                                 .trim()
                                 .ifBlank { friend.displayNameSnapshot }
                         },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 when {
                     pending ->
-                        Text(
+                        SeBodyMedium(
                             text =
                                 "${ContactIdentifier.displayContact(friend.emailSnapshot)} · ${stringResource(R.string.invite_pending_label)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     balance != null ->
                         FriendNetStatus(
@@ -449,16 +445,12 @@ private fun FriendBalanceListItem(
                             currencyFallback = currencyFallback,
                         )
                     isSettled ->
-                        Text(
+                        SeBodyMedium(
                             text = stringResource(R.string.balances_settled_up).lowercase(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     else ->
-                        Text(
+                        SeBodyMedium(
                             text = stringResource(R.string.friends_no_expenses),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                 }
             }
@@ -570,7 +562,7 @@ private fun FriendContextLine(
     val money = MoneyFormat.format(amount, currencyCode)
     val accent = if (youOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou
     val body = MaterialTheme.colorScheme.onSurfaceVariant
-    Text(
+    SeBodySmall(
         text =
             buildAnnotatedString {
                 if (youOwe) {
@@ -596,7 +588,6 @@ private fun FriendContextLine(
                 }
             },
         modifier = modifier,
-        style = MaterialTheme.typography.bodySmall,
     )
 }
 
@@ -727,10 +718,8 @@ fun AddFriendScreen(
                         if (contactError) stringResource(R.string.msg_contact_required) else null,
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.add_friend_review_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )

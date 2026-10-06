@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.seScreenSubtitleStyle
@@ -209,10 +210,8 @@ private fun AuthScaffoldHeader(
     textAlign: TextAlign = TextAlign.Center,
 ) {
     if (title != null) {
-        Text(
+        SeHeadlineMedium(
             text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = SplitEaseColors.Navy,
             textAlign = textAlign,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -221,9 +220,9 @@ private fun AuthScaffoldHeader(
     }
     if (subtitleAnnotated != null) {
         Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
-        Text(
+        SeBodyMedium(
             text = subtitleAnnotated,
-            style = seScreenSubtitleStyle(),
+            color = SplitEaseColors.NavyMuted,
             textAlign = textAlign,
             maxLines = 5,
             overflow = TextOverflow.Ellipsis,
@@ -232,9 +231,9 @@ private fun AuthScaffoldHeader(
         Spacer(modifier = Modifier.height(SeLayout.headerToContent))
     } else if (subtitle != null) {
         Spacer(modifier = Modifier.height(SeLayout.titleToSubtitle))
-        Text(
+        SeBodyMedium(
             text = subtitle,
-            style = seScreenSubtitleStyle(),
+            color = SplitEaseColors.NavyMuted,
             textAlign = textAlign,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
@@ -316,9 +315,8 @@ private fun PasswordRequirementRow(
                 )
             }
         }
-        Text(
+        SeBodyMedium(
             text = text,
-            style = MaterialTheme.typography.bodyMedium,
             color = if (met) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
         )
     }

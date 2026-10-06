@@ -59,6 +59,7 @@ import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SeLabelSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -221,13 +222,10 @@ fun SeAvatarBadge(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Text(
+            SeLabelSmall(
                 text = initialsOf(name),
                 color = Color.White,
-                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                fontSize = (size.value * 0.38f).sp,
-                maxLines = 1,
             )
         }
     }
@@ -349,19 +347,17 @@ fun SeLedgerRow(
                 Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                SeTitleMedium(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = SplitEaseColors.Navy,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
+                    SeBodySmall(
                         text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = SplitEaseColors.NavyMuted,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -372,9 +368,8 @@ fun SeLedgerRow(
                 trailing()
             } else if (!amount.isNullOrBlank()) {
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(
+                SeTitleLarge(
                     text = amount,
-                    style = MaterialTheme.typography.titleLarge,
                     color = amountTone.color(),
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -434,18 +429,16 @@ fun SeListRow(
             Column(modifier = Modifier.weight(1f)) {
                 when (labelStyle) {
                     SeListRowLabelStyle.Navigation -> {
-                        Text(
+                        SeTitleMedium(
                             text = title,
-                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = SplitEaseColors.Navy,
                         )
                         if (subtitle != null) {
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
+                            SeBodyMedium(
                                 text = subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = SplitEaseColors.NavyMuted,
                             )
                         }
                     }
@@ -478,11 +471,10 @@ fun SeSectionHeader(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    SeTitleSmall(
         text = text,
         modifier = modifier.padding(vertical = 8.dp),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = SplitEaseColors.NavyMuted,
         fontWeight = FontWeight.SemiBold,
     )
 }
@@ -520,10 +512,9 @@ fun SeEmptyState(
             }
             Spacer(modifier = Modifier.height(20.dp))
         }
-        Text(
+        SeBodyLarge(
             text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = SplitEaseColors.NavyMuted,
             textAlign = TextAlign.Center,
         )
         if (actionLabel != null && onAction != null) {
@@ -570,13 +561,11 @@ fun SeActionChip(
         if (icon != null) {
             Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
         }
-        Text(
+        SeLabelLarge(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
             color = content,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
-            softWrap = false,
             overflow = TextOverflow.Clip,
         )
     }
@@ -653,7 +642,7 @@ fun SeTypeChip(
     ) {
         Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(28.dp))
         Spacer(modifier = Modifier.height(6.dp))
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = content)
+        SeBodyMedium(label, color = content)
     }
 }
 

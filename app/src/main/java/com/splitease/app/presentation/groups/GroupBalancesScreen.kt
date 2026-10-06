@@ -29,7 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -219,10 +219,9 @@ private fun GroupBalancesContent(
             ) {
                 when {
                     groupBalance == null -> {
-                        Text(
+                        SeBodyLarge(
                             text = stringResource(R.string.balances_loading),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = SplitEaseColors.NavyMuted,
                             modifier =
                                 Modifier
                                     .seDetailHorizontal()
@@ -319,9 +318,8 @@ private fun RemindOptionsSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 28.dp),
     ) {
-        Text(
+        SeTitleLarge(
             text = stringResource(R.string.remind_sheet_title, personName),
-            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = SplitEaseColors.Navy,
             modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
@@ -368,17 +366,15 @@ private fun RemindSheetOption(
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.Navy,
             )
             if (!subtitle.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
+                SeBodyMedium(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
                 )
             }
@@ -519,7 +515,7 @@ private fun MemberBalanceAccordion(
                 borderWidth = 0.dp,
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
+            SeBodyLarge(
                 text =
                     buildAnnotatedString {
                         val start = headline.indexOf(money)
@@ -533,7 +529,6 @@ private fun MemberBalanceAccordion(
                             append(headline.substring(start + money.length))
                         }
                     },
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy,
                 modifier = Modifier.weight(1f),
                 maxLines = 2,
@@ -634,7 +629,7 @@ private fun MemberDebtDetailRow(
                 borderWidth = 0.dp,
             )
             Spacer(modifier = Modifier.width(10.dp))
-            Text(
+            SeBodyMedium(
                 text =
                     buildAnnotatedString {
                         val start = line.indexOf(money)
@@ -648,7 +643,6 @@ private fun MemberDebtDetailRow(
                             append(line.substring(start + money.length))
                         }
                     },
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.Navy,
             )
         }
@@ -685,9 +679,8 @@ private fun BalanceActionPill(
         border = BorderStroke(1.dp, SplitEaseColors.Primary),
         modifier = Modifier.height(36.dp),
     ) {
-        Text(
+        SeLabelLarge(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
         )
     }

@@ -3,8 +3,7 @@ package com.splitease.app.presentation.auth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -151,19 +150,14 @@ fun ResetPasswordOtpScreen(
             SeErrorText(text = stringResource(R.string.msg_otp_required))
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
+        SeBodySmall(
             text = stringResource(R.string.reset_otp_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = SplitEaseColors.NavyMuted,
             textAlign = TextAlign.Start,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(20.dp))
-        Text(
+        SeTitleSmall(
             text = stringResource(R.string.label_new_password),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = SplitEaseColors.Navy,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -178,11 +172,8 @@ fun ResetPasswordOtpScreen(
         Spacer(modifier = Modifier.height(10.dp))
         PasswordRequirementsChecklist(password = newPassword)
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
+        SeTitleSmall(
             text = stringResource(R.string.label_confirm_password),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = SplitEaseColors.Navy,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(8.dp))

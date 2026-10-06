@@ -48,6 +48,7 @@ import com.splitease.app.data.social.InviteLinks
 import com.splitease.app.domain.model.Friend
 import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
@@ -206,10 +207,8 @@ fun FindPeopleScreen(
             }
             if (filteredFriends.isEmpty()) {
                 item {
-                    Text(
+                    SeBodyMedium(
                         text = stringResource(R.string.find_people_no_friends),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SplitEaseColors.NavyMuted,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }
@@ -250,10 +249,8 @@ fun FindPeopleScreen(
                 !uiState.contactsPermissionGranted -> {
                     item {
                         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                            Text(
+                            SeBodyMedium(
                                 text = stringResource(R.string.find_people_contacts_permission),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SplitEaseColors.NavyMuted,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             SeOutlinedButton(
@@ -267,20 +264,16 @@ fun FindPeopleScreen(
                 }
                 uiState.isLoadingContacts -> {
                     item {
-                        Text(
+                        SeBodyMedium(
                             text = stringResource(R.string.find_people_loading_contacts),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = SplitEaseColors.NavyMuted,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                         )
                     }
                 }
                 filteredContacts.isEmpty() -> {
                     item {
-                        Text(
+                        SeBodyMedium(
                             text = stringResource(R.string.find_people_no_contacts),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = SplitEaseColors.NavyMuted,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                         )
                     }
@@ -320,9 +313,8 @@ private fun FindPeopleActionTile(
             size = 40,
         )
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = label,
-            style = MaterialTheme.typography.titleMedium,
             color = SplitEaseColors.Primary,
             fontWeight = FontWeight.SemiBold,
         )
@@ -354,32 +346,26 @@ private fun FriendPickRow(
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = friend.displayNameSnapshot,
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.Navy,
                 fontWeight = FontWeight.SemiBold,
             )
             when {
                 alreadyInGroup -> {
-                    Text(
+                    SeBodySmall(
                         text = stringResource(R.string.find_people_already_in_group),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SplitEaseColors.NavyMuted,
                     )
                 }
                 locallyPending -> {
-                    Text(
+                    SeBodySmall(
                         text = stringResource(R.string.find_people_tap_to_sync_member),
-                        style = MaterialTheme.typography.bodySmall,
                         color = SplitEaseColors.Primary,
                     )
                 }
                 friend.emailSnapshot.isNotBlank() -> {
-                    Text(
+                    SeBodySmall(
                         text = ContactIdentifier.displayContact(friend.emailSnapshot),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SplitEaseColors.NavyMuted,
                     )
                 }
             }
@@ -414,17 +400,14 @@ private fun ContactPickRow(
         SeIconTile(Icons.Filled.Phone, SplitEaseColors.IconOther, size = 48)
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = contact.displayName.ifBlank { subtitle.orEmpty() },
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.Navy,
                 fontWeight = FontWeight.SemiBold,
             )
             if (!subtitle.isNullOrBlank() && subtitle != contact.displayName) {
-                Text(
+                SeBodySmall(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SplitEaseColors.NavyMuted,
                 )
             }
         }

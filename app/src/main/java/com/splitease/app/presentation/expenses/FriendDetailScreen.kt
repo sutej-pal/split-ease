@@ -68,6 +68,7 @@ import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.theme.FriendDetailBannerDark
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
@@ -276,9 +277,9 @@ private fun FriendDetailHeader(
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Text(
+        SeHeadlineSmall(
             text = title,
-            style = seEntityHeaderStyle(),
+            color = SplitEaseColors.Navy,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -297,9 +298,8 @@ private fun FriendBalanceSummary(
     var expanded by rememberSaveable { mutableStateOf(true) }
 
     if (!hasBalance) {
-        Text(
+        SeBodyMedium(
             text = stringResource(R.string.friend_detail_no_expenses_yet),
-            style = MaterialTheme.typography.bodyMedium,
             color = SplitEaseColors.NavyMuted,
             textAlign = TextAlign.Center,
         )
@@ -358,7 +358,7 @@ private fun FriendOverallHeadline(nets: Map<String, BigDecimal>) {
         } else {
             stringResource(R.string.balances_you_are_owed_overall, money)
         }
-    Text(
+    SeTitleMedium(
         text =
             buildAnnotatedString {
                 val start = template.indexOf(money)
@@ -372,7 +372,6 @@ private fun FriendOverallHeadline(nets: Map<String, BigDecimal>) {
                     append(template.substring(start + money.length))
                 }
             },
-        style = MaterialTheme.typography.titleMedium,
         color = SplitEaseColors.Navy,
         textAlign = TextAlign.Center,
     )
@@ -414,7 +413,7 @@ private fun FriendContextLine(
                     .height(16.dp)
                     .background(accent.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
         )
-        Text(
+        SeBodyMedium(
             text =
                 buildAnnotatedString {
                     val start = line.indexOf(money)
@@ -428,7 +427,6 @@ private fun FriendContextLine(
                         append(line.substring(start + money.length))
                     }
                 },
-            style = MaterialTheme.typography.bodyMedium,
             color = SplitEaseColors.Navy,
         )
     }
@@ -483,17 +481,15 @@ private fun FriendDetailEmptyState() {
                 .padding(horizontal = 32.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
+        SeTitleLarge(
             text = stringResource(R.string.friend_detail_empty_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
             color = SplitEaseColors.Navy,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
+        SeBodyMedium(
             text = stringResource(R.string.friend_detail_empty_body),
-            style = MaterialTheme.typography.bodyMedium,
             color = SplitEaseColors.NavyMuted,
             textAlign = TextAlign.Center,
         )

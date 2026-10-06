@@ -65,6 +65,7 @@ import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.theme.*
 
 private fun openSystemNotificationSettings(context: Context) {
     val intent =
@@ -114,11 +115,9 @@ fun NotificationsSettingsScreen(
                             .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    SeTitleMedium(
                         text = stringResource(R.string.settings_notifications_group_updates),
                         modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
                         color = SplitEaseColors.Navy,
                     )
                     Switch(
@@ -144,17 +143,13 @@ fun NotificationsSettingsScreen(
                             ),
                     )
                 }
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.settings_notifications_group_updates_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
                 if (!osNotificationsEnabled) {
-                    Text(
+                    SeBodyMedium(
                         text = stringResource(R.string.settings_notifications_permission_needed),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SplitEaseColors.NavyMuted,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
                     SeTextButton(
@@ -309,11 +304,9 @@ fun SecuritySettingsScreen(
                             .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    SeTitleMedium(
                         text = stringResource(R.string.settings_biometrics_title),
                         modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
                         color = SplitEaseColors.Navy,
                     )
                     Switch(
@@ -351,10 +344,8 @@ fun SecuritySettingsScreen(
                             ),
                     )
                 }
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.settings_biometrics_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
                 if (enableError != null) {
@@ -369,9 +360,8 @@ fun SecuritySettingsScreen(
                     title = stringResource(R.string.settings_timeout_title),
                     trailing = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
+                            SeBodyLarge(
                                 text = authTimeoutLabel(timeout),
-                                style = MaterialTheme.typography.bodyLarge,
                                 color = SplitEaseColors.NavyMuted,
                             )
                             Icon(
@@ -384,10 +374,8 @@ fun SecuritySettingsScreen(
                     onClick = { showTimeoutPicker = true },
                     showDivider = false,
                 )
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.settings_timeout_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                 )
             }
         },
@@ -422,9 +410,8 @@ fun SecuritySettingsScreen(
                                 selectedColor = SplitEaseColors.Primary,
                             ),
                     )
-                    Text(
+                    SeBodyLarge(
                         text = authTimeoutLabel(option),
-                        style = MaterialTheme.typography.bodyLarge,
                         color = SplitEaseColors.Navy,
                         modifier = Modifier.padding(start = 4.dp),
                     )
@@ -454,10 +441,8 @@ fun CurrencySettingsScreen(
                         .padding(padding.values)
                         .padding(horizontal = 20.dp),
             ) {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.settings_currency_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 SeTextField(
@@ -489,12 +474,8 @@ fun CurrencySettingsScreen(
                                     ),
                             )
                             Column(modifier = Modifier.padding(start = 8.dp)) {
-                                Text(text = code, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                SeTitleSmall(text = code)
+                                SeBodyMedium(text = label)
                             }
                         }
                         HorizontalDivider(color = SplitEaseColors.Outline)

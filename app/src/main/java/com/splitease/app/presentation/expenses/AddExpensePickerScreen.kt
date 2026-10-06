@@ -53,6 +53,7 @@ import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.domain.model.GroupType
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeGroupIconTile
@@ -260,16 +261,15 @@ private fun PickerSearchRow(
                 .padding(vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
+        SeBodyLarge(
             text = withYouAndText(prefix, youLabel),
-            style = textStyle,
+            color = SplitEaseColors.Navy,
         )
         Spacer(modifier = Modifier.width(8.dp))
         Box(modifier = Modifier.weight(1f)) {
             if (query.isEmpty()) {
-                Text(
+                SeBodyLarge(
                     text = placeholder,
-                    style = textStyle,
                     color = SplitEaseColors.NavyMuted,
                 )
             }
@@ -308,9 +308,8 @@ private fun PickerGroupRow(
             size = 48,
         )
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = group.name,
-            style = MaterialTheme.typography.titleMedium,
             color = SplitEaseColors.Navy,
         )
     }
@@ -338,9 +337,8 @@ private fun PickerFriendRow(
             borderWidth = 0.dp,
         )
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = name,
-            style = MaterialTheme.typography.titleMedium,
             color = SplitEaseColors.Navy,
         )
     }
@@ -367,9 +365,8 @@ private fun PickerActionRow(
             size = 40,
         )
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = label,
-            style = MaterialTheme.typography.titleMedium,
             color = SplitEaseColors.Primary,
             fontWeight = FontWeight.SemiBold,
         )

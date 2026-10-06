@@ -51,6 +51,7 @@ import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.invite.InviteDeliveryPolicy
 import com.splitease.app.presentation.theme.AmberLight
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
@@ -130,14 +131,12 @@ fun FriendSettingsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 SeSectionHeader(text = stringResource(R.string.friend_settings_shared_groups))
                 if (sharedGroups.isEmpty()) {
-                    Text(
+                    SeBodyMedium(
                         text =
                             stringResource(
                                 R.string.friend_settings_no_shared_groups,
                                 firstName,
                             ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SplitEaseColors.NavyMuted,
                         modifier = Modifier.padding(vertical = 8.dp),
                     )
                 } else {
@@ -289,15 +288,12 @@ private fun FriendSettingsHeader(
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeHeadlineSmall(
                 text = name.ifBlank { stringResource(R.string.friends_title) },
-                style = seEntityHeaderStyle(),
             )
             if (contact.isNotBlank()) {
-                Text(
+                SeBodyMedium(
                     text = contact,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                 )
             }
         }
@@ -328,15 +324,13 @@ private fun PendingInviteCard(
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
+            SeTitleSmall(
                 text = stringResource(R.string.friend_invite_pending_title),
-                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
-                color = SplitEaseColors.Navy,
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
-        Text(
+        SeBodyMedium(
             text =
                 stringResource(
                     if (isPhone) {
@@ -347,7 +341,6 @@ private fun PendingInviteCard(
                     firstName,
                     contact,
                 ),
-            style = MaterialTheme.typography.bodyMedium,
             color = SplitEaseColors.Navy,
         )
         Spacer(modifier = Modifier.height(12.dp))
@@ -381,11 +374,8 @@ private fun PendingInviteAction(
     ) {
         Icon(icon, contentDescription = null, tint = AmberLight, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
+        SeTitleMedium(
             text = label,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = SplitEaseColors.Navy,
         )
     }
 }
@@ -435,17 +425,13 @@ private fun ManageActionRow(
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                SeTitleMedium(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
                     color = titleColor ?: SplitEaseColors.Navy,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                SeBodyMedium(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                 )
             }
         }

@@ -56,6 +56,7 @@ import com.splitease.app.data.social.ContactKind
 import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.invite.InviteDeliveryPolicy
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.DialCodePickerDialog
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
@@ -160,9 +161,8 @@ fun EditContactScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
                 if (uiState.mode == EditContactMode.DEVICE_CONTACT) {
-                    Text(
+                    SeTitleSmall(
                         text = stringResource(R.string.label_phone_or_email),
-                        style = MaterialTheme.typography.titleSmall,
                         color = SplitEaseColors.NavyMuted,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -199,10 +199,8 @@ fun EditContactScreen(
 
                 if (uiState.confirmOnly) {
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text(
+                    SeBodyMedium(
                         text = stringResource(R.string.add_friend_review_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SplitEaseColors.NavyMuted,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -316,10 +314,8 @@ private fun PhoneConfirmDialog(
         titleContentColor = SplitEaseColors.Navy,
         textContentColor = SplitEaseColors.Navy,
         title = {
-            Text(
+            SeTitleLarge(
                 text = stringResource(R.string.phone_confirm_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = SplitEaseColors.Navy,
             )
         },
         text = {
@@ -334,10 +330,8 @@ private fun PhoneConfirmDialog(
                             .padding(end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    SeBodyLarge(
                         text = "${state.flag}  ${state.dialCode}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SplitEaseColors.Navy,
                     )
                     Icon(
                         imageVector = Icons.Outlined.KeyboardArrowDown,
@@ -379,7 +373,7 @@ private fun PhoneConfirmDialog(
         },
         confirmButton = {
             TextButton(onClick = onContinue, enabled = canContinue) {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.action_continue),
                     color = if (canContinue) SplitEaseColors.Primary else SplitEaseColors.NavyMuted,
                 )
@@ -387,7 +381,7 @@ private fun PhoneConfirmDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.action_cancel))
+                SeBodyMedium(text = stringResource(R.string.action_cancel))
             }
         },
     )
@@ -434,10 +428,8 @@ private fun ContactMethodRow(
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text(
+                    SeBodyLarge(
                         text = option.value,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SplitEaseColors.Navy,
                     )
                 }
                 ContactMethodKind.EXISTING_EMAIL -> {
@@ -448,10 +440,8 @@ private fun ContactMethodRow(
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text(
+                    SeBodyLarge(
                         text = option.value,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SplitEaseColors.Navy,
                     )
                 }
                 ContactMethodKind.NEW_PHONE -> {
@@ -466,10 +456,8 @@ private fun ContactMethodRow(
                             modifier = Modifier.weight(1f),
                         )
                     } else {
-                        Text(
+                        SeBodyLarge(
                             text = stringResource(R.string.edit_contact_enter_phone),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = SplitEaseColors.Navy,
                         )
                     }
                 }
@@ -485,10 +473,8 @@ private fun ContactMethodRow(
                             modifier = Modifier.weight(1f),
                         )
                     } else {
-                        Text(
+                        SeBodyLarge(
                             text = stringResource(R.string.edit_contact_enter_email),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = SplitEaseColors.Navy,
                         )
                     }
                 }

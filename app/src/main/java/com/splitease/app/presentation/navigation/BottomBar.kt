@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SePreview
 
 enum class MainTab(
@@ -168,21 +169,19 @@ private fun BottomBarTab(
                             .semantics { contentDescription = unreadCd },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
+                    SeLabelSmall(
                         text = badgeLabel,
                         color = Color.White,
-                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
                 }
             }
         }
-        Text(
+        SeLabelSmall(
             text = label,
             color = contentColor,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
         )
     }

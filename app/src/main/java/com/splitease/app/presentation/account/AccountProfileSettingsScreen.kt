@@ -731,7 +731,7 @@ private fun CurrencyLeading(code: String) {
                 .background(SplitEaseColors.Primary.copy(alpha = fillAlpha)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = flag, fontSize = 20.sp)
+        SeBodyLarge(text = flag)
     }
 }
 
@@ -820,6 +820,6 @@ private fun accountLocaleLabel(locale: AppLocale): String =
 @Composable
 private fun AccountProfileSettingsPreview() {
     SePreview {
-        Text("Preview")
+        SeBodyMedium("Preview")
     }
 }

@@ -31,7 +31,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -186,18 +186,16 @@ fun SettleUpScreen(
                     }
                     Spacer(modifier = Modifier.height(28.dp))
                     if (recordLabel != null) {
-                        Text(
+                        SeBodyLarge(
                             text = recordLabel,
-                            style = MaterialTheme.typography.bodyLarge,
                             color = SplitEaseColors.Navy,
                             textAlign = TextAlign.Center,
                         )
                     }
                     if (!subtitleEmail.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
+                        SeBodySmall(
                             text = subtitleEmail,
-                            style = MaterialTheme.typography.bodySmall,
                             color = SplitEaseColors.NavyMuted,
                             textAlign = TextAlign.Center,
                         )
@@ -218,9 +216,8 @@ fun SettleUpScreen(
 
                     if (iAmPaying) {
                         Spacer(modifier = Modifier.height(20.dp))
-                        Text(
+                        SeTitleSmall(
                             text = stringResource(R.string.pay_externally_section),
-                            style = MaterialTheme.typography.titleSmall,
                             color = SplitEaseColors.NavyMuted,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -329,19 +326,17 @@ private fun SettleAmountEditor(
                 .border(1.dp, SplitEaseColors.OutlineStrong, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Text(
+            SeTitleLarge(
                 text = symbol,
-                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = SplitEaseColors.Navy,
             )
         }
         Spacer(modifier = Modifier.width(16.dp))
         Box {
             if (amount.isEmpty()) {
-                Text(
+                SeBodyLarge(
                     text = "0.00",
-                    style = textStyle.copy(color = SplitEaseColors.NavyMuted),
+                    color = SplitEaseColors.NavyMuted,
                 )
             }
             BasicTextField(
@@ -389,9 +384,8 @@ private fun SettleOutsideInfoBanner() {
             )
         }
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
+        SeBodyMedium(
             text = stringResource(R.string.settle_outside_note),
-            style = MaterialTheme.typography.bodyMedium,
             color = SplitEaseColors.Navy,
             modifier = Modifier.weight(1f),
         )

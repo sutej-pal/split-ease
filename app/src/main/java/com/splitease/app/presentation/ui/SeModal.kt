@@ -39,6 +39,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 
 /** Shared flat dialog card radius (matches [SeConfirmDialog]). */
 val SeDialogCornerRadius = 20.dp
@@ -205,18 +206,8 @@ fun SeDialogHeader(
                 )
             }
         }
-        Text(
+        SeTitleMedium(
             text = title,
-            style =
-                MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    lineHeightStyle =
-                        LineHeightStyle(
-                            alignment = LineHeightStyle.Alignment.Center,
-                            trim = LineHeightStyle.Trim.Both,
-                        ),
-                ),
             color = SplitEaseColors.Navy,
         )
     }
@@ -236,8 +227,9 @@ fun SeDialogBody(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    SeBodyMedium(
         text = text,
+        color = SplitEaseColors.NavyMuted,
         modifier =
             modifier
                 .fillMaxWidth()
@@ -247,8 +239,6 @@ fun SeDialogBody(
                     top = 14.dp,
                     bottom = 8.dp,
                 ),
-        style = MaterialTheme.typography.bodyMedium,
-        color = SplitEaseColors.NavyMuted,
     )
 }
 
@@ -349,12 +339,10 @@ fun SeModalTitle(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    SeTitleMedium(
         text = text,
-        modifier = modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
         color = SplitEaseColors.Navy,
+        modifier = modifier.fillMaxWidth(),
         textAlign = TextAlign.Start,
     )
 }
@@ -379,10 +367,8 @@ private fun SeModalPreview() {
             body = "Pick a category for this expense.",
             dismissLabel = stringResource(R.string.action_close),
         ) {
-            Text(
+            SeBodyMedium(
                 text = "Content slot",
-                style = MaterialTheme.typography.bodyMedium,
-                color = SplitEaseColors.NavyMuted,
             )
         }
     }

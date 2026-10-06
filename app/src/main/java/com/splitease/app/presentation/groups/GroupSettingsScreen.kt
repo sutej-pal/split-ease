@@ -43,7 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -355,9 +355,8 @@ fun GroupSettingsScreen(
                     checked = simplifyDebts,
                     onCheckedChange = { viewModel.setSimplifyDebts(groupId, it) },
                 )
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.group_settings_simplify_body),
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 4.dp),
                 )
@@ -374,9 +373,8 @@ fun GroupSettingsScreen(
                     checked = groupMuted,
                     onCheckedChange = { viewModel.setGroupNotificationsMuted(groupId, it) },
                 )
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.group_settings_mute_body),
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
                 )
@@ -388,9 +386,8 @@ fun GroupSettingsScreen(
                     trailingBadge = stringResource(R.string.badge_pro),
                     onClick = { showDefaultSplitInfo = true },
                 )
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.group_settings_default_split_body),
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
                 )
@@ -556,16 +553,14 @@ private fun GroupMemberActionsSheet(
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                SeTitleMedium(
                     text = member.displayName,
-                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
                 )
                 if (!member.email.isNullOrBlank()) {
-                    Text(
+                    SeBodyMedium(
                         text = member.email,
-                        style = MaterialTheme.typography.bodyMedium,
                         color = SplitEaseColors.NavyMuted,
                     )
                 }
@@ -596,9 +591,8 @@ private fun GroupMemberActionsSheet(
             showDivider = false,
         )
         if (!canRemove) {
-            Text(
+            SeBodySmall(
                 text = stringResource(R.string.member_remove_blocked_hint),
-                style = MaterialTheme.typography.bodySmall,
                 color = SplitEaseColors.NavyMuted,
                 modifier = Modifier.padding(start = 38.dp, end = 8.dp, bottom = 4.dp),
             )
@@ -640,9 +634,8 @@ private fun MemberSheetActionRow(
                 modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(14.dp))
-            Text(
+            SeTitleMedium(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = (titleColor ?: SplitEaseColors.Navy).copy(alpha = alpha),
             )
@@ -735,13 +728,12 @@ private fun GroupSettingsHeader(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeHeadlineSmall(
                 text = group?.name.orEmpty(),
-                style = seEntityHeaderStyle(),
+                fontWeight = FontWeight.SemiBold,
             )
-            Text(
+            SeBodyMedium(
                 text = stringResource(type.settingsLabelRes()),
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.NavyMuted,
             )
         }
@@ -794,17 +786,15 @@ private fun SettingsActionRow(
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                SeTitleMedium(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = resolvedTitleColor.copy(alpha = alpha),
                 )
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
+                    SeBodyMedium(
                         text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
                         color = SplitEaseColors.NavyMuted,
                     )
                 }
@@ -825,10 +815,9 @@ private fun SettingsActionRow(
                             .background(SplitEaseColors.Primary)
                             .padding(horizontal = 8.dp, vertical = 2.dp),
                 ) {
-                    Text(
+                    SeLabelSmall(
                         text = trailingBadge,
                         color = Color.White,
-                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -859,10 +848,9 @@ private fun SettingsToggleRow(
     ) {
         Icon(icon, contentDescription = null, tint = SplitEaseColors.IconDefault, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = title,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = SplitEaseColors.Navy,
         )

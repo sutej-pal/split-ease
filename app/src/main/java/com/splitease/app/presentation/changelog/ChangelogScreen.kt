@@ -24,6 +24,7 @@ import com.splitease.app.R
 import com.splitease.app.domain.changelog.ChangelogRelease
 import com.splitease.app.domain.changelog.ChangelogSection
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SePreview
@@ -93,17 +94,14 @@ private fun ChangelogScreenContent(
                         .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp),
             ) {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.whats_new_current_build, versionName, versionCode),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 if (releases.isEmpty()) {
-                    Text(
+                    SeBodyLarge(
                         text = stringResource(R.string.whats_new_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = SplitEaseColors.NavyMuted,
                     )
                 } else {
                     releases.forEach { release ->
@@ -119,25 +117,20 @@ private fun ChangelogScreenContent(
                             }
                         SeSectionHeader(text = heading)
                         if (release.sections.isEmpty()) {
-                            Text(
+                            SeBodyMedium(
                                 text = stringResource(R.string.whats_new_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         } else {
                             release.sections.forEach { section ->
-                                Text(
+                                SeTitleSmall(
                                     text = section.title,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
                                     color = SplitEaseColors.NavyMuted,
                                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                                 )
                                 section.items.forEach { item ->
-                                    Text(
+                                    SeBodyMedium(
                                         text = "• $item",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onBackground,
+                                        color = SplitEaseColors.Navy,
                                         modifier = Modifier.padding(bottom = 6.dp),
                                     )
                                 }

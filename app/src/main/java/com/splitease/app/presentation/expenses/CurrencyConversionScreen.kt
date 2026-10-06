@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -73,9 +74,8 @@ fun CurrencyConversionScreen(
                     item {
                         ConversionWarning()
                         Spacer(modifier = Modifier.height(24.dp))
-                        Text(
+                        SeTitleMedium(
                             text = stringResource(R.string.conversion_expenses_to_convert, ui.expensesToConvert.size),
-                            style = MaterialTheme.typography.titleMedium,
                             color = SplitEaseColors.Navy,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -128,16 +128,13 @@ private fun ConversionWarning() {
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(
+            SeTitleSmall(
                 text = stringResource(R.string.conversion_warning_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.YouOwe,
+                fontWeight = FontWeight.Bold,
             )
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.conversion_warning_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = SplitEaseColors.NavyMuted,
             )
         }
     }
@@ -154,40 +151,32 @@ private fun ConvertibleExpenseRow(
         }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
+        SeBodyLarge(
             text = item.description,
-            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
             color = SplitEaseColors.Navy,
         )
-        Text(
+        SeBodySmall(
             text = dateLabel,
-            style = MaterialTheme.typography.bodySmall,
-            color = SplitEaseColors.NavyMuted,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
+            SeBodyMedium(
                 text = MoneyFormat.format(item.originalAmount, item.originalCurrency),
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.Navy,
             )
-            Text(
+            SeBodyMedium(
                 text = " → ",
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.NavyMuted,
             )
-            Text(
+            SeBodyMedium(
                 text = MoneyFormat.format(item.convertedAmount, targetCurrency),
-                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.Primary,
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
+            SeLabelSmall(
                 text = "(at ${item.rate})",
-                style = MaterialTheme.typography.labelSmall,
-                color = SplitEaseColors.NavyMuted,
             )
         }
     }

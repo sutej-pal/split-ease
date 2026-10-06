@@ -86,6 +86,7 @@ import com.splitease.app.presentation.navigation.paddingAboveBottomBar
 import com.splitease.app.presentation.navigation.Routes
 import com.splitease.app.presentation.navigation.SplitEaseBottomBar
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
@@ -356,10 +357,9 @@ private fun GroupsHomeScreenContent(
                             item {
                                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
+                                    SeBodySmall(
                                         text = stringResource(R.string.groups_hiding_settled),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = SplitEaseColors.NavyMuted,
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     SeOutlinedButton(
@@ -439,7 +439,7 @@ private fun GroupsFilterMenu(
             ) {
                 GroupsHomeFilter.entries.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(text = stringResource(option.labelRes)) },
+                        text = { SeBodyMedium(text = stringResource(option.labelRes)) },
                         onClick = {
                             onFilterSelected(option)
                             menuExpanded = false
@@ -479,10 +479,8 @@ private fun Map<String, BigDecimal>.matches(filter: GroupsHomeFilter): Boolean {
 
 @Composable
 private fun SeCountPill(count: Int, color: Color) {
-    Text(
+    SeLabelSmall(
         text = "+$count",
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.SemiBold,
         color = color,
         modifier =
             Modifier
@@ -514,9 +512,8 @@ private fun SeSplitMoneyLine(
                 append(money)
             }
         }
-    Text(
+    SeBodyMedium(
         text = text,
-        style = style,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
@@ -560,12 +557,11 @@ private fun GroupBalanceListItem(
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = row.groupName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(2.dp))
             if (showAmounts) {
@@ -605,12 +601,11 @@ private fun NonGroupListItem(
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = stringResource(R.string.non_group_expenses),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(2.dp))
             if (showAmounts) {
@@ -630,10 +625,8 @@ private fun MyNetStatus(
     currencyFallback: String,
 ) {
     if (myNet.isEmpty()) {
-        Text(
+        SeBodyMedium(
             text = stringResource(R.string.balances_settled_up).lowercase(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = SplitEaseColors.NavyMuted,
             maxLines = 1,
         )
         return

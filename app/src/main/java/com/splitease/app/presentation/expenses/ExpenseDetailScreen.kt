@@ -63,6 +63,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -76,6 +77,7 @@ import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.common.shortDisplayName
 import com.splitease.app.presentation.media.rememberAttachmentImagePicker
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
@@ -253,45 +255,40 @@ fun ExpenseDetailScreen(
                 .padding(horizontal = SeLayout.detailHorizontal)
                 .padding(top = 8.dp, bottom = 24.dp),
         ) {
-            Text(
+            SeHeadlineSmall(
                 text = snapshot.expense.description,
-                style = seEntityHeaderStyle(),
+                color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(6.dp))
-            Text(
+            SeHeadlineLarge(
                 text =
                     MoneyFormat.format(
                         snapshot.expense.amount,
                         snapshot.expense.currencyCode,
                     ),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
                 color = SplitEaseColors.Navy,
+                fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
+            SeBodyMedium(
                 text =
                     stringResource(
                         R.string.expense_added_by_on,
                         addedByDisplayName(snapshot.payerLabel),
                         formatExpenseAddedDate(snapshot.expense.expenseDateEpochMs),
                     ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = SplitEaseColors.NavyMuted,
             )
             val lastUpdatedBy = snapshot.lastUpdatedByLabel
             val lastUpdatedAt = snapshot.lastUpdatedAtEpochMs
             if ((!lastUpdatedBy.isNullOrBlank()) && lastUpdatedAt != null) {
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                SeBodyMedium(
                     text =
                         stringResource(
                             R.string.expense_updated_by_on,
                             addedByDisplayName(lastUpdatedBy),
                             formatExpenseAddedDate(lastUpdatedAt),
                         ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                 )
             }
             Spacer(modifier = Modifier.height(20.dp))
@@ -304,26 +301,23 @@ fun ExpenseDetailScreen(
             val notes = snapshot.expense.notes
             if (!notes.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
+                SeLabelMedium(
                     text = stringResource(R.string.label_notes),
-                    style = MaterialTheme.typography.labelMedium,
                     color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
+                SeBodyLarge(
                     text = notes,
-                    style = MaterialTheme.typography.bodyLarge,
                     color = SplitEaseColors.Navy,
                 )
             }
 
             if (attachments.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(
+                SeTitleSmall(
                     text = stringResource(R.string.expense_attachments_section),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 ExpenseAttachmentsPreviewRow(
@@ -349,11 +343,10 @@ fun ExpenseDetailScreen(
                 Spacer(modifier = Modifier.height(28.dp))
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(
+                SeTitleSmall(
                     text = stringResource(R.string.expense_comments_section),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 comments.forEach { comment ->
@@ -526,11 +519,11 @@ private fun ExpenseAttachmentOverflowCard(
                 ),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
+        SeHeadlineSmall(
             text = stringResource(R.string.expense_attachments_more, overflowCount),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
             color = SplitEaseColors.PrimaryDark,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -551,25 +544,21 @@ internal fun ExpenseCommentRow(comment: ExpenseCommentUi) {
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
+                SeLabelLarge(
                     text = comment.authorLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
                     color = SplitEaseColors.Navy,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
+                SeLabelSmall(
                     text = formatCommentTime(comment.createdAtEpochMs),
-                    style = MaterialTheme.typography.labelSmall,
                     color = SplitEaseColors.NavyMuted,
                 )
             }
             Spacer(modifier = Modifier.height(2.dp))
-            Text(
+            SeBodyMedium(
                 text = comment.body,
-                style = MaterialTheme.typography.bodyMedium,
                 color = if (isSystem) SplitEaseColors.NavyMuted else SplitEaseColors.Navy,
-                fontStyle = if (isSystem) FontStyle.Italic else FontStyle.Normal,
             )
         }
     }
@@ -694,11 +683,10 @@ private fun ExpensePaidOwesBlock(
                 borderWidth = 0.dp,
             )
             Spacer(modifier = Modifier.width(14.dp))
-            Text(
+            SeTitleMedium(
                 text = paidLine,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.Navy,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -765,7 +753,7 @@ private fun ExpenseOweTreeRow(
             borderWidth = 0.dp,
         )
         Spacer(modifier = Modifier.width(10.dp))
-        Text(
+        SeBodyMedium(
             text =
                 buildAnnotatedString {
                     if (node.isViewer) {
@@ -787,7 +775,6 @@ private fun ExpenseOweTreeRow(
                         }
                     }
                 },
-            style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
     }
@@ -811,11 +798,10 @@ private fun ExpenseSpendingTrendsSection(
                     detail.categoryName,
                 )
         }
-    Text(
+    SeTitleSmall(
         text = scopeLabel,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
         color = SplitEaseColors.Navy,
+        fontWeight = FontWeight.SemiBold,
     )
     Spacer(modifier = Modifier.height(14.dp))
     ExpenseTrendBars(
@@ -840,9 +826,8 @@ private fun ExpenseSpendingTrendsSection(
                 modifier = Modifier.size(20.dp),
             )
             Spacer(modifier = Modifier.width(10.dp))
-            Text(
+            SeLabelLarge(
                 text = stringResource(R.string.expense_view_more_charts),
-                style = MaterialTheme.typography.labelLarge,
             )
         }
     }
@@ -869,16 +854,14 @@ private fun ExpenseTrendBars(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
+                SeBodyMedium(
                     text = shortMonthLabel(month.month),
-                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = SplitEaseColors.Navy,
                     modifier = Modifier.width(40.dp),
                 )
-                Text(
+                SeBodyMedium(
                     text = MoneyFormat.format(month.totalSpent, currencyCode),
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.Navy,
                     modifier = Modifier.widthIn(min = 72.dp),
                 )
@@ -927,7 +910,7 @@ internal fun ExpenseCommentBar(
             onValueChange = onValueChange,
             modifier = Modifier.weight(1f),
             placeholder = {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.expense_add_comment),
                     color = SplitEaseColors.NavyMuted,
                 )

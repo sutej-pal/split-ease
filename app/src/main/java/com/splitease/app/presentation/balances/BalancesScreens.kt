@@ -22,6 +22,7 @@ import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
+import com.splitease.app.presentation.theme.*
 import java.math.BigDecimal
 
 @Composable
@@ -52,10 +53,9 @@ fun GroupBalanceHeader(
 @Composable
 private fun GroupBalanceSummaryBlock(group: GroupBalanceUi) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(
-            group.groupName,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
+        SeTitleMedium(
+            text = group.groupName,
+            color = SplitEaseColors.Navy,
         )
         if (group.myNetByCurrency.isEmpty()) {
             SeMoneyText(
@@ -76,10 +76,9 @@ private fun GroupBalanceSummaryBlock(group: GroupBalanceUi) {
         }
         if (group.simplifiedDebts.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.balances_who_owes_whom),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            SeTitleSmall(
+                text = stringResource(R.string.balances_who_owes_whom),
+                color = SplitEaseColors.NavyMuted,
             )
             Spacer(modifier = Modifier.height(4.dp))
             group.simplifiedDebts.forEach { debt ->
@@ -91,7 +90,7 @@ private fun GroupBalanceSummaryBlock(group: GroupBalanceUi) {
 
 @Composable
 private fun DebtLine(debt: LabeledDebt) {
-    Text(
+    SeBodyMedium(
         text =
             stringResource(
                 R.string.balances_debt_line,
@@ -99,8 +98,7 @@ private fun DebtLine(debt: LabeledDebt) {
                 debt.toLabel,
                 formatMoney(debt.amount, debt.currencyCode),
             ),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = SplitEaseColors.NavyMuted,
         modifier = Modifier.padding(vertical = 2.dp),
     )
 }

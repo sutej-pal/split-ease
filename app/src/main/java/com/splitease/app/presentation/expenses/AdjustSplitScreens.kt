@@ -45,6 +45,7 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.split.SplitCalculator
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeScreen
@@ -336,9 +337,8 @@ private fun SplitTypeTabs(
                         .padding(horizontal = 10.dp, vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
+                SeTitleSmall(
                     text = label,
-                    style = MaterialTheme.typography.titleSmall,
                     color = if (active) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
                     fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
                 )
@@ -378,16 +378,14 @@ private fun SplitIntro(tab: SplitType) {
             SplitType.SHARES -> stringResource(R.string.split_shares_subtitle)
             SplitType.ADJUSTMENT -> stringResource(R.string.split_adjustment_subtitle)
         }
-    Text(
+    SeTitleLarge(
         text = title,
-        style = MaterialTheme.typography.titleLarge,
         color = SplitEaseColors.Navy,
         fontWeight = FontWeight.SemiBold,
     )
     Spacer(modifier = Modifier.height(6.dp))
-    Text(
+    SeBodyMedium(
         text = subtitle,
-        style = MaterialTheme.typography.bodyMedium,
         color = SplitEaseColors.NavyMuted,
     )
 }
@@ -409,10 +407,9 @@ private fun EqualSplitRow(
     ) {
         SeAvatarBadge(name = name, photoUrl = photoUrl, size = 44.dp, borderWidth = 0.dp)
         Spacer(modifier = Modifier.width(14.dp))
-        Text(
+        SeTitleMedium(
             text = name,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleMedium,
             color = SplitEaseColors.Navy,
         )
         Checkbox(
@@ -449,34 +446,30 @@ private fun AmountInputRow(
         SeAvatarBadge(name = name, photoUrl = photoUrl, size = 44.dp, borderWidth = 0.dp)
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = name,
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.Navy,
             )
             if (subtitle != null) {
-                Text(
+                SeBodySmall(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
                     color = SplitEaseColors.NavyMuted,
                 )
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (leading != null) {
-                Text(
+                SeTitleMedium(
                     text = leading,
-                    style = MaterialTheme.typography.titleMedium,
                     color = SplitEaseColors.NavyMuted,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
             }
             Box(modifier = Modifier.width(72.dp)) {
                 if (value.isEmpty()) {
-                    Text(
+                    SeTitleMedium(
                         text = placeholder,
                         modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.titleMedium,
                         color = SplitEaseColors.NavyMuted,
                         textAlign = TextAlign.End,
                     )
@@ -504,9 +497,8 @@ private fun AmountInputRow(
             }
             if (trailing != null) {
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(
+                SeTitleMedium(
                     text = trailing,
-                    style = MaterialTheme.typography.titleMedium,
                     color = SplitEaseColors.NavyMuted,
                 )
             }
@@ -542,7 +534,7 @@ private fun SplitFooter(
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
+                SeTitleSmall(
                     text =
                         pluralStringResource(
                             R.plurals.split_per_person,
@@ -551,13 +543,11 @@ private fun SplitFooter(
                             selectedCount,
                         ),
                     modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleSmall,
                     color = SplitEaseColors.Navy,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Text(
+                SeTitleSmall(
                     text = stringResource(R.string.split_all),
-                    style = MaterialTheme.typography.titleSmall,
                     color = SplitEaseColors.Navy,
                 )
                 Checkbox(
@@ -600,18 +590,17 @@ private fun SplitFooter(
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
+                SeTitleMedium(
                     text =
                         stringResource(
                             R.string.split_percent_of_total,
                             entered.stripTrailingZeros().toPlainString(),
                         ),
-                    style = MaterialTheme.typography.titleMedium,
                     color = SplitEaseColors.Navy,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
+                SeBodyMedium(
                     text =
                         when {
                             remaining > ZERO ->
@@ -627,7 +616,6 @@ private fun SplitFooter(
                             else ->
                                 stringResource(R.string.split_percent_left, "0")
                         },
-                    style = MaterialTheme.typography.bodyMedium,
                     color =
                         if (remaining.compareTo(ZERO) == 0) {
                             SplitEaseColors.NavyMuted
@@ -640,13 +628,12 @@ private fun SplitFooter(
         SplitType.SHARES -> {
             val totalShares =
                 selectedIds.sumOf { id -> shareTexts[id]?.toIntOrNull() ?: 0 }
-            Text(
+            SeTitleMedium(
                 text = pluralStringResource(R.plurals.split_total_shares, totalShares, totalShares),
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp),
-                style = MaterialTheme.typography.titleMedium,
                 color = if (totalShares > 0) SplitEaseColors.Navy else SplitEaseColors.YouOwe,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
@@ -672,14 +659,13 @@ private fun FooterOfTotal(
                 .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
+        SeTitleMedium(
             text = primary,
-            style = MaterialTheme.typography.titleMedium,
             color = SplitEaseColors.Navy,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
+        SeBodyMedium(
             text =
                 when {
                     remaining > ZERO ->
@@ -698,7 +684,6 @@ private fun FooterOfTotal(
                             MoneyFormat.format(ZERO, currencyCode),
                         )
                 },
-            style = MaterialTheme.typography.bodyMedium,
             color =
                 if (remaining.compareTo(ZERO) == 0) {
                     SplitEaseColors.NavyMuted

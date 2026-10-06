@@ -10,8 +10,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -91,10 +93,11 @@ fun SeHeadlineLarge(
     textAlign: TextAlign? = null,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
+    textDecoration: TextDecoration? = null,
 ) {
     Text(
         text = text,
-        style = MaterialTheme.typography.headlineLarge,
+        style = MaterialTheme.typography.headlineLarge.copy(textDecoration = textDecoration),
         fontWeight = fontWeight,
         color = color,
         modifier = modifier,
@@ -107,6 +110,28 @@ fun SeHeadlineLarge(
 @Composable
 fun SeHeadlineMedium(
     text: String,
+    modifier: Modifier = Modifier,
+    color: Color = SplitEaseColors.Navy,
+    fontWeight: FontWeight = FontWeight.SemiBold,
+    textAlign: TextAlign? = null,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = fontWeight,
+        color = color,
+        modifier = modifier,
+        textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = overflow,
+    )
+}
+
+@Composable
+fun SeHeadlineMedium(
+    text: AnnotatedString,
     modifier: Modifier = Modifier,
     color: Color = SplitEaseColors.Navy,
     fontWeight: FontWeight = FontWeight.SemiBold,
@@ -193,6 +218,28 @@ fun SeTitleMedium(
 }
 
 @Composable
+fun SeTitleMedium(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    color: Color = SplitEaseColors.Navy,
+    fontWeight: FontWeight = FontWeight.SemiBold,
+    textAlign: TextAlign? = null,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = fontWeight,
+        color = color,
+        modifier = modifier,
+        textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = overflow,
+    )
+}
+
+@Composable
 fun SeTitleSmall(
     text: String,
     modifier: Modifier = Modifier,
@@ -237,7 +284,77 @@ fun SeBodyLarge(
 }
 
 @Composable
+fun SeBodyLarge(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    color: Color = SplitEaseColors.Navy,
+    fontWeight: FontWeight = FontWeight.Normal,
+    textAlign: TextAlign? = null,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = fontWeight,
+        color = color,
+        modifier = modifier,
+        textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = overflow,
+    )
+}
+
+@Composable
 fun SeBodyMedium(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = SplitEaseColors.NavyMuted,
+    fontWeight: FontWeight = FontWeight.Normal,
+    textAlign: TextAlign? = null,
+    minLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = fontWeight,
+        color = color,
+        modifier = modifier,
+        textAlign = textAlign,
+        minLines = minLines,
+        maxLines = maxLines,
+        overflow = overflow,
+    )
+}
+
+@Composable
+fun SeBodyMedium(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    color: Color = SplitEaseColors.NavyMuted,
+    fontWeight: FontWeight = FontWeight.Normal,
+    textAlign: TextAlign? = null,
+    minLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = fontWeight,
+        color = color,
+        modifier = modifier,
+        textAlign = textAlign,
+        minLines = minLines,
+        maxLines = maxLines,
+        overflow = overflow,
+    )
+}
+
+@Composable
+fun SeBodySmall(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = SplitEaseColors.NavyMuted,
@@ -248,7 +365,7 @@ fun SeBodyMedium(
 ) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodySmall,
         fontWeight = fontWeight,
         color = color,
         modifier = modifier,
@@ -260,7 +377,7 @@ fun SeBodyMedium(
 
 @Composable
 fun SeBodySmall(
-    text: String,
+    text: AnnotatedString,
     modifier: Modifier = Modifier,
     color: Color = SplitEaseColors.NavyMuted,
     fontWeight: FontWeight = FontWeight.Normal,

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 
 /** Shared style for inline error messages: bodySmall, 14sp / 18sp, normal weight. */
 @Composable
@@ -42,10 +43,9 @@ fun SeErrorText(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    SeBodySmall(
         text = text,
         modifier = modifier.fillMaxWidth(),
-        style = seErrorTextStyle(),
         color = MaterialTheme.colorScheme.error,
         textAlign = TextAlign.Start,
     )
@@ -56,10 +56,9 @@ fun SeInfoText(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    SeBodyMedium(
         text = text,
         modifier = modifier,
-        style = MaterialTheme.typography.bodyMedium,
         color = SplitEaseColors.Primary,
     )
 }
@@ -122,9 +121,8 @@ fun SeInlineLoader(
         )
         if (!text.isNullOrBlank()) {
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
+            SeBodyMedium(
                 text = text,
-                style = MaterialTheme.typography.bodyMedium,
                 color = SplitEaseColors.Navy,
             )
         }

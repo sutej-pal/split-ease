@@ -47,7 +47,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -277,9 +277,8 @@ fun CreateGroupScreen(
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
+                    SeBodySmall(
                         text = stringResource(R.string.create_group_invite_note),
-                        style = MaterialTheme.typography.bodySmall,
                         color = SplitEaseColors.Navy,
                     )
                 }
@@ -580,9 +579,8 @@ fun GroupDetailScreen(
                 } else {
                     if (iAmSettled) {
                         item {
-                            Text(
+                            SeBodyMedium(
                                 text = stringResource(R.string.group_all_settled_hide),
-                                style = MaterialTheme.typography.bodyMedium,
                                 color = SplitEaseColors.NavyMuted,
                                 textAlign = TextAlign.Center,
                                 modifier =
@@ -632,8 +630,6 @@ private fun GroupDetailBanner(
     val title = group?.name ?: stringResource(R.string.groups_title)
     val onBanner =
         if (bannerColor.luminance() > 0.5f) SplitEaseColors.Navy else Color.White
-    val titleShadow =
-        if (bannerColor.luminance() > 0.5f) null else GroupDetailTitleShadow
     // Sequential crossfade: large title fully gone before compact title appears.
     val expandedTitleAlpha = (1f - collapseFraction * 2f).coerceIn(0f, 1f)
     val collapsedTitleAlpha = ((collapseFraction - 0.5f) / 0.5f).coerceIn(0f, 1f)
@@ -679,12 +675,8 @@ private fun GroupDetailBanner(
                 imageVector = Icons.Filled.ChevronLeft,
                 contentDescription = stringResource(R.string.cd_back),
             )
-            Text(
+            SeTitleLarge(
                 text = title,
-                style =
-                    MaterialTheme.typography.titleLarge.copy(
-                        shadow = titleShadow,
-                    ),
                 fontWeight = FontWeight.Bold,
                 color = onBanner,
                 maxLines = 1,
@@ -717,12 +709,8 @@ private fun GroupDetailBanner(
                         },
                     ),
         ) {
-            Text(
+            SeHeadlineMedium(
                 text = title,
-                style =
-                    MaterialTheme.typography.headlineMedium.copy(
-                        shadow = titleShadow,
-                    ),
                 fontWeight = FontWeight.Bold,
                 color = onBanner,
                 maxLines = 2,
@@ -753,9 +741,8 @@ private fun GroupDetailBanner(
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
+                    SeLabelLarge(
                         text = pluralStringResource(R.plurals.group_member_count, memberCount, memberCount),
-                        style = MaterialTheme.typography.labelLarge,
                         color = onBanner,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -895,9 +882,8 @@ private fun GroupOverallHeadline(
 ) {
     when {
         nets.isEmpty() || nets.values.all { it.compareTo(BigDecimal.ZERO) == 0 } -> {
-            Text(
+            SeTitleMedium(
                 text = stringResource(R.string.balances_settled_overall),
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.Settled,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -918,7 +904,7 @@ private fun GroupOverallHeadline(
                     stringResource(R.string.balances_you_are_owed_overall, money)
                 }
             // Highlight the money substring inside the localized sentence.
-            Text(
+            SeTitleMedium(
                 text =
                     buildAnnotatedString {
                         val start = template.indexOf(money)
@@ -932,7 +918,6 @@ private fun GroupOverallHeadline(
                             append(template.substring(start + money.length))
                         }
                     },
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.Navy,
             )
         }
@@ -1010,17 +995,15 @@ private fun GroupOverallDebtTreeRow(
             borderWidth = 0.dp,
         )
         Spacer(modifier = Modifier.width(10.dp))
-        Text(
+        SeBodyMedium(
             text = relation,
-            style = MaterialTheme.typography.bodyMedium,
             color = SplitEaseColors.Navy,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Spacer(modifier = Modifier.width(5.dp))
-        Text(
+        SeBodyMedium(
             text = money,
-            style = MaterialTheme.typography.bodyMedium,
             color = accent,
             fontWeight = FontWeight.SemiBold,
         )
@@ -1082,18 +1065,16 @@ private fun GroupSoloEmptyState(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
+                SeTitleMedium(
                     text = stringResource(R.string.empty_group_title),
-                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = SplitEaseColors.EmptyStateTitle,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
+                SeBodySmall(
                     text = stringResource(R.string.empty_group_hint),
-                    style = MaterialTheme.typography.bodySmall,
                     color = SplitEaseColors.EmptyStateHint,
                     textAlign = TextAlign.Center,
                 )
@@ -1132,17 +1113,15 @@ private fun GroupSettledUpState(
                 .padding(horizontal = 32.dp, vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
+        SeTitleLarge(
             text = stringResource(R.string.group_all_settled_title),
-            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = SplitEaseColors.Navy,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
+        SeBodyMedium(
             text = stringResource(R.string.group_all_settled_show),
-            style = MaterialTheme.typography.bodyMedium,
             color = SplitEaseColors.NavyMuted,
             textAlign = TextAlign.Center,
         )

@@ -12,7 +12,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -140,10 +140,8 @@ fun SendReminderScreen(
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    Text(
+                    SeBodyMedium(
                         text = stringResource(R.string.remind_compose_footer),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SplitEaseColors.NavyMuted,
                     )
                 }
             }

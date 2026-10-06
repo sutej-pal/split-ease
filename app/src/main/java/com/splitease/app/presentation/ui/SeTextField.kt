@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.LocalAutofillHighlightBrush
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -22,6 +21,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 
 private val SeTextFieldShape = RoundedCornerShape(14.dp)
 
@@ -47,11 +47,11 @@ fun SeTextField(
             onValueChange = onValueChange,
             // Clip so password-manager autofill highlight respects rounded corners.
             modifier = modifier.fillMaxWidth().heightIn(min = 64.dp).clip(SeTextFieldShape),
-            label = label?.let { text -> { Text(text) } },
+            label = label?.let { text -> { SeBodyMedium(text) } },
             placeholder =
                 placeholder?.let { text ->
                     {
-                        Text(text = text, color = SplitEaseColors.NavyMuted)
+                        SeBodyMedium(text = text, color = SplitEaseColors.NavyMuted)
                     }
                 },
             enabled = enabled,
@@ -62,19 +62,13 @@ fun SeTextField(
             supportingText =
                 supportingText?.let { hint ->
                     {
-                        Text(
+                        SeBodySmall(
                             text = hint,
-                            style =
-                                if (isError) {
-                                    seErrorTextStyle()
-                                } else {
-                                    MaterialTheme.typography.bodySmall
-                                },
                             color =
                                 if (isError) {
                                     MaterialTheme.colorScheme.error
                                 } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                    SplitEaseColors.NavyMuted
                                 },
                         )
                     }

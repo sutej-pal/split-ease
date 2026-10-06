@@ -54,6 +54,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeSystemBars
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -111,7 +112,7 @@ fun ExpenseAttachmentsGalleryScreen(
                         tint = Color.White,
                     )
                 }
-                Text(
+                SeTitleMedium(
                     text =
                         if (attachments.isEmpty()) {
                             stringResource(R.string.expense_attachments_section)
@@ -123,8 +124,6 @@ fun ExpenseAttachmentsGalleryScreen(
                             )
                         },
                     modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
@@ -140,10 +139,9 @@ fun ExpenseAttachmentsGalleryScreen(
                         .padding(paddingValues),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
+                SeBodyLarge(
                     text = stringResource(R.string.expense_attachments_empty),
                     color = Color.White.copy(alpha = 0.7f),
-                    style = MaterialTheme.typography.bodyLarge,
                 )
             }
             return@Scaffold
@@ -180,14 +178,12 @@ fun ExpenseAttachmentsGalleryScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-                Text(
+                SeTitleSmall(
                     text =
                         stringResource(
                             R.string.expense_attachment_added_by,
                             current.authorLabel,
                         ),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
@@ -286,10 +282,9 @@ private fun AttachmentGalleryPage(displayUri: String) {
                 )
             }
             AttachmentGalleryLoadState.Failed -> {
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.msg_image_load_failed),
                     color = SplitEaseColors.NavyMuted,
-                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }

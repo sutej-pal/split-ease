@@ -37,6 +37,7 @@ import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeLayout
 
 /**
@@ -216,9 +217,8 @@ private fun SeBannerAdPlaceholder(
                     .background(SplitEaseColors.SurfaceMuted),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
+            SeBodySmall(
                 text = stringResource(R.string.ad_preview_placeholder),
-                style = MaterialTheme.typography.bodySmall,
                 color = SplitEaseColors.NavyMuted,
             )
         }

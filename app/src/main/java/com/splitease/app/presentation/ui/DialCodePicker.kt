@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.core.DialCodeOption
 import com.splitease.app.core.DialCodes
 import com.splitease.app.presentation.theme.SplitEaseColors
@@ -59,7 +60,7 @@ fun PhoneNumberRow(
             modifier
                 .fillMaxWidth()
                 .clip(FieldShape),
-        label = { Text(stringResource(R.string.label_phone_number)) },
+        label = { SeBodyMedium(stringResource(R.string.label_phone_number)) },
         enabled = enabled,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, autoCorrectEnabled = false),
@@ -71,9 +72,8 @@ fun PhoneNumberRow(
                         .padding(start = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
+                SeBodyLarge(
                     text = "$dialFlag $dialCode",
-                    style = MaterialTheme.typography.bodyLarge,
                     color = if (enabled) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
                 )
                 Icon(
@@ -147,9 +147,8 @@ fun DialCodePickerDialog(
                         onClick = { onSelect(option) },
                         colors = RadioButtonDefaults.colors(selectedColor = SplitEaseColors.Primary),
                     )
-                    Text(
+                    SeBodyLarge(
                         text = "${option.flag}  ${option.code}  ${option.label}",
-                        style = MaterialTheme.typography.bodyLarge,
                         color = SplitEaseColors.Navy,
                     )
                 }

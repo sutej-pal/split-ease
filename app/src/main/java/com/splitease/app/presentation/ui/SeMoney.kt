@@ -21,7 +21,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +38,7 @@ import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.OweContainer
 import com.splitease.app.presentation.theme.OwedContainer
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import java.math.BigDecimal
 
 enum class SeMoneyTone {
@@ -64,10 +64,9 @@ fun SeMoneyText(
             prefix != null -> "$prefix $money"
             else -> money
         }
-    Text(
+    SeBodyMedium(
         text = text,
         modifier = modifier,
-        style = MaterialTheme.typography.bodyMedium,
         color = color,
         fontWeight = FontWeight.Medium,
     )
@@ -81,10 +80,9 @@ fun SeLedgerAmount(
     tone: SeMoneyTone,
     modifier: Modifier = Modifier,
 ) {
-    Text(
+    SeTitleLarge(
         text = MoneyFormat.format(amount, currencyCode),
         modifier = modifier,
-        style = MaterialTheme.typography.titleLarge,
         color = tone.color(),
         fontWeight = FontWeight.Bold,
         maxLines = 1,
@@ -239,12 +237,6 @@ private fun SeHeroTile(
             isZeroState -> SplitEaseColors.NavyMuted
             else -> tone.color()
         }
-    val amountStyle =
-        when {
-            amounts.size <= 1 -> MaterialTheme.typography.headlineMedium
-            amounts.size == 2 -> MaterialTheme.typography.titleLarge
-            else -> MaterialTheme.typography.titleMedium
-        }
     val amountColor = if (isZeroState) SplitEaseColors.Navy else tone.color()
     val lines =
         if (amounts.isEmpty()) {
@@ -268,22 +260,20 @@ private fun SeHeroTile(
                         .background(pip),
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
+            SeLabelMedium(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
                 color = SplitEaseColors.NavyMuted,
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             lines.forEach { (code, amount) ->
-                Text(
-                    text = MoneyFormat.format(amount, code.ifBlank { currencyCode }),
-                    style = amountStyle,
-                    color = amountColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                val formatted = MoneyFormat.format(amount, code.ifBlank { currencyCode })
+                when {
+                    amounts.size <= 1 -> SeHeadlineMedium(text = formatted, color = amountColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    amounts.size == 2 -> SeTitleLarge(text = formatted, color = amountColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    else -> SeTitleMedium(text = formatted, color = amountColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
@@ -349,14 +339,14 @@ fun SeMixedCurrencyBanner(
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                SeTitleSmall(
                     text = stringResource(R.string.mixed_currency_banner_title),
-                    style = MaterialTheme.typography.titleSmall,
+                    color = SplitEaseColors.Navy,
                     fontWeight = FontWeight.Bold,
                 )
-                Text(
+                SeBodySmall(
                     text = stringResource(R.string.mixed_currency_banner_body, targetCurrency),
-                    style = MaterialTheme.typography.bodySmall,
+                    color = SplitEaseColors.NavyMuted,
                 )
             }
             Icon(

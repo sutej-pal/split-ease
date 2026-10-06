@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
 import java.math.BigDecimal
@@ -82,15 +83,14 @@ fun LazyListScope.ledgerEntries(
     val groups = items.groupByMonth()
     groups.forEach { (monthLabel, monthItems) ->
         item(key = "month-$monthLabel") {
-            Text(
+            SeTitleMedium(
                 text = monthLabel,
                 modifier =
                     Modifier
                         .padding(horizontal = horizontalPadding)
                         .padding(top = 12.dp, bottom = 4.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.NavyMuted,
+                fontWeight = FontWeight.SemiBold,
             )
         }
         items(monthItems, key = { it.id }) { entry ->
@@ -141,17 +141,15 @@ fun LedgerEntryRow(
             modifier = Modifier.width(36.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
+            SeLabelSmall(
                 text = monthLabel,
-                style = MaterialTheme.typography.labelSmall,
                 color = SplitEaseColors.NavyMuted,
                 maxLines = 1,
             )
-            Text(
+            SeTitleMedium(
                 text = dayLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.NavyMuted,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
         }
@@ -173,19 +171,17 @@ fun LedgerEntryRow(
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.Navy,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (item.subtitle.isNotBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                SeBodyMedium(
                     text = item.subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
                     color = SplitEaseColors.NavyMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -193,9 +189,8 @@ fun LedgerEntryRow(
             }
             if (item.pendingSync) {
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
+                SeLabelMedium(
                     text = stringResource(R.string.ledger_not_synced),
-                    style = MaterialTheme.typography.labelMedium,
                     color = SplitEaseColors.NavyMuted,
                     maxLines = 1,
                 )
@@ -204,19 +199,17 @@ fun LedgerEntryRow(
         if (balanceLabel != null && item.balanceAmount != null) {
             Spacer(modifier = Modifier.width(10.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text(
+                SeLabelMedium(
                     text = balanceLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
                     color = balanceColor,
+                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.End,
                     maxLines = 1,
                 )
-                Text(
+                SeTitleMedium(
                     text = MoneyFormat.format(item.balanceAmount, item.currencyCode),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
                     color = balanceColor,
+                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.End,
                     maxLines = 1,
                 )
@@ -289,12 +282,11 @@ private fun List<LedgerListItem>.groupByMonth(
 private fun LedgerEntryRowPreview() {
     SePreview {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(
+            SeTitleMedium(
                 text = "August 2026",
                 modifier = Modifier.padding(horizontal = SeLayout.detailHorizontal, vertical = 8.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.NavyMuted,
+                fontWeight = FontWeight.SemiBold,
             )
             LedgerEntryRow(
                 LedgerListItem(
@@ -309,12 +301,11 @@ private fun LedgerEntryRowPreview() {
                     balanceAmount = BigDecimal("5500.00"),
                 ),
             )
-            Text(
+            SeTitleMedium(
                 text = "July 2026",
                 modifier = Modifier.padding(horizontal = SeLayout.detailHorizontal, vertical = 8.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = SplitEaseColors.NavyMuted,
+                fontWeight = FontWeight.SemiBold,
             )
             LedgerEntryRow(
                 LedgerListItem(

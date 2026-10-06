@@ -18,7 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -152,9 +152,8 @@ fun InviteJoinSignUpScreen(
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start,
         ) {
-            Text(
+            SeBodyLarge(
                 text = stringResource(R.string.invite_signup_name_label),
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -169,9 +168,8 @@ fun InviteJoinSignUpScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
+            SeBodyLarge(
                 text = stringResource(R.string.invite_signup_email_label),
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -198,9 +196,8 @@ fun InviteJoinSignUpScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
+            SeBodyLarge(
                 text = stringResource(R.string.invite_signup_password_label),
-                style = MaterialTheme.typography.bodyLarge,
                 color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(8.dp))

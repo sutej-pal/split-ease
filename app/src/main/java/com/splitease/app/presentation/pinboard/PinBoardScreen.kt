@@ -24,7 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +58,6 @@ import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
-import com.splitease.app.presentation.ui.seScreenSubtitleStyle
 
 @Composable
 fun PinBoardScreen(
@@ -172,9 +171,8 @@ fun PinBoardScreen(
 
                     if (state.groupName.isNotBlank()) {
                         Spacer(modifier = Modifier.height(SeLayout.screenTop))
-                        Text(
+                        SeBodyMedium(
                             text = state.groupName,
-                            style = seScreenSubtitleStyle(),
                             color = SplitEaseColors.NavyMuted,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -207,9 +205,8 @@ fun PinBoardScreen(
                                 .verticalScroll(rememberScrollState()),
                     ) {
                         if (textValue.text.isEmpty()) {
-                            Text(
+                            SeBodyLarge(
                                 text = stringResource(R.string.pin_board_placeholder),
-                                style = MaterialTheme.typography.bodyLarge,
                                 color = SplitEaseColors.NavyMuted,
                             )
                         }
@@ -269,15 +266,13 @@ private fun PinBoardFooter(
                 color = SplitEaseColors.NavyMuted,
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
+            SeLabelSmall(
                 text = stringResource(R.string.pin_board_saving),
-                style = MaterialTheme.typography.labelSmall,
                 color = SplitEaseColors.NavyMuted,
             )
         } else if (lastEditedBy != null) {
-            Text(
+            SeLabelSmall(
                 text = stringResource(R.string.pin_board_last_edited, lastEditedBy),
-                style = MaterialTheme.typography.labelSmall,
                 color = SplitEaseColors.NavyMuted,
             )
         }

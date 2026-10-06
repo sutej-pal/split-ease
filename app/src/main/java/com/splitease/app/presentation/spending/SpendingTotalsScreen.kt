@@ -12,7 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -58,7 +58,7 @@ fun SpendingTotalsScreen(
                             selected = period == option,
                             onClick = { viewModel.setPeriod(option) },
                             label = {
-                                Text(
+                                SeBodyMedium(
                                     when (option) {
                                         SpendingPeriod.THIS_MONTH ->
                                             stringResource(R.string.spending_this_month)

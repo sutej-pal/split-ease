@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -132,10 +133,8 @@ fun ReviewFriendsScreen(
 
             item {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
+                SeBodyMedium(
                     text = stringResource(R.string.review_friends_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SplitEaseColors.NavyMuted,
                     modifier = Modifier.padding(horizontal = 20.dp),
                 )
             }
@@ -193,17 +192,14 @@ private fun ReviewFriendRow(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            SeTitleMedium(
                 text = entry.displayName.ifBlank { entry.contactValue },
-                style = MaterialTheme.typography.titleMedium,
                 color = SplitEaseColors.Navy,
                 fontWeight = FontWeight.SemiBold,
             )
             if (entry.contactValue.isNotBlank()) {
-                Text(
+                SeBodySmall(
                     text = entry.contactValue,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SplitEaseColors.NavyMuted,
                 )
             } else {
                 SeErrorText(text = stringResource(R.string.review_friends_missing_contact))
@@ -213,7 +209,7 @@ private fun ReviewFriendRow(
             onClick = onEdit,
             enabled = enabled,
         ) {
-            Text(
+            SeBodyMedium(
                 text = stringResource(R.string.action_edit),
                 color = SplitEaseColors.Primary,
                 fontWeight = FontWeight.SemiBold,
