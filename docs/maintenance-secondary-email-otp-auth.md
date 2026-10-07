@@ -13,11 +13,17 @@ Password verification had already succeeded (wrong password would surface a diff
 
 ## Root cause
 
-`verifyPasswordWithoutReplacingSession` proves the password with a one-off GoTrue `grant_type=password` token, then revokes that token via `POST /auth/v1/logout`.
+Call order for non-Google-only **Send OTP**:
 
-GoTrue’s default logout scope is **`global`**: omitting `scope` revokes **all** sessions for the user, including the app’s real session. The client still held the old access token in memory, so the next `POST /functions/v1/secondary-email` call reached the Edge Function with a revoked JWT. The function’s `auth.getUser(jwt)` then returned `Unauthorized`.
+1. `addSecondaryEmail` → `verifyCurrentPassword` → `verifyPasswordWithoutReplacingSession`
+2. Password grant succeeds (`/auth/v1/token?grant_type=password`) — so the password is correct
+3. Client then `POST /auth/v1/logout` with the **one-off** access token to discard that verify session
+4. `callSecondaryEmailEdgeFunction("add", …)` with the **app** session’s access token
+5. Edge Function (or JWT gate) returns JSON `{ "error": "Unauthorized" }`
 
-A session-resolution tweak alone (`currentSessionOrNull` vs `sessionStatus`) does not fix this — the token itself was invalidated server-side.
+Step 3 is the bug. GoTrue’s default logout scope is **`global`**: omitting `scope` revokes **all** sessions for the user, including the app’s real session. The client still holds the old access token in memory, so step 4 sends a **revoked** JWT. The in-repo function’s `adminClient.auth.getUser(jwt)` then returns `Unauthorized` (exact string thrown to the UI).
+
+**Why the local session-resolution tweak did not help:** reading `currentSessionOrNull()` / `sessionStatus` still yields the same revoked access token string. The failure is server-side revocation, not “which Kotlin property held the session.”
 
 ## Fix (app)
 

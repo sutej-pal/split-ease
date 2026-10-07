@@ -97,8 +97,8 @@ class SignInAndContactViewModel
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SignInContactProfileUi())
 
-        private val _ui = MutableStateFlow(SignInContactUiState())
-        val uiState: StateFlow<SignInContactUiState> = _ui.asStateFlow()
+        private val _uiState = MutableStateFlow(SignInContactUiState())
+        val uiState: StateFlow<SignInContactUiState> = _uiState.asStateFlow()
 
         init {
             viewModelScope.launch {
@@ -106,7 +106,7 @@ class SignInAndContactViewModel
                     authRepository.observeSecondaryEmails(),
                     profile,
                 ) { secondaries, prof ->
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             secondaryEmails = secondaries,
                             isGoogleOnly = prof.isGoogleOnly,
@@ -129,7 +129,7 @@ class SignInAndContactViewModel
         }
 
         fun toggleRow(row: SignInContactRow) {
-            _ui.update { state ->
+            _uiState.update { state ->
                 val nextExpanded = if (state.expandedRow == row) null else row
                 val prof = profile.value
                 state.copy(
@@ -149,32 +149,32 @@ class SignInAndContactViewModel
         }
 
         fun clearMessages() {
-            _ui.update { it.copy(infoMessage = null) }
+            _uiState.update { it.copy(infoMessage = null) }
         }
 
         fun onPhoneCountryCodeDraftChange(code: String) {
-            _ui.update { it.copy(phoneCountryCodeDraft = code, phoneError = null) }
+            _uiState.update { it.copy(phoneCountryCodeDraft = code, phoneError = null) }
         }
 
         fun onPhoneNumberDraftChange(num: String) {
-            _ui.update { it.copy(phoneNumberDraft = num, phoneError = null) }
+            _uiState.update { it.copy(phoneNumberDraft = num, phoneError = null) }
         }
 
         fun savePhone() {
-            if (_ui.value.isPhoneSaving) return
-            val code = _ui.value.phoneCountryCodeDraft.ifBlank { "+91" }
-            val digits = _ui.value.phoneNumberDraft.filter { it.isDigit() }
+            if (_uiState.value.isPhoneSaving) return
+            val code = _uiState.value.phoneCountryCodeDraft.ifBlank { "+91" }
+            val digits = _uiState.value.phoneNumberDraft.filter { it.isDigit() }
             if (digits.length !in 7..15) {
-                _ui.update {
+                _uiState.update {
                     it.copy(phoneError = appContext.getString(R.string.signup_error_phone_invalid))
                 }
                 return
             }
             viewModelScope.launch {
-                _ui.update { it.copy(isPhoneSaving = true, phoneError = null) }
+                _uiState.update { it.copy(isPhoneSaving = true, phoneError = null) }
                 val result = authRepository.updatePhone(code, digits)
                 if (result.isSuccess) {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isPhoneSaving = false,
                             expandedRow = null,
@@ -182,7 +182,7 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isPhoneSaving = false,
                             phoneError = userFacingError(result.exceptionOrNull()),
@@ -193,30 +193,30 @@ class SignInAndContactViewModel
         }
 
         fun onCurrentPasswordDraftChange(pass: String) {
-            _ui.update { it.copy(currentPasswordDraft = pass, passwordError = null) }
+            _uiState.update { it.copy(currentPasswordDraft = pass, passwordError = null) }
         }
 
         fun onNewPasswordDraftChange(pass: String) {
-            _ui.update { it.copy(newPasswordDraft = pass, passwordError = null) }
+            _uiState.update { it.copy(newPasswordDraft = pass, passwordError = null) }
         }
 
         fun updatePassword() {
-            if (_ui.value.isPasswordSaving) return
-            val current = _ui.value.currentPasswordDraft.trim()
-            val newPass = _ui.value.newPasswordDraft.trim()
+            if (_uiState.value.isPasswordSaving) return
+            val current = _uiState.value.currentPasswordDraft.trim()
+            val newPass = _uiState.value.newPasswordDraft.trim()
             if (current.isBlank()) {
-                _ui.update { it.copy(passwordError = appContext.getString(R.string.error_password_required)) }
+                _uiState.update { it.copy(passwordError = appContext.getString(R.string.error_password_required)) }
                 return
             }
             if (newPass.length < 8) {
-                _ui.update { it.copy(passwordError = appContext.getString(R.string.signup_error_password_short)) }
+                _uiState.update { it.copy(passwordError = appContext.getString(R.string.signup_error_password_short)) }
                 return
             }
             viewModelScope.launch {
-                _ui.update { it.copy(isPasswordSaving = true, passwordError = null) }
+                _uiState.update { it.copy(isPasswordSaving = true, passwordError = null) }
                 val verifyRes = authRepository.verifyCurrentPassword(current)
                 if (verifyRes.isFailure) {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isPasswordSaving = false,
                             passwordError = appContext.getString(R.string.error_invalid_credentials),
@@ -226,7 +226,7 @@ class SignInAndContactViewModel
                 }
                 val updateRes = authRepository.updatePassword(newPass, hydrateSession = false)
                 if (updateRes.isSuccess) {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isPasswordSaving = false,
                             expandedRow = null,
@@ -236,7 +236,7 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isPasswordSaving = false,
                             passwordError = userFacingError(updateRes.exceptionOrNull()),
@@ -247,7 +247,7 @@ class SignInAndContactViewModel
         }
 
         fun toggleAddEmailForm() {
-            _ui.update {
+            _uiState.update {
                 it.copy(
                     showAddEmailForm = !it.showAddEmailForm,
                     newEmailDraft = "",
@@ -258,34 +258,34 @@ class SignInAndContactViewModel
         }
 
         fun onNewEmailDraftChange(email: String) {
-            _ui.update { it.copy(newEmailDraft = email, emailError = null) }
+            _uiState.update { it.copy(newEmailDraft = email, emailError = null) }
         }
 
         fun onEmailPasswordDraftChange(pass: String) {
-            _ui.update { it.copy(emailPasswordDraft = pass, emailError = null) }
+            _uiState.update { it.copy(emailPasswordDraft = pass, emailError = null) }
         }
 
         fun addSecondaryEmail() {
-            if (_ui.value.isEmailSaving) return
-            val email = _ui.value.newEmailDraft.trim()
-            val pass = _ui.value.emailPasswordDraft.trim()
+            if (_uiState.value.isEmailSaving) return
+            val email = _uiState.value.newEmailDraft.trim()
+            val pass = _uiState.value.emailPasswordDraft.trim()
             if (email.isBlank() || !email.contains("@")) {
-                _ui.update { it.copy(emailError = appContext.getString(R.string.error_invalid_email)) }
+                _uiState.update { it.copy(emailError = appContext.getString(R.string.error_invalid_email)) }
                 return
             }
-            if (!_ui.value.isGoogleOnly && pass.isBlank()) {
-                _ui.update { it.copy(emailError = appContext.getString(R.string.error_password_required)) }
+            if (!_uiState.value.isGoogleOnly && pass.isBlank()) {
+                _uiState.update { it.copy(emailError = appContext.getString(R.string.error_password_required)) }
                 return
             }
             viewModelScope.launch {
-                _ui.update { it.copy(isEmailSaving = true, emailError = null) }
+                _uiState.update { it.copy(isEmailSaving = true, emailError = null) }
                 val result =
                     authRepository.addSecondaryEmail(
                         email,
-                        pass.takeIf { !_ui.value.isGoogleOnly },
+                        pass.takeIf { !_uiState.value.isGoogleOnly },
                     )
                 if (result.isSuccess) {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isEmailSaving = false,
                             showAddEmailForm = false,
@@ -295,7 +295,7 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isEmailSaving = false,
                             emailError = userFacingError(result.exceptionOrNull()),
@@ -310,7 +310,7 @@ class SignInAndContactViewModel
             if (email.isBlank()) return
             viewModelScope.launch {
                 val res = authRepository.resendSignupConfirmation(email)
-                _ui.update {
+                _uiState.update {
                     if (res.isSuccess) {
                         it.copy(
                             showPrimaryOtpInput = true,
@@ -328,18 +328,18 @@ class SignInAndContactViewModel
         }
 
         fun onPrimaryOtpDraftChange(otp: String) {
-            _ui.update { it.copy(primaryOtpDraft = otp, emailError = null) }
+            _uiState.update { it.copy(primaryOtpDraft = otp, emailError = null) }
         }
 
         fun verifyPrimaryEmail() {
             val email = profile.value.email
-            val code = _ui.value.primaryOtpDraft.trim()
+            val code = _uiState.value.primaryOtpDraft.trim()
             if (code.length != 6) return
             viewModelScope.launch {
-                _ui.update { it.copy(isEmailSaving = true, emailError = null) }
+                _uiState.update { it.copy(isEmailSaving = true, emailError = null) }
                 val res = authRepository.verifySignupOtp(email, code)
                 if (res.isSuccess) {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isEmailSaving = false,
                             showPrimaryOtpInput = false,
@@ -348,7 +348,7 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isEmailSaving = false,
                             emailError = userFacingError(res.exceptionOrNull()),
@@ -361,7 +361,7 @@ class SignInAndContactViewModel
         fun resendSecondaryEmail(id: String) {
             viewModelScope.launch {
                 val res = authRepository.resendSecondaryEmail(id)
-                _ui.update {
+                _uiState.update {
                     it.copy(
                         infoMessage =
                             if (res.isSuccess) {
@@ -381,20 +381,20 @@ class SignInAndContactViewModel
         }
 
         fun onSecondaryOtpDraftChange(id: String, otp: String) {
-            _ui.update {
+            _uiState.update {
                 val nextMap = it.secondaryOtpDrafts.toMutableMap().apply { put(id, otp) }
                 it.copy(secondaryOtpDrafts = nextMap, emailError = null)
             }
         }
 
         fun verifySecondaryEmail(id: String) {
-            val code = _ui.value.secondaryOtpDrafts[id]?.trim().orEmpty()
+            val code = _uiState.value.secondaryOtpDrafts[id]?.trim().orEmpty()
             if (code.length != 6) return
             viewModelScope.launch {
-                _ui.update { it.copy(isEmailSaving = true, emailError = null) }
+                _uiState.update { it.copy(isEmailSaving = true, emailError = null) }
                 val res = authRepository.verifySecondaryEmail(id, code)
                 if (res.isSuccess) {
-                    _ui.update {
+                    _uiState.update {
                         val nextMap = it.secondaryOtpDrafts.toMutableMap().apply { remove(id) }
                         it.copy(
                             isEmailSaving = false,
@@ -403,7 +403,7 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
-                    _ui.update {
+                    _uiState.update {
                         it.copy(
                             isEmailSaving = false,
                             emailError = userFacingError(res.exceptionOrNull()),
@@ -416,7 +416,7 @@ class SignInAndContactViewModel
         fun removeSecondaryEmail(id: String) {
             viewModelScope.launch {
                 val res = authRepository.removeSecondaryEmail(id)
-                _ui.update {
+                _uiState.update {
                     it.copy(
                         infoMessage =
                             if (res.isSuccess) {
