@@ -1,7 +1,7 @@
 package com.splitease.app.domain.model
 
 /**
- * A user or system comment on an [Expense] (Splitwise-style thread).
+ * A user or system comment on an [Expense] (threaded comment).
  *
  * @property id Stable UUID.
  * @property expenseId Parent expense.

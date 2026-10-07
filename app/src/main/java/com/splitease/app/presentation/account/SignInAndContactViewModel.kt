@@ -25,25 +25,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class SignInContactRow {
-    EMAIL,
-    PHONE,
-    PASSWORD,
-}
-
-data class SignInContactProfileUi(
-    val email: String = "",
-    val emailConfirmed: Boolean = true,
-    val phoneCountryCode: String = "+91",
-    val phoneNumber: String = "",
-    val isGoogleOnly: Boolean = false,
-)
-
-data class SignInContactUiState(
-    val expandedRow: SignInContactRow? = null,
+data class SignInAndContactUiState(
+    val expandedRow: AccountRow? = null,
     val secondaryEmails: List<SecondaryEmail> = emptyList(),
     val isGoogleOnly: Boolean = false,
 
+    // Email row drafts
     val newEmailDraft: String = "",
     val emailPasswordDraft: String = "",
     val primaryOtpDraft: String = "",
@@ -53,16 +40,19 @@ data class SignInContactUiState(
     val isEmailSaving: Boolean = false,
     val emailError: String? = null,
 
+    // Phone row drafts
     val phoneCountryCodeDraft: String = "+91",
     val phoneNumberDraft: String = "",
     val isPhoneSaving: Boolean = false,
     val phoneError: String? = null,
 
+    // Password row drafts
     val currentPasswordDraft: String = "",
     val newPasswordDraft: String = "",
     val isPasswordSaving: Boolean = false,
     val passwordError: String? = null,
 
+    val errorMessage: String? = null,
     val infoMessage: String? = null,
 )
 
@@ -76,29 +66,34 @@ class SignInAndContactViewModel
     ) : ViewModel() {
 
         @OptIn(ExperimentalCoroutinesApi::class)
-        val profile: StateFlow<SignInContactProfileUi> =
+        val profile: StateFlow<AccountProfileUi> =
             authRepository
                 .observeSession()
                 .flatMapLatest { session ->
                     val signedIn = session as? AuthSession.SignedIn
                     if (signedIn == null) {
-                        flowOf(SignInContactProfileUi())
+                        flowOf(AccountProfileUi())
                     } else {
                         userRepository.observeUsers().map { users ->
                             val local = users.firstOrNull { it.id == signedIn.user.userId }
-                            SignInContactProfileUi(
+                            AccountProfileUi(
+                                userId = signedIn.user.userId,
+                                displayName =
+                                    local?.displayName?.takeIf { it.isNotBlank() }
+                                        ?: signedIn.user.displayName,
                                 email = signedIn.user.email,
                                 emailConfirmed = signedIn.user.emailConfirmed,
                                 phoneCountryCode = local?.phoneCountryCode ?: "+91",
                                 phoneNumber = local?.phoneNumber.orEmpty(),
+                                photoUrl = local?.photoUrl,
                                 isGoogleOnly = signedIn.user.isGoogleOnly,
                             )
                         }
                     }
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SignInContactProfileUi())
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountProfileUi())
 
-        private val _uiState = MutableStateFlow(SignInContactUiState())
-        val uiState: StateFlow<SignInContactUiState> = _uiState.asStateFlow()
+        private val _uiState = MutableStateFlow(SignInAndContactUiState())
+        val uiState: StateFlow<SignInAndContactUiState> = _uiState.asStateFlow()
 
         init {
             viewModelScope.launch {
@@ -110,25 +105,28 @@ class SignInAndContactViewModel
                         it.copy(
                             secondaryEmails = secondaries,
                             isGoogleOnly = prof.isGoogleOnly,
-                            phoneCountryCodeDraft =
-                                if (it.expandedRow != SignInContactRow.PHONE) {
-                                    prof.phoneCountryCode
-                                } else {
-                                    it.phoneCountryCodeDraft
-                                },
-                            phoneNumberDraft =
-                                if (it.expandedRow != SignInContactRow.PHONE) {
-                                    prof.phoneNumber
-                                } else {
-                                    it.phoneNumberDraft
-                                },
+                            phoneCountryCodeDraft = if (it.expandedRow != AccountRow.PHONE) prof.phoneCountryCode else it.phoneCountryCodeDraft,
+                            phoneNumberDraft = if (it.expandedRow != AccountRow.PHONE) prof.phoneNumber else it.phoneNumberDraft,
                         )
                     }
                 }.collect {}
             }
         }
 
-        fun toggleRow(row: SignInContactRow) {
+        fun syncDraftsFromProfile() {
+            val prof = profile.value
+            _uiState.update {
+                it.copy(
+                    phoneCountryCodeDraft = prof.phoneCountryCode,
+                    phoneNumberDraft = prof.phoneNumber,
+                    isGoogleOnly = prof.isGoogleOnly,
+                    errorMessage = null,
+                    infoMessage = null,
+                )
+            }
+        }
+
+        fun toggleRow(row: AccountRow) {
             _uiState.update { state ->
                 val nextExpanded = if (state.expandedRow == row) null else row
                 val prof = profile.value
@@ -149,9 +147,10 @@ class SignInAndContactViewModel
         }
 
         fun clearMessages() {
-            _uiState.update { it.copy(infoMessage = null) }
+            _uiState.update { it.copy(errorMessage = null, infoMessage = null) }
         }
 
+        // Phone row
         fun onPhoneCountryCodeDraftChange(code: String) {
             _uiState.update { it.copy(phoneCountryCodeDraft = code, phoneError = null) }
         }
@@ -185,13 +184,14 @@ class SignInAndContactViewModel
                     _uiState.update {
                         it.copy(
                             isPhoneSaving = false,
-                            phoneError = userFacingError(result.exceptionOrNull()),
+                            phoneError = ErrorMessages.message(appContext, TAG, result.exceptionOrNull() ?: Exception("Failed")),
                         )
                     }
                 }
             }
         }
 
+        // Password row
         fun onCurrentPasswordDraftChange(pass: String) {
             _uiState.update { it.copy(currentPasswordDraft = pass, passwordError = null) }
         }
@@ -239,13 +239,14 @@ class SignInAndContactViewModel
                     _uiState.update {
                         it.copy(
                             isPasswordSaving = false,
-                            passwordError = userFacingError(updateRes.exceptionOrNull()),
+                            passwordError = ErrorMessages.message(appContext, TAG, updateRes.exceptionOrNull() ?: Exception("Failed")),
                         )
                     }
                 }
             }
         }
 
+        // Email row
         fun toggleAddEmailForm() {
             _uiState.update {
                 it.copy(
@@ -279,11 +280,7 @@ class SignInAndContactViewModel
             }
             viewModelScope.launch {
                 _uiState.update { it.copy(isEmailSaving = true, emailError = null) }
-                val result =
-                    authRepository.addSecondaryEmail(
-                        email,
-                        pass.takeIf { !_uiState.value.isGoogleOnly },
-                    )
+                val result = authRepository.addSecondaryEmail(email, pass.takeIf { !_uiState.value.isGoogleOnly })
                 if (result.isSuccess) {
                     _uiState.update {
                         it.copy(
@@ -298,7 +295,7 @@ class SignInAndContactViewModel
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
-                            emailError = userFacingError(result.exceptionOrNull()),
+                            emailError = ErrorMessages.message(appContext, TAG, result.exceptionOrNull() ?: Exception("Failed")),
                         )
                     }
                 }
@@ -319,7 +316,11 @@ class SignInAndContactViewModel
                         )
                     } else {
                         it.copy(
-                            emailError = userFacingError(res.exceptionOrNull()),
+                            emailError = ErrorMessages.message(
+                                appContext,
+                                TAG,
+                                res.exceptionOrNull() ?: Exception("Failed"),
+                            ),
                             infoMessage = null,
                         )
                     }
@@ -351,7 +352,7 @@ class SignInAndContactViewModel
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
-                            emailError = userFacingError(res.exceptionOrNull()),
+                            emailError = ErrorMessages.message(appContext, TAG, res.exceptionOrNull() ?: Exception("Failed")),
                         )
                     }
                 }
@@ -363,18 +364,8 @@ class SignInAndContactViewModel
                 val res = authRepository.resendSecondaryEmail(id)
                 _uiState.update {
                     it.copy(
-                        infoMessage =
-                            if (res.isSuccess) {
-                                appContext.getString(R.string.verify_email_sent)
-                            } else {
-                                null
-                            },
-                        emailError =
-                            if (res.isFailure) {
-                                userFacingError(res.exceptionOrNull())
-                            } else {
-                                null
-                            },
+                        infoMessage = if (res.isSuccess) appContext.getString(R.string.verify_email_sent) else null,
+                        emailError = ErrorMessages.messageOrNull(appContext, TAG, res.exceptionOrNull()),
                     )
                 }
             }
@@ -406,7 +397,7 @@ class SignInAndContactViewModel
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
-                            emailError = userFacingError(res.exceptionOrNull()),
+                            emailError = ErrorMessages.message(appContext, TAG, res.exceptionOrNull() ?: Exception("Failed")),
                         )
                     }
                 }
@@ -418,55 +409,14 @@ class SignInAndContactViewModel
                 val res = authRepository.removeSecondaryEmail(id)
                 _uiState.update {
                     it.copy(
-                        infoMessage =
-                            if (res.isSuccess) {
-                                appContext.getString(R.string.msg_email_removed)
-                            } else {
-                                null
-                            },
-                        emailError =
-                            if (res.isFailure) {
-                                userFacingError(res.exceptionOrNull())
-                            } else {
-                                null
-                            },
+                        infoMessage = if (res.isSuccess) appContext.getString(R.string.msg_email_removed) else null,
+                        emailError = ErrorMessages.messageOrNull(appContext, TAG, res.exceptionOrNull()),
                     )
                 }
             }
         }
 
-        /**
-         * Prefer repository / Edge Function copy when it is already user-facing;
-         * map auth failures to a clear session message instead of generic "Something went wrong".
-         */
-        private fun userFacingError(error: Throwable?): String {
-            ErrorMessages.log(TAG, error)
-            if (ErrorMessages.isNetworkError(error)) {
-                return appContext.getString(R.string.error_network)
-            }
-            val raw = error?.message?.trim().orEmpty()
-            if (raw.isBlank()) return appContext.getString(ErrorMessages.GENERIC)
-            val lower = raw.lowercase()
-            if (
-                lower == "unauthorized" ||
-                lower.contains("not signed in") ||
-                lower.contains("session expired")
-            ) {
-                return appContext.getString(R.string.error_session_expired)
-            }
-            if (
-                raw.length > 160 ||
-                raw.contains('\n') ||
-                lower.contains("exception") ||
-                lower.contains("sql") ||
-                lower.startsWith("http")
-            ) {
-                return appContext.getString(ErrorMessages.GENERIC)
-            }
-            return raw
-        }
-
         private companion object {
-            const val TAG = "SignInAndContactVM"
+            const val TAG = "SignInAndContactViewModel"
         }
     }

@@ -49,7 +49,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,7 +58,6 @@ import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
 import com.splitease.app.presentation.theme.SeBodyLarge
-import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
@@ -68,7 +66,6 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeListRowLabelStyle
-import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
@@ -79,7 +76,7 @@ fun AccountProfileSettingsScreen(
     onBack: () -> Unit,
     onOpenCurrency: () -> Unit,
     onOpenLanguage: () -> Unit,
-    onOpenSignInAndContact: () -> Unit = {},
+    onOpenSignInAndContact: () -> Unit,
     onOpenCloseAccount: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
@@ -163,7 +160,7 @@ fun AccountProfileSettingsScreen(
             AccountSettingsCard {
                 SeListRow(
                     title = stringResource(R.string.account_sign_in_contact_section),
-                    subtitle = stringResource(R.string.account_sign_in_contact_subtitle),
+                    subtitle = profile.email.takeIf { it.isNotBlank() },
                     leading = {
                         SeIconTile(
                             icon = Icons.Filled.Email,
@@ -192,7 +189,7 @@ fun AccountProfileSettingsScreen(
                 )
                 SeListRow(
                     title = stringResource(R.string.settings_language),
-                    subtitle = accountLocaleLabel(locale),
+                    subtitle = appLocaleLabel(locale),
                     leading = {
                         SeIconTile(
                             icon = Icons.Filled.Translate,
@@ -359,7 +356,7 @@ private fun AccountProfileHero(
 }
 
 @Composable
-private fun AccountSettingsCard(content: @Composable () -> Unit) {
+internal fun AccountSettingsCard(content: @Composable () -> Unit) {
     Column(
         modifier =
             Modifier
@@ -405,57 +402,59 @@ private fun CurrencyLeading(code: String) {
     }
 }
 
+private val CURRENCY_REGIONS =
+    mapOf(
+        "USD" to "US",
+        "EUR" to "EU",
+        "GBP" to "GB",
+        "INR" to "IN",
+        "AUD" to "AU",
+        "CAD" to "CA",
+        "JPY" to "JP",
+        "CNY" to "CN",
+        "CHF" to "CH",
+        "NZD" to "NZ",
+        "SGD" to "SG",
+        "HKD" to "HK",
+        "SEK" to "SE",
+        "KRW" to "KR",
+        "MXN" to "MX",
+        "BRL" to "BR",
+        "ZAR" to "ZA",
+    )
+
+private fun isoRegionToFlag(region: String): String {
+    val upper = region.uppercase()
+    if (upper.length != 2) return "🌐"
+    val firstChar = Character.codePointAt(upper, 0) - 0x41 + 0x1F1E6
+    val secondChar = Character.codePointAt(upper, 1) - 0x41 + 0x1F1E6
+    return String(Character.toChars(firstChar)) + String(Character.toChars(secondChar))
+}
+
 private fun currencyFlagEmoji(code: String): String? {
     val region = CURRENCY_REGIONS[code.trim().uppercase()] ?: return null
     return isoRegionToFlag(region)
 }
 
-private fun isoRegionToFlag(region: String): String? {
-    val letters = region.uppercase()
-    if (letters.length != 2 || letters.any { it !in 'A'..'Z' }) return null
-    return buildString(4) {
-        letters.forEach { appendCodePoint(0x1F1E6 + (it.code - 'A'.code)) }
+internal fun flagEmojiForDialCode(code: String): String =
+    when (code.trim()) {
+        "+91" -> "🇮🇳"
+        "+1" -> "🇺🇸"
+        "+44" -> "🇬🇧"
+        "+61" -> "🇦🇺"
+        "+1 CA", "+1CA" -> "🇨🇦"
+        "+49" -> "🇩🇪"
+        "+33" -> "🇫🇷"
+        "+81" -> "🇯🇵"
+        "+86" -> "🇨🇳"
+        "+55" -> "🇧🇷"
+        "+971" -> "🇦🇪"
+        "+65" -> "🇸🇬"
+        else -> "🌐"
     }
-}
-
-private val CURRENCY_REGIONS =
-    mapOf(
-        AppCurrencies.INR to "IN",
-        AppCurrencies.USD to "US",
-        "AED" to "AE",
-        "AUD" to "AU",
-        "BRL" to "BR",
-        "CAD" to "CA",
-        "CHF" to "CH",
-        "CNY" to "CN",
-        "DKK" to "DK",
-        "EGP" to "EG",
-        "EUR" to "EU",
-        "GBP" to "GB",
-        "HKD" to "HK",
-        "IDR" to "ID",
-        "ILS" to "IL",
-        "JPY" to "JP",
-        "KRW" to "KR",
-        "MXN" to "MX",
-        "MYR" to "MY",
-        "NOK" to "NO",
-        "NZD" to "NZ",
-        "PHP" to "PH",
-        "PLN" to "PL",
-        "RUB" to "RU",
-        "SAR" to "SA",
-        "SEK" to "SE",
-        "SGD" to "SG",
-        "THB" to "TH",
-        "TRY" to "TR",
-        "TWD" to "TW",
-        "VND" to "VN",
-        "ZAR" to "ZA",
-    )
 
 @Composable
-private fun accountLocaleLabel(locale: AppLocale): String =
+private fun appLocaleLabel(locale: AppLocale): String =
     stringResource(
         when (locale) {
             AppLocale.SYSTEM -> R.string.settings_language_system
@@ -468,11 +467,3 @@ private fun accountLocaleLabel(locale: AppLocale): String =
             AppLocale.JAPANESE -> R.string.settings_language_ja
         },
     )
-
-@Preview(showBackground = true, heightDp = 520)
-@Composable
-private fun AccountProfileSettingsPreview() {
-    SePreview {
-        SeBodyMedium("Preview")
-    }
-}

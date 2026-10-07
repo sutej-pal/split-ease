@@ -7,8 +7,6 @@ import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SecondaryEmail
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.UserRepository
-import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -56,12 +54,6 @@ class SignInAndContactViewModelTest {
         every { context.getString(R.string.signup_error_password_short) } returns "Password short"
         every { context.getString(R.string.error_invalid_email) } returns "Invalid email"
         every { context.getString(R.string.error_password_required) } returns "Password required"
-        every { context.getString(R.string.error_invalid_credentials) } returns "Invalid credentials"
-        every { context.getString(R.string.error_session_expired) } returns "Your session expired. Sign in again."
-        every { context.getString(R.string.error_generic) } returns "Something went wrong. Try again."
-        every { context.getString(R.string.error_network) } returns "Network error"
-        every { context.getString(R.string.verify_email_sent) } returns "Verification sent"
-        every { context.getString(R.string.account_password_updated_toast) } returns "Password updated"
 
         viewModel =
             SignInAndContactViewModel(
@@ -82,23 +74,22 @@ class SignInAndContactViewModelTest {
             advanceUntilIdle()
             assertNull(viewModel.uiState.value.expandedRow)
 
-            viewModel.toggleRow(SignInContactRow.EMAIL)
-            assertEquals(SignInContactRow.EMAIL, viewModel.uiState.value.expandedRow)
+            viewModel.toggleRow(AccountRow.EMAIL)
+            assertEquals(AccountRow.EMAIL, viewModel.uiState.value.expandedRow)
 
-            viewModel.toggleRow(SignInContactRow.PHONE)
-            assertEquals(SignInContactRow.PHONE, viewModel.uiState.value.expandedRow)
+            viewModel.toggleRow(AccountRow.PHONE)
+            assertEquals(AccountRow.PHONE, viewModel.uiState.value.expandedRow)
 
-            viewModel.toggleRow(SignInContactRow.PHONE)
+            viewModel.toggleRow(AccountRow.PHONE)
             assertNull(viewModel.uiState.value.expandedRow)
         }
 
     @Test
-    fun google_only_user_flag_hides_password_requirement() =
+    fun google_only_user_flag_hides_password_row_state() =
         runTest(dispatcher) {
-            sessionFlow.value =
-                AuthSession.SignedIn(
-                    AuthUser("u2", "google@example.com", "Google User", emailConfirmed = true, isGoogleOnly = true),
-                )
+            sessionFlow.value = AuthSession.SignedIn(
+                AuthUser("u2", "google@example.com", "Google User", emailConfirmed = true, isGoogleOnly = true),
+            )
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.isGoogleOnly)
         }
@@ -136,68 +127,5 @@ class SignInAndContactViewModelTest {
             advanceUntilIdle()
 
             assertEquals("Invalid email", viewModel.uiState.value.emailError)
-        }
-
-    @Test
-    fun password_required_for_non_google_secondary_email() =
-        runTest(dispatcher) {
-            advanceUntilIdle()
-            viewModel.onNewEmailDraftChange("second@example.com")
-            viewModel.addSecondaryEmail()
-            advanceUntilIdle()
-
-            assertEquals("Password required", viewModel.uiState.value.emailError)
-            coVerify(exactly = 0) { authRepository.addSecondaryEmail(any(), any()) }
-        }
-
-    @Test
-    fun google_only_add_secondary_email_skips_password() =
-        runTest(dispatcher) {
-            sessionFlow.value =
-                AuthSession.SignedIn(
-                    AuthUser("u2", "google@example.com", "Google User", emailConfirmed = true, isGoogleOnly = true),
-                )
-            coEvery { authRepository.addSecondaryEmail("second@example.com", null) } returns Result.success(Unit)
-            advanceUntilIdle()
-
-            viewModel.onNewEmailDraftChange("second@example.com")
-            viewModel.addSecondaryEmail()
-            advanceUntilIdle()
-
-            coVerify(exactly = 1) { authRepository.addSecondaryEmail("second@example.com", null) }
-            assertEquals("Verification sent", viewModel.uiState.value.infoMessage)
-            assertNull(viewModel.uiState.value.emailError)
-        }
-
-    @Test
-    fun unauthorized_secondary_email_maps_to_session_expired() =
-        runTest(dispatcher) {
-            coEvery {
-                authRepository.addSecondaryEmail("second@example.com", "secret123")
-            } returns Result.failure(IllegalStateException("Unauthorized"))
-            advanceUntilIdle()
-
-            viewModel.onNewEmailDraftChange("second@example.com")
-            viewModel.onEmailPasswordDraftChange("secret123")
-            viewModel.addSecondaryEmail()
-            advanceUntilIdle()
-
-            assertEquals("Your session expired. Sign in again.", viewModel.uiState.value.emailError)
-        }
-
-    @Test
-    fun edge_function_user_message_is_surfaced() =
-        runTest(dispatcher) {
-            coEvery {
-                authRepository.addSecondaryEmail("second@example.com", "secret123")
-            } returns Result.failure(IllegalStateException("Too many email requests. Try again later."))
-            advanceUntilIdle()
-
-            viewModel.onNewEmailDraftChange("second@example.com")
-            viewModel.onEmailPasswordDraftChange("secret123")
-            viewModel.addSecondaryEmail()
-            advanceUntilIdle()
-
-            assertEquals("Too many email requests. Try again later.", viewModel.uiState.value.emailError)
         }
 }

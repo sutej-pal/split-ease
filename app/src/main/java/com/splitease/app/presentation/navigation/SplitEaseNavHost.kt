@@ -55,6 +55,7 @@ import com.splitease.app.presentation.account.SignInAndContactScreen
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.account.CloseAccountScreen
 import com.splitease.app.presentation.account.DeleteAccountScreen
+import com.splitease.app.presentation.account.SignInAndContactScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.auth.ForgotPasswordScreen

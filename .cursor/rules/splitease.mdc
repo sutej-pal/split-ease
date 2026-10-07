@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Identity
 
-Build **SplitEase**, a native Android expense-sharing app inspired by Splitwise's *feature set* (not assets, branding, or copy). Package: `com.splitease.app`.
+Build **SplitEase**, a native Android expense-sharing app inspired by popular expense-sharing feature sets (not assets, branding, or copy). Package: `com.splitease.app`.
 
 ## Session start
 

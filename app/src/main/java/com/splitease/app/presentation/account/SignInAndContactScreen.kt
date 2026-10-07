@@ -1,6 +1,12 @@
 package com.splitease.app.presentation.account
 
-import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,12 +26,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,53 +39,42 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SeBodySmall
-import com.splitease.app.presentation.theme.SeLabelSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.DialCodePickerDialog
 import com.splitease.app.presentation.ui.PhoneNumberRow
-import com.splitease.app.presentation.ui.SeAccordionRow
+import com.splitease.app.presentation.ui.SeAssistChip
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
-import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeFilledTextField
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
-import com.splitease.app.presentation.ui.SeTextField
 
 @Composable
 fun SignInAndContactScreen(
     onBack: () -> Unit,
     viewModel: SignInAndContactViewModel = hiltViewModel(),
 ) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val profile by viewModel.profile.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     var emailToRemoveId by remember { mutableStateOf<String?>(null) }
     var showDialCodePicker by remember { mutableStateOf(false) }
 
-    LaunchedEffect(ui.infoMessage) {
-        val message = ui.infoMessage
-        if (message != null) {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            viewModel.clearMessages()
-        }
-    }
-
     SeScreen(
         title = stringResource(R.string.account_sign_in_contact_section),
-        subtitle = stringResource(R.string.account_sign_in_contact_subtitle),
         onBack = onBack,
     ) { padding ->
         Column(
@@ -88,124 +83,101 @@ fun SignInAndContactScreen(
                     .fillMaxSize()
                     .padding(padding.values)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
                     .padding(bottom = 24.dp),
         ) {
-            SignInContactCard {
-                val phoneDisplay =
-                    if (profile.phoneNumber.isNotBlank()) {
-                        "${profile.phoneCountryCode} ${profile.phoneNumber}"
-                    } else {
-                        stringResource(R.string.account_add_phone_action)
-                    }
-                val hasSecondary = ui.secondaryEmails.isNotEmpty()
+            // Caption under header
+            Spacer(modifier = Modifier.height(16.dp))
+            SeBodySmall(
+                text = stringResource(R.string.account_sign_in_contact_caption),
+                color = SplitEaseColors.NavyMuted,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
 
-                SeAccordionRow(
-                    label = stringResource(R.string.account_email_label),
-                    value = profile.email,
-                    expanded = ui.expandedRow == SignInContactRow.EMAIL,
-                    onToggle = { viewModel.toggleRow(SignInContactRow.EMAIL) },
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Email,
-                            tint = SplitEaseColors.Primary,
-                            size = 40,
+            // Email Row
+            val emailValue = profile.email
+            SignInContactAccordionRow(
+                title = stringResource(R.string.account_email_label),
+                subtitle = emailValue,
+                expanded = uiState.expandedRow == AccountRow.EMAIL,
+                onToggle = { viewModel.toggleRow(AccountRow.EMAIL) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Email,
+                        contentDescription = null,
+                        tint = SplitEaseColors.Primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                },
+                showDivider = true,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Primary email item
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        SeBodyMedium(
+                            text = profile.email,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SplitEaseColors.Navy,
                         )
-                    },
-                    trailingChip = {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (!profile.emailConfirmed) {
-                                StatusChip(
+                        if (profile.emailConfirmed) {
+                            SeAssistChip(
+                                text = stringResource(R.string.account_primary_label),
+                            )
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                SeAssistChip(
                                     text = stringResource(R.string.account_unconfirmed_chip),
-                                    background = SplitEaseColors.YouOwe.copy(alpha = 0.15f),
-                                    color = SplitEaseColors.YouOwe,
                                 )
-                            }
-                            if (hasSecondary) {
-                                StatusChip(
-                                    text = "+${ui.secondaryEmails.size}",
-                                    background = SplitEaseColors.PrimarySoft,
-                                    color = SplitEaseColors.Primary,
+                                SeTextButton(
+                                    text = stringResource(R.string.account_resend_action),
+                                    onClick = viewModel::resendPrimaryVerification,
                                 )
                             }
                         }
-                    },
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
+                        if (!profile.emailConfirmed && uiState.showPrimaryOtpInput) {
+                            Spacer(modifier = Modifier.height(8.dp))
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Column {
-                                    SeBodyMedium(
-                                        text = profile.email,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = SplitEaseColors.Navy,
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    StatusChip(
-                                        text = stringResource(R.string.account_primary_label),
-                                        background = SplitEaseColors.PrimarySoft,
-                                        color = SplitEaseColors.Primary,
-                                    )
-                                }
-                                if (!profile.emailConfirmed) {
-                                    SeTextButton(
-                                        text = stringResource(R.string.account_resend_action),
-                                        onClick = viewModel::resendPrimaryVerification,
-                                    )
-                                }
-                            }
-                            if (!profile.emailConfirmed && ui.showPrimaryOtpInput) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    SeTextField(
-                                        value = ui.primaryOtpDraft,
-                                        onValueChange = viewModel::onPrimaryOtpDraftChange,
-                                        placeholder = stringResource(R.string.account_otp_placeholder),
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    SePrimaryButton(
-                                        text = stringResource(R.string.account_verify_action),
-                                        onClick = viewModel::verifyPrimaryEmail,
-                                        isLoading = ui.isEmailSaving,
-                                    )
-                                }
+                                SeFilledTextField(
+                                    value = uiState.primaryOtpDraft,
+                                    onValueChange = viewModel::onPrimaryOtpDraftChange,
+                                    placeholder = "6-digit code",
+                                    modifier = Modifier.weight(1f),
+                                )
+                                SePrimaryButton(
+                                    text = stringResource(R.string.account_verify_action),
+                                    onClick = viewModel::verifyPrimaryEmail,
+                                    isLoading = uiState.isEmailSaving,
+                                )
                             }
                         }
+                    }
 
-                        ui.secondaryEmails.forEach { sec ->
+                    // Secondary emails list
+                    uiState.secondaryEmails.forEach { sec ->
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column {
-                                    SeBodyMedium(
-                                        text = sec.email,
-                                        fontWeight = FontWeight.Medium,
-                                        color = SplitEaseColors.Navy,
-                                    )
-                                    SeBodySmall(
-                                        text =
-                                            if (sec.isVerified) {
-                                                stringResource(R.string.account_secondary_label)
-                                            } else {
-                                                stringResource(R.string.account_unconfirmed_chip)
-                                            },
-                                        color =
-                                            if (sec.isVerified) {
-                                                SplitEaseColors.NavyMuted
-                                            } else {
-                                                SplitEaseColors.YouOwe
-                                            },
-                                    )
-                                }
+                                SeBodyMedium(
+                                    text = sec.email,
+                                    fontWeight = FontWeight.Medium,
+                                    color = SplitEaseColors.Navy,
+                                )
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     if (!sec.isVerified) {
                                         SeTextButton(
@@ -224,256 +196,299 @@ fun SignInAndContactScreen(
                                     )
                                 }
                             }
+                            if (sec.isVerified) {
+                                SeAssistChip(text = stringResource(R.string.account_secondary_label))
+                            } else {
+                                SeAssistChip(text = stringResource(R.string.account_unconfirmed_chip))
+                            }
                             if (!sec.isVerified) {
-                                val otp = ui.secondaryOtpDrafts[sec.id].orEmpty()
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val otp = uiState.secondaryOtpDrafts[sec.id].orEmpty()
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    SeTextField(
+                                    SeFilledTextField(
                                         value = otp,
                                         onValueChange = { viewModel.onSecondaryOtpDraftChange(sec.id, it) },
-                                        placeholder = stringResource(R.string.account_otp_placeholder),
+                                        placeholder = "6-digit code",
                                         modifier = Modifier.weight(1f),
                                     )
                                     SePrimaryButton(
                                         text = stringResource(R.string.account_verify_action),
                                         onClick = { viewModel.verifySecondaryEmail(sec.id) },
-                                        isLoading = ui.isEmailSaving,
-                                    )
-                                }
-                            }
-                        }
-
-                        if (!ui.showAddEmailForm) {
-                            if (ui.emailError != null) {
-                                SeBodySmall(
-                                    text = ui.emailError!!,
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                            SeTextButton(
-                                text = "+ " + stringResource(R.string.account_add_email_action),
-                                onClick = viewModel::toggleAddEmailForm,
-                            )
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SeTextField(
-                                    value = ui.newEmailDraft,
-                                    onValueChange = viewModel::onNewEmailDraftChange,
-                                    label = stringResource(R.string.account_email_label),
-                                    isError = ui.emailError != null,
-                                    supportingText = ui.emailError,
-                                )
-                                if (!profile.isGoogleOnly) {
-                                    SeTextField(
-                                        value = ui.emailPasswordDraft,
-                                        onValueChange = viewModel::onEmailPasswordDraftChange,
-                                        label = stringResource(R.string.account_current_password_label),
-                                        visualTransformation = PasswordVisualTransformation(),
-                                    )
-                                }
-                                Row(
-                                    horizontalArrangement = Arrangement.End,
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    SeTextButton(
-                                        text = stringResource(R.string.action_cancel),
-                                        onClick = viewModel::toggleAddEmailForm,
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    SePrimaryButton(
-                                        text = stringResource(R.string.account_send_otp_action),
-                                        onClick = viewModel::addSecondaryEmail,
-                                        isLoading = ui.isEmailSaving,
+                                        isLoading = uiState.isEmailSaving,
                                     )
                                 }
                             }
                         }
                     }
-                }
 
-                SeAccordionRow(
-                    label = stringResource(R.string.account_phone_label),
-                    value = phoneDisplay,
-                    expanded = ui.expandedRow == SignInContactRow.PHONE,
-                    onToggle = { viewModel.toggleRow(SignInContactRow.PHONE) },
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Phone,
-                            tint = SplitEaseColors.Primary,
-                            size = 40,
+                    // Add new email form toggle / panel
+                    if (!uiState.showAddEmailForm) {
+                        SeTextButton(
+                            text = "+ " + stringResource(R.string.account_add_another_email),
+                            onClick = viewModel::toggleAddEmailForm,
                         )
-                    },
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PhoneNumberRow(
-                            dialFlag = flagEmojiForDialCode(ui.phoneCountryCodeDraft),
-                            dialCode = ui.phoneCountryCodeDraft,
-                            phoneNumber = ui.phoneNumberDraft,
-                            enabled = !ui.isPhoneSaving,
-                            onDialClick = { showDialCodePicker = true },
-                            onPhoneChange = viewModel::onPhoneNumberDraftChange,
-                        )
-                        if (ui.phoneError != null) {
-                            SeBodySmall(
-                                text = ui.phoneError!!,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                        Row(
-                            horizontalArrangement = Arrangement.End,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            SeTextButton(
-                                text = stringResource(R.string.action_cancel),
-                                onClick = { viewModel.toggleRow(SignInContactRow.PHONE) },
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            SePrimaryButton(
-                                text = stringResource(R.string.action_save),
-                                onClick = viewModel::savePhone,
-                                isLoading = ui.isPhoneSaving,
-                            )
-                        }
-                    }
-                }
-
-                if (!profile.isGoogleOnly) {
-                    SeAccordionRow(
-                        label = stringResource(R.string.account_password_label),
-                        value = stringResource(R.string.account_password_change_value),
-                        expanded = ui.expandedRow == SignInContactRow.PASSWORD,
-                        onToggle = { viewModel.toggleRow(SignInContactRow.PASSWORD) },
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Lock,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                    ) {
+                    } else {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SeTextField(
-                                value = ui.currentPasswordDraft,
-                                onValueChange = viewModel::onCurrentPasswordDraftChange,
-                                label = stringResource(R.string.account_current_password_label),
-                                visualTransformation = PasswordVisualTransformation(),
+                            SeFilledTextField(
+                                value = uiState.newEmailDraft,
+                                onValueChange = viewModel::onNewEmailDraftChange,
+                                placeholder = "name@company.com",
+                                isError = uiState.emailError != null,
                             )
-                            SeTextField(
-                                value = ui.newPasswordDraft,
-                                onValueChange = viewModel::onNewPasswordDraftChange,
-                                label = stringResource(R.string.account_new_password_label),
-                                visualTransformation = PasswordVisualTransformation(),
-                                isError = ui.passwordError != null,
-                                supportingText = ui.passwordError,
-                            )
+                            if (uiState.emailError != null) {
+                                SeErrorText(text = uiState.emailError!!)
+                            }
+                            if (!profile.isGoogleOnly) {
+                                SeFilledTextField(
+                                    value = uiState.emailPasswordDraft,
+                                    onValueChange = viewModel::onEmailPasswordDraftChange,
+                                    placeholder = stringResource(R.string.account_current_password_label),
+                                    visualTransformation = PasswordVisualTransformation(),
+                                )
+                            }
                             Row(
-                                horizontalArrangement = Arrangement.End,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 SeTextButton(
                                     text = stringResource(R.string.action_cancel),
-                                    onClick = { viewModel.toggleRow(SignInContactRow.PASSWORD) },
+                                    onClick = viewModel::toggleAddEmailForm,
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.weight(1f))
                                 SePrimaryButton(
-                                    text = stringResource(R.string.account_update_password_action),
-                                    onClick = viewModel::updatePassword,
-                                    isLoading = ui.isPasswordSaving,
+                                    text = stringResource(R.string.action_send_otp),
+                                    onClick = viewModel::addSecondaryEmail,
+                                    isLoading = uiState.isEmailSaving,
+                                    modifier = Modifier.weight(1f),
                                 )
                             }
                         }
                     }
                 }
             }
+
+            // Phone Row
+            val phoneDisplay =
+                if (profile.phoneNumber.isNotBlank()) {
+                    "${profile.phoneCountryCode} ${profile.phoneNumber}"
+                } else {
+                    stringResource(R.string.account_add_phone_action)
+                }
+            SignInContactAccordionRow(
+                title = stringResource(R.string.account_phone_label),
+                subtitle = phoneDisplay,
+                expanded = uiState.expandedRow == AccountRow.PHONE,
+                onToggle = { viewModel.toggleRow(AccountRow.PHONE) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Phone,
+                        contentDescription = null,
+                        tint = SplitEaseColors.Primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                },
+                showDivider = true,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PhoneNumberRow(
+                        dialFlag = flagEmojiForDialCode(uiState.phoneCountryCodeDraft),
+                        dialCode = uiState.phoneCountryCodeDraft,
+                        phoneNumber = uiState.phoneNumberDraft,
+                        enabled = !uiState.isPhoneSaving,
+                        onDialClick = { showDialCodePicker = true },
+                        onPhoneChange = viewModel::onPhoneNumberDraftChange,
+                    )
+                    if (uiState.phoneError != null) {
+                        SeErrorText(text = uiState.phoneError!!)
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SeTextButton(
+                            text = stringResource(R.string.action_cancel),
+                            onClick = { viewModel.toggleRow(AccountRow.PHONE) },
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        SePrimaryButton(
+                            text = stringResource(R.string.action_send_otp),
+                            onClick = viewModel::savePhone,
+                            isLoading = uiState.isPhoneSaving,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+
+            // Password Row (hidden for Google-only)
+            if (!profile.isGoogleOnly) {
+                SignInContactAccordionRow(
+                    title = stringResource(R.string.account_password_label),
+                    subtitle = "Change",
+                    expanded = uiState.expandedRow == AccountRow.PASSWORD,
+                    onToggle = { viewModel.toggleRow(AccountRow.PASSWORD) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = SplitEaseColors.Primary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    showDivider = false,
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SeFilledTextField(
+                            value = uiState.currentPasswordDraft,
+                            onValueChange = viewModel::onCurrentPasswordDraftChange,
+                            placeholder = stringResource(R.string.account_current_password_label),
+                            visualTransformation = PasswordVisualTransformation(),
+                        )
+                        SeFilledTextField(
+                            value = uiState.newPasswordDraft,
+                            onValueChange = viewModel::onNewPasswordDraftChange,
+                            placeholder = stringResource(R.string.account_new_password_label),
+                            visualTransformation = PasswordVisualTransformation(),
+                        )
+                        if (uiState.passwordError != null) {
+                            SeErrorText(text = uiState.passwordError!!)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SeTextButton(
+                                text = stringResource(R.string.action_cancel),
+                                onClick = { viewModel.toggleRow(AccountRow.PASSWORD) },
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            SePrimaryButton(
+                                text = stringResource(R.string.account_update_password_action),
+                                onClick = viewModel::updatePassword,
+                                isLoading = uiState.isPasswordSaving,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showDialCodePicker) {
+            DialCodePickerDialog(
+                selectedCode = uiState.phoneCountryCodeDraft,
+                selectedFlag = flagEmojiForDialCode(uiState.phoneCountryCodeDraft),
+                onSelect = { option ->
+                    viewModel.onPhoneCountryCodeDraftChange(option.code)
+                    showDialCodePicker = false
+                },
+                onDismiss = { showDialCodePicker = false },
+            )
+        }
+
+        emailToRemoveId?.let { id ->
+            val sec = uiState.secondaryEmails.firstOrNull { it.id == id }
+            SeConfirmDialog(
+                title = stringResource(R.string.account_remove_email_title),
+                body = stringResource(R.string.account_remove_email_body, sec?.email.orEmpty()),
+                confirmLabel = stringResource(R.string.account_remove_action),
+                onDismissRequest = { emailToRemoveId = null },
+                onConfirm = {
+                    viewModel.removeSecondaryEmail(id)
+                    emailToRemoveId = null
+                },
+                tone = SeConfirmTone.Danger,
+            )
         }
     }
-
-    if (showDialCodePicker) {
-        DialCodePickerDialog(
-            selectedCode = ui.phoneCountryCodeDraft,
-            selectedFlag = flagEmojiForDialCode(ui.phoneCountryCodeDraft),
-            onSelect = { option ->
-                viewModel.onPhoneCountryCodeDraftChange(option.code)
-                showDialCodePicker = false
-            },
-            onDismiss = { showDialCodePicker = false },
-        )
-    }
-
-    emailToRemoveId?.let { id ->
-        val sec = ui.secondaryEmails.firstOrNull { it.id == id }
-        SeConfirmDialog(
-            title = stringResource(R.string.account_remove_email_title),
-            body = stringResource(R.string.account_remove_email_body, sec?.email.orEmpty()),
-            confirmLabel = stringResource(R.string.account_remove_action),
-            onDismissRequest = { emailToRemoveId = null },
-            onConfirm = {
-                viewModel.removeSecondaryEmail(id)
-                emailToRemoveId = null
-            },
-            tone = SeConfirmTone.Danger,
-        )
-    }
 }
 
 @Composable
-private fun SignInContactCard(content: @Composable () -> Unit) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(SplitEaseColors.Surface)
-                .padding(vertical = 4.dp),
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun StatusChip(
-    text: String,
-    background: androidx.compose.ui.graphics.Color,
-    color: androidx.compose.ui.graphics.Color,
+private fun SignInContactAccordionRow(
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    leadingIcon: @Composable () -> Unit,
+    showDivider: Boolean,
+    content: @Composable () -> Unit,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(background)
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-    ) {
-        SeLabelSmall(
-            text = text,
-            color = color,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "chevronRotate",
+    )
 
-private fun flagEmojiForDialCode(code: String): String =
-    when (code.trim()) {
-        "+91" -> "🇮🇳"
-        "+1" -> "🇺🇸"
-        "+44" -> "🇬🇧"
-        "+61" -> "🇦🇺"
-        "+1 CA", "+1CA" -> "🇨🇦"
-        "+49" -> "🇩🇪"
-        "+33" -> "🇫🇷"
-        "+81" -> "🇯🇵"
-        "+86" -> "🇨🇳"
-        "+55" -> "🇧🇷"
-        "+971" -> "🇦🇪"
-        "+65" -> "🇸🇬"
-        else -> "🌐"
-    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SplitEaseColors.PrimarySoft),
+                contentAlignment = Alignment.Center,
+            ) {
+                leadingIcon()
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                SeBodyLarge(
+                    text = title,
+                    fontWeight = FontWeight.Medium,
+                    color = SplitEaseColors.Navy,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                SeBodySmall(
+                    text = subtitle,
+                    color = SplitEaseColors.NavyMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                tint = SplitEaseColors.IconDefault,
+                modifier = Modifier.size(24.dp).rotate(rotation),
+            )
+        }
 
-@Preview(showBackground = true, heightDp = 640)
-@Composable
-private fun SignInAndContactPreview() {
-    SePreview {
-        SeBodyMedium(text = "Sign in and contact")
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(animationSpec = tween(200)) + fadeIn(animationSpec = tween(200)),
+            exit = shrinkVertically(animationSpec = tween(200)) + fadeOut(animationSpec = tween(200)),
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 80.dp, end = 20.dp, bottom = 20.dp),
+            ) {
+                content()
+            }
+        }
+
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 80.dp),
+                thickness = 1.dp,
+                color = SplitEaseColors.Outline,
+            )
+        }
     }
 }

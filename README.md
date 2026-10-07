@@ -1,6 +1,6 @@
 # SplitEase
 
-Native Android expense-sharing app (Kotlin + Jetpack Compose). Inspired by Splitwise's feature set — original architecture and UI.
+Native Android expense-sharing app (Kotlin + Jetpack Compose). Inspired by standard expense-sharing feature sets — original architecture and UI.
 
 ## Status
 

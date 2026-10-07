@@ -28,6 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -522,6 +524,31 @@ fun SeEmptyState(
             SePrimaryButton(text = actionLabel, onClick = onAction)
         }
     }
+}
+
+@Composable
+fun SeAssistChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+    enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
+) {
+    AssistChip(
+        onClick = onClick,
+        label = { SeLabelSmall(text = text, fontWeight = FontWeight.Medium) },
+        leadingIcon = leadingIcon,
+        enabled = enabled,
+        modifier = modifier,
+        colors =
+            AssistChipDefaults.assistChipColors(
+                containerColor = SplitEaseColors.PrimarySoft,
+                labelColor = SplitEaseColors.Primary,
+                leadingIconContentColor = SplitEaseColors.Primary,
+            ),
+        border = null,
+        shape = RoundedCornerShape(12.dp),
+    )
 }
 
 @Composable

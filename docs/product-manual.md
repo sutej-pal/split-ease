@@ -17,7 +17,7 @@ SplitEase is a native Android app for sharing expenses with friends, roommates, 
 
 It is **offline-first**: a write is stored on the device immediately, then flushed to **Supabase** when the network is available. Other members see the change after cloud sync. If they have the group open, **Realtime** updates the ledger live. If the app is in the background, they can get an **FCM** notification and tap through to that group.
 
-Inspired by Splitwise’s feature set; architecture and UI are original.
+Inspired by industry standard expense-sharing feature sets; architecture and UI are original.
 
 **Package:** `com.splitease.app`  
 **Category:** Finance / productivity  

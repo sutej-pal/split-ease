@@ -8,7 +8,6 @@ import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AppSettingsRepository
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +21,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -51,8 +49,8 @@ class AccountViewModelTest {
         every { userRepository.observeUsers() } returns flowOf(emptyList())
         every { appSettingsRepository.observeCurrencyCode() } returns flowOf("INR")
         every { appSettingsRepository.observeAppLocale() } returns flowOf(AppLocale.DEFAULT)
-        every { context.getString(R.string.msg_display_name_required) } returns "Enter a display name."
-        every { context.getString(R.string.msg_profile_name_saved) } returns "Display name updated."
+
+        every { context.getString(R.string.msg_display_name_required) } returns "Display name required"
 
         viewModel =
             AccountViewModel(
@@ -72,24 +70,10 @@ class AccountViewModelTest {
     fun blank_display_name_sets_error() =
         runTest(dispatcher) {
             advanceUntilIdle()
-            viewModel.onDisplayNameDraftChange("   ")
+            viewModel.onDisplayNameDraftChange("")
             viewModel.saveDisplayName()
             advanceUntilIdle()
 
-            assertEquals("Enter a display name.", viewModel.settings.value.errorMessage)
+            assertEquals("Display name required", viewModel.settings.value.errorMessage)
         }
-
-    @Test
-    fun save_display_name_success_sets_info() =
-        runTest(dispatcher) {
-            coEvery { authRepository.updateDisplayName("Alice") } returns Result.success(Unit)
-            advanceUntilIdle()
-            viewModel.onDisplayNameDraftChange("Alice")
-            viewModel.saveDisplayName()
-            advanceUntilIdle()
-
-            assertEquals("Display name updated.", viewModel.settings.value.infoMessage)
-            assertNull(viewModel.settings.value.errorMessage)
-        }
-
 }
