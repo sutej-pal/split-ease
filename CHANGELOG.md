@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Send OTP while adding a secondary email failed with `Unauthorized`: password re-check called GoTrue `POST /logout` without `scope=local`, which defaults to **global** and revoked the app session before the `secondary-email` Edge Function ran. Logout of the one-off verify session now uses `scope=local`; the client refreshes the access token before the Edge Function call and maps auth failures to a clear session-expired message.
+
 ### Added
+- Dedicated **Sign in and contact** screen (`SignInAndContactScreen`) for email, phone, and password management (moved out of Account settings).
 - Account settings borderless design with inline accordion rows for Email, Phone number, and Password.
 - Secondary email management with 6-digit verification code sent via `secondary-email` Edge Function.
 - Patch SQL script in `docs/sql/patch_account_settings.sql` for existing Supabase databases (deactivation RPC, phone lookup, secondary email, and hiding deactivated profiles from directory search).

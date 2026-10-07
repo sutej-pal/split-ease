@@ -30,6 +30,8 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Account settings expansion (2026-10-03) — Borderless Splitwise-style accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), and phone management. Dates stay UTC instants and render in the device time zone.
 
+**Post-phase:** Sign in and contact + secondary-email OTP auth (2026-10-07) — Email/phone/password live on `SignInAndContactScreen`. Fixed Send OTP `Unauthorized`: password verify must revoke its one-off GoTrue session with `scope=local` (default logout is global and killed the app JWT). Client refreshes the access token before calling the Edge Function.
+
 **Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
 
 **Post-phase:** Pending-invite title and direct resend SMS (2026-10-01) — the friend settings card titles a pending invite "Invite pending". Resend opens the messages app immediately; Edit Contact / Review still confirms with "Invite to SplitEase?" first.
@@ -48,7 +50,7 @@ Track development phases. Always check this file at the start of a session to de
 - Index: [docs/README.md](docs/README.md)
 - Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)
 - Condensed history: [docs/phase-bundles.md](docs/phase-bundles.md)
-- Maintenance: [email OTP verification](docs/maintenance-email-otp-verification.md), [wipe / re-apply Supabase](docs/supabase-reset.md)
+- Maintenance: [email OTP verification](docs/maintenance-email-otp-verification.md), [secondary email Send OTP auth](docs/maintenance-secondary-email-otp-auth.md), [wipe / re-apply Supabase](docs/supabase-reset.md)
 - Ordered Supabase follow-ups: [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md)
 
 ### Carried-forward TODOs

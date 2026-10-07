@@ -4,7 +4,6 @@ import android.content.Context
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
-import com.splitease.app.domain.model.SecondaryEmail
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.UserRepository
 import com.splitease.app.domain.settings.AppLocale
@@ -23,9 +22,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -36,7 +33,6 @@ class AccountViewModelTest {
         MutableStateFlow<AuthSession>(
             AuthSession.SignedIn(AuthUser("u1", "bob@example.com", "Bob", emailConfirmed = true, isGoogleOnly = false)),
         )
-    private val secondaryEmailsFlow = MutableStateFlow<List<SecondaryEmail>>(emptyList())
     private lateinit var authRepository: AuthRepository
     private lateinit var userRepository: UserRepository
     private lateinit var appSettingsRepository: AppSettingsRepository
@@ -52,15 +48,11 @@ class AccountViewModelTest {
         context = mockk(relaxed = true)
 
         every { authRepository.observeSession() } returns sessionFlow
-        every { authRepository.observeSecondaryEmails() } returns secondaryEmailsFlow
         every { userRepository.observeUsers() } returns flowOf(emptyList())
         every { appSettingsRepository.observeCurrencyCode() } returns flowOf("INR")
         every { appSettingsRepository.observeAppLocale() } returns flowOf(AppLocale.DEFAULT)
-
-        every { context.getString(R.string.signup_error_phone_invalid) } returns "Invalid phone"
-        every { context.getString(R.string.signup_error_password_short) } returns "Password short"
-        every { context.getString(R.string.error_invalid_email) } returns "Invalid email"
-        every { context.getString(R.string.error_password_required) } returns "Password required"
+        every { context.getString(R.string.msg_display_name_required) } returns "Enter a display name."
+        every { context.getString(R.string.msg_profile_name_saved) } returns "Display name updated."
 
         viewModel =
             AccountViewModel(
@@ -77,63 +69,27 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun toggle_row_ensures_only_one_row_open_at_a_time() =
+    fun blank_display_name_sets_error() =
         runTest(dispatcher) {
             advanceUntilIdle()
-            assertNull(viewModel.settings.value.expandedRow)
+            viewModel.onDisplayNameDraftChange("   ")
+            viewModel.saveDisplayName()
+            advanceUntilIdle()
 
-            viewModel.toggleRow(AccountRow.EMAIL)
-            assertEquals(AccountRow.EMAIL, viewModel.settings.value.expandedRow)
-
-            viewModel.toggleRow(AccountRow.PHONE)
-            assertEquals(AccountRow.PHONE, viewModel.settings.value.expandedRow)
-
-            viewModel.toggleRow(AccountRow.PHONE)
-            assertNull(viewModel.settings.value.expandedRow)
+            assertEquals("Enter a display name.", viewModel.settings.value.errorMessage)
         }
 
     @Test
-    fun google_only_user_flag_hides_password_row_state() =
+    fun save_display_name_success_sets_info() =
         runTest(dispatcher) {
-            sessionFlow.value = AuthSession.SignedIn(
-                AuthUser("u2", "google@example.com", "Google User", emailConfirmed = true, isGoogleOnly = true),
-            )
+            coEvery { authRepository.updateDisplayName("Alice") } returns Result.success(Unit)
             advanceUntilIdle()
-            assertTrue(viewModel.settings.value.isGoogleOnly)
+            viewModel.onDisplayNameDraftChange("Alice")
+            viewModel.saveDisplayName()
+            advanceUntilIdle()
+
+            assertEquals("Display name updated.", viewModel.settings.value.infoMessage)
+            assertNull(viewModel.settings.value.errorMessage)
         }
 
-    @Test
-    fun invalid_phone_length_sets_phone_error() =
-        runTest(dispatcher) {
-            advanceUntilIdle()
-            viewModel.onPhoneNumberDraftChange("123")
-            viewModel.savePhone()
-            advanceUntilIdle()
-
-            assertEquals("Invalid phone", viewModel.settings.value.phoneError)
-            assertFalse(viewModel.settings.value.isPhoneSaving)
-        }
-
-    @Test
-    fun short_new_password_sets_password_error() =
-        runTest(dispatcher) {
-            advanceUntilIdle()
-            viewModel.onCurrentPasswordDraftChange("secret123")
-            viewModel.onNewPasswordDraftChange("short")
-            viewModel.updatePassword()
-            advanceUntilIdle()
-
-            assertEquals("Password short", viewModel.settings.value.passwordError)
-        }
-
-    @Test
-    fun invalid_secondary_email_sets_email_error() =
-        runTest(dispatcher) {
-            advanceUntilIdle()
-            viewModel.onNewEmailDraftChange("notanemail")
-            viewModel.addSecondaryEmail()
-            advanceUntilIdle()
-
-            assertEquals("Invalid email", viewModel.settings.value.emailError)
-        }
 }

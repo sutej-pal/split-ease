@@ -26,6 +26,8 @@ Deno.serve(async (req) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
+  // Client must send Authorization: Bearer <user access_token> (+ apikey anon key).
+  // Gateway verify_jwt=true also checks the JWT. A revoked/expired session yields 401 here.
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return json({ error: "Unauthorized" }, 401);
@@ -39,6 +41,7 @@ Deno.serve(async (req) => {
   }
   const adminClient = createClient(supabaseUrl, serviceKey);
 
+  // getUser validates the JWT with Auth (revoked sessions fail even if the JWT is unexpired).
   const { data: { user }, error: authError } = await adminClient.auth.getUser(jwt);
   if (authError || !user) {
     return json({ error: "Unauthorized" }, 401);

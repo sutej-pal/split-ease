@@ -66,6 +66,7 @@ import javax.inject.Singleton
 
 private const val PENDING_SIGNUP_PHOTO_NAME = "pending_signup.jpg"
 private const val PROFILE_UPSERT_COALESCE_MS = 2_000L
+private const val SESSION_EXPIRED_MESSAGE = "Your session expired. Sign in again."
 private val SECONDARY_EMAIL_COLUMNS = Columns.list("id", "email", "verified_at", "created_at")
 
 /**
@@ -745,16 +746,24 @@ class SupabaseAuthRepository
             }
         }
 
+        /**
+         * Revokes only the one-off password-check session.
+         *
+         * GoTrue defaults `POST /logout` to **global** scope when [scope] is omitted, which
+         * would invalidate the app's real session and make the next Edge Function call return
+         * `Unauthorized`. Always pass `scope=local`.
+         */
         private fun revokeAccessToken(baseUrl: String, anonKey: String, accessToken: String) {
-            val connection = (URL("$baseUrl/auth/v1/logout").openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                connectTimeout = 15_000
-                readTimeout = 15_000
-                setRequestProperty("Authorization", "Bearer $accessToken")
-                if (anonKey.isNotEmpty()) {
-                    setRequestProperty("apikey", anonKey)
+            val connection =
+                (URL("$baseUrl/auth/v1/logout?scope=local").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 15_000
+                    readTimeout = 15_000
+                    setRequestProperty("Authorization", "Bearer $accessToken")
+                    if (anonKey.isNotEmpty()) {
+                        setRequestProperty("apikey", anonKey)
+                    }
                 }
-            }
             try {
                 connection.responseCode
             } catch (_: Exception) {
@@ -882,8 +891,7 @@ class SupabaseAuthRepository
             params: Map<String, String>,
         ) {
             withContext(Dispatchers.IO) {
-                val session = (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
-                    ?: error("Not signed in.")
+                val accessToken = freshAccessTokenOrThrow()
                 val baseUrl = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
                 val anonKey = BuildConfig.SUPABASE_ANON_KEY.trim()
                 val url = URL("$baseUrl/functions/v1/secondary-email")
@@ -894,7 +902,8 @@ class SupabaseAuthRepository
                     readTimeout = 30_000
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+                    // User JWT for verify_jwt + function getUser(); anon key for the gateway.
+                    setRequestProperty("Authorization", "Bearer $accessToken")
                     if (anonKey.isNotEmpty()) {
                         setRequestProperty("apikey", anonKey)
                     }
@@ -918,13 +927,31 @@ class SupabaseAuthRepository
                     val responseJson = runCatching { JSONObject(responseText) }.getOrNull()
                     if (status !in 200..299) {
                         val err = responseJson?.optString("error")?.takeIf { it.isNotBlank() }
+                            ?: responseJson?.optString("msg")?.takeIf { it.isNotBlank() }
                             ?: "Secondary email operation failed."
+                        if (status == 401 || err.equals("Unauthorized", ignoreCase = true)) {
+                            error(SESSION_EXPIRED_MESSAGE)
+                        }
                         error(err)
                     }
                 } finally {
                     connection.disconnect()
                 }
             }
+        }
+
+        /**
+         * Ensures we send a non-blank, preferably refreshed access token to Edge Functions.
+         * Manual [HttpURLConnection] calls do not get supabase-kt's auto-refresh.
+         */
+        private suspend fun freshAccessTokenOrThrow(): String {
+            runCatching { supabase.auth.refreshCurrentSession() }
+            val session =
+                supabase.auth.currentSessionOrNull()
+                    ?: (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
+                    ?: error(SESSION_EXPIRED_MESSAGE)
+            return session.accessToken.takeIf { it.isNotBlank() }
+                ?: error(SESSION_EXPIRED_MESSAGE)
         }
     }
 

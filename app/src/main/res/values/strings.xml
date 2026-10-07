@@ -432,9 +432,11 @@
     <string name="error_account_deactivated">This account is deactivated. Contact support to reactivate it.</string>
 
     <string name="account_sign_in_contact_section">Sign in and contact</string>
+    <string name="account_sign_in_contact_subtitle">Manage how you sign in and how people reach you.</string>
     <string name="account_email_label">Email</string>
     <string name="account_phone_label">Phone number</string>
     <string name="account_password_label">Password</string>
+    <string name="account_password_change_value">Change</string>
     <string name="account_add_phone_action">Add phone number</string>
     <string name="account_add_email_action">Add a new email</string>
     <string name="account_unconfirmed_chip">Unconfirmed</string>
@@ -446,10 +448,13 @@
     <string name="account_remove_email_title">Remove secondary email</string>
     <string name="account_remove_email_body">Are you sure you want to remove %1$s?</string>
     <string name="account_send_verification_action">Send verification</string>
+    <string name="account_send_otp_action">Send OTP</string>
+    <string name="account_otp_placeholder">6-digit code</string>
     <string name="account_current_password_label">Current password</string>
     <string name="account_new_password_label">New password</string>
     <string name="account_update_password_action">Update password</string>
     <string name="account_password_updated_toast">Password updated</string>
+    <string name="error_session_expired">Your session expired. Sign in again.</string>
     <string name="signup_error_phone_invalid">Enter a valid phone number (7–15 digits).</string>
     <string name="msg_profile_phone_saved">Phone number updated.</string>
     <string name="error_password_required">Enter your password.</string>

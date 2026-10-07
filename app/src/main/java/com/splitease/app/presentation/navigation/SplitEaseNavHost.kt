@@ -51,6 +51,7 @@ import androidx.navigation.navArgument
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
+import com.splitease.app.presentation.account.SignInAndContactScreen
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.account.CloseAccountScreen
 import com.splitease.app.presentation.account.DeleteAccountScreen
@@ -122,6 +123,7 @@ object Routes {
     const val TAB_ACCOUNT = "tab_account"
 
     const val ACCOUNT_PROFILE_SETTINGS = "account_profile_settings"
+    const val SIGN_IN_AND_CONTACT = "sign_in_and_contact"
     const val CLOSE_ACCOUNT = "close_account"
     const val WHATS_NEW = "whats_new"
     const val DELETE_ACCOUNT = "delete_account"
@@ -764,7 +766,13 @@ private fun SignedInNavHost(
                     onBack = { navController.popBackStack() },
                     onOpenCurrency = { navController.navigate(Routes.CURRENCY_SETTINGS) },
                     onOpenLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
+                    onOpenSignInAndContact = { navController.navigate(Routes.SIGN_IN_AND_CONTACT) },
                     onOpenCloseAccount = { navController.navigate(Routes.CLOSE_ACCOUNT) },
+                )
+            }
+            composable(Routes.SIGN_IN_AND_CONTACT) {
+                SignInAndContactScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(Routes.CLOSE_ACCOUNT) {
