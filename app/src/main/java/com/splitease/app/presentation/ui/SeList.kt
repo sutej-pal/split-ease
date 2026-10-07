@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -443,13 +444,12 @@ fun SeListRow(
                         }
                     }
                     SeListRowLabelStyle.Field -> {
-                        SeLabelSmall(text = title)
+                        SeTitleMedium(text = title, fontWeight = FontWeight.Medium)
                         if (subtitle != null) {
                             Spacer(modifier = Modifier.height(2.dp))
-                            SeBodyMedium(
+                            SeBodySmall(
                                 text = subtitle,
-                                fontWeight = FontWeight.Medium,
-                                color = SplitEaseColors.Navy,
+                                color = SplitEaseColors.NavyMuted,
                             )
                         }
                     }

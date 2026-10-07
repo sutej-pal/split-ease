@@ -65,6 +65,7 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
+import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SeBodySmall
 import com.splitease.app.presentation.theme.SeLabelSmall

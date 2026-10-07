@@ -560,6 +560,7 @@ class SupabaseAuthRepository
             val info =
                 supabase.auth.currentUserOrNull()
                     ?: error("Not signed in.")
+            if (info.emailConfirmedAt == null) return
             var local = userRepository.getUserById(info.id)
             if (local == null || local.displayName.trim().isEmpty()) {
                 persistCurrentUser()
@@ -574,19 +575,21 @@ class SupabaseAuthRepository
                     ?: "User"
             val email = local?.email ?: info.email.orEmpty()
             val now = System.currentTimeMillis()
-            socialRemote.upsertProfile(
-                ProfileDto(
-                    id = info.id,
-                    email = email,
-                    displayName = displayName,
-                    photoUrl = local?.photoUrl?.takeIf { it.isRemoteMediaUrl() }
-                        ?: info.userMetadata?.stringMeta("photo_url"),
-                    phoneCountryCode = local?.phoneCountryCode,
-                    phoneNumber = local?.phoneNumber,
-                    preferredCurrency = local?.preferredCurrency,
-                    updatedAtEpochMs = now,
-                ),
-            )
+            runCatching {
+                socialRemote.upsertProfile(
+                    ProfileDto(
+                        id = info.id,
+                        email = email,
+                        displayName = displayName,
+                        photoUrl = local?.photoUrl?.takeIf { it.isRemoteMediaUrl() }
+                            ?: info.userMetadata?.stringMeta("photo_url"),
+                        phoneCountryCode = local?.phoneCountryCode,
+                        phoneNumber = local?.phoneNumber,
+                        preferredCurrency = local?.preferredCurrency,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+            }
         }
 
         private suspend fun hydrateCloudData() {

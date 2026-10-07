@@ -2127,7 +2127,7 @@ class SocialInteractor
          * @param invite Local pending invite to push.
          */
         private suspend fun pushInviteToCloud(invite: Invite) {
-            authRepository.ensureOwnProfileSynced()
+            runCatching { authRepository.ensureOwnProfileSynced() }
             invite.groupId?.let { ensureGroupSyncedToCloud(it, invite.inviterUserId) }
             remote.upsertInvite(invite.toDto())
             inviteRepository.upsert(invite.copy(syncStatus = SyncStatus.SYNCED))
