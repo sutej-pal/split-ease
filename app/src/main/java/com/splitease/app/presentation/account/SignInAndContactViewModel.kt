@@ -25,6 +25,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class AccountRow {
+    EMAIL,
+    PHONE,
+    PASSWORD,
+}
+
 data class SignInAndContactUiState(
     val expandedRow: AccountRow? = null,
     val secondaryEmails: List<SecondaryEmail> = emptyList(),
