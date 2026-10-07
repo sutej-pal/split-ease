@@ -882,7 +882,10 @@ class SupabaseAuthRepository
             params: Map<String, String>,
         ) {
             withContext(Dispatchers.IO) {
-                val session = (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
+                val session = supabase.auth.currentSessionOrNull()
+                    ?: (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
+                    ?: error("Not signed in.")
+                val accessToken = session.accessToken.takeIf { it.isNotBlank() }
                     ?: error("Not signed in.")
                 val baseUrl = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
                 val anonKey = BuildConfig.SUPABASE_ANON_KEY.trim()
@@ -894,7 +897,7 @@ class SupabaseAuthRepository
                     readTimeout = 30_000
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+                    setRequestProperty("Authorization", "Bearer $accessToken")
                     if (anonKey.isNotEmpty()) {
                         setRequestProperty("apikey", anonKey)
                     }

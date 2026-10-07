@@ -28,7 +28,9 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Explicit colour tokens and error text (2026-09-29) — brand colours are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colours stay `OweRed` / `OwedTeal`.
 
-**Post-phase:** Account settings expansion (2026-10-03) — Borderless Splitwise-style accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), and phone management. Dates stay UTC instants and render in the device time zone.
+**Post-phase:** Sign in and contact screen revamp & restructure (2026-10-05) — Moved email, phone, and password accordion editing into dedicated `SignInAndContactScreen` (`SignInAndContactViewModel`), with plain white background, 44dp lavender icon tiles, rotating chevrons, inset text dividers, custom `SeAssistChip` status badges, "Send OTP" actions, and a single navigation tile on Account settings showing the primary email subtitle.
+
+**Post-phase:** Account settings expansion (2026-10-03) — Borderless modern accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), and phone management. Dates stay UTC instants and render in the device time zone.
 
 **Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
 

@@ -432,11 +432,13 @@
     <string name="error_account_deactivated">This account is deactivated. Contact support to reactivate it.</string>
 
     <string name="account_sign_in_contact_section">Sign in and contact</string>
+    <string name="account_sign_in_contact_caption">Manage how you sign in and how people reach you.</string>
     <string name="account_email_label">Email</string>
     <string name="account_phone_label">Phone number</string>
     <string name="account_password_label">Password</string>
     <string name="account_add_phone_action">Add phone number</string>
     <string name="account_add_email_action">Add a new email</string>
+    <string name="account_add_another_email">Add another email</string>
     <string name="account_unconfirmed_chip">Unconfirmed</string>
     <string name="account_primary_label">Primary</string>
     <string name="account_secondary_label">Secondary</string>
@@ -446,6 +448,7 @@
     <string name="account_remove_email_title">Remove secondary email</string>
     <string name="account_remove_email_body">Are you sure you want to remove %1$s?</string>
     <string name="account_send_verification_action">Send verification</string>
+    <string name="action_send_otp">Send OTP</string>
     <string name="account_current_password_label">Current password</string>
     <string name="account_new_password_label">New password</string>
     <string name="account_update_password_action">Update password</string>
@@ -647,6 +650,7 @@
         <item quantity="one">%1$d expense</item>
         <item quantity="other">%1$d expenses</item>
     </plurals>
+    <string name="settings_country_search">Search countries</string>
     <string name="settings_currency_search">Search currencies</string>
     <string name="pay_externally_section">Pay externally</string>
     <string name="action_pay_upi">Pay via UPI</string>

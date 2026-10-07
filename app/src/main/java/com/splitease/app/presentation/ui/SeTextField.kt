@@ -101,6 +101,81 @@ fun SeTextField(
     }
 }
 
+@Composable
+fun SeFilledTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    placeholder: String? = null,
+    enabled: Boolean = true,
+    singleLine: Boolean = true,
+    isError: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    supportingText: String? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+) {
+    CompositionLocalProvider(LocalAutofillHighlightBrush provides SolidColor(Color.Transparent)) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier.fillMaxWidth().height(52.dp).clip(SeTextFieldShape),
+            label = label?.let { text -> { SeBodyMedium(text) } },
+            placeholder =
+                placeholder?.let { text ->
+                    {
+                        SeBodyMedium(text = text, color = SplitEaseColors.NavyMuted)
+                    }
+                },
+            enabled = enabled,
+            singleLine = singleLine,
+            isError = isError,
+            keyboardOptions = keyboardOptions.copy(autoCorrectEnabled = false),
+            visualTransformation = visualTransformation,
+            supportingText =
+                supportingText?.let { hint ->
+                    {
+                        SeBodySmall(
+                            text = hint,
+                            color =
+                                if (isError) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    SplitEaseColors.NavyMuted
+                                },
+                        )
+                    }
+                },
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
+            shape = SeTextFieldShape,
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent,
+                    errorBorderColor = MaterialTheme.colorScheme.error,
+                    focusedLabelColor = SplitEaseColors.Primary,
+                    unfocusedLabelColor = SplitEaseColors.NavyMuted,
+                    disabledLabelColor = SplitEaseColors.NavyMuted.copy(alpha = 0.6f),
+                    errorLabelColor = MaterialTheme.colorScheme.error,
+                    cursorColor = SplitEaseColors.Primary,
+                    errorCursorColor = MaterialTheme.colorScheme.error,
+                    focusedTextColor = SplitEaseColors.Navy,
+                    unfocusedTextColor = SplitEaseColors.Navy,
+                    disabledTextColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
+                    focusedContainerColor = SplitEaseColors.SurfaceMuted,
+                    unfocusedContainerColor = SplitEaseColors.SurfaceMuted,
+                    disabledContainerColor = SplitEaseColors.SurfaceMuted,
+                    errorContainerColor = SplitEaseColors.SurfaceMuted,
+                    errorSupportingTextColor = MaterialTheme.colorScheme.error,
+                ),
+        )
+    }
+}
+
 @Preview(name = "Text fields", showBackground = true)
 @Composable
 private fun SeTextFieldPreview() {

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `SeAssistChip` custom component wrapping Material 3 `AssistChip` for status badges ("Primary", "Unconfirmed", etc.).
 - Account settings borderless design with inline accordion rows for Email, Phone number, and Password.
 - Secondary email management with 6-digit verification code sent via `secondary-email` Edge Function.
 - Patch SQL script in `docs/sql/patch_account_settings.sql` for existing Supabase databases (deactivation RPC, phone lookup, secondary email, and hiding deactivated profiles from directory search).
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Friend-suggestion privacy toggle.
 
 ### Changed
+- Moved "Sign in and contact" (email, phone, and password accordion editing) out of Account settings into its own dedicated screen (`SignInAndContactScreen`). Account settings retains a single navigation tile showing the primary email subtitle.
 - App-wide neutral icons (including the help/`?` buttons on the Group Totals screen) now use `#353B3E` (`SplitEaseColors.IconDefault`).
 - Phone-invite SMS confirm dialog copy: title "Invite to SplitEase?", body explains the number is not on SplitEase yet, confirm is "Send invite" (dismiss stays "Not now").
 - Friend settings pending-invite card shows an "Invite pending" title. Resending a phone invite opens the messages app directly; Edit Contact / Review still confirms before opening Messages.

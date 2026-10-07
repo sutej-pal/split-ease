@@ -25,7 +25,14 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -119,20 +126,40 @@ fun DialCodePickerDialog(
     onSelect: (DialCodeOption) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var filter by rememberSaveable { mutableStateOf("") }
+    val options =
+        remember(filter) {
+            val query = filter.trim().lowercase()
+            if (query.isEmpty()) {
+                DialCodes.options
+            } else {
+                DialCodes.options.filter {
+                    it.code.lowercase().contains(query) ||
+                        it.label.lowercase().contains(query) ||
+                        it.flag.contains(query)
+                }
+            }
+        }
     SeModal(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.signup_pick_country_title),
         icon = Icons.Filled.Public,
         dismissLabel = stringResource(R.string.action_cancel),
     ) {
+        SeTextField(
+            value = filter,
+            onValueChange = { filter = it },
+            label = stringResource(R.string.settings_country_search),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 360.dp)
+                    .heightIn(max = 320.dp)
                     .verticalScroll(rememberScrollState()),
         ) {
-            DialCodes.options.forEach { option ->
+            options.forEach { option ->
                 val selected = option.code == selectedCode && option.flag == selectedFlag
                 Row(
                     modifier =
