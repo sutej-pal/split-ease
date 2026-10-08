@@ -2,8 +2,10 @@ package com.splitease.app.presentation.auth
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
 import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.data.social.ContactKind
@@ -69,6 +71,7 @@ data class AuthFormState(
     val pendingOtpPurpose: PendingOtpPurpose? = null,
     val holdSignedInForOtp: Boolean = false,
     val recoveryOtpVerified: Boolean = false,
+    val lastSendTimestampMs: Long = 0L,
 )
 
 /**
@@ -82,6 +85,7 @@ data class AuthFormState(
 class AuthViewModel
     @Inject
     constructor(
+        private val savedStateHandle: SavedStateHandle,
         private val authRepository: AuthRepository,
         private val appSettingsRepository: AppSettingsRepository,
         private val pendingFriendReviewStore: PendingFriendReviewStore,
@@ -108,10 +112,33 @@ class AuthViewModel
                     initialValue = AuthSession.Loading,
                 )
 
-        private val _formState = MutableStateFlow(AuthFormState())
+        private val _formState = MutableStateFlow(
+            AuthFormState(
+                pendingConfirmationEmail = savedStateHandle[KEY_PENDING_EMAIL] ?: appSettingsRepository.getPendingVerificationEmailSync(),
+                pendingOtpPurpose = savedStateHandle.get<String>(KEY_PENDING_PURPOSE)?.let { runCatching { PendingOtpPurpose.valueOf(it) }.getOrNull() }
+                    ?: appSettingsRepository.getPendingVerificationPurposeSync()?.let { runCatching { PendingOtpPurpose.valueOf(it) }.getOrNull() },
+                lastSendTimestampMs = savedStateHandle.get<Long>(KEY_LAST_SEND_TIME)
+                    ?.takeIf { it > 0L } ?: appSettingsRepository.getPendingVerificationTimestampSync(),
+            )
+        )
 
         /** Form loading / error / info for auth screens. */
         val formState: StateFlow<AuthFormState> = _formState.asStateFlow()
+
+        private fun updateFormState(update: (AuthFormState) -> AuthFormState) {
+            _formState.update { current ->
+                val next = update(current)
+                savedStateHandle[KEY_PENDING_EMAIL] = next.pendingConfirmationEmail
+                savedStateHandle[KEY_PENDING_PURPOSE] = next.pendingOtpPurpose?.name
+                savedStateHandle[KEY_LAST_SEND_TIME] = next.lastSendTimestampMs
+                viewModelScope.launch {
+                    appSettingsRepository.setPendingVerificationEmail(next.pendingConfirmationEmail)
+                    appSettingsRepository.setPendingVerificationTimestamp(next.lastSendTimestampMs)
+                    appSettingsRepository.setPendingVerificationPurpose(next.pendingOtpPurpose?.name)
+                }
+                next
+            }
+        }
 
         private val _isSigningOut = MutableStateFlow(false)
 
@@ -254,6 +281,20 @@ class AuthViewModel
                 if (result.isFailure) {
                     runCatching { authRepository.signOut() }
                     val err = result.exceptionOrNull()
+                    val lower = collectAuthErrorText(err).lowercase()
+                    if ("email_not_confirmed" in lower || "email not confirmed" in lower || "not confirmed" in lower) {
+                        authRepository.sendLoginOtp(trimmedEmail)
+                        updateFormState {
+                            AuthFormState(
+                                isLoading = false,
+                                pendingConfirmationEmail = trimmedEmail,
+                                pendingOtpPurpose = PendingOtpPurpose.LOGIN,
+                                infoMessage = msg(R.string.msg_verify_email_continue),
+                                lastSendTimestampMs = System.currentTimeMillis(),
+                            )
+                        }
+                        return@launch
+                    }
                     // Count credential / auth failures toward lockout (not transient network noise).
                     if (isInvalidCredentials(err) || countsTowardLoginRateLimit(err)) {
                         authRateLimiter.recordFailure(AuthRateAction.LOGIN, trimmedEmail)
@@ -463,6 +504,20 @@ class AuthViewModel
                 val emailTaken =
                     authRepository.isEmailRegistered(trimmedEmail).getOrDefault(defaultValue = false)
                 if (emailTaken) {
+                    val resendRes = authRepository.resendSignupConfirmation(trimmedEmail)
+                    if (resendRes.isSuccess) {
+                        _formState.update {
+                            AuthFormState(
+                                isLoading = false,
+                                pendingConfirmationEmail = trimmedEmail,
+                                pendingOtpPurpose = PendingOtpPurpose.SIGNUP,
+                                holdSignedInForOtp = false,
+                                infoMessage = msg(AuthMessages.VERIFY_EMAIL_SENT),
+                                lastSendTimestampMs = System.currentTimeMillis(),
+                            )
+                        }
+                        return@launch
+                    }
                     authRateLimiter.recordFailure(AuthRateAction.SIGNUP, trimmedEmail)
                     val lockMs =
                         authRateLimiter.remainingLockMs(AuthRateAction.SIGNUP, trimmedEmail)
@@ -522,25 +577,27 @@ class AuthViewModel
                 authRateLimiter.recordSuccess(AuthRateAction.SIGNUP, trimmedEmail)
                 when (val outcome = result.getOrNull()) {
                     is SignUpResult.PendingEmailConfirmation ->
-                        _formState.update {
+                        updateFormState {
                             AuthFormState(
                                 isLoading = false,
                                 pendingConfirmationEmail = outcome.email,
                                 pendingOtpPurpose = PendingOtpPurpose.SIGNUP,
                                 holdSignedInForOtp = false,
                                 infoMessage = msg(AuthMessages.VERIFY_EMAIL_SENT),
+                                lastSendTimestampMs = System.currentTimeMillis(),
                             )
                         }
                     is SignUpResult.SignedIn, null -> {
                         // Autoconfirm / session-before-OTP: still require email OTP and
                         // do not open the app until verify succeeds.
                         // Arm OTP gate BEFORE signOut — otherwise SignedOut briefly rebuilds Welcome.
-                        _formState.update {
+                        updateFormState {
                             AuthFormState(
                                 isLoading = true,
                                 pendingConfirmationEmail = trimmedEmail,
                                 pendingOtpPurpose = PendingOtpPurpose.LOGIN,
                                 holdSignedInForOtp = false,
+                                lastSendTimestampMs = System.currentTimeMillis(),
                             )
                         }
                         runCatching { authRepository.signOut() }
@@ -559,6 +616,7 @@ class AuthViewModel
                             it.copy(
                                 isLoading = false,
                                 infoMessage = msg(AuthMessages.VERIFY_EMAIL_SENT),
+                                lastSendTimestampMs = System.currentTimeMillis(),
                             )
                         }
                     }
@@ -570,6 +628,7 @@ class AuthViewModel
          * @param email Pending confirmation email.
          */
         fun resendConfirmation(email: String) {
+            if (_formState.value.isLoading) return
             val purpose = _formState.value.pendingOtpPurpose ?: PendingOtpPurpose.SIGNUP
             val trimmedEmail = email.trim()
             val rateAction =
@@ -594,15 +653,32 @@ class AuthViewModel
                         AuthMessages.resetOtpSent(appContext, trimmedEmail)
                     else -> msg(AuthMessages.VERIFY_EMAIL_RESENT)
                 }
-            submit(successMessage = successMessage) {
-                // Count every resend toward the throttle (email spam protection).
-                authRateLimiter.recordFailure(rateAction, trimmedEmail)
-                when (purpose) {
-                    PendingOtpPurpose.SIGNUP -> authRepository.resendSignupConfirmation(email)
-                    PendingOtpPurpose.LOGIN -> authRepository.sendLoginOtp(email)
-                    PendingOtpPurpose.RECOVERY -> {
-                        _formState.update { it.copy(recoveryOtpVerified = false) }
-                        authRepository.requestPasswordReset(email)
+            viewModelScope.launch {
+                _formState.update {
+                    it.copy(isLoading = true, errorMessage = null, infoMessage = null)
+                }
+                val result =
+                    when (purpose) {
+                        PendingOtpPurpose.SIGNUP -> authRepository.resendSignupConfirmation(email)
+                        PendingOtpPurpose.LOGIN -> authRepository.sendLoginOtp(email)
+                        PendingOtpPurpose.RECOVERY -> {
+                            _formState.update { it.copy(recoveryOtpVerified = false) }
+                            authRepository.requestPasswordReset(email)
+                        }
+                    }
+                _formState.update { state ->
+                    if (result.isSuccess) {
+                        state.copy(
+                            isLoading = false,
+                            infoMessage = successMessage,
+                            errorMessage = null,
+                            lastSendTimestampMs = System.currentTimeMillis(),
+                        )
+                    } else {
+                        state.copy(
+                            isLoading = false,
+                            errorMessage = friendlyAuthError(result.exceptionOrNull()),
+                        )
                     }
                 }
             }
@@ -1125,6 +1201,9 @@ class AuthViewModel
 
         companion object {
             private const val TAG = "AuthViewModel"
+            private const val KEY_PENDING_EMAIL = "key_pending_email"
+            private const val KEY_PENDING_PURPOSE = "key_pending_purpose"
+            private const val KEY_LAST_SEND_TIME = "key_last_send_time"
 
             /** Exact digit count for signup email OTP (Supabase mailer OTP length). */
             const val SIGNUP_OTP_LENGTH = 6

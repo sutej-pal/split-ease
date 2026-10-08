@@ -165,6 +165,16 @@ interface AppSettingsRepository {
      */
     suspend fun setPendingWelcomeEmailUserId(userId: String?)
 
+    suspend fun getPendingVerificationEmail(): String?
+    suspend fun setPendingVerificationEmail(email: String?)
+    suspend fun getPendingVerificationTimestamp(): Long
+    suspend fun setPendingVerificationTimestamp(timestamp: Long)
+    suspend fun getPendingVerificationPurpose(): String?
+    suspend fun setPendingVerificationPurpose(purpose: String?)
+    fun getPendingVerificationEmailSync(): String?
+    fun getPendingVerificationTimestampSync(): Long
+    fun getPendingVerificationPurposeSync(): String?
+
     /**
      * Observes a pending invite token from a deep link (awaiting signup / OTP / accept).
      *

@@ -673,6 +673,9 @@
     <string name="action_verify_code">Verify</string>
     <string name="action_resend_confirmation">Resend code</string>
     <string name="action_resend_confirmation_timer">Resend code (%1$ds)</string>
+    <string name="error_email_wait_seconds">Please wait %1$d seconds before requesting another code.</string>
+    <string name="msg_verify_email_continue">Please verify your email to continue.</string>
+    <string name="verify_email_sent_to">We sent a code to %1$s.</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_section">App language</string>
     <string name="settings_language_system">System default</string>

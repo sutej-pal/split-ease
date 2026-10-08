@@ -26,11 +26,13 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Account hub + CSV import removed (2026-09-08) — Account tab is the settings hub (`AccountScreen`); bank CSV import is gone. In-app account deletion (2026-09-07, UX 2026-09-08) — Account settings → Delete account; blocked groups are tappable; `delete_own_account()` RPC in [migration_db.sql](docs/sql/migration_db.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
 
-**Post-phase:** Explicit colour tokens and error text (2026-09-29) — brand colours are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colours stay `OweRed` / `OwedTeal`.
+**Post-phase:** Explicit color tokens and error text (2026-09-29) — brand colors are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colors stay `OweRed` / `OwedTeal`.
 
 **Post-phase:** Sign in and contact screen revamp & restructure (2026-10-05) — Moved email, phone, and password accordion editing into dedicated `SignInAndContactScreen` (`SignInAndContactViewModel`), with plain white background, 44dp lavender icon tiles, rotating chevrons, inset text dividers, custom `SeAssistChip` status badges, "Send OTP" actions, and a single navigation tile on Account settings showing the primary email subtitle.
 
 **Post-phase:** Account settings expansion (2026-10-03) — Borderless modern accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), and phone management. Dates stay UTC instants and render in the device time zone.
+
+**Post-phase:** Unverified account resume & mid-verification persistence (2026-10-08) — Unverified account signup retry and login with an unverified email now resume OTP verification instead of dead-ending. Pending verification state persists across process death via `SavedStateHandle`.
 
 **Post-phase:** Sign in and contact + secondary-email OTP auth (2026-10-07) — Email/phone/password live on `SignInAndContactScreen`. Fixed Send OTP `Unauthorized`: password verify must revoke its one-off GoTrue session with `scope=local` (default logout is global and killed the app JWT). Client refreshes the access token before calling the Edge Function.
 

@@ -115,6 +115,8 @@ object Routes {
     const val LOGIN = "login"
     const val SIGN_UP = "sign_up"
     const val FORGOT_PASSWORD = "forgot_password"
+    const val VERIFY_EMAIL = "verify_email"
+    const val RESET_PASSWORD_OTP = "reset_password_otp"
     const val INVITE_LANDING = "invite_landing/{token}"
     const val INVITE_JOIN_SIGN_UP = "invite_join_sign_up"
 
@@ -358,41 +360,6 @@ fun SplitEaseNavHost(
     val onContinueWithGoogle = rememberContinueWithGoogle(authViewModel)
 
     val pendingEmail = formState.pendingConfirmationEmail
-    // OTP gate after signup / password-reset — blocks Home until the flow completes.
-    if (pendingEmail != null && session !is AuthSession.Loading) {
-        when (formState.pendingOtpPurpose) {
-            PendingOtpPurpose.RECOVERY ->
-                ResetPasswordOtpScreen(
-                    email = pendingEmail,
-                    formState = formState,
-                    onSubmit = { code, newPassword, confirmPassword ->
-                        authViewModel.completePasswordReset(
-                            email = pendingEmail,
-                            token = code,
-                            newPassword = newPassword,
-                            confirmPassword = confirmPassword,
-                        )
-                    },
-                    onResend = { authViewModel.resendConfirmation(pendingEmail) },
-                    onBackToLogin = {
-                        authViewModel.clearPendingConfirmation()
-                        authViewModel.clearMessages()
-                    },
-                )
-            else ->
-                VerifyEmailScreen(
-                    email = pendingEmail,
-                    formState = formState,
-                    onVerify = { code -> authViewModel.verifyPendingOtp(pendingEmail, code) },
-                    onResend = { authViewModel.resendConfirmation(pendingEmail) },
-                    onBackToLogin = {
-                        authViewModel.clearPendingConfirmation()
-                        authViewModel.clearMessages()
-                    },
-                )
-        }
-        return
-    }
     // Password auth emits SignedIn before OTP is armed — hold Home closed.
     if (formState.holdSignedInForOtp && session is AuthSession.SignedIn) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -430,6 +397,22 @@ fun SplitEaseNavHost(
                     }
                 }
             }
+            LaunchedEffect(pendingEmail, formState.pendingOtpPurpose) {
+                val email = pendingEmail
+                if (email != null && session !is AuthSession.Loading) {
+                    val targetRoute = if (formState.pendingOtpPurpose == PendingOtpPurpose.RECOVERY) {
+                        Routes.RESET_PASSWORD_OTP
+                    } else {
+                        Routes.VERIFY_EMAIL
+                    }
+                    val currentRoute = navController.currentBackStackEntry?.destination?.route
+                    if (currentRoute != targetRoute) {
+                        navController.navigate(targetRoute) {
+                            launchSingleTop = true
+                        }
+                    }
+                }
+            }
             NavHost(
                 navController = navController,
                 startDestination = startDestination,
@@ -439,6 +422,41 @@ fun SplitEaseNavHost(
                         onGetStarted = { navController.navigate(Routes.SIGN_UP) },
                         onLogIn = { navController.navigate(Routes.LOGIN) },
                         onOpenInviteLink = authViewModel::openInviteFromPastedText,
+                    )
+                }
+                composable(Routes.VERIFY_EMAIL) {
+                    val email = pendingEmail ?: ""
+                    VerifyEmailScreen(
+                        email = email,
+                        formState = formState,
+                        onVerify = { code -> authViewModel.verifyPendingOtp(email, code) },
+                        onResend = { authViewModel.resendConfirmation(email) },
+                        onBackToLogin = {
+                            authViewModel.clearPendingConfirmation()
+                            authViewModel.clearMessages()
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable(Routes.RESET_PASSWORD_OTP) {
+                    val email = pendingEmail ?: ""
+                    ResetPasswordOtpScreen(
+                        email = email,
+                        formState = formState,
+                        onSubmit = { code, newPassword, confirmPassword ->
+                            authViewModel.completePasswordReset(
+                                email = email,
+                                token = code,
+                                newPassword = newPassword,
+                                confirmPassword = confirmPassword,
+                            )
+                        },
+                        onResend = { authViewModel.resendConfirmation(email) },
+                        onBackToLogin = {
+                            authViewModel.clearPendingConfirmation()
+                            authViewModel.clearMessages()
+                            navController.popBackStack()
+                        },
                     )
                 }
                 composable(Routes.LOGIN) {

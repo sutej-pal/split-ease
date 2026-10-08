@@ -178,7 +178,7 @@ fun SeTitleLarge(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = SplitEaseColors.Navy,
-    fontWeight: FontWeight = FontWeight.SemiBold,
+    fontWeight: FontWeight = FontWeight.W500,
     textAlign: TextAlign? = null,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,

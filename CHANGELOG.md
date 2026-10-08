@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Unverified signup and login now resume OTP verification, and reopening the app mid-verification returns to the OTP screen.
+- Change-email returns to the previous screen; unverified signup resumes OTP verification; Resend code no longer fires duplicate requests and its cooldown matches the server and survives app restarts.
 - Send OTP while adding a secondary email failed with `Unauthorized`: password re-check called GoTrue `POST /logout` without `scope=local`, which defaults to **global** and revoked the app session before the `secondary-email` Edge Function ran. Logout of the one-off verify session now uses `scope=local`; the client refreshes the access token before the Edge Function call and maps auth failures to a clear session-expired message.
 
 ### Added

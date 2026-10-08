@@ -3,6 +3,7 @@ package com.splitease.app.presentation.auth
 import android.content.Context
 import android.content.res.Resources
 import androidx.annotation.StringRes
+import androidx.lifecycle.SavedStateHandle
 import com.splitease.app.R
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
@@ -82,7 +83,7 @@ class AuthViewModelTest {
         coEvery { appSettings.setCurrencyCode(any()) } returns Unit
         coEvery { repository.isEmailRegistered(any()) } returns Result.success(false)
         coEvery { repository.isPhoneRegistered(any(), any()) } returns Result.success(false)
-        viewModel = AuthViewModel(repository, appSettings, PendingFriendReviewStore(), context)
+        viewModel = AuthViewModel(SavedStateHandle(), repository, appSettings, PendingFriendReviewStore(), context)
     }
 
     @AfterEach
@@ -376,6 +377,7 @@ class AuthViewModelTest {
     fun `signUp locks after repeated already-registered email`() =
         runTest {
             coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
+            coEvery { repository.resendSignupConfirmation("a@b.com") } returns Result.failure(Exception("Already confirmed"))
             repeat(AuthRateLimiter.DEFAULT_MAX_ATTEMPTS) {
                 viewModel.signUp(
                     email = "a@b.com",
@@ -630,6 +632,7 @@ class AuthViewModelTest {
     fun `signUp shows already registered when email exists`() =
         runTest {
             coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
+            coEvery { repository.resendSignupConfirmation("a@b.com") } returns Result.failure(Exception("Already confirmed"))
             viewModel.signUp("a@b.com", "secret12", "Ada")
             advanceUntilIdle()
             assertEquals(
@@ -639,6 +642,21 @@ class AuthViewModelTest {
             coVerify(exactly = 0) {
                 repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
             }
+        }
+
+    @Test
+    fun `signUp resumes unverified account when email exists`() =
+        runTest {
+            coEvery { repository.isEmailRegistered("a@b.com") } returns Result.success(true)
+            coEvery { repository.resendSignupConfirmation("a@b.com") } returns Result.success(Unit)
+            viewModel.signUp("a@b.com", "secret12", "Ada")
+            advanceUntilIdle()
+            assertEquals("a@b.com", viewModel.formState.value.pendingConfirmationEmail)
+            assertEquals(PendingOtpPurpose.SIGNUP, viewModel.formState.value.pendingOtpPurpose)
+            assertEquals(
+                msg(AuthMessages.VERIFY_EMAIL_SENT),
+                viewModel.formState.value.infoMessage,
+            )
         }
 
     @Test

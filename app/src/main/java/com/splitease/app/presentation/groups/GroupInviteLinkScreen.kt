@@ -161,10 +161,9 @@ fun GroupInviteLinkScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
-                            SeBodyLarge(
+                            SeBodySmall(
                                 text = uiState.inviteUrl.orEmpty(),
-                                color = SplitEaseColors.Navy,
-                                modifier = Modifier.weight(1f),
+                                color = SplitEaseColors.Navy
                             )
                         }
                     }

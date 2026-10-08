@@ -40,9 +40,14 @@ fun VerifyEmailScreen(
 ) {
     var code by rememberSaveable { mutableStateOf("") }
     var showValidation by rememberSaveable { mutableStateOf(false) }
-    var secondsLeft by rememberSaveable { mutableIntStateOf(30) }
+    val cooldownMs = 60_000L
+    var secondsLeft by rememberSaveable(formState.lastSendTimestampMs) {
+        val elapsed = System.currentTimeMillis() - formState.lastSendTimestampMs
+        val remaining = ((cooldownMs - elapsed) / 1000L).toInt()
+        mutableIntStateOf(if (remaining > 0) remaining else 0)
+    }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(formState.lastSendTimestampMs) {
         while (secondsLeft > 0) {
             delay(1000L)
             secondsLeft--
@@ -126,8 +131,10 @@ fun VerifyEmailScreen(
                     stringResource(R.string.action_resend_confirmation)
                 },
             onClick = {
-                secondsLeft = 30
-                onResend()
+                if (!formState.isLoading && secondsLeft == 0) {
+                    secondsLeft = 60
+                    onResend()
+                }
             },
             enabled = secondsLeft == 0 && !formState.isLoading,
         )

@@ -151,6 +151,60 @@ class SharedPreferencesAppSettingsRepository
             }
         }
 
+        override suspend fun getPendingVerificationEmail(): String? =
+            withContext(Dispatchers.IO) {
+                prefs.getString(KEY_PENDING_VERIFY_EMAIL, null)?.takeIf { it.isNotBlank() }
+            }
+
+        override suspend fun setPendingVerificationEmail(email: String?) {
+            withContext(Dispatchers.IO) {
+                prefs.edit(commit = true) {
+                    if (email.isNullOrBlank()) {
+                        remove(KEY_PENDING_VERIFY_EMAIL)
+                    } else {
+                        putString(KEY_PENDING_VERIFY_EMAIL, email)
+                    }
+                }
+            }
+        }
+
+        override suspend fun getPendingVerificationTimestamp(): Long =
+            withContext(Dispatchers.IO) {
+                prefs.getLong(KEY_PENDING_VERIFY_TIME, 0L)
+            }
+
+        override suspend fun setPendingVerificationTimestamp(timestamp: Long) {
+            withContext(Dispatchers.IO) {
+                prefs.edit(commit = true) { putLong(KEY_PENDING_VERIFY_TIME, timestamp) }
+            }
+        }
+
+        override suspend fun getPendingVerificationPurpose(): String? =
+            withContext(Dispatchers.IO) {
+                prefs.getString(KEY_PENDING_VERIFY_PURPOSE, null)?.takeIf { it.isNotBlank() }
+            }
+
+        override suspend fun setPendingVerificationPurpose(purpose: String?) {
+            withContext(Dispatchers.IO) {
+                prefs.edit(commit = true) {
+                    if (purpose.isNullOrBlank()) {
+                        remove(KEY_PENDING_VERIFY_PURPOSE)
+                    } else {
+                        putString(KEY_PENDING_VERIFY_PURPOSE, purpose)
+                    }
+                }
+            }
+        }
+
+        override fun getPendingVerificationEmailSync(): String? =
+            prefs.getString(KEY_PENDING_VERIFY_EMAIL, null)?.takeIf { it.isNotBlank() }
+
+        override fun getPendingVerificationTimestampSync(): Long =
+            prefs.getLong(KEY_PENDING_VERIFY_TIME, 0L)
+
+        override fun getPendingVerificationPurposeSync(): String? =
+            prefs.getString(KEY_PENDING_VERIFY_PURPOSE, null)?.takeIf { it.isNotBlank() }
+
         override fun observePendingInviteToken(): Flow<String?> = pendingInviteTokenFlow.asStateFlow()
 
         override suspend fun getPendingInviteToken(): String? {
@@ -448,6 +502,9 @@ class SharedPreferencesAppSettingsRepository
             private const val KEY_AUTH_TIMEOUT = "auth_timeout"
             private const val KEY_APP_LOCALE = "app_locale"
             private const val KEY_PENDING_INVITE_TOKEN = "pending_invite_token"
+            private const val KEY_PENDING_VERIFY_EMAIL = "pending_verify_email"
+            private const val KEY_PENDING_VERIFY_TIME = "pending_verify_time"
+            private const val KEY_PENDING_VERIFY_PURPOSE = "pending_verify_purpose"
             private const val KEY_PENDING_INVITE_OPEN_TARGET = "pending_invite_open_target"
             private const val KEY_PENDING_NOTIFICATION_GROUP_ID = "pending_notification_group_id"
             private const val KEY_MUTE_ALL = "notifications_mute_all"
