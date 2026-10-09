@@ -50,6 +50,11 @@ interface FriendRepository {
     suspend fun getByOwnerAndEmail(ownerUserId: String, email: String): Friend?
 
     /**
+     * Remaps friendUserId from [fromUserId] to [toUserId].
+     */
+    suspend fun remapFriendUserId(fromUserId: String, toUserId: String)
+
+    /**
      * Inserts or replaces a friendship.
      *
      * @param friend Domain friend to persist.

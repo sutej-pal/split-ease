@@ -40,6 +40,7 @@ object AuthMessages {
     @StringRes val VERIFY_EMAIL_SENT = R.string.verify_email_sent
     @StringRes val VERIFY_EMAIL_RESENT = R.string.verify_email_resent
     @StringRes val VERIFY_EMAIL_INVALID_CODE = R.string.verify_email_invalid_code
+    @StringRes val INVALID_OTP = R.string.error_invalid_otp
 
     // Password reset
     @StringRes val RESET_OTP_INVALID_OR_EXPIRED = R.string.reset_otp_invalid_or_expired

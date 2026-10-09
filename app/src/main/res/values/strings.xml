@@ -670,6 +670,7 @@
     <string name="verify_email_sent">Account created. Check your email for a verification code.</string>
     <string name="verify_email_resent">Verification code resent. Check your inbox.</string>
     <string name="verify_email_invalid_code">Enter a valid 6-digit code.</string>
+    <string name="error_invalid_otp">Wrong OTP. Try again.</string>
     <string name="action_verify_code">Verify</string>
     <string name="action_resend_confirmation">Resend code</string>
     <string name="action_resend_confirmation_timer">Resend code (%1$ds)</string>

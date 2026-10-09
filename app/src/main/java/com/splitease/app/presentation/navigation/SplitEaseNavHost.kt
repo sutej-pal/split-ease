@@ -55,7 +55,6 @@ import com.splitease.app.presentation.account.SignInAndContactScreen
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.account.CloseAccountScreen
 import com.splitease.app.presentation.account.DeleteAccountScreen
-import com.splitease.app.presentation.account.SignInAndContactScreen
 import com.splitease.app.presentation.activity.ActivityScreen
 import com.splitease.app.presentation.auth.AuthViewModel
 import com.splitease.app.presentation.auth.ForgotPasswordScreen
@@ -593,14 +592,12 @@ private fun SignedInNavHost(
     claimInviteAndConsumeOpenTarget: suspend () -> String?,
     observePendingNotificationGroupId: () -> kotlinx.coroutines.flow.Flow<String?>,
     consumePendingNotificationGroupId: suspend () -> String?,
-    tabsViewModel: MainTabsViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomBarRoutes
     val bottomBarSelectedRoute = selectedTabRoute(currentRoute)
-    val activityUnreadCount by tabsViewModel.activityUnreadCount.collectAsStateWithLifecycle()
     // Keep the last tab highlighted while the bar animates away, otherwise the icons
     // flash to their unselected colour on the way out.
     var lastSelectedTabRoute by remember { mutableStateOf(Routes.TAB_GROUPS) }
@@ -696,7 +693,6 @@ private fun SignedInNavHost(
                 ) {
                     SplitEaseBottomBar(
                         currentRoute = bottomBarSelectedRoute ?: lastSelectedTabRoute,
-                        activityUnreadCount = activityUnreadCount,
                         onTabSelected = { tab ->
                             navController.navigate(tab.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {

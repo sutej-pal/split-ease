@@ -1045,6 +1045,46 @@ $$;
 
 grant execute on function public.remap_placeholder_user(uuid, uuid) to authenticated;
 
+-- Signup name for a user id. Skips a blank or placeholder "Member" profile
+-- and reads the name they typed at signup from auth metadata.
+create or replace function public.se_display_name(p_user_id uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public, auth
+as $$
+  select coalesce(
+    case
+      when nullif(btrim(p.display_name), '') is null
+        or lower(btrim(p.display_name)) = 'member' then null
+      else btrim(p.display_name)
+    end,
+    case
+      when nullif(btrim(u.raw_user_meta_data ->> 'display_name'), '') is null
+        or lower(btrim(u.raw_user_meta_data ->> 'display_name')) = 'member' then null
+      else btrim(u.raw_user_meta_data ->> 'display_name')
+    end,
+    case
+      when nullif(btrim(u.raw_user_meta_data ->> 'full_name'), '') is null
+        or lower(btrim(u.raw_user_meta_data ->> 'full_name')) = 'member' then null
+      else btrim(u.raw_user_meta_data ->> 'full_name')
+    end,
+    case
+      when nullif(btrim(u.raw_user_meta_data ->> 'name'), '') is null
+        or lower(btrim(u.raw_user_meta_data ->> 'name')) = 'member' then null
+      else btrim(u.raw_user_meta_data ->> 'name')
+    end,
+    nullif(split_part(coalesce(nullif(u.email, ''), nullif(p.email, '')), '@', 1), ''),
+    'Member'
+  )
+  from (select p_user_id as id) ids
+  left join auth.users u on u.id = ids.id
+  left join public.profiles p on p.id = ids.id;
+$$;
+
+revoke all on function public.se_display_name(uuid) from public, anon, authenticated;
+
 -- Either party may insert the reverse friendship edge (A->B also creates B->A).
 create or replace function public.ensure_reciprocal_friend(
   p_owner_user_id uuid,
@@ -1060,7 +1100,7 @@ as $$
 declare
   now_ms bigint := (extract(epoch from now()) * 1000)::bigint;
   v_email text := coalesce(nullif(trim(p_email), ''), '');
-  v_name text := coalesce(nullif(trim(p_display_name), ''), split_part(coalesce(p_email, 'Friend'), '@', 1));
+  v_name text := nullif(nullif(btrim(coalesce(p_display_name, '')), ''), 'Member');
 begin
   if auth.uid() is null then
     raise exception 'Not authenticated';
@@ -1084,10 +1124,8 @@ begin
     where id = p_friend_user_id;
   end if;
 
-  if v_name = '' or v_name = 'Friend' then
-    select coalesce(nullif(display_name, ''), v_name) into v_name
-    from public.profiles
-    where id = p_friend_user_id;
+  if v_name is null or v_name = '' or v_name = 'Friend' then
+    v_name := public.se_display_name(p_friend_user_id);
   end if;
 
   insert into public.friends (
@@ -1107,8 +1145,31 @@ begin
     now_ms
   )
   on conflict (owner_user_id, friend_user_id) do update
-  set email_snapshot = excluded.email_snapshot,
-      display_name_snapshot = excluded.display_name_snapshot,
+  set email_snapshot = case
+        when excluded.email_snapshot is null
+          or btrim(excluded.email_snapshot) = ''
+          or excluded.email_snapshot like 'local+%'
+          then public.friends.email_snapshot
+        when public.friends.email_snapshot is null
+          or btrim(public.friends.email_snapshot) = ''
+          or public.friends.email_snapshot like 'local+%'
+          or public.friends.email_snapshot = public.friends.friend_user_id::text
+          then excluded.email_snapshot
+        else public.friends.email_snapshot
+      end,
+      display_name_snapshot = case
+        when excluded.display_name_snapshot is null
+          or btrim(excluded.display_name_snapshot) = ''
+          or lower(btrim(excluded.display_name_snapshot)) = 'member'
+          then public.friends.display_name_snapshot
+        when public.friends.display_name_snapshot is null
+          or btrim(public.friends.display_name_snapshot) = ''
+          or lower(btrim(public.friends.display_name_snapshot)) = 'member'
+          or public.friends.display_name_snapshot ilike '%(invited)%'
+          or public.friends.display_name_snapshot = left(public.friends.friend_user_id::text, 8)
+          then excluded.display_name_snapshot
+        else public.friends.display_name_snapshot
+      end,
       updated_at_epoch_ms = excluded.updated_at_epoch_ms;
 end;
 $$;
@@ -1134,8 +1195,7 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  select lower(u.email),
-         coalesce(nullif(u.raw_user_meta_data ->> 'display_name', ''), split_part(u.email, '@', 1))
+  select lower(u.email), public.se_display_name(v_uid)
     into v_email, v_name
   from auth.users u
   where u.id = v_uid;
@@ -1208,8 +1268,7 @@ begin
     return 0;
   end if;
 
-  select lower(u.email),
-         coalesce(nullif(u.raw_user_meta_data ->> 'display_name', ''), split_part(u.email, '@', 1))
+  select lower(u.email), public.se_display_name(v_uid)
     into v_email, v_name
   from auth.users u
   where u.id = v_uid;
@@ -1254,6 +1313,13 @@ begin
     insert into public.group_members (id, group_id, user_id, role, joined_at_epoch_ms)
     values (gen_random_uuid(), inv.group_id, v_uid, 'MEMBER', now_ms)
     on conflict (group_id, user_id) do nothing;
+
+    -- Share links have no friend row, so the inviter never stored the name
+    -- typed at signup. Snapshot both edges and leave the link PENDING.
+    if inv.friend_row_id is null then
+      perform public.ensure_reciprocal_friend(inv.inviter_user_id, v_uid, v_email, v_name);
+      perform public.ensure_reciprocal_friend(v_uid, inv.inviter_user_id, null, null);
+    end if;
   end if;
 
   if inv.friend_row_id is not null then
@@ -1285,6 +1351,191 @@ where kind = 'GROUP'
   and friend_row_id is null
   and status = 'PENDING'
   and email <> 'group-share@splitease.invalid';
+
+-- ============================================
+-- Profile batch lookup RPC (fallback for missing profiles rows)
+-- ============================================
+
+create or replace function public.get_profiles_by_ids(p_user_ids uuid[])
+returns table (
+  id uuid,
+  email text,
+  display_name text,
+  photo_url text,
+  phone_country_code text,
+  phone_number text,
+  preferred_currency text,
+  updated_at_epoch_ms bigint
+)
+language plpgsql
+stable
+security definer
+set search_path = public, auth
+as $$
+begin
+  return query
+  select
+    uid as id,
+    coalesce(p.email, lower(u.email), '') as email,
+    public.se_display_name(uid) as display_name,
+    p.photo_url,
+    coalesce(p.phone_country_code, u.raw_user_meta_data ->> 'phone_country_code'),
+    coalesce(p.phone_number, u.raw_user_meta_data ->> 'phone_number'),
+    coalesce(p.preferred_currency, u.raw_user_meta_data ->> 'preferred_currency'),
+    coalesce(p.updated_at_epoch_ms, (extract(epoch from coalesce(u.created_at, now())) * 1000)::bigint) as updated_at_epoch_ms
+  from unnest(p_user_ids) uid
+  left join auth.users u on u.id = uid
+  left join public.profiles p on p.id = uid
+  where auth.uid() is not null
+    and (
+      uid = auth.uid()
+      or exists (
+        select 1
+        from public.group_members me
+        join public.group_members them on them.group_id = me.group_id
+        where me.user_id = auth.uid()
+          and them.user_id = uid
+      )
+      or exists (
+        select 1
+        from public.friends f
+        where (f.owner_user_id = auth.uid() and f.friend_user_id = uid)
+           or (f.friend_user_id = auth.uid() and f.owner_user_id = uid)
+      )
+      or public.can_see_profile(uid)
+    );
+end;
+$$;
+
+revoke all on function public.get_profiles_by_ids(uuid[]) from public, anon;
+grant execute on function public.get_profiles_by_ids(uuid[]) to authenticated;
+
+-- Backfill friend-name snapshots for people who already joined a group.
+-- Group share links used to add group_members without a friends row, so the
+-- other phone only had the "Member" placeholder.
+create or replace function public.sync_peer_display_names()
+returns integer
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_uid uuid := auth.uid();
+  peer record;
+  v_name text;
+  v_email text;
+  n integer := 0;
+  now_ms bigint := (extract(epoch from now()) * 1000)::bigint;
+begin
+  if v_uid is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  for peer in
+    select distinct them.user_id as id
+    from public.group_members me
+    join public.group_members them on them.group_id = me.group_id
+    where me.user_id = v_uid
+      and them.user_id <> v_uid
+  loop
+    v_name := public.se_display_name(peer.id);
+    if v_name is null or btrim(v_name) = '' or lower(btrim(v_name)) = 'member' then
+      continue;
+    end if;
+
+    select coalesce(nullif(p.email, ''), nullif(lower(u.email), ''), peer.id::text)
+      into v_email
+    from (select peer.id as id) ids
+    left join auth.users u on u.id = ids.id
+    left join public.profiles p on p.id = ids.id;
+
+    insert into public.friends (
+      id,
+      owner_user_id,
+      friend_user_id,
+      email_snapshot,
+      display_name_snapshot,
+      updated_at_epoch_ms
+    ) values (
+      gen_random_uuid(),
+      v_uid,
+      peer.id,
+      v_email,
+      v_name,
+      now_ms
+    )
+    on conflict (owner_user_id, friend_user_id) do update
+    set email_snapshot = case
+          when public.friends.email_snapshot is null
+            or btrim(public.friends.email_snapshot) = ''
+            or public.friends.email_snapshot like 'local+%'
+            or public.friends.email_snapshot = public.friends.friend_user_id::text
+            then excluded.email_snapshot
+          else public.friends.email_snapshot
+        end,
+        display_name_snapshot = case
+          when public.friends.display_name_snapshot is null
+            or btrim(public.friends.display_name_snapshot) = ''
+            or lower(btrim(public.friends.display_name_snapshot)) = 'member'
+            or public.friends.display_name_snapshot ilike '%(invited)%'
+            or public.friends.display_name_snapshot = left(public.friends.friend_user_id::text, 8)
+            then excluded.display_name_snapshot
+          else public.friends.display_name_snapshot
+        end,
+        updated_at_epoch_ms = excluded.updated_at_epoch_ms;
+
+    n := n + 1;
+  end loop;
+
+  return n;
+end;
+$$;
+
+revoke all on function public.sync_peer_display_names() from public, anon;
+grant execute on function public.sync_peer_display_names() to authenticated;
+
+-- Automatically ensure public.profiles row when auth.users is created/updated
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_name text;
+  now_ms bigint := (extract(epoch from now()) * 1000)::bigint;
+begin
+  v_name := coalesce(
+    nullif(new.raw_user_meta_data ->> 'display_name', ''),
+    nullif(new.raw_user_meta_data ->> 'full_name', ''),
+    nullif(new.raw_user_meta_data ->> 'name', ''),
+    split_part(new.email, '@', 1)
+  );
+  if v_name is null or v_name = '' or v_name = 'Member' then
+    v_name := split_part(new.email, '@', 1);
+  end if;
+
+  insert into public.profiles (
+    id, email, display_name, updated_at_epoch_ms
+  ) values (
+    new.id, lower(new.email), v_name, now_ms
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      display_name = case
+        when public.profiles.display_name is null or public.profiles.display_name = '' or public.profiles.display_name = 'Member'
+        then excluded.display_name
+        else public.profiles.display_name
+      end,
+      updated_at_epoch_ms = now_ms;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_profile on auth.users;
+create trigger on_auth_user_created_profile
+  after insert or update on auth.users
+  for each row execute function public.handle_new_user_profile();
 
 -- ============================================
 -- Auth lookup RPCs (signup duplicate checks)

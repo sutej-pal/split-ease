@@ -44,4 +44,8 @@ class RoomFriendRepository
         override suspend fun deleteById(id: String) {
             friendDao.deleteById(id)
         }
+
+        override suspend fun remapFriendUserId(fromUserId: String, toUserId: String) {
+            friendDao.remapFriendUserId(fromUserId, toUserId)
+        }
     }

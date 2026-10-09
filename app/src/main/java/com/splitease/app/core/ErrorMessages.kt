@@ -26,6 +26,9 @@ object ErrorMessages {
         if (isInviteSenderProfileMissing(throwable)) {
             return context.getString(R.string.msg_invite_sender_profile_missing)
         }
+        if (isInvalidOtp(throwable)) {
+            return context.getString(R.string.error_invalid_otp)
+        }
         return context.getString(GENERIC)
     }
 
@@ -35,6 +38,60 @@ object ErrorMessages {
     fun isInviteSenderProfileMissing(throwable: Throwable?): Boolean {
         val raw = throwable?.message ?: return false
         return raw.contains("Invite sender profile is missing", ignoreCase = true)
+    }
+
+    /**
+     * True when [throwable] indicates an invalid, expired, or wrong OTP code.
+     */
+    fun isInvalidOtp(throwable: Throwable?): Boolean {
+        if (throwable == null) return false
+        val raw = collectErrorText(throwable)
+        val lower = raw.lowercase()
+        return (
+            ("token has expired or is invalid" in lower) ||
+                ("invalid otp" in lower) ||
+                ("invalid_otp" in lower) ||
+                ("wrong otp" in lower) ||
+                ("wrong_otp" in lower) ||
+                ("otp_expired" in lower) ||
+                ("otp_invalid" in lower) ||
+                ("invalid token" in lower) ||
+                ("invalid_token" in lower) ||
+                ("token is invalid" in lower) ||
+                ("token is expired" in lower) ||
+                ("token expired" in lower) ||
+                ("bad_code_verifier" in lower) ||
+                ("invalid_grant" in lower) ||
+                ("invalid grant" in lower) ||
+                ("invalid verification code" in lower) ||
+                ("verification code is invalid" in lower) ||
+                ("code is invalid" in lower) ||
+                ("confirmation code is invalid" in lower) ||
+                (("invalid" in lower) && ("code" in lower)) ||
+                (("invalid" in lower) && ("token" in lower)) ||
+                (("invalid" in lower) && ("otp" in lower)) ||
+                (("expired" in lower) && ("otp" in lower)) ||
+                (("expired" in lower) && ("code" in lower)) ||
+                (("expired" in lower) && ("token" in lower))
+        )
+    }
+
+    private fun collectErrorText(throwable: Throwable?): String {
+        if (throwable == null) return ""
+        val parts = linkedSetOf<String>()
+        var current: Throwable? = throwable
+        var depth = 0
+        while (current != null && depth < 6) {
+            current.message
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { parts += it }
+            val localized = current.localizedMessage?.trim().orEmpty()
+            if (localized.isNotEmpty()) parts += localized
+            current = current.cause
+            depth++
+        }
+        return parts.joinToString("\n")
     }
 
     /**

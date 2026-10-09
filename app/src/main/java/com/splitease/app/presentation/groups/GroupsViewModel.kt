@@ -104,8 +104,15 @@ class GroupsViewModel
         val userDisplayNames: StateFlow<Map<String, String>> =
             userRepository
                 .observeUsers()
-                .map { users -> users.associate { it.id to it.displayName } }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+                .map { users ->
+                    users.associate { user ->
+                        val name =
+                            user.displayName.trim().takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                                ?: user.email.substringBefore("@").trim().takeIf { it.isNotBlank() && !it.startsWith("local+") }
+                                ?: "Member"
+                        user.id to name
+                    }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
         /** userId → profile photo URL when the member has set one. */
         val userPhotoUrls: StateFlow<Map<String, String?>> =

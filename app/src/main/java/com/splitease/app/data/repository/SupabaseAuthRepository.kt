@@ -259,10 +259,11 @@ class SupabaseAuthRepository
             }
 
         private suspend fun finalizeAuthenticatedSession() {
+            runCatching { supabase.auth.refreshCurrentSession() }
             val sessionUser =
                 supabase.auth.currentUserOrNull()
                     ?: error("Email verified but session is missing. Try signing in.")
-            persistCurrentUser()
+            persistCurrentUser(forceRemoteUpsert = true)
             val local = userRepository.getUserById(sessionUser.id)
             require(local != null) { "Could not save your local profile. Try signing in again." }
             categoryRepository.ensureDefaults()
@@ -568,10 +569,10 @@ class SupabaseAuthRepository
                 local = userRepository.getUserById(info.id)
             }
             val displayName =
-                local?.displayName?.trim()?.takeIf { it.isNotEmpty() }
-                    ?: info.userMetadata?.stringMeta("display_name")
-                    ?: info.userMetadata?.stringMeta("full_name")
-                    ?: info.userMetadata?.stringMeta("name")
+                local?.displayName?.trim()?.takeIf { it.isNotEmpty() && !it.equals("Member", ignoreCase = true) }
+                    ?: info.userMetadata?.stringMeta("display_name")?.takeIf { !it.equals("Member", ignoreCase = true) }
+                    ?: info.userMetadata?.stringMeta("full_name")?.takeIf { !it.equals("Member", ignoreCase = true) }
+                    ?: info.userMetadata?.stringMeta("name")?.takeIf { !it.equals("Member", ignoreCase = true) }
                     ?: info.email?.substringBefore('@')
                     ?: "User"
             val email = local?.email ?: info.email.orEmpty()

@@ -429,6 +429,8 @@ class ExpensesViewModel
                                                 ),
                                             userNames =
                                                 source.users.associateBy({ it.id }, { it.displayName }),
+                                            userEmails =
+                                                source.users.associateBy({ it.id }, { it.email }),
                                             splitsByExpenseId = splits,
                                         )
                                     }.flowOn(Dispatchers.Default)
@@ -477,6 +479,8 @@ class ExpensesViewModel
                                                 ),
                                             userNames =
                                                 source.users.associateBy({ it.id }, { it.displayName }),
+                                            userEmails =
+                                                source.users.associateBy({ it.id }, { it.email }),
                                             splitsByExpenseId = allSplits,
                                         )
                                     }.flowOn(Dispatchers.Default)
@@ -552,10 +556,11 @@ class ExpensesViewModel
             categoryById: Map<String, Category>,
             friendNames: Map<String, String>,
             userNames: Map<String, String>,
+            userEmails: Map<String, String> = emptyMap(),
             splitsByExpenseId: Map<String, List<ExpenseSplit>>,
         ): List<LedgerListItem> {
             fun nameOf(id: String): String =
-                nameOf(id, me, friendNames, userNames)
+                nameOf(id, me, friendNames, userNames, userEmails)
 
             val expenseItems =
                 expenses.map { expense ->
@@ -660,11 +665,17 @@ class ExpensesViewModel
             me: String?,
             friendNames: Map<String, String>,
             userNames: Map<String, String>,
-        ): String =
-            when (userId) {
-                me -> "You"
-                else -> friendNames[userId] ?: userNames[userId] ?: userId.take(8)
-            }
+            userEmails: Map<String, String> = emptyMap(),
+        ): String {
+            if (userId == me) return "You"
+            val friend = friendNames[userId]?.trim()?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+            if (friend != null) return friend
+            val user = userNames[userId]?.trim()?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+            if (user != null) return user
+            val emailHandle = userEmails[userId]?.substringBefore("@")?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("local+") }
+            if (emailHandle != null) return emailHandle
+            return "Member"
+        }
 
         /**
          * Pushes local PENDING writes, then re-fetches expenses/payments for [groupId].
@@ -934,6 +945,8 @@ class ExpensesViewModel
                                         val (groupExpenses, splitsByExpense) = groupLedger
                                         val userNames =
                                             core.users.associateBy({ it.id }, { it.displayName })
+                                        val userEmails =
+                                            core.users.associateBy({ it.id }, { it.email })
                                         val userPhotos =
                                             core.users.associateBy({ it.id }, { it.photoUrl })
                                         val friendNames =
@@ -943,7 +956,7 @@ class ExpensesViewModel
                                             )
 
                                         fun nameOf(id: String): String =
-                                            nameOf(id, me, friendNames, userNames)
+                                            nameOf(id, me, friendNames, userNames, userEmails)
                                         val (balanceSide, balanceAmount) =
                                             viewerBalanceForExpense(
                                                 me = me,
@@ -1412,9 +1425,16 @@ class ExpensesViewModel
                 val friend = friendById[member.userId]
                 val memberUser = userRepository.getUserById(member.userId)
                 val label =
-                    friend?.displayNameSnapshot
-                        ?: memberUser?.displayName
-                        ?: member.userId.take(8)
+                    friend?.displayNameSnapshot?.trim()?.takeIf {
+                        it.isNotBlank() && !it.equals("Member", ignoreCase = true)
+                    }
+                        ?: memberUser?.displayName?.trim()?.takeIf {
+                            it.isNotBlank() && !it.equals("Member", ignoreCase = true)
+                        }
+                        ?: memberUser?.email?.substringBefore("@")?.trim()?.takeIf {
+                            it.isNotBlank() && !it.startsWith("local+")
+                        }
+                        ?: "Member"
                 val pending =
                     friend?.displayNameSnapshot?.contains("(invited)", ignoreCase = true) == true ||
                         label.contains("(invited)", ignoreCase = true)

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -25,7 +24,6 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,13 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.splitease.app.R
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
@@ -64,7 +60,6 @@ enum class MainTab(
 fun SplitEaseBottomBar(
     currentRoute: String?,
     onTabSelected: (MainTab) -> Unit,
-    activityUnreadCount: Int = 0,
 ) {
     val shape = RoundedCornerShape(28.dp)
     Box(
@@ -95,7 +90,6 @@ fun SplitEaseBottomBar(
                     tab = tab,
                     selected = currentRoute == tab.route,
                     onClick = { onTabSelected(tab) },
-                    unreadCount = if (tab == MainTab.ACTIVITY) activityUnreadCount else 0,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -108,7 +102,6 @@ private fun BottomBarTab(
     tab: MainTab,
     selected: Boolean,
     onClick: () -> Unit,
-    unreadCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val selectedColor = SplitEaseColors.Primary
@@ -154,29 +147,6 @@ private fun BottomBarTab(
                 tint = contentColor,
                 modifier = Modifier.size(22.dp),
             )
-            if (unreadCount > 0) {
-                val badgeLabel =
-                    if (unreadCount > 9) "9+" else unreadCount.toString()
-                val unreadCd = stringResource(R.string.cd_unread_activity, unreadCount)
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 2.dp, y = (-2).dp)
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(SplitEaseColors.YouOwe)
-                            .semantics { contentDescription = unreadCd },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    SeLabelSmall(
-                        text = badgeLabel,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                }
-            }
         }
         SeLabelSmall(
             text = label,

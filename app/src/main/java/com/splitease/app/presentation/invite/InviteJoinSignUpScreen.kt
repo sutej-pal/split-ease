@@ -50,8 +50,8 @@ import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSystemBars
-import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.ui.SeTopBar
 
 /**
  * Invite-aware signup: create account, then root OTP gate blocks until verified.
@@ -100,7 +100,7 @@ fun InviteJoinSignUpScreen(
     val showPhone = prefillPhone.isNotBlank() || phoneNumber.isNotBlank()
 
     LaunchedEffect(inviteeName) {
-        if (displayName.isBlank() && inviteeName.isNotBlank()) {
+        if (displayName.isBlank() && inviteeName.isNotBlank() && !inviteeName.equals("Member", ignoreCase = true)) {
             displayName = inviteeName
         }
     }
@@ -140,6 +140,16 @@ fun InviteJoinSignUpScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = surface,
+        topBar = {
+            SeTopBar(
+                title = "",
+                onBack = {
+                    if (!formState.isLoading) onBack()
+                },
+                enabled = !formState.isLoading,
+                containerColor = surface,
+            )
+        },
     ) { padding ->
         Column(
             modifier =
@@ -277,12 +287,7 @@ fun InviteJoinSignUpScreen(
                     )
                 },
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            SeTextButton(
-                text = stringResource(R.string.action_back),
-                onClick = onBack,
-                enabled = !formState.isLoading,
-            )
+
 
             formState.errorMessage?.let { message ->
                 Spacer(modifier = Modifier.height(12.dp))

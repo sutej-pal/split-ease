@@ -12,6 +12,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import javax.inject.Inject
@@ -60,14 +62,7 @@ class SocialRemoteDataSource
          * @return Matching profile, or null.
          */
         suspend fun fetchProfileById(userId: String): ProfileDto? =
-            supabase
-                .from("profiles")
-                .select(Columns.ALL) {
-                    filter {
-                        eq("id", userId)
-                    }
-                }.decodeList<ProfileDto>()
-                .firstOrNull()
+            fetchProfilesByIds(listOf(userId)).firstOrNull()
 
         /**
          * Fetches profiles for the given user ids.
@@ -78,6 +73,19 @@ class SocialRemoteDataSource
         suspend fun fetchProfilesByIds(userIds: List<String>): List<ProfileDto> {
             val distinct = userIds.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
             if (distinct.isEmpty()) return emptyList()
+            val rpcResult =
+                runCatching {
+                    supabase.postgrest
+                        .rpc(
+                            function = "get_profiles_by_ids",
+                            parameters =
+                                buildJsonObject {
+                                    put("p_user_ids", buildJsonArray { distinct.forEach { add(JsonPrimitive(it)) } })
+                                },
+                        ).decodeAs<List<ProfileDto>>()
+                }.getOrNull()
+            if (!rpcResult.isNullOrEmpty()) return rpcResult
+
             return distinct.chunked(POSTGREST_IN_FILTER_CHUNK).flatMap { chunk ->
                 supabase
                     .from("profiles")
@@ -283,6 +291,16 @@ class SocialRemoteDataSource
             runCatching {
                 supabase.postgrest.rpc("accept_pending_invites")
             }
+        }
+
+        /**
+         * Writes friend-name snapshots for group co-members from their signup name.
+         *
+         * Group share links add a membership without a friends row, so the other
+         * phone otherwise keeps the "Member" placeholder.
+         */
+        suspend fun syncPeerDisplayNames() {
+            supabase.postgrest.rpc("sync_peer_display_names")
         }
 
         /**

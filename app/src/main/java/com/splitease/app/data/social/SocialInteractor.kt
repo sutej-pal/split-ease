@@ -657,7 +657,7 @@ class SocialInteractor
                 kind = runCatching { InviteKind.valueOf(dto.kind) }.getOrDefault(InviteKind.FRIEND),
                 email = previewEmail,
                 inviterName = dto.inviterName.trim().takeIf { it.isNotEmpty() },
-                inviteeName = dto.inviteeName.trim().takeIf { it.isNotEmpty() },
+                inviteeName = dto.inviteeName.trim().takeIf { it.isNotEmpty() && !it.equals("Member", ignoreCase = true) },
                 phoneCountryCode = dialSplit?.first,
                 phoneNumber = dialSplit?.second,
                 groupId = dto.groupId,
@@ -673,6 +673,7 @@ class SocialInteractor
          * @param ownerUserId Current user id.
          */
         suspend fun refreshFriends(ownerUserId: String) {
+            runCatching { remote.syncPeerDisplayNames() }
             val remoteFriends = remote.fetchFriends(ownerUserId)
             SyncNetworkLog.info(
                 "friends plan: rows=${remoteFriends.size} (1 GET /friends + 1 GET /profiles?id=in)",
@@ -920,8 +921,20 @@ class SocialInteractor
             toUserId: String,
         ) {
             if (fromUserId.isBlank() || toUserId.isBlank() || fromUserId == toUserId) return
+            val fromUser = userRepository.getUserById(fromUserId)
             expenseRepository.remapUserId(fromUserId, toUserId)
             groupRepository.remapMemberUserId(fromUserId, toUserId)
+            if (fromUser != null) {
+                val cleanName = fromUser.displayName.removeSuffix(" (invited)").removeSuffix("(invited)").trim()
+                if (cleanName.isNotBlank() && !cleanName.equals("Member", ignoreCase = true)) {
+                    ensureLocalUserExists(
+                        userId = toUserId,
+                        email = fromUser.email.takeIf { !it.startsWith("local+") }.orEmpty(),
+                        displayName = cleanName,
+                        fetchProfileIfMissing = false,
+                    )
+                }
+            }
             runCatching { remote.remapPlaceholderUser(fromUserId, toUserId) }
             runCatching { expenseInteractor.republishExpensesInvolving(toUserId) }
         }
@@ -1657,6 +1670,7 @@ class SocialInteractor
          * waiting for a full app sync.
          */
         suspend fun refreshGroupMemberProfiles(groupId: String) {
+            runCatching { remote.syncPeerDisplayNames() }
             val memberDtos =
                 runCatching { remote.fetchGroupMembers(groupId) }.getOrDefault(emptyList())
             upsertMembersAndProfiles(groupId, memberDtos)
@@ -1713,35 +1727,71 @@ class SocialInteractor
             displayName: String = "Member",
             fetchProfileIfMissing: Boolean = true,
         ) {
+            val existing = userRepository.getUserById(userId)
+            val shouldFetchRemote =
+                profile == null &&
+                    (
+                        fetchProfileIfMissing ||
+                            existing == null ||
+                            existing.displayName.isBlank() ||
+                            existing.displayName == "Member"
+                    )
             val resolved =
                 profile
-                    ?: if (fetchProfileIfMissing) {
+                    ?: if (shouldFetchRemote) {
                         runCatching { remote.fetchProfileById(userId) }.getOrNull()
                     } else {
                         null
                     }
-            val existing = userRepository.getUserById(userId)
             val now = System.currentTimeMillis()
+
+            val friendForUser = friendRepository.getByFriendUserId(userId)
+            val inviteForUser = friendForUser?.id?.let { inviteRepository.getByFriendRowId(it) }
+
+            val fallbackEmail =
+                friendForUser?.emailSnapshot?.trim()?.takeIf { it.isNotBlank() }
+                    ?: inviteForUser?.email?.trim()?.takeIf { it.isNotBlank() }
+                    ?: email.trim()
+
             val resolvedEmail =
                 when {
                     resolved != null && resolved.email.isNotBlank() -> resolved.email.trim()
-                    email.isNotBlank() -> email.trim()
+                    fallbackEmail.isNotBlank() -> fallbackEmail
                     existing != null &&
                         existing.email.isNotBlank() &&
                         !existing.email.startsWith("local+") -> existing.email
                     else -> "local+$userId@users.local"
                 }
             releaseEmailAndRemapStub(ownerUserId = userId, email = resolvedEmail)
+
+            val friendName =
+                friendForUser?.displayNameSnapshot
+                    ?.removeSuffix(" (invited)")
+                    ?.removeSuffix("(invited)")
+                    ?.trim()
+
+            val resolvedDisplayName =
+                resolved?.displayName?.trim()?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                    ?: friendName?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                    ?: displayName.trim().removeSuffix(" (invited)").removeSuffix("(invited)").trim().takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                    ?: existing?.displayName?.trim()?.removeSuffix(" (invited)")?.removeSuffix("(invited)")?.trim()?.takeIf {
+                        it.isNotBlank() &&
+                            !it.equals("Member", ignoreCase = true) &&
+                            !it.equals(userId.take(8), ignoreCase = true)
+                    }
+                    ?: resolvedEmail.substringBefore("@").trim().takeIf { it.isNotBlank() && !it.startsWith("local+") }
+                    ?: "Member"
+
             if (resolved != null) {
                 userRepository.upsert(
                     User(
                         id = userId,
                         email = resolvedEmail,
-                        displayName = resolved.displayName.ifBlank { displayName.ifBlank { "Member" } },
+                        displayName = resolvedDisplayName,
                         photoUrl = resolveUsablePhotoUrl(existing?.photoUrl, resolved.photoUrl),
-                        phoneCountryCode = resolved.phoneCountryCode,
-                        phoneNumber = resolved.phoneNumber,
-                        preferredCurrency = resolved.preferredCurrency,
+                        phoneCountryCode = resolved.phoneCountryCode.orEmpty().ifBlank { existing?.phoneCountryCode.orEmpty() },
+                        phoneNumber = resolved.phoneNumber.orEmpty().ifBlank { existing?.phoneNumber.orEmpty() },
+                        preferredCurrency = resolved.preferredCurrency.orEmpty().ifBlank { existing?.preferredCurrency.orEmpty() },
                         remoteId = userId,
                         createdAtEpochMs = existing?.createdAtEpochMs ?: now,
                         updatedAtEpochMs = resolved.updatedAtEpochMs.takeIf { it > 0 } ?: now,
@@ -1753,7 +1803,7 @@ class SocialInteractor
                     User(
                         id = userId,
                         email = resolvedEmail,
-                        displayName = displayName.ifBlank { "Member" },
+                        displayName = resolvedDisplayName,
                         photoUrl = null,
                         remoteId = userId,
                         createdAtEpochMs = now,
@@ -1761,13 +1811,32 @@ class SocialInteractor
                         syncStatus = SyncStatus.LOCAL_ONLY,
                     ),
                 )
-            } else if (existing.email.isBlank() || existing.email.startsWith("local+")) {
+            } else {
                 userRepository.upsert(
                     existing.copy(
                         email = resolvedEmail,
-                        displayName =
-                            existing.displayName.takeIf { it.isNotBlank() && it != "Member" }
-                                ?: displayName.ifBlank { "Member" },
+                        displayName = resolvedDisplayName,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+            }
+            val friendSnapshot = friendForUser?.displayNameSnapshot?.trim().orEmpty()
+            if (
+                friendForUser != null &&
+                resolvedDisplayName.isNotBlank() &&
+                !resolvedDisplayName.equals("Member", ignoreCase = true) &&
+                (
+                    friendSnapshot.isBlank() ||
+                    friendSnapshot.equals("Member", ignoreCase = true) ||
+                    friendSnapshot.equals(userId.take(8), ignoreCase = true)
+                )
+            ) {
+                friendRepository.upsert(
+                    friendForUser.copy(
+                        displayNameSnapshot = resolvedDisplayName,
+                        emailSnapshot =
+                            resolvedEmail.takeIf { it.isNotBlank() && !it.startsWith("local+") }
+                                ?: friendForUser.emailSnapshot,
                         updatedAtEpochMs = now,
                     ),
                 )

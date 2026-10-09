@@ -76,4 +76,8 @@ interface FriendDao {
     /** Deletes the friend with [id]. */
     @Query("DELETE FROM friends WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    /** Remaps friendUserId from [fromUserId] to [toUserId]. */
+    @Query("UPDATE friends SET friendUserId = :toUserId WHERE friendUserId = :fromUserId")
+    suspend fun remapFriendUserId(fromUserId: String, toUserId: String)
 }

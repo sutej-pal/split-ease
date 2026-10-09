@@ -137,6 +137,10 @@ fun GroupSettingsScreen(
     val memberSheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
     val me = viewModel.currentUserId()
+
+    LaunchedEffect(groupId) {
+        viewModel.refreshMemberProfiles(groupId)
+    }
     val isOwner = group?.createdByUserId == me
     val currencyFallback = group?.defaultCurrencyCode.orEmpty()
     val photoPicker =
@@ -213,10 +217,10 @@ fun GroupSettingsScreen(
                             ?.removeSuffix(" (invited)")
                             ?.trim()
                             .orEmpty()
-                            .ifBlank {
-                                userDisplayNames[member.userId]
-                                    ?: member.userId.take(8)
-                            }
+                            .takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                            ?: userDisplayNames[member.userId]?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                            ?: friend?.emailSnapshot?.substringBefore("@")?.takeIf { it.isNotBlank() && !it.startsWith("local+") }
+                            ?: "Member"
                     val title =
                         if (isYou) {
                             stringResource(

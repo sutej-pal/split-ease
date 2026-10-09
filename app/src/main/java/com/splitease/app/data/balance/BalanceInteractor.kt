@@ -550,9 +550,10 @@ class BalanceInteractor
                         when (id) {
                             viewerUserId -> "You"
                             else ->
-                                resolvedFriendLabels[id]
-                                    ?: look?.label
-                                    ?: user?.displayName
+                                resolvedFriendLabels[id]?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                                    ?: look?.label?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                                    ?: user?.displayName?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                                    ?: user?.email?.substringBefore("@")?.takeIf { it.isNotBlank() && !it.startsWith("local+") }
                                     ?: id.take(8)
                         },
                     photoUrl = look?.photoUrl ?: user?.photoUrl,

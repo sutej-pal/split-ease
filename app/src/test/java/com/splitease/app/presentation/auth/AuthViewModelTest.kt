@@ -51,6 +51,9 @@ class AuthViewModelTest {
         context = mockk(relaxed = true)
         resources = mockk(relaxed = true)
         every { context.resources } returns resources
+        every { context.getString(any()) } answers {
+            authString(invocation.args[0] as Int)
+        }
         every { context.getString(any(), *anyVararg()) } answers {
             val id = invocation.args[0] as Int
             val formatArgs =
@@ -751,6 +754,22 @@ class AuthViewModelTest {
         }
 
     @Test
+    fun `verifyPendingOtp with wrong otp returns wrong otp error`() =
+        runTest {
+            coEvery {
+                repository.signUp(any(), any(), any(), any(), any(), any(), anyNullable())
+            } returns Result.success(SignUpResult.PendingEmailConfirmation("a@b.com"))
+            coEvery {
+                repository.verifySignupOtp(any(), any())
+            } returns Result.failure(RuntimeException("Token has expired or is invalid"))
+            viewModel.signUp("a@b.com", "secret12", "Ada")
+            advanceUntilIdle()
+            viewModel.verifyPendingOtp("a@b.com", "111111")
+            advanceUntilIdle()
+            assertEquals("Wrong OTP. Try again.", viewModel.formState.value.errorMessage)
+        }
+
+    @Test
     fun `resendConfirmation calls login otp send when purpose is login`() =
         runTest {
             coEvery {
@@ -816,6 +835,7 @@ class AuthViewModelTest {
                 R.string.verify_email_sent to "Account created. Check your email for a verification code.",
                 R.string.verify_email_resent to "Verification code resent. Check your inbox.",
                 R.string.verify_email_invalid_code to "Enter a valid 6-digit code.",
+                R.string.error_invalid_otp to "Wrong OTP. Try again.",
                 R.string.reset_otp_invalid_or_expired to "Invalid or expired code.",
                 R.string.reset_password_mismatch to "Passwords do not match.",
                 R.string.reset_password_success to "Password updated.",

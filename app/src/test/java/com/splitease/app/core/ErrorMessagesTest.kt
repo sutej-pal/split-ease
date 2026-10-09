@@ -57,4 +57,11 @@ class ErrorMessagesTest {
     fun auth_identity_conflict_is_not_network_error() {
         assertFalse(ErrorMessages.isNetworkError(IllegalStateException("identity_already_exists")))
     }
+
+    @Test
+    fun supabase_invalid_otp_error_detected_by_is_invalid_otp() {
+        assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("Token has expired or is invalid")))
+        assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("Invalid OTP")))
+        assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("invalid_grant")))
+    }
 }

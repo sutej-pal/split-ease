@@ -39,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,10 +60,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -85,7 +82,6 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeLoadingOverlay
-import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.SeTopBar
@@ -159,15 +155,14 @@ fun ExpenseDetailScreen(
     Scaffold(
         containerColor = bg,
         topBar = {
-            val detailSnapshot = detail
             SeTopBar(
                 title = "",
                 onBack = onBack,
                 containerColor = topBarBg,
                 navigationExtra = {
-                    if (detailSnapshot != null) {
+                    if (detail != null) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        CategoryChip(iconKey = detailSnapshot.categoryIconKey) {
+                        CategoryChip(iconKey = detail.categoryIconKey) {
                             showCategoryPicker = true
                         }
                     }
@@ -217,8 +212,7 @@ fun ExpenseDetailScreen(
             }
         },
     ) { padding ->
-        val snapshot = detail
-        if (snapshot == null) {
+        if (detail == null) {
             if (loadState is ExpenseDetailLoadState.Loading) {
                 Box(
                     modifier =
@@ -256,15 +250,15 @@ fun ExpenseDetailScreen(
                 .padding(top = 8.dp, bottom = 24.dp),
         ) {
             SeHeadlineSmall(
-                text = snapshot.expense.description,
+                text = detail.expense.description,
                 color = SplitEaseColors.Navy,
             )
             Spacer(modifier = Modifier.height(6.dp))
             SeHeadlineLarge(
                 text =
                     MoneyFormat.format(
-                        snapshot.expense.amount,
-                        snapshot.expense.currencyCode,
+                        detail.expense.amount,
+                        detail.expense.currencyCode,
                     ),
                 color = SplitEaseColors.Navy,
                 fontWeight = FontWeight.Bold,
@@ -274,12 +268,12 @@ fun ExpenseDetailScreen(
                 text =
                     stringResource(
                         R.string.expense_added_by_on,
-                        addedByDisplayName(snapshot.payerLabel),
-                        formatExpenseAddedDate(snapshot.expense.expenseDateEpochMs),
+                        addedByDisplayName(detail.payerLabel),
+                        formatExpenseAddedDate(detail.expense.expenseDateEpochMs),
                     ),
             )
-            val lastUpdatedBy = snapshot.lastUpdatedByLabel
-            val lastUpdatedAt = snapshot.lastUpdatedAtEpochMs
+            val lastUpdatedBy = detail.lastUpdatedByLabel
+            val lastUpdatedAt = detail.lastUpdatedAtEpochMs
             if ((!lastUpdatedBy.isNullOrBlank()) && lastUpdatedAt != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 SeBodyMedium(
@@ -294,11 +288,11 @@ fun ExpenseDetailScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             ExpensePaidOwesBlock(
-                detail = snapshot,
+                detail = detail,
                 currentUserId = me,
             )
 
-            val notes = snapshot.expense.notes
+            val notes = detail.expense.notes
             if (!notes.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 SeLabelMedium(
@@ -326,14 +320,14 @@ fun ExpenseDetailScreen(
                 )
             }
 
-            if (snapshot.spendingTrendMonths.isNotEmpty()) {
+            if (detail.spendingTrendMonths.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(28.dp))
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(20.dp))
                 ExpenseSpendingTrendsSection(
-                    detail = snapshot,
+                    detail = detail,
                     onViewMoreCharts =
-                        snapshot.expense.groupId?.let { gid ->
+                        detail.expense.groupId?.let { gid ->
                             onOpenGroupSpending?.let { open -> { open(gid) } }
                         },
                 )

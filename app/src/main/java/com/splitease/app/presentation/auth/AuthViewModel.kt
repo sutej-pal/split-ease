@@ -1077,6 +1077,8 @@ class AuthViewModel
                     msg(AuthMessages.ACCOUNT_DEACTIVATED)
                 isInvalidCredentials(throwable) ->
                     msg(AuthMessages.INVALID_CREDENTIALS)
+                ErrorMessages.isInvalidOtp(throwable) ->
+                    msg(AuthMessages.INVALID_OTP)
                 isEmailRateLimited(lower) ->
                     msg(AuthMessages.EMAIL_RATE_LIMITED)
                 isEmailDeliveryFailure(lower) ->
