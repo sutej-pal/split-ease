@@ -39,6 +39,10 @@ GOOGLE_WEB_CLIENT_ID=xxxxx.apps.googleusercontent.com
 
 Use the **Web** client ID, not the Android one. Rebuild so `BuildConfig.GOOGLE_WEB_CLIENT_ID` updates.
 
+GitHub Actions does not have `local.properties`. [`.github/workflows/develop-release.yml`](../.github/workflows/develop-release.yml) reads `GOOGLE_WEB_CLIENT_ID` from the **dev** environment secrets and bakes it into the APK. Add that secret (same Web client ID as `local.properties`) before the next develop release. A blank value is exactly the “isn't available on this build” message.
+
+That workflow builds `assembleDebug`. Hosted runners mint a new debug keystore every job, and Google rejects any SHA-1 that is not on the Android OAuth client. Store a stable debug keystore as `DEBUG_KEYSTORE_BASE64` (base64 of `~/.android/debug.keystore`, alias `androiddebugkey`, store password `android`) so CI signs with the same certificate you already registered. The job prints the SHA-1 it actually signed with.
+
 ## 4. How to test
 
 1. Device/emulator has a Google account and Play Services.
@@ -47,7 +51,7 @@ Use the **Web** client ID, not the Android one. Rebuild so `BuildConfig.GOOGLE_W
 4. Sign out and repeat — returning users skip welcome mail.
 5. First-time Google users get the one-time welcome email (same path as signup OTP).
 
-If the button shows “isn't available on this build”, `GOOGLE_WEB_CLIENT_ID` is missing. Set it in gitignored `local.properties` and rebuild. If Google returns no accounts, add a Google account on the device. If it says Sign-In needs an internet connection, the device is offline (or Play Services returned a network error).
+If the button shows “isn't available on this build”, `GOOGLE_WEB_CLIENT_ID` is missing from that APK. Local builds: set it in gitignored `local.properties` and rebuild. Actions builds: set the **dev** environment secret and cut a new release. If Google returns no accounts, add a Google account on the device. If it says Sign-In needs an internet connection, the device is offline (or Play Services returned a network error).
 
 The Google button uses a dedicated loading flag (`isGoogleLoading`). Email **Log in** / **Sign up** does not show a spinner while the Google account picker is open.
 
