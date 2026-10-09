@@ -1,0 +1,52 @@
+name: Develop Release
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: develop-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: Prepare release info
+        id: info
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          TAG="develop-${{ github.run_number }}"
+          APK_NAME="app-develop-${{ github.run_number }}-${SHORT_SHA}.apk"
+          mv app/build/outputs/apk/debug/*.apk "$APK_NAME"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "apk=$APK_NAME" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.info.outputs.tag }}" "${{ steps.info.outputs.apk }}" \
+            --target "${{ github.sha }}" \
+            --title "Develop build #${{ github.run_number }} (${{ steps.info.outputs.sha }})" \
+            --generate-notes \
+            --prerelease
