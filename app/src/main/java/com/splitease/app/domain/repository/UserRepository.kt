@@ -14,6 +14,9 @@ interface UserRepository {
      */
     fun observeUsers(): Flow<List<User>>
 
+    /** @param id Local UUID. @return Flow of matching user or null. */
+    fun observeUserById(id: String): Flow<User?>
+
     /**
      * Loads a single user by local id.
      *

@@ -1,0 +1,28 @@
+---
+description: Do not break existing working features; prefer additive, regression-safe changes
+alwaysApply: true
+---
+
+# No regressions — protect working features
+
+The app is past early scaffolding. **Previously working behavior is sacred.** Do not trade old features for new work.
+
+## Mandatory
+
+- Before changing shared code (domain math, Room/sync, auth, navigation, `Se*` UI, theme), identify what already depends on it.
+- Prefer **additive** changes: new APIs, optional params, new screens/flows. Avoid rewriting stable paths “while you’re there.”
+- Do **not** “simplify,” rename, or refactor working behavior unless the user explicitly asks for that refactor.
+- If a fix or feature risks an existing flow, **call it out before shipping** and prefer a narrower patch.
+- After non-trivial edits, verify related existing paths still work (manual checklist and/or existing tests). Do not leave known breakage for “later.”
+- When fixing a bug, do not introduce a different regression in adjacent features (balances, splits, settlements, sync, invites, onboarding, etc.).
+
+## Concrete examples
+
+- Changing `BigDecimal` split/settle math → re-check equal/unequal/%/shares and currency rounding.
+- Touching sync / RLS / repositories → confirm offline create → online flush and pull still work.
+- Editing shared Compose (`SeButtons`, navigation, theme) → spot-check screens that reuse those components.
+- Auth / onboarding / invite changes → confirm signup, OTP, and join-via-invite still complete.
+
+## Exception
+
+Only intentionally change or remove existing behavior when the user **explicitly** requests that change or accepts the regression risk.

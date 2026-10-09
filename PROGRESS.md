@@ -2,22 +2,79 @@
 
 Track development phases. Always check this file at the start of a session to determine the next incomplete phase.
 
-| Phase | Name | Status | Doc |
-|---|---|---|---|
-| 0 | Project Setup & Foundations | Done | [phase-0-setup.md](docs/phase-0-setup.md) |
-| 1 | Data Layer Foundations | Done | [phase-1-data-layer.md](docs/phase-1-data-layer.md) |
-| 2 | Authentication (Supabase) | Done | [phase-2-authentication.md](docs/phase-2-authentication.md) |
-| 3 | Friends & Groups | Not Started | — |
-| 4 | Expense Creation & Splitting Logic | Not Started | — |
-| 5 | Balances & Debt Simplification | Not Started | — |
-| 6 | Settlements & Recurring Expenses | Not Started | — |
-| 7 | Search, Categories, Multi-Currency, Offline Sync | Not Started | — |
-| 8 | Stretch / Pro-like Features | Not Started | — |
-| 9 | Polish, Testing, and Release Prep | Not Started | — |
+**Feature map:** [docs/ROADMAP.md](docs/ROADMAP.md) — product features distributed across phases.
 
-**Current phase:** 3 — Friends & Groups (next)
+| Phase | Name                                             | Features covered                                                               | Status | Doc                                                                                                           |
+| ----- | ------------------------------------------------ | ------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------- |
+| 0     | Project Setup, Foundations & Brand Theme         | Scaffold + Material 3 brand ColorScheme                                        | Done   | [phase-0-project-setup-and-brand-theme.md](docs/phase-0-project-setup-and-brand-theme.md)                     |
+| 1     | Data Layer Foundations                           | Offline DB foundation                                                          | Done   | [phase-1-room-data-layer-and-domain.md](docs/phase-1-room-data-layer-and-domain.md)                           |
+| 2     | Authentication (Supabase)                        | Cloud identity                                                                 | Done   | [phase-2-supabase-auth-and-session.md](docs/phase-2-supabase-auth-and-session.md)                             |
+| 3     | Friends & Groups                                 | Add groups and friends                                                         | Done   | [phase-3-friends-groups-and-invites.md](docs/phase-3-friends-groups-and-invites.md)                           |
+| 4     | Expense Creation & Splitting Logic               | Split expenses / record debts; equal & unequal; % & shares; unlimited expenses | Done   | [phase-4-expense-creation-and-splits.md](docs/phase-4-expense-creation-and-splits.md)                         |
+| 5     | Balances & Debt Simplification                   | Calculate total balances; simplify debts                                       | Done   | [phase-5-balances-and-debt-simplification.md](docs/phase-5-balances-and-debt-simplification.md)               |
+| 6     | Settlements & Recurring Expenses                 | Recurring expenses; mark settlements                                           | Done   | [phase-6-settlements-and-recurring-expenses.md](docs/phase-6-settlements-and-recurring-expenses.md)           |
+| 7     | Search, Categories, Multi-Currency, Offline Sync | Offline mode; cloud sync; spending totals; categorize; 100+ currencies         | Done   | [phase-7-search-categories-currency-offline-sync.md](docs/phase-7-search-categories-currency-offline-sync.md) |
+| 8     | Stretch / Pro-like Features                      | Payment integrations; transaction import; charts                               | Done   | [phase-8-payments-csv-import-and-charts.md](docs/phase-8-payments-csv-import-and-charts.md)                   |
+| 9     | Polish, Testing, and Release Prep                | 7+ languages; release hardening                                                | Done   | [phase-9-i18n-migrations-and-release-prep.md](docs/phase-9-i18n-migrations-and-release-prep.md)               |
+| 10    | Post-MVP Product Hardening                       | Expense details + Activity; onboarding; invite join; welcome mail              | Done   | [phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md) |
+| 11    | Group Pin Board                                  | Shared per-group notepad (plain text, Save + autosave)                         | Done   | [phase-11-group-pin-board.md](docs/phase-11-group-pin-board.md)                                               |
+| 12    | Forgot Password OTP                              | Reset password via email OTP + set new password in-app                         | Done   | [phase-12-forgot-password-email-otp.md](docs/phase-12-forgot-password-email-otp.md)                           |
 
-**Last completed:** Phase 2 on 2026-07-22
+**Current phase:** Complete through Phase 12 (2026-08-04)
+
+**Last completed:** Phase 12 — Forgot Password OTP (email recovery code + in-app new password)
+
+**Post-phase:** Account hub + CSV import removed (2026-09-08) — Account tab is the settings hub (`AccountScreen`); bank CSV import is gone. In-app account deletion (2026-09-07, UX 2026-09-08) — Account settings → Delete account; blocked groups are tappable; `delete_own_account()` RPC in [migration_db.sql](docs/sql/migration_db.sql). Legal docs still describe email-to-support as the deletion path pending a human copy update.
+
+**Post-phase:** Explicit color tokens and error text (2026-09-29) — brand colors are explicit hex (no wash/shade/lerp) with no visual change. Error text uses `ErrorLight` / `ErrorDark` at AA contrast in light and dark, at one size (`bodySmall` via `SeErrorText`). Balance colors stay `OweRed` / `OwedTeal`.
+
+**Post-phase:** Sign in and contact screen revamp & restructure (2026-10-05) — Moved email, phone, and password accordion editing into dedicated `SignInAndContactScreen` (`SignInAndContactViewModel`), with plain white background, 44dp lavender icon tiles, rotating chevrons, inset text dividers, custom `SeAssistChip` status badges, "Send OTP" actions, and a single navigation tile on Account settings showing the primary email subtitle.
+
+**Post-phase:** Account settings expansion (2026-10-03) — Borderless modern accordion settings with inline panels, secondary emails (managed via `secondary-email` Edge Function), and phone management. Dates stay UTC instants and render in the device time zone.
+
+**Post-phase:** Unverified account resume & mid-verification persistence (2026-10-08) — Unverified account signup retry and login with an unverified email now resume OTP verification instead of dead-ending. Pending verification state persists across process death via `SavedStateHandle`.
+
+**Post-phase:** Sign in and contact + secondary-email OTP auth (2026-10-07) — Email/phone/password live on `SignInAndContactScreen`. Fixed Send OTP `Unauthorized`: password verify must revoke its one-off GoTrue session with `scope=local` (default logout is global and killed the app JWT). Client refreshes the access token before calling the Edge Function.
+
+**Post-phase:** Invite sender names (2026-09-29) — landing, share text, and invite mail use the sender's `profiles.display_name`. Invite creation syncs that profile first and fails if it cannot. Re-apply `get_invite_preview` in Supabase (git does not update the live project) and run the one-time blank-name repair in [supabase-reset.md](docs/supabase-reset.md).
+
+**Post-phase:** Pending-invite title and direct resend SMS (2026-10-01) — the friend settings card titles a pending invite "Invite pending". Resend opens the messages app immediately; Edit Contact / Review still confirms with "Invite to SplitEase?" first.
+
+**Post-phase:** Invite SMS dialog copy (2026-10-03) — confirm dialog title/body/confirm updated to "Invite to SplitEase?" / non-user explanation with formatted phone / "Send invite".
+
+**Post-phase:** Phone contacts and tappable pending members (2026-10-01) — one Phone or email field stores phones as `<e164>@mobile.splitease.com` (default dial code `+91` when the number has no country code; Edit Contact confirms the code first). Phone invites open the user's own SMS app; no SMS backend. Pending landing rows carry `invite_token` and open sign-up with name and phone or email filled. Re-apply `get_invite_preview` in Supabase (git does not update the live project).
+
+**Post-phase:** App-wide icon tint update (2026-10-04) — Configured `#353B3E` (`SplitEaseColors.IconDefault`) for the help (`?`) buttons on the Group Totals screen and all neutral icons app-wide.
+
+**Post-phase:** Group Totals screen fixes (2026-10-04) — Added top bar title ("Totals"), removed unbounded ripple from chart tap, kept the chart always showing three months (even for new groups), and fixed the "%%" percentage caption formatting using `%1$s` and `signum()` zero checks across main and currency breakdown rows.
+
+**Post-phase:** Empty-group card restyled (2026-09-30) — Group detail solo empty state restyled with theme-aware background/border, indigo soft shadow, 52dp circle icon, title/hint text, and filled primary + outlined secondary buttons.
+
+### Docs map
+- Index: [docs/README.md](docs/README.md)
+- Living: [ARCHITECTURE.md](ARCHITECTURE.md), [CHANGELOG.md](CHANGELOG.md), [docs/data-dictionary.md](docs/data-dictionary.md)
+- Condensed history: [docs/phase-bundles.md](docs/phase-bundles.md)
+- Maintenance: [email OTP verification](docs/maintenance-email-otp-verification.md), [secondary email Send OTP auth](docs/maintenance-secondary-email-otp-auth.md), [wipe / re-apply Supabase](docs/supabase-reset.md)
+- Ordered Supabase follow-ups: [docs/supabase-architecture-todos.md](docs/supabase-architecture-todos.md)
 
 ### Carried-forward TODOs
-- **Email confirmation skipped (MVP)** — keep Confirm email OFF in Supabase; re-enable + in-app verify flow before production (see [phase-2-authentication.md](docs/phase-2-authentication.md)).
+- **Review follow-ups (2026-10-01)** — Phone invites and the empty-group card. Open items, including deferred invite-token disclosure: [docs/review-2026-10-01-phone-invite-empty-group.md](docs/review-2026-10-01-phone-invite-empty-group.md) and [TODO.md](TODO.md).
+- **Screen-level loaders removed**: All screen-level loaders/skeletons were removed app-wide in favor of instant cache-backed rendering + empty states; only in-progress action buttons (save/delete/change-link) still show a loading indicator.
+- **Supabase architecture TODOs (ordered)** — ~~Remote delete tombstones~~ → ~~conflict policy~~ → ~~category sync (defaults)~~ → ~~pin-board boundary~~ → Edge Functions non-CRUD → ops hygiene ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md)).
+- **OTP ops** — App OTP flows shipped; live Confirm email / templates / SMTP stay on [release-checklist.md](docs/release-checklist.md) ([maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md)).
+- **Redeploy mail-service** — Recovery password-reset template lives in the mail-service; redeploy Vercel so reset mails are not the generic/signup copy ([phase-12](docs/phase-12-forgot-password-email-otp.md)).
+- **TODO(auth-mobile-onboarding)** — Allow users to onboard with a mobile phone number (SMS OTP / phone auth) in addition to email.
+- **Semantic balance colors** — `OweRed` / `OwedTeal` brand tokens ([phase-0](docs/phase-0-project-setup-and-brand-theme.md)).
+- **Apply SQL on fresh DB** — use [migration_db.sql](docs/sql/migration_db.sql) for full setup in one run. Wipe + re-apply for a clean test: [supabase-reset.md](docs/supabase-reset.md).
+- **Invite email delivery** — Email contacts get invite mail via mail-service. Phone contacts are stored as `<e164>@mobile.splitease.com` and open the user's own SMS app with the invite link (no SMS service). Generic share links use the system share sheet.
+- **SplitEase Server (separate repo)** — lives at `C:\splitease\server` beside the Android app at `C:\splitease\app` ([docs/splitease-server-repo.md](docs/splitease-server-repo.md)). Deployed on Vercel; uses Brevo HTTPS when `BREVO_API_KEY` is set, otherwise Nodemailer SMTP locally.
+- **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP ([phase-10](docs/phase-10-expense-details-onboarding-invite-mail.md)).
+- **App Links / invite https** — share links use `MAIL_SERVICE_BASE_URL/invite/{token}` when set, else `splitease.app`. Host [docs/assetlinks.json](docs/assetlinks.json) for verified Open-by-default links ([app-links-setup.md](docs/app-links-setup.md)). Custom scheme `splitease://invite/{token}` works without verification.
+- **Group live updates & push notifications (extra)** — Realtime + FCM path live: Edge Function deployed, `notification_prefs` applied, expenses/payments webhooks wired ([docs/fcm-setup.md](docs/fcm-setup.md), [docs/extras-group-live-updates-notifications.md](docs/extras-group-live-updates-notifications.md)).
+- **Category sync** — stable default ids (`cat_*`) on the wire; Room v12 remaps legacy random defaults; custom categories remain device-local ([supabase-architecture-todos.md](docs/supabase-architecture-todos.md) #3).
+- **TODO(mixed-currency-ux)** — Group totals show per-currency rows; `AppCurrencies` is a common ~30 ISO set. Snapshot FX already shipped. See [TODO.md](TODO.md).
+- **FX rates** — Add-expense can convert INR↔USD at save (live API or custom snapshot on the Room row). No mark-to-market of old balances.
+- **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
+- **Social PENDING flush** — Groups/members/invites flush in `SyncInteractor` before expenses (confirm SQL is applied on each environment).
+- **Store assets** — feature graphic, phone screenshots, privacy policy URL (`docs/store-listing.md`).
+- **TODO(i18n-last)** — Localization is deferred until the end of the product. Locale overlays (`values-de/es/fr/hi/it/ja/pt`) currently fall back to English; restore and expand full translations last.

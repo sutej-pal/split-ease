@@ -1,72 +1,169 @@
 package com.splitease.app.data.repository
 
+import android.content.Context
+import com.splitease.app.data.media.AvatarImageIO
+import com.splitease.app.data.media.LocalMediaCleanup
+import com.splitease.app.data.media.MediaStorageCleanup
+import com.splitease.app.data.media.SupabaseImageAuth
+import com.splitease.app.data.remote.ProfilePhotoStorage
+import com.splitease.app.data.remote.SocialRemoteDataSource
+import com.splitease.app.data.remote.StorageObjectPaths
+import com.splitease.app.data.remote.dto.ProfileDto
+import com.splitease.app.data.remote.mapper.isRemoteMediaUrl
+import com.splitease.app.data.session.LocalUserDataCleanup
+import com.splitease.app.data.sync.SyncInteractor
+import com.splitease.app.domain.account.AccountDeletionErrors
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.model.AuthUser
+import com.splitease.app.domain.model.SignUpResult
+import com.splitease.app.domain.model.SocialSignInResult
+import com.splitease.app.BuildConfig
+import com.splitease.app.domain.model.SecondaryEmail
 import com.splitease.app.domain.model.SyncStatus
 import com.splitease.app.domain.model.User
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.CategoryRepository
 import com.splitease.app.domain.repository.UserRepository
+import com.splitease.app.domain.settings.AppCurrencies
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.OtpType
+import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
+import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.json.JSONObject
+import java.io.File
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 import javax.inject.Inject
+import javax.inject.Provider
 import javax.inject.Singleton
 
+private const val PENDING_SIGNUP_PHOTO_NAME = "pending_signup.jpg"
+private const val PROFILE_UPSERT_COALESCE_MS = 2_000L
+private const val SESSION_EXPIRED_MESSAGE = "Your session expired. Sign in again."
+private val SECONDARY_EMAIL_COLUMNS = Columns.list("id", "email", "verified_at", "created_at")
+
 /**
- * Supabase-backed [AuthRepository] that also upserts the local Room [User].
- *
- * @property supabase Supabase client.
- * @property userRepository Local user cache.
- * @property categoryRepository Used to seed default categories after first sign-in.
+ * Supabase-backed [AuthRepository] that upserts local Room [User] and remote `profiles`.
  */
 @Singleton
 class SupabaseAuthRepository
     @Inject
     constructor(
+        @ApplicationContext private val appContext: Context,
         private val supabase: SupabaseClient,
         private val userRepository: UserRepository,
         private val categoryRepository: CategoryRepository,
+        private val socialRemote: SocialRemoteDataSource,
+        private val profilePhotoStorage: ProfilePhotoStorage,
+        private val mediaStorageCleanup: MediaStorageCleanup,
+        private val localUserDataCleanup: LocalUserDataCleanup,
+        private val syncInteractor: Provider<SyncInteractor>,
     ) : AuthRepository {
+        private val persistUserMutex = Mutex()
+        private val secondaryEmailRevision = MutableStateFlow(0)
+
+        @Volatile
+        private var lastProfileUpsertUserId: String? = null
+
+        @Volatile
+        private var lastProfileUpsertAtMs: Long = 0L
+
+        override suspend fun getSignedInUserOrNull(): AuthUser? =
+            supabase.auth.currentUserOrNull()?.toAuthUser()
+
         override fun observeSession(): Flow<AuthSession> =
-            supabase.auth.sessionStatus.map { status ->
-                when (status) {
-                    is SessionStatus.Authenticated -> {
-                        val info = status.session.user
-                        if (info == null) {
-                            AuthSession.SignedOut
-                        } else {
-                            AuthSession.SignedIn(info.toAuthUser())
-                        }
+            supabase.auth.sessionStatus
+                .onEach { status ->
+                    SupabaseImageAuth.update(
+                        when (status) {
+                            is SessionStatus.Authenticated -> status.session.accessToken
+                            else -> null
+                        },
+                    )
+                    // Stale refresh tokens (e.g. after remote user wipe) leave RefreshFailure;
+                    // clear local storage so the UI can leave the auth gate.
+                    if (status is SessionStatus.RefreshFailure) {
+                        runCatching { supabase.auth.clearSession() }
                     }
-                    SessionStatus.Initializing -> AuthSession.Loading
-                    is SessionStatus.NotAuthenticated -> AuthSession.SignedOut
-                    is SessionStatus.RefreshFailure -> AuthSession.SignedOut
+                }.map { status ->
+                    when (status) {
+                        is SessionStatus.Authenticated -> {
+                            val info = status.session.user
+                            if (info == null) {
+                                AuthSession.SignedOut
+                            } else {
+                                AuthSession.SignedIn(info.toAuthUser())
+                            }
+                        }
+                        SessionStatus.Initializing -> AuthSession.Loading
+                        is SessionStatus.NotAuthenticated -> AuthSession.SignedOut
+                        is SessionStatus.RefreshFailure -> AuthSession.SignedOut
+                    }
                 }
-            }
 
         override suspend fun signUp(
             email: String,
             password: String,
             displayName: String,
-        ): Result<Unit> =
+            phoneCountryCode: String,
+            phoneNumber: String,
+            currencyCode: String,
+            photoUri: String?,
+        ): Result<SignUpResult> =
             runCatching {
+                val trimmedEmail = email.trim()
+                val trimmedName = displayName.trim()
+                val dialCode = phoneCountryCode.trim().ifBlank { "+91" }
+                val nationalNumber = phoneNumber.trim()
+                val currency = AppCurrencies.normalizeOrDefault(currencyCode)
+                // Compress into filesDir now. Cache crop URIs do not survive until OTP,
+                // and local paths must not be written to Auth metadata.
+                withContext(Dispatchers.IO) { persistPendingSignupPhoto(photoUri) }
                 supabase.auth.signUpWith(Email) {
-                    this.email = email.trim()
+                    this.email = trimmedEmail
                     this.password = password
                     data =
                         buildJsonObject {
-                            put("display_name", displayName.trim())
+                            put("display_name", trimmedName)
+                            put("phone_country_code", dialCode)
+                            put("phone_number", nationalNumber)
+                            put("preferred_currency", currency)
                         }
                 }
-                persistCurrentUser()
-                categoryRepository.ensureDefaults()
+                val session = supabase.auth.currentSessionOrNull()
+                if (session == null) {
+                    SignUpResult.PendingEmailConfirmation(trimmedEmail)
+                } else {
+                    // Do not write Room/profiles yet — OTP verify finalizes the account.
+                    SignUpResult.SignedIn
+                }
             }
 
         override suspend fun signIn(email: String, password: String): Result<Unit> =
@@ -75,52 +172,865 @@ class SupabaseAuthRepository
                     this.email = email.trim()
                     this.password = password
                 }
-                persistCurrentUser()
-                categoryRepository.ensureDefaults()
             }
 
-        override suspend fun sendPasswordReset(email: String): Result<Unit> =
+        override suspend fun signInWithGoogle(
+            idToken: String,
+            rawNonce: String,
+        ): Result<SocialSignInResult> =
             runCatching {
-                supabase.auth.resetPasswordForEmail(email.trim())
+                val token = idToken.trim()
+                require(token.isNotEmpty()) { "Google sign-in token is missing." }
+                supabase.auth.signInWith(IDToken) {
+                    this.idToken = token
+                    provider = Google
+                    nonce = rawNonce.trim().takeIf { it.isNotEmpty() }
+                }
+                val info =
+                    supabase.auth.currentUserOrNull()
+                        ?: error("Google sign-in succeeded but session is missing.")
+                SocialSignInResult(isNewUser = info.isNewlyCreatedAccount())
+            }
+
+        override suspend fun isEmailRegistered(email: String): Result<Boolean> =
+            runCatching {
+                val trimmed = email.trim()
+                if (trimmed.isEmpty()) return@runCatching false
+                supabase.postgrest
+                    .rpc(
+                        function = "auth_email_registered",
+                        parameters =
+                            buildJsonObject {
+                                put("p_email", trimmed)
+                            },
+                    ).decodeAs<Boolean>()
+            }
+
+        override suspend fun isPhoneRegistered(
+            phoneCountryCode: String,
+            phoneNumber: String,
+        ): Result<Boolean> =
+            runCatching {
+                val digits = phoneNumber.filter { it.isDigit() }
+                if (digits.isEmpty()) return@runCatching false
+                val dial = phoneCountryCode.trim().ifBlank { "+91" }
+                supabase.postgrest
+                    .rpc(
+                        function = "auth_phone_registered",
+                        parameters =
+                            buildJsonObject {
+                                put("p_country_code", dial)
+                                put("p_phone", digits)
+                            },
+                    ).decodeAs<Boolean>()
+            }
+
+        override suspend fun sendLoginOtp(email: String): Result<Unit> =
+            runCatching {
+                supabase.auth.signInWith(OTP) {
+                    this.email = email.trim()
+                    createUser = false
+                }
+            }
+
+        override suspend fun verifyLoginOtp(email: String, token: String): Result<Unit> =
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type = OtpType.Email.EMAIL,
+                    email = email.trim(),
+                    token = token.trim(),
+                )
+                finalizeAuthenticatedSession()
+            }
+
+        override suspend fun resendSignupConfirmation(email: String): Result<Unit> =
+            runCatching {
+                supabase.auth.resendEmail(OtpType.Email.SIGNUP, email.trim())
+            }
+
+        override suspend fun verifySignupOtp(email: String, token: String): Result<Unit> =
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type = OtpType.Email.SIGNUP,
+                    email = email.trim(),
+                    token = token.trim(),
+                )
+                finalizeAuthenticatedSession()
+            }
+
+        private suspend fun finalizeAuthenticatedSession() {
+            runCatching { supabase.auth.refreshCurrentSession() }
+            val sessionUser =
+                supabase.auth.currentUserOrNull()
+                    ?: error("Email verified but session is missing. Try signing in.")
+            persistCurrentUser(forceRemoteUpsert = true)
+            val local = userRepository.getUserById(sessionUser.id)
+            require(local != null) { "Could not save your local profile. Try signing in again." }
+            categoryRepository.ensureDefaults()
+            hydrateCloudData()
+        }
+
+        override suspend fun updateDisplayName(displayName: String): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val trimmed = displayName.trim()
+                    require(trimmed.isNotBlank()) { "Display name cannot be empty." }
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("display_name", trimmed) }
+                    }
+                    persistCurrentUser(forceRemoteUpsert = true)
+                }
+            }
+
+        override suspend fun updateProfilePhoto(photoUri: String): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val userId =
+                        supabase.auth.currentUserOrNull()?.id
+                            ?: error("Not signed in.")
+                    val previousPhotoUrl =
+                        userRepository.getUserById(userId)?.photoUrl
+                            ?: supabase.auth.currentUserOrNull()?.userMetadata?.stringMeta("photo_url")
+                    val localPath = copyAvatarToInternalStorage(userId, photoUri)
+                    val stored = persistPhotoForCloud(userId, localPath) ?: localPath
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("photo_url", stored) }
+                    }
+                    if (!previousPhotoUrl.isNullOrBlank() && previousPhotoUrl != stored) {
+                        mediaStorageCleanup.purgeProfilePhoto(previousPhotoUrl)
+                    }
+                    persistCurrentUser(forceRemoteUpsert = true)
+                }
+            }
+
+        override suspend fun updatePreferredCurrency(currencyCode: String): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val currency = currencyCode.trim().uppercase()
+                    require(currency.length == 3) { "Currency code must be a 3-letter ISO code." }
+                    require(AppCurrencies.isSupported(currency)) { "Unsupported currency: $currency" }
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("preferred_currency", currency) }
+                    }
+                    persistCurrentUser(forceRemoteUpsert = true)
+                }
+            }
+
+        override suspend fun requestPasswordReset(email: String): Result<Unit> {
+            // Soft-success for unknown addresses (Supabase returns 200 with no mail).
+            // Propagate rate-limit / hook failures so the UI can ask the user to wait —
+            // those errors do not reveal whether the email is registered once the
+            // project-wide email rate limit is raised above the Free default of 2/hour.
+            return runCatching {
+                withContext(Dispatchers.IO) {
+                    supabase.auth.resetPasswordForEmail(email.trim())
+                }
+            }.onFailure { err ->
+                android.util.Log.w("AuthRepo", "requestPasswordReset send failed", err)
+            }
+        }
+
+        override suspend fun verifyRecoveryOtp(email: String, token: String): Result<Unit> =
+            runCatching {
+                supabase.auth.verifyEmailOtp(
+                    type = OtpType.Email.RECOVERY,
+                    email = email.trim(),
+                    token = token.trim(),
+                )
+                // Session is required for updatePassword; hydrate after the new password is set.
+                check(supabase.auth.currentUserOrNull() != null) {
+                    "Recovery code verified but session is missing. Try again."
+                }
+            }
+
+        override suspend fun updatePassword(
+            newPassword: String,
+            hydrateSession: Boolean,
+        ): Result<Unit> =
+            runCatching {
+                val trimmed = newPassword.trim()
+                require(trimmed.length >= 8) { "Password must be at least 8 characters." }
+                check(supabase.auth.currentUserOrNull() != null) {
+                    "Session expired. Request a new reset code and try again."
+                }
+                supabase.auth.updateUser {
+                    password = trimmed
+                }
+                if (!hydrateSession) return@runCatching
+                // Password is already changed on the server — don't fail the whole
+                // reset if local profile hydrate hiccups (e.g. offline / RLS).
+                runCatching { finalizeAuthenticatedSession() }
+                    .onFailure { err ->
+                        android.util.Log.w(
+                            "AuthRepo",
+                            "Password updated but session hydrate failed",
+                            err,
+                        )
+                    }
             }
 
         override suspend fun signOut(): Result<Unit> =
             runCatching {
+                // Push local PENDING rows while the session still has a token.
+                runCatching { syncInteractor.get().flushBeforeSignOut() }
+                // Drop in-flight persist callbacks before wipe (and before auth token is gone).
+                runCatching { syncInteractor.get().discardLocalWrites() }
                 supabase.auth.signOut()
+                lastProfileUpsertUserId = null
+                lastProfileUpsertAtMs = 0L
+                // Drop Room + media + user prefs so the next account cannot see leftovers.
+                localUserDataCleanup.clearAll()
             }
 
-        private suspend fun persistCurrentUser() {
-            val info = supabase.auth.currentUserOrNull() ?: return
+        override suspend fun signOutAllDevices(): Result<Unit> =
+            runCatching {
+                // Push local PENDING rows while the session still has a token.
+                runCatching { syncInteractor.get().flushBeforeSignOut() }
+                // Drop in-flight persist callbacks before wipe (and before auth token is gone).
+                runCatching { syncInteractor.get().discardLocalWrites() }
+                supabase.auth.signOut(SignOutScope.GLOBAL)
+                lastProfileUpsertUserId = null
+                lastProfileUpsertAtMs = 0L
+                // Drop Room + media + user prefs so the next account cannot see leftovers.
+                localUserDataCleanup.clearAll()
+            }
+
+        override suspend fun deleteOwnAccount(): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    check(supabase.auth.currentUserOrNull() != null) { "Not signed in." }
+                    runCatching {
+                        supabase.postgrest.rpc("delete_own_account")
+                    }.getOrElse { err ->
+                        throw AccountDeletionErrors.map(err)
+                    }
+                    withContext(NonCancellable) {
+                        lastProfileUpsertUserId = null
+                        lastProfileUpsertAtMs = 0L
+                        // RPC already banned the user and dropped sessions — signOut may fail.
+                        runCatching { supabase.auth.signOut() }
+                        runCatching { supabase.auth.clearSession() }
+                        localUserDataCleanup.clearAll()
+                    }
+                }
+            }.recoverCatching { err ->
+                throw AccountDeletionErrors.map(err)
+            }
+
+        override suspend fun deactivateOwnAccount(): Result<Unit> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    check(supabase.auth.currentUserOrNull() != null) { "Not signed in." }
+                    runCatching { syncInteractor.get().flushBeforeSignOut() }
+                    supabase.postgrest.rpc("deactivate_own_account")
+                    withContext(NonCancellable) {
+                        runCatching { syncInteractor.get().discardLocalWrites() }
+                        lastProfileUpsertUserId = null
+                        lastProfileUpsertAtMs = 0L
+                        // RPC already banned the user and dropped sessions — signOut may fail.
+                        runCatching { supabase.auth.signOut() }
+                        runCatching { supabase.auth.clearSession() }
+                        localUserDataCleanup.clearAll()
+                    }
+                }
+            }
+
+        override suspend fun updatePhone(countryCode: String, number: String): Result<Unit> =
+            runCatching {
+                val code = countryCode.trim().ifEmpty { "+91" }
+                val num = number.filter { it.isDigit() }
+                require(num.length in 7..15) { "Enter a valid phone number (7-15 digits)." }
+                val currentUser = supabase.auth.currentUserOrNull() ?: error("Not signed in.")
+
+                val isRegistered = supabase.postgrest.rpc(
+                    "auth_phone_registered",
+                    buildJsonObject {
+                        put("p_country_code", code)
+                        put("p_phone", num)
+                    },
+                ).decodeAs<Boolean>()
+
+                if (isRegistered) {
+                    error("Phone number is already registered.")
+                }
+
+                supabase.auth.updateUser {
+                    data = buildJsonObject {
+                        put("phone_country_code", code)
+                        put("phone_number", num)
+                    }
+                }
+                val existing = userRepository.getUserById(currentUser.id)
+                if (existing != null) {
+                    userRepository.upsert(
+                        existing.copy(
+                            phoneCountryCode = code,
+                            phoneNumber = num,
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+                persistCurrentUser(forceRemoteUpsert = true)
+            }
+
+        override suspend fun verifyCurrentPassword(password: String): Result<Unit> =
+            runCatching {
+                val currentEmail = supabase.auth.currentUserOrNull()?.email
+                    ?: error("Not signed in.")
+                val pass = password.trim()
+                require(pass.isNotEmpty()) { "Please enter your current password." }
+                withContext(Dispatchers.IO) {
+                    verifyPasswordWithoutReplacingSession(currentEmail, pass)
+                }
+            }
+
+        override suspend fun addSecondaryEmail(email: String, currentPassword: String?): Result<Unit> =
+            runCatching {
+                val trimmedEmail = email.trim().lowercase()
+                require(trimmedEmail.contains("@") && trimmedEmail.contains(".")) {
+                    "Please enter a valid email address."
+                }
+                val currentUser = supabase.auth.currentUserOrNull() ?: error("Not signed in.")
+                val isGoogleOnly = currentUser.identities?.let { list ->
+                    list.any { it.provider.equals("google", ignoreCase = true) } &&
+                        list.none { it.provider.equals("email", ignoreCase = true) }
+                } ?: false
+
+                if (!isGoogleOnly) {
+                    val pass = currentPassword?.trim().orEmpty()
+                    require(pass.isNotEmpty()) { "Please enter your current password." }
+                    verifyCurrentPassword(pass).getOrThrow()
+                }
+
+                callSecondaryEmailEdgeFunction("add", mapOf("email" to trimmedEmail))
+                bumpSecondaryEmails()
+            }
+
+        override suspend fun resendSecondaryEmail(id: String): Result<Unit> =
+            runCatching {
+                callSecondaryEmailEdgeFunction("resend", mapOf("id" to id))
+                bumpSecondaryEmails()
+            }
+
+        override suspend fun verifySecondaryEmail(id: String, code: String): Result<Unit> =
+            runCatching {
+                val trimmedCode = code.trim()
+                require(trimmedCode.length == 6) { "Enter a valid 6-digit code." }
+                callSecondaryEmailEdgeFunction("verify", mapOf("id" to id, "code" to trimmedCode))
+                bumpSecondaryEmails()
+            }
+
+        override suspend fun removeSecondaryEmail(id: String): Result<Unit> =
+            runCatching {
+                callSecondaryEmailEdgeFunction("remove", mapOf("id" to id))
+                bumpSecondaryEmails()
+            }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        override fun observeSecondaryEmails(): Flow<List<SecondaryEmail>> =
+            supabase.auth.sessionStatus.flatMapLatest { status ->
+                val userId = (status as? SessionStatus.Authenticated)?.session?.user?.id
+                if (userId == null) {
+                    flowOf(emptyList())
+                } else {
+                    secondaryEmailRevision.flatMapLatest {
+                        flow {
+                            val result: List<SecondaryEmail> = runCatching {
+                                supabase.postgrest.from("user_emails")
+                                    .select(SECONDARY_EMAIL_COLUMNS) {
+                                        filter {
+                                            eq("user_id", userId)
+                                        }
+                                    }
+                                    .decodeList<UserEmailDto>()
+                                    .map { it.toSecondaryEmail() }
+                            }.getOrDefault(emptyList())
+                            emit(result)
+                        }
+                    }
+                }
+            }
+
+        override suspend fun ensureLocalProfile(): Result<Unit> =
+            runCatching {
+                persistCurrentUser()
+                categoryRepository.ensureDefaults()
+                hydrateCloudData()
+            }
+
+        override suspend fun ensureOwnProfileSynced() {
+            val info =
+                supabase.auth.currentUserOrNull()
+                    ?: error("Not signed in.")
+            if (info.emailConfirmedAt == null) return
+            var local = userRepository.getUserById(info.id)
+            if (local == null || local.displayName.trim().isEmpty()) {
+                persistCurrentUser()
+                local = userRepository.getUserById(info.id)
+            }
+            val displayName =
+                local?.displayName?.trim()?.takeIf { it.isNotEmpty() && !it.equals("Member", ignoreCase = true) }
+                    ?: info.userMetadata?.stringMeta("display_name")?.takeIf { !it.equals("Member", ignoreCase = true) }
+                    ?: info.userMetadata?.stringMeta("full_name")?.takeIf { !it.equals("Member", ignoreCase = true) }
+                    ?: info.userMetadata?.stringMeta("name")?.takeIf { !it.equals("Member", ignoreCase = true) }
+                    ?: info.email?.substringBefore('@')
+                    ?: "User"
+            val email = local?.email ?: info.email.orEmpty()
+            val now = System.currentTimeMillis()
+            runCatching {
+                socialRemote.upsertProfile(
+                    ProfileDto(
+                        id = info.id,
+                        email = email,
+                        displayName = displayName,
+                        photoUrl = local?.photoUrl?.takeIf { it.isRemoteMediaUrl() }
+                            ?: info.userMetadata?.stringMeta("photo_url"),
+                        phoneCountryCode = local?.phoneCountryCode,
+                        phoneNumber = local?.phoneNumber,
+                        preferredCurrency = local?.preferredCurrency,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+            }
+        }
+
+        private suspend fun hydrateCloudData() {
+            val userId = supabase.auth.currentUserOrNull()?.id ?: return
+            runCatching { syncInteractor.get().syncForUser(userId) }
+        }
+
+        private suspend fun persistCurrentUser(forceRemoteUpsert: Boolean = false) {
+            persistUserMutex.withLock {
+                val info = supabase.auth.currentUserOrNull() ?: return
+                // Unverified accounts must not appear in public.profiles yet.
+                if (info.emailConfirmedAt == null) return
+                val now = System.currentTimeMillis()
+                if (
+                    !forceRemoteUpsert &&
+                    lastProfileUpsertUserId == info.id &&
+                    now - lastProfileUpsertAtMs < PROFILE_UPSERT_COALESCE_MS
+                ) {
+                    return
+                }
+                persistCurrentUserLocked(info)
+                lastProfileUpsertUserId = info.id
+                lastProfileUpsertAtMs = System.currentTimeMillis()
+            }
+        }
+
+        private suspend fun persistCurrentUserLocked(info: UserInfo) {
             val authUser = info.toAuthUser()
             val now = System.currentTimeMillis()
             val existing = userRepository.getUserById(authUser.userId)
+            val meta = info.userMetadata
+            val phoneCountryCode =
+                meta.stringMeta("phone_country_code") ?: existing?.phoneCountryCode
+            val phoneNumber = meta.stringMeta("phone_number") ?: existing?.phoneNumber
+            val preferredCurrency =
+                meta.stringMeta("preferred_currency") ?: existing?.preferredCurrency
+            val metaPhotoUrl =
+                meta.stringMeta("photo_url")
+                    ?: meta.stringMeta("avatar_url")
+                    ?: meta.stringMeta("picture")
+            val pendingPath = pendingSignupPhotoFile().takeIf { it.isFile }?.absolutePath
+            val sourcePhotoUrl =
+                resolveSignupPhotoSource(
+                    metaPhotoUrl = metaPhotoUrl,
+                    pendingPath = pendingPath,
+                    existingPhotoUrl = existing?.photoUrl,
+                    isOurAvatarUrl = ::isOurAvatarUrl,
+                )
+            val photoUrl = persistPhotoForCloud(authUser.userId, sourcePhotoUrl)
+            if (
+                pendingPath != null &&
+                (
+                    sourcePhotoUrl != pendingPath ||
+                        (photoUrl != null && photoUrl != pendingPath)
+                )
+            ) {
+                clearPendingSignupPhoto()
+            }
+            if (
+                photoUrl != null &&
+                photoUrl.isRemoteMediaUrl() &&
+                photoUrl != metaPhotoUrl
+            ) {
+                runCatching {
+                    supabase.auth.updateUser {
+                        data = buildJsonObject { put("photo_url", photoUrl) }
+                    }
+                }
+            }
+            // Invite stubs may already own this email under a different local id.
+            // Free the unique email index so the auth user row can be written.
+            releaseEmailForUser(authUser.userId, authUser.email)
             userRepository.upsert(
                 User(
                     id = authUser.userId,
                     email = authUser.email,
                     displayName = authUser.displayName,
-                    photoUrl = existing?.photoUrl,
+                    photoUrl = photoUrl,
+                    phoneCountryCode = phoneCountryCode,
+                    phoneNumber = phoneNumber,
+                    preferredCurrency = preferredCurrency,
                     remoteId = authUser.userId,
                     createdAtEpochMs = existing?.createdAtEpochMs ?: now,
                     updatedAtEpochMs = now,
                     syncStatus = SyncStatus.SYNCED,
                 ),
             )
+            runCatching {
+                socialRemote.upsertProfile(
+                    ProfileDto(
+                        id = authUser.userId,
+                        email = authUser.email,
+                        displayName = authUser.displayName,
+                        photoUrl =
+                            photoUrl?.takeIf { it.isRemoteMediaUrl() }
+                                ?: existing?.photoUrl?.takeIf { it.isRemoteMediaUrl() },
+                        phoneCountryCode = phoneCountryCode,
+                        phoneNumber = phoneNumber,
+                        preferredCurrency = preferredCurrency,
+                        updatedAtEpochMs = now,
+                    ),
+                )
+            }
+        }
+
+        private fun bumpSecondaryEmails() {
+            secondaryEmailRevision.update { it + 1 }
+        }
+
+        /**
+         * Checks the password with a one-off GoTrue token request, then revokes that
+         * extra session. The app's current session is left in place.
+         */
+        private fun verifyPasswordWithoutReplacingSession(email: String, password: String) {
+            val baseUrl = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
+            val anonKey = BuildConfig.SUPABASE_ANON_KEY.trim()
+            val connection = (URL("$baseUrl/auth/v1/token?grant_type=password").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 15_000
+                readTimeout = 30_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                if (anonKey.isNotEmpty()) {
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $anonKey")
+                }
+            }
+            val payload = JSONObject().apply {
+                put("email", email)
+                put("password", password)
+            }
+            try {
+                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                    writer.write(payload.toString())
+                }
+                val status = connection.responseCode
+                val responseText = runCatching {
+                    connection.inputStream?.bufferedReader()?.use { it.readText() }
+                }.getOrElse {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                } ?: ""
+                if (status !in 200..299) {
+                    throw IllegalArgumentException("That password isn't right.")
+                }
+                val accessToken = runCatching { JSONObject(responseText).optString("access_token") }
+                    .getOrNull()
+                    .orEmpty()
+                if (accessToken.isNotBlank()) {
+                    revokeAccessToken(baseUrl, anonKey, accessToken)
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        /**
+         * Revokes only the one-off password-check session.
+         *
+         * GoTrue defaults `POST /logout` to **global** scope when [scope] is omitted, which
+         * would invalidate the app's real session and make the next Edge Function call return
+         * `Unauthorized`. Always pass `scope=local`.
+         */
+        private fun revokeAccessToken(baseUrl: String, anonKey: String, accessToken: String) {
+            val connection =
+                (URL("$baseUrl/auth/v1/logout?scope=local").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 15_000
+                    readTimeout = 15_000
+                    setRequestProperty("Authorization", "Bearer $accessToken")
+                    if (anonKey.isNotEmpty()) {
+                        setRequestProperty("apikey", anonKey)
+                    }
+                }
+            try {
+                connection.responseCode
+            } catch (_: Exception) {
+                // The password was already accepted. A leftover verification session
+                // expires on its own if logout cannot be reached.
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        /**
+         * Moves any other local user off [email] so [userId] can claim the unique index.
+         */
+        private suspend fun releaseEmailForUser(
+            userId: String,
+            email: String,
+        ) {
+            val trimmed = email.trim()
+            if (trimmed.isEmpty()) return
+            val conflict = userRepository.getUserByEmail(trimmed) ?: return
+            if (conflict.id == userId) return
+            userRepository.upsert(
+                conflict.copy(
+                    email = "local+${conflict.id}@users.local",
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        /**
+         * Returns an https Storage URL when upload succeeds, otherwise a device-local path
+         * that this install can still decode.
+         *
+         * External https avatars (Google) are downloaded, compressed, and re-uploaded to
+         * `user-avatars` so we do not keep full-size third-party files on disk.
+         */
+        private suspend fun persistPhotoForCloud(
+            userId: String,
+            raw: String?,
+        ): String? {
+            val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            if (value.isRemoteMediaUrl() && isOurAvatarUrl(value)) {
+                runCatching { AvatarImageIO.cacheRemoteImage(appContext, value) }
+                return value
+            }
+            val localPath =
+                if (isExistingLocalJpeg(value)) {
+                    value
+                } else {
+                    runCatching { copyAvatarToInternalStorage(userId, value) }.getOrNull()
+                } ?: return value.takeIf { it.isRemoteMediaUrl() }
+            val uploaded =
+                runCatching { profilePhotoStorage.uploadPhoto(userId, localPath) }.getOrNull()
+                    ?: return localPath
+            AvatarImageIO.seedRemoteImageCache(appContext, uploaded, File(localPath))
+            return uploaded
+        }
+
+        private fun isOurAvatarUrl(url: String): Boolean =
+            StorageObjectPaths.objectPathFromPublicUrl(url, ProfilePhotoStorage.BUCKET) != null
+
+        private fun pendingSignupPhotoFile(): File =
+            File(File(appContext.filesDir, "avatars").apply { mkdirs() }, PENDING_SIGNUP_PHOTO_NAME)
+
+        /**
+         * Writes a 512px JPEG into [pendingSignupPhotoFile], or deletes a leftover pending
+         * file when [photoUri] is blank.
+         */
+        private fun persistPendingSignupPhoto(photoUri: String?) {
+            val dest = pendingSignupPhotoFile()
+            val uri = photoUri?.trim()?.takeIf { it.isNotEmpty() }
+            if (uri == null) {
+                runCatching { dest.delete() }
+                return
+            }
+            runCatching {
+                AvatarImageIO.copyScaledJpeg(
+                    context = appContext,
+                    photoUri = uri,
+                    destFile = dest,
+                    maxSidePx = AvatarImageIO.STORED_MAX_SIDE_PX,
+                    quality = AvatarImageIO.AVATAR_STORED_JPEG_QUALITY,
+                )
+            }.onFailure {
+                runCatching { dest.delete() }
+            }
+        }
+
+        private fun clearPendingSignupPhoto() {
+            runCatching { pendingSignupPhotoFile().delete() }
+        }
+
+        private fun isExistingLocalJpeg(path: String): Boolean {
+            if (path.startsWith("content:", ignoreCase = true)) return false
+            val filePath =
+                if (path.startsWith("file:", ignoreCase = true)) {
+                    android.net.Uri.parse(path).path
+                } else {
+                    path
+                }
+            return !filePath.isNullOrBlank() && File(filePath).isFile
+        }
+
+        private fun copyAvatarToInternalStorage(
+            userId: String,
+            photoUri: String,
+        ): String {
+            val dir = File(appContext.filesDir, "avatars").apply { mkdirs() }
+            // Unique path so observers and Compose remember() keys invalidate on replace.
+            val dest = File(dir, "${userId}_${System.currentTimeMillis()}.jpg")
+            val path =
+                AvatarImageIO.copyScaledJpeg(
+                    context = appContext,
+                    photoUri = photoUri,
+                    destFile = dest,
+                    maxSidePx = AvatarImageIO.STORED_MAX_SIDE_PX,
+                    quality = AvatarImageIO.AVATAR_STORED_JPEG_QUALITY,
+                )
+            LocalMediaCleanup.deleteUserAvatars(appContext, userId, keepNewest = 2)
+            return path
+        }
+
+        private suspend fun callSecondaryEmailEdgeFunction(
+            action: String,
+            params: Map<String, String>,
+        ) {
+            withContext(Dispatchers.IO) {
+                val session = supabase.auth.currentSessionOrNull()
+                    ?: (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
+                    ?: error("Not signed in.")
+                val accessToken = session.accessToken.takeIf { it.isNotBlank() }
+                    ?: error("Not signed in.")
+                val baseUrl = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
+                val anonKey = BuildConfig.SUPABASE_ANON_KEY.trim()
+                val url = URL("$baseUrl/functions/v1/secondary-email")
+
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 15_000
+                    readTimeout = 30_000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Authorization", "Bearer $accessToken")
+                    if (anonKey.isNotEmpty()) {
+                        setRequestProperty("apikey", anonKey)
+                    }
+                }
+
+                val payload = JSONObject().apply {
+                    put("action", action)
+                    params.forEach { (k, v) -> put(k, v) }
+                }
+
+                try {
+                    OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                        writer.write(payload.toString())
+                    }
+                    val status = connection.responseCode
+                    val responseText = runCatching {
+                        connection.inputStream?.bufferedReader()?.use { it.readText() }
+                    }.getOrElse {
+                        connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    } ?: ""
+                    val responseJson = runCatching { JSONObject(responseText) }.getOrNull()
+                    if (status !in 200..299) {
+                        val err = responseJson?.optString("error")?.takeIf { it.isNotBlank() }
+                            ?: responseJson?.optString("msg")?.takeIf { it.isNotBlank() }
+                            ?: "Secondary email operation failed."
+                        if (status == 401 || err.equals("Unauthorized", ignoreCase = true)) {
+                            error(SESSION_EXPIRED_MESSAGE)
+                        }
+                        error(err)
+                    }
+                } finally {
+                    connection.disconnect()
+                }
+            }
+        }
+
+        /**
+         * Ensures we send a non-blank, preferably refreshed access token to Edge Functions.
+         * Manual [HttpURLConnection] calls do not get supabase-kt's auto-refresh.
+         */
+        private suspend fun freshAccessTokenOrThrow(): String {
+            runCatching { supabase.auth.refreshCurrentSession() }
+            val session =
+                supabase.auth.currentSessionOrNull()
+                    ?: (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
+                    ?: error(SESSION_EXPIRED_MESSAGE)
+            return session.accessToken.takeIf { it.isNotBlank() }
+                ?: error(SESSION_EXPIRED_MESSAGE)
         }
     }
+
+@Serializable
+private data class UserEmailDto(
+    val id: String,
+    val email: String,
+    val verified_at: String? = null,
+    val created_at: String? = null,
+) {
+    fun toSecondaryEmail(): SecondaryEmail =
+        SecondaryEmail(
+            id = id,
+            email = email,
+            isVerified = verified_at != null,
+        )
+}
+
+private fun kotlinx.serialization.json.JsonObject?.stringMeta(key: String): String? =
+    this
+        ?.get(key)
+        ?.toString()
+        ?.trim('"')
+        ?.takeIf { it.isNotBlank() }
 
 private fun UserInfo.toAuthUser(): AuthUser {
     val emailValue = email.orEmpty()
     val metaName =
-        userMetadata
-            ?.get("display_name")
-            ?.toString()
-            ?.trim('"')
-            ?.takeIf { it.isNotBlank() }
+        userMetadata.stringMeta("display_name")
+            ?: userMetadata.stringMeta("full_name")
+            ?: userMetadata.stringMeta("name")
     val fallback = emailValue.substringBefore("@").ifBlank { "Friend" }
+    val googleOnly = identities?.let { list ->
+        list.any { it.provider.equals("google", ignoreCase = true) } &&
+            list.none { it.provider.equals("email", ignoreCase = true) }
+    } ?: false
     return AuthUser(
         userId = id,
         email = emailValue,
         displayName = metaName ?: fallback,
+        emailConfirmed = emailConfirmedAt != null,
+        isGoogleOnly = googleOnly,
     )
+}
+
+/**
+ * True when this session looks like the account's first sign-in (welcome mail).
+ */
+private fun UserInfo.isNewlyCreatedAccount(): Boolean {
+    val created = createdAt ?: return false
+    val lastSignIn = lastSignInAt ?: created
+    return kotlin.math.abs(created.epochSeconds - lastSignIn.epochSeconds) < 120
+}
+
+/**
+ * Chooses which photo to persist after signup OTP / Google sign-in.
+ *
+ * Our Storage URL always wins so we do not re-upload on every hydrate. A leftover
+ * pending JPEG must not replace Google's `picture` URL. Local pending files beat
+ * cache `file://` metadata leftovers from older builds.
+ */
+internal fun resolveSignupPhotoSource(
+    metaPhotoUrl: String?,
+    pendingPath: String?,
+    existingPhotoUrl: String?,
+    isOurAvatarUrl: (String) -> Boolean,
+): String? {
+    val meta = metaPhotoUrl?.trim()?.takeIf { it.isNotEmpty() }
+    val pending = pendingPath?.trim()?.takeIf { it.isNotEmpty() }
+    val existing = existingPhotoUrl?.trim()?.takeIf { it.isNotEmpty() }
+    return when {
+        meta != null && isOurAvatarUrl(meta) -> meta
+        pending != null && (meta == null || !meta.isRemoteMediaUrl()) -> pending
+        meta != null -> meta
+        pending != null -> pending
+        else -> existing
+    }
 }

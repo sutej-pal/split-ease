@@ -1,0 +1,457 @@
+package com.splitease.app.presentation.invite
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import com.splitease.app.presentation.theme.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.splitease.app.R
+import com.splitease.app.domain.model.InviteKind
+import com.splitease.app.domain.model.InvitePreview
+import com.splitease.app.domain.model.InvitePreviewMember
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeGroupIconTile
+import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SePrimaryButton
+import com.splitease.app.presentation.ui.SeSystemBars
+import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTopBar
+
+/**
+ * Deep-link landing: who invited you, group members, join as someone new.
+ */
+@Composable
+fun InviteLandingScreen(
+    token: String,
+    onJoinAsNew: () -> Unit,
+    onAlreadyHaveAccount: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: InviteJoinViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.onInviteToken(token)
+    }
+
+    InviteLandingContent(
+        uiState = uiState,
+        onJoinAsNew = onJoinAsNew,
+        onPendingMemberSelected = { member ->
+            viewModel.onPendingMemberSelected(member) { onJoinAsNew() }
+        },
+        onAlreadyHaveAccount = onAlreadyHaveAccount,
+        onDismiss = {
+            viewModel.dismissInvite()
+            onDismiss()
+        },
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun InviteLandingContent(
+    uiState: InviteJoinUiState,
+    onJoinAsNew: () -> Unit,
+    onPendingMemberSelected: (InvitePreviewMember) -> Unit,
+    onAlreadyHaveAccount: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg = SplitEaseColors.Background
+    val lightGlyphs = bg.luminance() > 0.5f
+
+    SeSystemBars(
+        statusBarColor = bg,
+        navigationBarColor = bg,
+        statusBarDarkIcons = lightGlyphs,
+        navigationBarDarkIcons = lightGlyphs,
+    )
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = bg,
+        topBar = {
+            SeTopBar(
+                title = "",
+                onBack = onDismiss,
+                containerColor = bg,
+            )
+        },
+    ) { padding ->
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = stringResource(R.string.app_name),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(72.dp),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SeHeadlineMedium(
+                    text = stringResource(R.string.app_name),
+                    color = SplitEaseColors.Primary,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = SplitEaseColors.Surface,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 2.dp,
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(SplitEaseColors.PrimarySoft)
+                                    .padding(vertical = 28.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val preview = uiState.preview
+                            val (icon, tint) = inviteHeroIcon(preview?.kind)
+                            SeGroupIconTile(
+                                photoUrl = preview?.groupPhotoUrl,
+                                fallbackIcon = icon,
+                                fallbackTint = tint,
+                                size = 64,
+                            )
+                        }
+
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            when {
+                                uiState.isLoading && uiState.preview == null -> {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 32.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+
+                                uiState.preview != null -> {
+                                    val preview = uiState.preview
+                                    InviteMessage(preview = preview)
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    SeTitleMedium(
+                                        text = stringResource(R.string.invite_select_name),
+                                        fontWeight = FontWeight.Bold,
+                                        color = SplitEaseColors.Navy,
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    if (preview.members.isEmpty()) {
+                                        SeBodyMedium(
+                                            text = stringResource(R.string.invite_members_empty),
+                                            color = SplitEaseColors.NavyMuted,
+                                        )
+                                    } else {
+                                        preview.members.forEachIndexed { index, member ->
+                                            InviteMemberRow(
+                                                member = member,
+                                                showDivider = index < preview.members.lastIndex,
+                                                onPendingMemberSelected = {
+                                                    onPendingMemberSelected(member)
+                                                },
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    SePrimaryButton(
+                                        text = stringResource(R.string.invite_join_as_new),
+                                        onClick = onJoinAsNew,
+                                        enabled = !uiState.isLoading,
+                                    )
+                                }
+
+                                else -> {
+                                    SeErrorText(
+                                        text =
+                                            uiState.errorMessage
+                                                ?: stringResource(R.string.invite_not_found),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (uiState.preview != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeTextButton(
+                        text = stringResource(R.string.invite_already_have_account),
+                        onClick = onAlreadyHaveAccount,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun inviteHeroIcon(kind: InviteKind?): Pair<ImageVector, Color> =
+    when (kind) {
+        InviteKind.FRIEND -> Icons.Filled.PersonAdd to SplitEaseColors.Primary
+        InviteKind.GROUP, null -> Icons.Filled.Group to SplitEaseColors.IconFriends
+    }
+
+@Composable
+private fun InviteMessage(preview: InvitePreview) {
+    val groupLabel = preview.groupName?.takeIf { it.isNotBlank() }
+    val inviterName = preview.inviterName?.trim()?.takeIf { it.isNotEmpty() }
+    if (inviterName == null) {
+        SeBodyLarge(
+            text =
+                if (groupLabel != null) {
+                    stringResource(R.string.invite_generic_group, groupLabel)
+                } else {
+                    stringResource(R.string.invite_generic_no_name)
+                },
+            color = SplitEaseColors.Navy,
+        )
+        return
+    }
+    val annotated =
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(inviterName)
+            }
+            append(" ")
+            append(stringResource(R.string.invite_has_invited_you))
+            if (groupLabel != null) {
+                append(" ")
+                append(stringResource(R.string.invite_to_group_prefix))
+                append(" ")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append("\"$groupLabel\"")
+                }
+            }
+            append(" ")
+            append(stringResource(R.string.invite_in_app_suffix))
+        }
+    SeBodyLarge(
+        text = annotated,
+        color = SplitEaseColors.Navy,
+    )
+}
+
+@Composable
+private fun InviteMemberRow(
+    member: InvitePreviewMember,
+    showDivider: Boolean,
+    onPendingMemberSelected: () -> Unit,
+) {
+    val initial =
+        member.displayName
+            .trim()
+            .firstOrNull()
+            ?.uppercaseChar()
+            ?.toString()
+            ?: "?"
+    val tappable = !member.alreadyJoined && !member.inviteToken.isNullOrBlank()
+    SeListRow(
+        title = member.displayName,
+        subtitle =
+            if (member.alreadyJoined) {
+                stringResource(R.string.invite_already_joined)
+            } else {
+                stringResource(R.string.invite_pending_member)
+            },
+        onClick = if (tappable) onPendingMemberSelected else null,
+        onClickLabel =
+            if (tappable) {
+                stringResource(R.string.invite_member_tap_label, member.displayName)
+            } else {
+                null
+            },
+        leading = {
+            Box(
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(SplitEaseColors.PrimarySoft),
+                contentAlignment = Alignment.Center,
+            ) {
+                SeTitleMedium(
+                    text = initial,
+                    color = SplitEaseColors.Primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        },
+        trailing =
+            when {
+                member.alreadyJoined -> {
+                    {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = SplitEaseColors.Positive,
+                        )
+                    }
+                }
+                tappable -> {
+                    {
+                        Icon(
+                            imageVector = Icons.Filled.ChevronRight,
+                            contentDescription = null,
+                            tint = SplitEaseColors.IconDefault,
+                        )
+                    }
+                }
+                else -> null
+            },
+        showDivider = showDivider,
+    )
+}
+
+@Preview(showBackground = true, heightDp = 720)
+@Composable
+private fun InviteLandingPreview() {
+    SePreview {
+        InviteLandingContent(
+            uiState =
+                InviteJoinUiState(
+                    token = "abc",
+                    preview =
+                        InvitePreview(
+                            token = "abc",
+                            kind = InviteKind.GROUP,
+                            email = "guest@example.com",
+                            inviterName = "Alex",
+                            groupName = "Roommates",
+                            members =
+                                listOf(
+                                    InvitePreviewMember("Alex", alreadyJoined = true),
+                                    InvitePreviewMember("Sam", alreadyJoined = true),
+                                ),
+                        ),
+                ),
+            onJoinAsNew = {},
+            onPendingMemberSelected = {},
+            onAlreadyHaveAccount = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 720, name = "No inviter name")
+@Composable
+private fun InviteLandingNoNamePreview() {
+    SePreview {
+        InviteLandingContent(
+            uiState =
+                InviteJoinUiState(
+                    token = "abc",
+                    preview =
+                        InvitePreview(
+                            token = "abc",
+                            kind = InviteKind.GROUP,
+                            email = "guest@example.com",
+                            inviterName = null,
+                            groupName = "Roommates",
+                        ),
+                ),
+            onJoinAsNew = {},
+            onPendingMemberSelected = {},
+            onAlreadyHaveAccount = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 720, name = "Pending member")
+@Composable
+private fun InviteLandingPendingMemberPreview() {
+    SePreview {
+        InviteLandingContent(
+            uiState =
+                InviteJoinUiState(
+                    token = "abc",
+                    preview =
+                        InvitePreview(
+                            token = "abc",
+                            kind = InviteKind.GROUP,
+                            email = "",
+                            inviterName = "Alex",
+                            groupName = "Roommates",
+                            members =
+                                listOf(
+                                    InvitePreviewMember("Alex", alreadyJoined = true),
+                                    InvitePreviewMember(
+                                        displayName = "Sam",
+                                        alreadyJoined = false,
+                                        inviteToken = "sam-token",
+                                    ),
+                                ),
+                        ),
+                ),
+            onJoinAsNew = {},
+            onPendingMemberSelected = {},
+            onAlreadyHaveAccount = {},
+            onDismiss = {},
+        )
+    }
+}

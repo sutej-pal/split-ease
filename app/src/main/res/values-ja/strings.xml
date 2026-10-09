@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="msg_group_export_share_failed">このCSVを共有できませんでした。</string>
+    <string name="ledger_not_synced">未同期</string>
+    <plurals name="group_member_count">
+        <item quantity="other">%1$d人</item>
+    </plurals>
+</resources>
