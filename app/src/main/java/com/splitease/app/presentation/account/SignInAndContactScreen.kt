@@ -90,7 +90,7 @@ fun SignInAndContactScreen(
             SeBodySmall(
                 text = stringResource(R.string.account_sign_in_contact_caption),
                 color = SplitEaseColors.NavyMuted,
-                modifier = Modifier.padding(horizontal = 20.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
             Spacer(modifier = Modifier.height(16.dp))
 

@@ -199,7 +199,7 @@ fun NonGroupExpensesScreen(
                                 item {
                                     SeEmptyState(
                                         message = stringResource(R.string.non_group_ledger_empty),
-                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        modifier = Modifier.padding(horizontal = 16.dp),
                                     )
                                 }
                             } else {
@@ -233,7 +233,7 @@ fun NonGroupExpensesScreen(
                                 Modifier
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
-                                    .padding(horizontal = 20.dp)
+                                    .padding(horizontal = 16.dp)
                                     .padding(bottom = bottomBarScrollPadding(includeFab = true)),
                         ) {
                             SeSectionHeader(text = stringResource(R.string.balances_title))

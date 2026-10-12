@@ -283,7 +283,7 @@ fun InviteJoinSignUpScreen(
                     Image(
                         painter = painterResource(R.drawable.ic_google),
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 },
             )

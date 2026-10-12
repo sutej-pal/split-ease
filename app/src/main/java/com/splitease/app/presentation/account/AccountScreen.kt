@@ -144,7 +144,7 @@ private fun AccountScreenContent(
                             end = padding.values.calculateEndPadding(layoutDirection),
                         )
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = bottomBarScrollPadding(includeFab = false)),
             ) {
                 Spacer(modifier = Modifier.height(16.dp))

@@ -143,7 +143,7 @@ fun AccountProfileSettingsScreen(
                     .fillMaxSize()
                     .padding(padding.values)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp),
         ) {
             AccountProfileHero(

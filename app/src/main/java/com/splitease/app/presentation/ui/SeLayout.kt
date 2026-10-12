@@ -25,7 +25,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
  */
 object SeLayout {
     /** Horizontal inset for form-style bodies (auth, settings). */
-    val screenHorizontal: Dp = 20.dp
+    val screenHorizontal: Dp = 16.dp
 
     /**
      * Canonical content margin for group-detail-style screens: Activity, Balances,

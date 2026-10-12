@@ -78,7 +78,7 @@ fun SettleSelectionScreen(
                         }
                     )
                     HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp),
                         color = SplitEaseColors.Outline
                     )
                 }

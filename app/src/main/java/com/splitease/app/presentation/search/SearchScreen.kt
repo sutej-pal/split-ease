@@ -48,7 +48,7 @@ fun SearchScreen(
                         viewModel.search(it)
                     },
                     label = stringResource(R.string.search_hint),
-                    modifier = Modifier.padding(horizontal = 20.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
                 if (results.isEmpty()) {
                     SeEmptyState(
@@ -58,7 +58,7 @@ fun SearchScreen(
                             } else {
                                 stringResource(R.string.search_no_results)
                             },
-                        modifier = Modifier.padding(horizontal = 20.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 } else {
                     LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {

@@ -127,7 +127,7 @@ private fun InviteLandingContent(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(

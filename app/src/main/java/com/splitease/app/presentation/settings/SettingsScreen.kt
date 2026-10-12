@@ -104,7 +104,7 @@ fun NotificationsSettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 24.dp),
             ) {
                 SeSectionHeader(text = stringResource(R.string.settings_notifications_section))
@@ -179,7 +179,7 @@ fun LanguageSettingsScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 16.dp),
             ) {
                 SeSectionHeader(text = stringResource(R.string.settings_language_section))
                 AppLocale.entries.forEachIndexed { index, locale ->
@@ -253,7 +253,7 @@ fun AppearanceSettingsScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 16.dp),
             ) {
                 SeSectionHeader(text = stringResource(R.string.settings_appearance_section))
                 ThemeMode.entries.forEachIndexed { index, mode ->
@@ -294,7 +294,7 @@ fun SecuritySettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 24.dp),
             ) {
                 Row(
@@ -439,7 +439,7 @@ fun CurrencySettingsScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 16.dp),
             ) {
                 SeBodyMedium(
                     text = stringResource(R.string.settings_currency_hint),

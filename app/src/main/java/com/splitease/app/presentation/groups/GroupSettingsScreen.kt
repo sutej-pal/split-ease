@@ -2,7 +2,6 @@ package com.splitease.app.presentation.groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
-import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,7 +41,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import com.splitease.app.presentation.theme.*
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,6 +69,11 @@ import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
+import com.splitease.app.presentation.theme.SeBodyMedium
+import com.splitease.app.presentation.theme.SeBodySmall
+import com.splitease.app.presentation.theme.SeHeadlineSmall
+import com.splitease.app.presentation.theme.SeLabelSmall
+import com.splitease.app.presentation.theme.SeTitleMedium
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
@@ -80,15 +82,11 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeListRow
-import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
-import com.splitease.app.presentation.ui.SeTextField
-import com.splitease.app.presentation.ui.SeTypeChip
-import com.splitease.app.presentation.ui.seEntityHeaderStyle
 import java.math.BigDecimal
 
 private data class SelectedGroupMember(
@@ -127,7 +125,6 @@ fun GroupSettingsScreen(
         .collectAsStateWithLifecycle()
     val groupBalance by remember(groupId) { balancesViewModel.observeGroupBalance(groupId) }
         .collectAsStateWithLifecycle()
-    var showEdit by rememberSaveable { mutableStateOf(false) }
     var showLeaveConfirm by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     var showSimplifyInfo by rememberSaveable { mutableStateOf(false) }
@@ -194,7 +191,7 @@ fun GroupSettingsScreen(
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                     SeSectionHeader(text = stringResource(R.string.group_settings_members_section))
                 }
                 SettingsActionRow(
@@ -779,7 +776,7 @@ private fun SettingsActionRow(
                             Modifier
                         },
                     )
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -830,7 +827,7 @@ private fun SettingsActionRow(
         if (showDivider) {
             HorizontalDivider(
                 color = SplitEaseColors.Outline,
-                modifier = Modifier.padding(horizontal = 20.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
     }
