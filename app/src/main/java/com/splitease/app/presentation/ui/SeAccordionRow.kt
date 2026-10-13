@@ -81,7 +81,7 @@ fun SeAccordionRow(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = SeLayout.screenHorizontal)
+                            .padding(horizontal = 16.dp)
                             .padding(bottom = 16.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(SplitEaseColors.Background)

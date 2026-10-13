@@ -214,6 +214,6 @@ tasks.register("newRelease") {
         writePlayWhatsNew(unreleasedBody)
         println("Release $nextName (build $nextCode) recorded. Previous was $currentName (build $currentCode).")
         println("Wrote Play Console What's new (${playWhatsNewFile.path}).")
-        println("Next: assemble/bundle the release, then commit version.properties, RELEASES.md, CHANGELOG.md, and play/whatsnew/en-US.txt.")
+        println("Next: assemble/bundle the release, then commit version.properties, RELEASES.md, CHANGELOG.md, and play/whats-new/en-US.txt.")
     }
 }

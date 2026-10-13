@@ -21,7 +21,6 @@ import com.splitease.app.R
 import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 
 @Composable
@@ -88,7 +87,7 @@ private fun MemberPickerRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SeAvatarBadge(name = name, photoUrl = photoUrl, size = 48.dp, borderWidth = 0.dp)

@@ -30,7 +30,6 @@ import com.splitease.app.R
 import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
 
@@ -110,7 +109,7 @@ fun SendReminderScreen(
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
                     textStyle =
                         MaterialTheme.typography.bodyLarge.copy(
                             color = SplitEaseColors.Navy,
@@ -122,14 +121,14 @@ fun SendReminderScreen(
                 if (bodyError) {
                     SeErrorText(
                         text = stringResource(R.string.msg_reminder_body_required),
-                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }
 
                 uiState.errorMessage?.let { msg ->
                     SeErrorText(
                         text = msg,
-                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }
 
@@ -138,7 +137,7 @@ fun SendReminderScreen(
                         Modifier
                             .fillMaxWidth()
                             .background(SplitEaseColors.SurfaceMuted)
-                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     SeBodyMedium(

@@ -35,7 +35,6 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInlineLoader
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import java.text.DateFormat
@@ -70,7 +69,7 @@ fun CurrencyConversionScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                 ) {
                     item {
                         ConversionWarning()
@@ -92,7 +91,7 @@ fun CurrencyConversionScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 20.dp),
+                            .padding(20.dp),
                 ) {
                     if (ui.error != null) {
                         SeErrorText(

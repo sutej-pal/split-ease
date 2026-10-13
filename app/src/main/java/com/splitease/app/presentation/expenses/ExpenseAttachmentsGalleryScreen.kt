@@ -55,7 +55,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeSystemBars
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -169,7 +168,7 @@ fun ExpenseAttachmentsGalleryScreen(
                     Modifier
                         .fillMaxWidth()
                         .background(Color.Black.copy(alpha = 0.92f))
-                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (attachments.size > 1) {

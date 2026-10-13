@@ -48,7 +48,6 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
@@ -158,7 +157,7 @@ fun AdjustSplitScreen(
                         Modifier
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
                 ) {
                     SplitIntro(tab = tab)
                     Spacer(modifier = Modifier.height(16.dp))
@@ -300,7 +299,7 @@ fun AdjustSplitScreen(
                 if (splitError != null) {
                     SeErrorText(
                         text = splitError,
-                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     )
                 }
             }
@@ -532,7 +531,7 @@ private fun SplitFooter(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SeTitleSmall(
@@ -588,7 +587,7 @@ private fun SplitFooter(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 SeTitleMedium(
@@ -634,7 +633,7 @@ private fun SplitFooter(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                 color = if (totalShares > 0) SplitEaseColors.Navy else SplitEaseColors.YouOwe,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
@@ -657,7 +656,7 @@ private fun FooterOfTotal(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SeTitleMedium(

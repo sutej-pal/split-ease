@@ -19,7 +19,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.expenses.LedgerEntryRow
 import com.splitease.app.presentation.ui.SeEmptyState
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextField
 
@@ -49,7 +48,7 @@ fun SearchScreen(
                         viewModel.search(it)
                     },
                     label = stringResource(R.string.search_hint),
-                    modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
                 if (results.isEmpty()) {
                     SeEmptyState(
@@ -59,7 +58,7 @@ fun SearchScreen(
                             } else {
                                 stringResource(R.string.search_no_results)
                             },
-                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 } else {
                     LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {

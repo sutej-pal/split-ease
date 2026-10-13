@@ -59,7 +59,6 @@ import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SeScreen
@@ -105,7 +104,7 @@ fun NotificationsSettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = SeLayout.screenHorizontal)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 24.dp),
             ) {
                 SeSectionHeader(text = stringResource(R.string.settings_notifications_section))
@@ -180,7 +179,7 @@ fun LanguageSettingsScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = SeLayout.screenHorizontal),
+                        .padding(horizontal = 16.dp),
             ) {
                 SeSectionHeader(text = stringResource(R.string.settings_language_section))
                 AppLocale.entries.forEachIndexed { index, locale ->
@@ -254,7 +253,7 @@ fun AppearanceSettingsScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = SeLayout.screenHorizontal),
+                        .padding(horizontal = 16.dp),
             ) {
                 SeSectionHeader(text = stringResource(R.string.settings_appearance_section))
                 ThemeMode.entries.forEachIndexed { index, mode ->
@@ -295,7 +294,7 @@ fun SecuritySettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = SeLayout.screenHorizontal)
+                        .padding(horizontal = 16.dp)
                         .padding(bottom = 24.dp),
             ) {
                 Row(
@@ -440,7 +439,7 @@ fun CurrencySettingsScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = SeLayout.screenHorizontal),
+                        .padding(horizontal = 16.dp),
             ) {
                 SeBodyMedium(
                     text = stringResource(R.string.settings_currency_hint),

@@ -26,7 +26,6 @@ import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SeLabelSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
 import java.math.BigDecimal
@@ -74,7 +73,7 @@ fun SettleSelectionScreen(
                         )
                     }
                     HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
+                        modifier = Modifier.padding(horizontal = 16.dp),
                         color = SplitEaseColors.Outline,
                     )
                 }
@@ -83,7 +82,7 @@ fun SettleSelectionScreen(
                     SeTextButton(
                         text = stringResource(R.string.action_more_options),
                         onClick = onNavigateMoreOptions,
-                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
@@ -105,7 +104,7 @@ private fun SuggestedSettleRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SeAvatarBadge(name = name, photoUrl = photoUrl, size = 48.dp, borderWidth = 0.dp)

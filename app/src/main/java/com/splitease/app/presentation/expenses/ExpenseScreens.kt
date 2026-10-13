@@ -92,7 +92,6 @@ import com.splitease.app.presentation.ads.SeBannerAdSize
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
@@ -621,7 +620,7 @@ fun AddExpenseScreen(
                             .fillMaxWidth()
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
                 ) {
                 Row(
                     modifier =
@@ -834,7 +833,7 @@ fun AddExpenseScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth(),
-                        horizontalPadding = SeLayout.screenHorizontal,
+                        horizontalPadding = 20.dp,
                         size = SeBannerAdSize.Inline(maxHeightDp = 100),
                         showBottomDivider = false,
                     )
@@ -1488,7 +1487,7 @@ private fun AddExpenseScreenPreview() {
                                 .fillMaxWidth()
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1579,7 +1578,7 @@ private fun AddExpenseScreenPreview() {
                         modifier =
                             Modifier
                                 .fillMaxWidth(),
-                        horizontalPadding = SeLayout.screenHorizontal,
+                        horizontalPadding = 20.dp,
                         size = SeBannerAdSize.Inline(maxHeightDp = 100),
                         showBottomDivider = false,
                     )

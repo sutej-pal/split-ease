@@ -46,7 +46,6 @@ import com.splitease.app.presentation.ui.DialCodePickerDialog
 import com.splitease.app.presentation.ui.PhoneNumberRow
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -158,7 +157,7 @@ fun InviteJoinSignUpScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = SeLayout.screenHorizontal)
+                    .padding(horizontal = 24.dp)
                     .padding(top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start,

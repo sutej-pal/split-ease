@@ -61,7 +61,6 @@ import com.splitease.app.presentation.theme.SeTitleSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
@@ -156,7 +155,7 @@ fun SettleUpScreen(
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = SeLayout.screenHorizontal),
+                            .padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Spacer(modifier = Modifier.height(28.dp))
@@ -287,7 +286,7 @@ fun SettleUpScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
                 )
             }
         },

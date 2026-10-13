@@ -64,7 +64,6 @@ import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeListRowLabelStyle
 import com.splitease.app.presentation.ui.SeScreen
@@ -144,7 +143,7 @@ fun AccountProfileSettingsScreen(
                     .fillMaxSize()
                     .padding(padding.values)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = SeLayout.screenHorizontal)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp),
         ) {
             AccountProfileHero(

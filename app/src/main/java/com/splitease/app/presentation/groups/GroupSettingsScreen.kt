@@ -81,7 +81,6 @@ import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeInfoText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
@@ -192,7 +191,7 @@ fun GroupSettingsScreen(
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                     SeSectionHeader(text = stringResource(R.string.group_settings_members_section))
                 }
                 SettingsActionRow(
@@ -347,7 +346,7 @@ fun GroupSettingsScreen(
                 HorizontalDivider(color = SplitEaseColors.Outline)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                     SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
                 }
 
@@ -360,7 +359,7 @@ fun GroupSettingsScreen(
                 SeBodyMedium(
                     text = stringResource(R.string.group_settings_simplify_body),
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 58.dp, end = SeLayout.screenHorizontal, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 4.dp),
                 )
                 SeTextButton(
                     text = stringResource(R.string.action_learn_more),
@@ -378,7 +377,7 @@ fun GroupSettingsScreen(
                 SeBodyMedium(
                     text = stringResource(R.string.group_settings_mute_body),
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 58.dp, end = SeLayout.screenHorizontal, bottom = 12.dp),
+                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
                 )
 
                 SettingsActionRow(
@@ -391,7 +390,7 @@ fun GroupSettingsScreen(
                 SeBodyMedium(
                     text = stringResource(R.string.group_settings_default_split_body),
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 58.dp, end = SeLayout.screenHorizontal, bottom = 12.dp),
+                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
                 )
 
                 SettingsActionRow(
@@ -413,13 +412,13 @@ fun GroupSettingsScreen(
                 }
 
                 uiState.errorMessage?.let {
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                         Spacer(modifier = Modifier.height(12.dp))
                         SeErrorText(it)
                     }
                 }
                 uiState.infoMessage?.let {
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                         Spacer(modifier = Modifier.height(12.dp))
                         SeInfoText(it)
                     }
@@ -537,7 +536,7 @@ private fun GroupMemberActionsSheet(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = SeLayout.screenHorizontal)
+                .padding(horizontal = 20.dp)
                 .padding(bottom = 28.dp),
     ) {
         Row(
@@ -645,7 +644,7 @@ private fun MemberSheetActionRow(
         if (showDivider) {
             HorizontalDivider(
                 color = SplitEaseColors.Outline,
-                modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
+                modifier = Modifier.padding(horizontal = 20.dp),
             )
         }
     }
@@ -713,7 +712,7 @@ private fun GroupSettingsHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -777,7 +776,7 @@ private fun SettingsActionRow(
                             Modifier
                         },
                     )
-                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -828,7 +827,7 @@ private fun SettingsActionRow(
         if (showDivider) {
             HorizontalDivider(
                 color = SplitEaseColors.Outline,
-                modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
     }
@@ -845,7 +844,7 @@ private fun SettingsToggleRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = SeLayout.screenHorizontal, vertical = 10.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = SplitEaseColors.IconDefault, modifier = Modifier.size(24.dp))

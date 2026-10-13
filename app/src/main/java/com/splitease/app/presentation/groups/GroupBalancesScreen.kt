@@ -315,7 +315,7 @@ private fun RemindOptionsSheet(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = SeLayout.screenHorizontal)
+                .padding(horizontal = 20.dp)
                 .padding(bottom = 28.dp),
     ) {
         SeTitleLarge(

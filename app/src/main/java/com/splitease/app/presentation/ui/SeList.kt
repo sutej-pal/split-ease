@@ -422,7 +422,7 @@ fun SeListRow(
                             Modifier
                         },
                     )
-                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (leading != null) {

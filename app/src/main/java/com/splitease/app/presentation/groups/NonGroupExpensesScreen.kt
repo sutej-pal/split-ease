@@ -66,7 +66,6 @@ import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeInfoText
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeSystemBars
@@ -200,7 +199,7 @@ fun NonGroupExpensesScreen(
                                 item {
                                     SeEmptyState(
                                         message = stringResource(R.string.non_group_ledger_empty),
-                                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
+                                        modifier = Modifier.padding(horizontal = 16.dp),
                                     )
                                 }
                             } else {
@@ -209,13 +208,13 @@ fun NonGroupExpensesScreen(
                             expensesUi.errorMessage?.let { msg ->
                                 item {
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    SeErrorText(msg, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal))
+                                    SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp))
                                 }
                             }
                             expensesUi.infoMessage?.let { msg ->
                                 item {
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    SeInfoText(msg, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal))
+                                    SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp))
                                 }
                             }
                         }
@@ -234,7 +233,7 @@ fun NonGroupExpensesScreen(
                                 Modifier
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
-                                    .padding(horizontal = SeLayout.screenHorizontal)
+                                    .padding(horizontal = 16.dp)
                                     .padding(bottom = bottomBarScrollPadding(includeFab = true)),
                         ) {
                             SeSectionHeader(text = stringResource(R.string.balances_title))
@@ -340,7 +339,7 @@ private fun NonGroupDetailBanner(
                 Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = SeLayout.screenHorizontal)
+                    .padding(horizontal = 16.dp)
                     .padding(top = 8.dp, bottom = 20.dp),
         ) {
             Row(

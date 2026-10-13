@@ -88,7 +88,6 @@ import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeHeroBalancePair
 import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
@@ -265,7 +264,7 @@ private fun GroupsHomeScreenContent(
                     ),
             ) {
                     item {
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                             Crossfade(
                                 targetState = ui.syncState == SyncState.FAILED,
                                 label = "groups-hero-balances",
@@ -300,7 +299,7 @@ private fun GroupsHomeScreenContent(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 48.dp),
+                                    .padding(horizontal = 16.dp, vertical = 48.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 CircularProgressIndicator(
@@ -311,7 +310,7 @@ private fun GroupsHomeScreenContent(
                     } else {
                         if (ui.allGroups.isEmpty() && !showNonGroup) {
                             item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                                     SeEmptyState(
                                         message = stringResource(R.string.groups_empty_home),
                                         actionLabel = stringResource(R.string.action_create_group),
@@ -351,7 +350,7 @@ private fun GroupsHomeScreenContent(
 
                         if (hiddenSettledCount > 0) {
                             item {
-                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     SeBodySmall(
                                         text = stringResource(R.string.groups_hiding_settled),
@@ -371,7 +370,7 @@ private fun GroupsHomeScreenContent(
                             }
                         } else if (canHideSettled) {
                             item {
-                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
+                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     SeTextButton(
                                         text = stringResource(R.string.groups_hide_settled),
@@ -533,7 +532,7 @@ private fun GroupBalanceListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeGroupIconTile(
@@ -587,7 +586,7 @@ private fun NonGroupListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeIconTile(
