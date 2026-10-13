@@ -54,6 +54,7 @@ import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
@@ -144,7 +145,7 @@ private fun AccountScreenContent(
                             end = padding.values.calculateEndPadding(layoutDirection),
                         )
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = SeLayout.screenHorizontal)
                         .padding(bottom = bottomBarScrollPadding(includeFab = false)),
             ) {
                 Spacer(modifier = Modifier.height(16.dp))

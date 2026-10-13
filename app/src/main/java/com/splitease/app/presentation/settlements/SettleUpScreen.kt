@@ -1,11 +1,11 @@
 package com.splitease.app.presentation.settlements
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,11 +27,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,16 +53,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.domain.payment.PayActionKind
 import com.splitease.app.domain.payment.PaymentDeepLinks
-import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.theme.SeBodyLarge
+import com.splitease.app.presentation.theme.SeBodyMedium
+import com.splitease.app.presentation.theme.SeBodySmall
+import com.splitease.app.presentation.theme.SeTitleLarge
+import com.splitease.app.presentation.theme.SeTitleSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import java.math.BigDecimal
 import java.util.Currency
-import java.util.Locale
 
 @Composable
 fun SettleUpScreen(
@@ -81,9 +83,9 @@ fun SettleUpScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val me by viewModel.currentUserId.collectAsStateWithLifecycle()
     var amount by rememberSaveable { mutableStateOf(amountPrefill) }
-    var note by rememberSaveable { mutableStateOf("") }
-    var showValidation by rememberSaveable { mutableStateOf(false) }
-    val iAmPaying = me != null && me == fromUserId
+    val note by rememberSaveable { mutableStateOf("") }
+    var showValidation by rememberSaveable { mutableStateOf(value = false) }
+    val iAmPaying = (me != null) && (me == fromUserId)
     val context = LocalContext.current
     val payActions = PaymentDeepLinks.actionsForCurrency(currencyCode)
     val youLabel = stringResource(R.string.you_label)
@@ -120,23 +122,23 @@ fun SettleUpScreen(
 
     val payer = uiState.payer
     val payee = uiState.payee
-    val payerName = payer?.displayName?.takeUnless { it.equals(youLabel, true) } ?: counterpartyLabel
-    val payeeName = payee?.displayName?.takeUnless { it.equals(youLabel, true) } ?: counterpartyLabel
+    val payerName = payer?.displayName?.takeUnless { it.equals(youLabel, ignoreCase = true) } ?: counterpartyLabel
+    val payeeName = payee?.displayName?.takeUnless { it.equals(youLabel, ignoreCase = true) } ?: counterpartyLabel
     val subtitleEmail =
         when {
-            me != null && me == toUserId -> payer?.email
-            me != null && me == fromUserId -> payee?.email
+            (me != null) && (me == toUserId) -> payer?.email
+            (me != null) && (me == fromUserId) -> payee?.email
             else -> null // For custom payer-recipient, don't crowd with email? Or show both?
         }
-    
-    val nameLabel = 
+
+    val nameLabel =
         when {
-            me != null && me == toUserId -> payerName
-            me != null && me == fromUserId -> payeeName
+            (me != null) && (me == toUserId) -> payerName
+            (me != null) && (me == fromUserId) -> payeeName
             else -> null
         }
-    
-    val recordLabel = if (nameLabel != null) stringResource(R.string.settle_record_label, nameLabel) else null
+
+    val recordLabel = nameLabel?.let { stringResource(R.string.settle_record_label, it) }
 
     SeScreen(
         title = stringResource(R.string.settle_record_title),
@@ -154,7 +156,7 @@ fun SettleUpScreen(
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 24.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Spacer(modifier = Modifier.height(28.dp))
@@ -185,9 +187,9 @@ fun SettleUpScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(28.dp))
-                    if (recordLabel != null) {
+                    recordLabel?.let { label ->
                         SeBodyLarge(
-                            text = recordLabel,
+                            text = label,
                             color = SplitEaseColors.Navy,
                             textAlign = TextAlign.Center,
                         )
@@ -238,7 +240,7 @@ fun SettleUpScreen(
                                     showValidation = true
                                     val parsed =
                                         runCatching { BigDecimal(amount.trim()) }.getOrNull()
-                                    if (parsed == null || parsed <= BigDecimal.ZERO) {
+                                    if ((parsed == null) || (parsed <= BigDecimal.ZERO)) {
                                         return@SeOutlinedButton
                                     }
                                     launchPayAction(
@@ -285,7 +287,7 @@ fun SettleUpScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
                 )
             }
         },
@@ -302,12 +304,12 @@ private fun SettleAmountEditor(
     errorText: String? = null,
 ) {
     val configuration = LocalConfiguration.current
-    val locale = configuration.locales.get(0)
+    val locale = configuration.locales[0]
     val symbol =
         runCatching {
             Currency.getInstance(currencyCode.ifBlank { "INR" }).getSymbol(locale)
         }.getOrElse { currencyCode.ifBlank { "₹" } }
-    
+
     val textStyle =
         MaterialTheme.typography.displayLarge.copy(
             color = if (isError) MaterialTheme.colorScheme.error else SplitEaseColors.Navy,
@@ -317,14 +319,14 @@ private fun SettleAmountEditor(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .background(SplitEaseColors.SurfaceMuted, RoundedCornerShape(12.dp))
                 .border(1.dp, SplitEaseColors.OutlineStrong, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             SeTitleLarge(
                 text = symbol,
@@ -393,7 +395,7 @@ private fun SettleOutsideInfoBanner() {
 }
 
 private fun launchPayAction(
-    context: android.content.Context,
+    context: Context,
     kind: PayActionKind,
     amount: BigDecimal,
     currencyCode: String,

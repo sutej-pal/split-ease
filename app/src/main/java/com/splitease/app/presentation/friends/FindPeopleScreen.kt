@@ -53,6 +53,7 @@ import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextField
@@ -166,7 +167,7 @@ fun FindPeopleScreen(
                     placeholder = stringResource(R.string.find_people_search_hint),
                     modifier =
                         Modifier
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
                     leadingIcon = {
                         Icon(
                             Icons.Filled.Search,
@@ -190,26 +191,26 @@ fun FindPeopleScreen(
 
             uiState.errorMessage?.let { msg ->
                 item {
-                    SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+                    SeErrorText(msg, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 4.dp))
                 }
             }
             uiState.infoMessage?.let { msg ->
                 item {
-                    SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+                    SeInfoText(msg, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 4.dp))
                 }
             }
 
             item {
                 SeSectionHeader(
                     text = stringResource(R.string.find_people_friends_section),
-                    modifier = Modifier.padding(horizontal = 20.dp),
+                    modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
                 )
             }
             if (filteredFriends.isEmpty()) {
                 item {
                     SeBodyMedium(
                         text = stringResource(R.string.find_people_no_friends),
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
                     )
                 }
             } else {
@@ -242,13 +243,13 @@ fun FindPeopleScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 SeSectionHeader(
                     text = stringResource(R.string.find_people_contacts_section),
-                    modifier = Modifier.padding(horizontal = 20.dp),
+                    modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
                 )
             }
             when {
                 !uiState.contactsPermissionGranted -> {
                     item {
-                        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        Column(modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp)) {
                             SeBodyMedium(
                                 text = stringResource(R.string.find_people_contacts_permission),
                             )
@@ -266,7 +267,7 @@ fun FindPeopleScreen(
                     item {
                         SeBodyMedium(
                             text = stringResource(R.string.find_people_loading_contacts),
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
                         )
                     }
                 }
@@ -274,7 +275,7 @@ fun FindPeopleScreen(
                     item {
                         SeBodyMedium(
                             text = stringResource(R.string.find_people_no_contacts),
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
                         )
                     }
                 }
@@ -304,7 +305,7 @@ private fun FindPeopleActionTile(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SeIconTile(
@@ -335,7 +336,7 @@ private fun FriendPickRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SeAvatarBadge(
@@ -394,7 +395,7 @@ private fun ContactPickRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SeIconTile(Icons.Filled.Phone, SplitEaseColors.IconOther, size = 48)

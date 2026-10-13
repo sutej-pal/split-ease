@@ -383,7 +383,7 @@ fun SeLedgerRow(
     }
 }
 
-/** How [SeListRow] lays out [title] and [subtitle]. */
+/** How [SeListRow] lays out `title` and `subtitle`. */
 enum class SeListRowLabelStyle {
     /** Bold title over muted subtitle (navigation lists). */
     Navigation,
@@ -422,7 +422,7 @@ fun SeListRow(
                             Modifier
                         },
                     )
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (leading != null) {

@@ -43,6 +43,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeTopBar
 import com.splitease.app.presentation.ui.SeTopBarActionButton
@@ -105,7 +106,7 @@ fun ReviewFriendsScreen(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
             ) {
                 SePrimaryButton(
                     text = stringResource(R.string.action_add_friends),
@@ -135,7 +136,7 @@ fun ReviewFriendsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 SeBodyMedium(
                     text = stringResource(R.string.review_friends_hint),
-                    modifier = Modifier.padding(horizontal = 20.dp),
+                    modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
                 )
             }
 
@@ -143,7 +144,7 @@ fun ReviewFriendsScreen(
                 item {
                     SeErrorText(
                         msg,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
                     )
                 }
             }
@@ -162,7 +163,7 @@ private fun ReviewFriendRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.size(48.dp)) {

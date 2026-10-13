@@ -35,6 +35,7 @@ class BalancesViewModel
         private val groupBalanceFlows = ConcurrentHashMap<String, StateFlow<GroupBalanceUi?>>()
         private val friendBalanceFlows = ConcurrentHashMap<String, StateFlow<FriendBalanceUi?>>()
 
+        @Suppress("unused")
         @OptIn(ExperimentalCoroutinesApi::class)
         val overall: StateFlow<OverallBalancesUi?> =
             userId

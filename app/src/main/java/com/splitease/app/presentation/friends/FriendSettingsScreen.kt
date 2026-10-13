@@ -58,6 +58,7 @@ import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
@@ -112,7 +113,7 @@ fun FriendSettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = SeLayout.screenHorizontal)
                         .padding(bottom = 24.dp),
             ) {
                 FriendSettingsHeader(friend = friend, photoUrl = photoUrl)

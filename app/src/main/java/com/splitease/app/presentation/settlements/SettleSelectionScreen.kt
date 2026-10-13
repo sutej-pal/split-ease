@@ -1,21 +1,16 @@
 package com.splitease.app.presentation.settlements
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,11 +22,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
+import com.splitease.app.presentation.theme.SeBodyLarge
+import com.splitease.app.presentation.theme.SeLabelSmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
-import com.splitease.app.presentation.ui.seDetailHorizontal
 import java.math.BigDecimal
 
 @Composable
@@ -60,26 +57,25 @@ fun SettleSelectionScreen(
                     val isIOWe = debt.fromUserId == me
                     val otherLabel = if (isIOWe) debt.toLabel else debt.fromLabel
                     val otherPhoto = if (isIOWe) debt.toPhotoUrl else debt.fromPhotoUrl
-                    
+
                     SuggestedSettleRow(
                         name = otherLabel,
                         photoUrl = otherPhoto,
                         amount = debt.amount,
                         currencyCode = debt.currencyCode,
                         isIOwe = isIOWe,
-                        onClick = {
-                            onNavigateRecord(
-                                debt.fromUserId,
-                                debt.toUserId,
-                                debt.amount.toPlainString(),
-                                debt.currencyCode,
-                                otherLabel
-                            )
-                        }
-                    )
+                    ) {
+                        onNavigateRecord(
+                            debt.fromUserId,
+                            debt.toUserId,
+                            debt.amount.toPlainString(),
+                            debt.currencyCode,
+                            otherLabel,
+                        )
+                    }
                     HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = SplitEaseColors.Outline
+                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
+                        color = SplitEaseColors.Outline,
                     )
                 }
 
@@ -87,7 +83,7 @@ fun SettleSelectionScreen(
                     SeTextButton(
                         text = stringResource(R.string.action_more_options),
                         onClick = onNavigateMoreOptions,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
                     )
                 }
             }
@@ -109,7 +105,7 @@ private fun SuggestedSettleRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SeAvatarBadge(name = name, photoUrl = photoUrl, size = 48.dp, borderWidth = 0.dp)
@@ -117,17 +113,17 @@ private fun SuggestedSettleRow(
         SeBodyLarge(
             text = name,
             color = SplitEaseColors.Navy,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         )
         Column(horizontalAlignment = Alignment.End) {
             SeLabelSmall(
                 text = if (isIOwe) stringResource(R.string.balances_you_owe_plain) else stringResource(R.string.balances_you_are_owed_plain),
-                color = if (isIOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou
+                color = if (isIOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou,
             )
             SeBodyLarge(
                 text = MoneyFormat.format(amount, currencyCode),
                 fontWeight = FontWeight.Bold,
-                color = if (isIOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou
+                color = if (isIOwe) SplitEaseColors.YouOwe else SplitEaseColors.OwedToYou,
             )
         }
     }

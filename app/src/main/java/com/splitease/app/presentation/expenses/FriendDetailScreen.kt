@@ -72,6 +72,7 @@ import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeActionChip
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMixedCurrencyBanner
 import com.splitease.app.presentation.ui.SeSystemBars
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
@@ -162,7 +163,7 @@ fun FriendDetailScreen(
                     SeMixedCurrencyBanner(
                         targetCurrency = userCurrency,
                         onConvert = { onNavigateConvert(friendUserId) },
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp)
                     )
                 }
             }
@@ -176,7 +177,7 @@ fun FriendDetailScreen(
             }
             uiState.errorMessage?.let { msg ->
                 item {
-                    SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                    SeErrorText(msg, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp))
                 }
             }
             if (ledger.isEmpty()) {
@@ -185,7 +186,7 @@ fun FriendDetailScreen(
                 ledgerEntries(
                     ledger,
                     onExpenseClick = onOpenExpense,
-                    horizontalPadding = 20.dp,
+                    horizontalPadding = SeLayout.screenHorizontal,
                 )
             }
         }
@@ -228,7 +229,7 @@ private fun FriendDetailBanner(
                 Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = SeLayout.screenHorizontal)
                     .padding(top = 8.dp, bottom = 48.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -257,7 +258,7 @@ private fun FriendDetailHeader(
             Modifier
                 .fillMaxWidth()
                 .offset(y = (-40).dp)
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = SeLayout.screenHorizontal),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -445,7 +446,7 @@ private fun FriendDetailActions(
                 .fillMaxWidth()
                 .then(if (!hasMixed) Modifier.offset(y = (-28).dp) else Modifier.padding(top = 8.dp, bottom = 4.dp))
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = SeLayout.screenHorizontal),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SeActionChip(

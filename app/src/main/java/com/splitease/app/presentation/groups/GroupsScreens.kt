@@ -189,7 +189,7 @@ fun CreateGroupScreen(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) { focusManager.clearFocus() }
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -554,7 +554,7 @@ fun GroupDetailScreen(
 
                 if (isSolo && ledger.isEmpty()) {
                     item {
-                        Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        Box(modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal)) {
                             GroupSoloEmptyState(
                                 onAddMembers = onOpenSettings,
                                 onShareLink = {
@@ -567,7 +567,7 @@ fun GroupDetailScreen(
                     item {
                         SeEmptyState(
                             message = stringResource(R.string.ledger_empty),
-                            modifier = Modifier.padding(horizontal = 20.dp),
+                            modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
                         )
                     }
                 } else if (iAmSettled && !showSettledExpenses) {
@@ -587,7 +587,7 @@ fun GroupDetailScreen(
                                     Modifier
                                         .fillMaxWidth()
                                         .clickable { showSettledExpenses = false }
-                                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
                             )
                         }
                     }
@@ -602,13 +602,13 @@ fun GroupDetailScreen(
                 (expensesUi.errorMessage ?: uiState.errorMessage)?.let { msg ->
                     item {
                         Spacer(modifier = Modifier.height(12.dp))
-                        SeErrorText(msg, modifier = Modifier.padding(horizontal = 20.dp))
+                        SeErrorText(msg, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal))
                     }
                 }
                 (expensesUi.infoMessage ?: uiState.infoMessage)?.let { msg ->
                     item {
                         Spacer(modifier = Modifier.height(12.dp))
-                        SeInfoText(msg, modifier = Modifier.padding(horizontal = 20.dp))
+                        SeInfoText(msg, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal))
                     }
                 }
                 item { Spacer(modifier = Modifier.height(88.dp)) }
@@ -666,7 +666,7 @@ private fun GroupDetailBanner(
                 Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp)
                     .align(Alignment.TopCenter),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -698,7 +698,7 @@ private fun GroupDetailBanner(
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(horizontal = 16.dp, vertical = expandedTitleBottomPad)
+                    .padding(horizontal = SeLayout.screenHorizontal, vertical = expandedTitleBottomPad)
                     .fillMaxWidth()
                     .graphicsLayer { alpha = expandedTitleAlpha }
                     .then(

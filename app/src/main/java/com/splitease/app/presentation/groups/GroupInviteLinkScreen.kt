@@ -58,6 +58,7 @@ import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeLottieOnce
 import com.splitease.app.presentation.ui.SeScreen
 
@@ -127,7 +128,7 @@ fun GroupInviteLinkScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal),
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
                     SeBodyLarge(
@@ -193,7 +194,7 @@ fun GroupInviteLinkScreen(
                 )
 
                 uiState.errorMessage?.let {
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                         Spacer(modifier = Modifier.height(16.dp))
                         SeErrorText(it)
                     }
@@ -235,7 +236,7 @@ private fun InviteLinkCopyRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
     ) { isCopied ->
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -292,7 +293,7 @@ private fun InviteLinkActionRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isLoading) {

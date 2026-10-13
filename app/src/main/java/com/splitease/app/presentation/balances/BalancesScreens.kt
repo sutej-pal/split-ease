@@ -7,10 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -20,9 +17,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
+import com.splitease.app.presentation.theme.SeBodyMedium
+import com.splitease.app.presentation.theme.SeTitleMedium
+import com.splitease.app.presentation.theme.SeTitleSmall
+import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
-import com.splitease.app.presentation.theme.*
 import java.math.BigDecimal
 
 @Composable
@@ -32,12 +32,10 @@ fun GroupBalanceHeader(
     viewModel: BalancesViewModel = hiltViewModel(),
 ) {
     val observed =
-        if (groupId != null) {
-            remember(groupId) { viewModel.observeGroupBalance(groupId) }
+        groupId?.let { id ->
+            remember(id) { viewModel.observeGroupBalance(id) }
                 .collectAsStateWithLifecycle()
                 .value
-        } else {
-            null
         }
     val resolved = balance ?: observed
     Box(

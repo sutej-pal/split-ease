@@ -52,6 +52,7 @@ import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeLineSkeleton
@@ -121,7 +122,7 @@ private fun DeleteAccountContent(
                     .fillMaxSize()
                     .padding(padding.values)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = SeLayout.screenHorizontal)
                     .padding(bottom = 24.dp),
         ) {
             SeBodyLarge(
@@ -203,7 +204,7 @@ private fun DeleteAccountContent(
                                             }
                                         },
                                     )
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             SeIconTile(
@@ -229,7 +230,7 @@ private fun DeleteAccountContent(
                             HorizontalDivider(
                                 thickness = 0.5.dp,
                                 color = SplitEaseColors.Outline,
-                                modifier = Modifier.padding(horizontal = 16.dp),
+                                modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
                             )
                         }
                     }

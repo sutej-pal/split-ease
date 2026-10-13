@@ -60,6 +60,7 @@ import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.DialCodePickerDialog
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextField
@@ -133,7 +134,7 @@ fun EditContactScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
             ) {
                 SeTextField(
                     value = uiState.name,

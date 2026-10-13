@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import com.splitease.app.presentation.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,8 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
 
@@ -44,7 +45,7 @@ fun SendReminderScreen(
     toLabel: String,
     amount: String,
     currencyCode: String,
-    groupId: String?,
+    @Suppress("UNUSED_PARAMETER") groupId: String?,
     groupName: String?,
     onBack: () -> Unit,
     onSent: () -> Unit,
@@ -53,7 +54,7 @@ fun SendReminderScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val sentToast = stringResource(R.string.msg_reminder_sent)
-    var showValidation by rememberSaveable { mutableStateOf(false) }
+    var showValidation by rememberSaveable { mutableStateOf(value = false) }
     val bodyError = showValidation && uiState.body.isBlank()
 
     LaunchedEffect(fromUserId, toUserId, amount, currencyCode, groupName) {
@@ -109,7 +110,7 @@ fun SendReminderScreen(
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
                     textStyle =
                         MaterialTheme.typography.bodyLarge.copy(
                             color = SplitEaseColors.Navy,
@@ -121,14 +122,14 @@ fun SendReminderScreen(
                 if (bodyError) {
                     SeErrorText(
                         text = stringResource(R.string.msg_reminder_body_required),
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
                     )
                 }
 
                 uiState.errorMessage?.let { msg ->
                     SeErrorText(
                         text = msg,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
                     )
                 }
 
@@ -137,7 +138,7 @@ fun SendReminderScreen(
                         Modifier
                             .fillMaxWidth()
                             .background(SplitEaseColors.SurfaceMuted)
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 14.dp),
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     SeBodyMedium(

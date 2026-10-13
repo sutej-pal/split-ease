@@ -82,6 +82,7 @@ import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeHeroBalancePair
 import com.splitease.app.presentation.ui.SeInfoText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -211,17 +212,17 @@ fun FriendsListScreen(
             ) {
                 uiState.errorMessage?.let { message ->
                     item {
-                        SeErrorText(message, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        SeErrorText(message, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 4.dp))
                     }
                 }
                 uiState.infoMessage?.let { message ->
                     item {
-                        SeInfoText(message, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        SeInfoText(message, modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal, vertical = 4.dp))
                     }
                 }
 
                 item {
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                         SeHeroBalancePair(
                             iOwe = balances?.totalIOweByCurrency.orEmpty(),
                             owedToMe = balances?.totalOwedToMeByCurrency.orEmpty(),
@@ -240,7 +241,7 @@ fun FriendsListScreen(
 
                 if (friends.isEmpty()) {
                     item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                             SeEmptyState(
                                 message = stringResource(R.string.friends_empty),
                                 actionLabel = stringResource(R.string.action_add_friend),
@@ -250,7 +251,7 @@ fun FriendsListScreen(
                     }
                 } else if (visibleFriends.isEmpty()) {
                     item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                             SeEmptyState(
                                 message = stringResource(R.string.friends_empty_filtered),
                             )
@@ -275,7 +276,7 @@ fun FriendsListScreen(
 
                 if (hiddenSettledCount > 0) {
                     item {
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                             Spacer(modifier = Modifier.height(12.dp))
                             SeBodySmall(
                                 text = stringResource(R.string.friends_hiding_settled),
@@ -295,7 +296,7 @@ fun FriendsListScreen(
                     }
                 } else if (canHideSettled) {
                     item {
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                             Spacer(modifier = Modifier.height(12.dp))
                             SeTextButton(
                                 text = stringResource(R.string.friends_hide_settled),
@@ -410,7 +411,7 @@ private fun FriendBalanceListItem(
                 Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onClick)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
             verticalAlignment = Alignment.Top,
         ) {
             SeAvatarBadge(
@@ -695,7 +696,7 @@ fun AddFriendScreen(
                     Modifier
                         .fillMaxSize()
                         .padding(padding.values)
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
             ) {
                 SeTextField(
                     value = name,

@@ -88,7 +88,7 @@ class PinBoardViewModel
         }
 
         fun load(groupId: String) {
-            if (loadedGroupId == groupId && initialLoadDone && !_uiState.value.isLoading) return
+            if ((loadedGroupId == groupId) && initialLoadDone && (!_uiState.value.isLoading)) return
             loadedGroupId = groupId
             initialLoadDone = false
             viewModelScope.launch {
@@ -126,7 +126,7 @@ class PinBoardViewModel
             val gid = loadedGroupId ?: return
             if (!initialLoadDone) return
             val state = _uiState.value
-            if (state.isLoading || state.saveState == SaveState.PENDING || state.saveState == SaveState.SAVING) {
+            if (state.isLoading || (state.saveState == SaveState.PENDING) || (state.saveState == SaveState.SAVING)) {
                 return
             }
             viewModelScope.launch {
@@ -236,6 +236,7 @@ class PinBoardViewModel
 
         public override fun onCleared() {
             refreshJob?.cancel()
+            @Suppress("DEPRECATION")
             viewModelScope.launch(NonCancellable) {
                 val gid = loadedGroupId ?: return@launch
                 val uid = userId.value ?: return@launch

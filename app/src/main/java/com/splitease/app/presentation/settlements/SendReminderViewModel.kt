@@ -64,10 +64,10 @@ class SendReminderViewModel
                 val debtorLabel = displayName(fromLabel, youLabel)
                 val creditorLabel = displayName(toLabel, youLabel)
                 val iOwe =
-                    (me != null && me == fromUserId) ||
+                    ((me != null) && (me == fromUserId)) ||
                         fromLabel.equals(youLabel, ignoreCase = true)
                 val theyOweMe =
-                    (me != null && me == toUserId) ||
+                    ((me != null) && (me == toUserId)) ||
                         toLabel.equals(youLabel, ignoreCase = true)
                 val money =
                     MoneyFormat.format(
@@ -152,6 +152,7 @@ class SendReminderViewModel
             _uiState.update { it.copy(body = value, errorMessage = null) }
         }
 
+        @Suppress("unused")
         fun clearError() {
             _uiState.update { it.copy(errorMessage = null) }
         }
@@ -209,6 +210,7 @@ class SendReminderViewModel
             return email.substringBefore("@").ifBlank { "SplitEase user" }
         }
 
+        @Suppress("ConvertCallChainIntoSequence")
         private suspend fun resolveEmails(vararg userIds: String): List<String> =
             userIds.mapNotNull { id -> resolveEmail(id) }.distinctBy { it.lowercase() }
 

@@ -20,18 +20,21 @@ import com.splitease.app.presentation.theme.SplitEaseColors
  * Scaffold) so chevron + title placement stays identical. Prefer
  * [seScreenTitleStyle] over raw `headline*` / `title*` picks in screen headers.
  *
- * List / balance / totals body content should use [detailHorizontal] (16dp) so it
- * matches group-detail rows. Detail banners are a separate chrome pattern.
+ * List / balance / totals body content should use [detailHorizontal], which is the
+ * same value as [screenHorizontal]. Detail banners are a separate chrome pattern.
  */
 object SeLayout {
-    /** Horizontal inset for form-style bodies (auth, settings). */
+    /**
+     * Horizontal inset for every screen. This is the single side-margin config:
+     * [detailHorizontal] and screen body padding both read it.
+     */
     val screenHorizontal: Dp = 16.dp
 
     /**
      * Canonical content margin for group-detail-style screens: Activity, Balances,
-     * Totals, ledger rows, chips. Material 3 default 16dp each side.
+     * Totals, ledger rows, chips. Same value as [screenHorizontal].
      */
-    val detailHorizontal: Dp = 16.dp
+    val detailHorizontal: Dp = screenHorizontal
 
     /** Vertical padding below the top app bar before body content. */
     val screenTop: Dp = 8.dp

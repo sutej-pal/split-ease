@@ -27,6 +27,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
@@ -91,7 +92,7 @@ private fun ChangelogScreenContent(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = SeLayout.screenHorizontal)
                         .padding(bottom = 24.dp),
             ) {
                 SeBodyMedium(

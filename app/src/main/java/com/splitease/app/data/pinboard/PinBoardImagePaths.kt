@@ -1,6 +1,6 @@
 package com.splitease.app.data.pinboard
 
-private val IMAGE_MARKDOWN = Regex("""!\[([^\]\n]*)]\(([^)\n]+)\)""")
+private val IMAGE_MARKDOWN = Regex("""!\[([^]\n]*)]\(([^)\n]+)\)""")
 
 /** Markdown image references in [content], in document order. */
 fun pinBoardImagePaths(content: String): List<String> =
@@ -40,4 +40,5 @@ suspend fun syncPinBoardImagePaths(
 }
 
 /** Finds markdown image references in [content]. */
+@Suppress("unused")
 internal fun findPinBoardImages(content: String): Sequence<MatchResult> = IMAGE_MARKDOWN.findAll(content)

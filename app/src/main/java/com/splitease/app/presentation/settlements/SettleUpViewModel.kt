@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.splitease.app.R
 import com.splitease.app.core.ErrorMessages
-import com.splitease.app.data.social.ContactIdentifier
+import com.splitease.app.data.balance.BalanceInteractor
+import com.splitease.app.data.balance.FriendBalanceUi
 import com.splitease.app.data.balance.LabeledDebt
 import com.splitease.app.data.payment.PaymentInteractor
 import com.splitease.app.data.payment.RecordPaymentInput
+import com.splitease.app.data.social.ContactIdentifier
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.FriendRepository
@@ -53,17 +55,16 @@ data class SettleUpUiState(
 class SettleUpViewModel
     @Inject
     constructor(
-        private val savedStateHandle: SavedStateHandle,
+        savedStateHandle: SavedStateHandle,
         authRepository: AuthRepository,
         private val paymentInteractor: PaymentInteractor,
-        private val balanceInteractor: com.splitease.app.data.balance.BalanceInteractor,
+        private val balanceInteractor: BalanceInteractor,
         private val groupRepository: GroupRepository,
         private val appSettingsRepository: AppSettingsRepository,
         private val userRepository: UserRepository,
         private val friendRepository: FriendRepository,
         @ApplicationContext private val appContext: Context,
     ) : ViewModel() {
-        private val groupId: String? = savedStateHandle.get<String>("groupId")?.takeIf { it.isNotBlank() }
         private val friendUserId: String? = savedStateHandle.get<String>("friendUserId")?.takeIf { it.isNotBlank() }
 
         val currentUserId: StateFlow<String?> =
@@ -97,7 +98,7 @@ class SettleUpViewModel
             currentUserId.flatMapLatest { me ->
                 if (groupId != null) {
                     groupRepository.observeMembers(groupId).flatMapLatest { members ->
-                        if (members.isEmpty()) return@flatMapLatest flowOf(emptyList<SettlePartyUi>())
+                        if (members.isEmpty()) return@flatMapLatest flowOf(emptyList())
                         val flows: List<Flow<SettlePartyUi>> = members.map { member ->
                             userRepository.observeUserById(member.userId).map { user ->
                                 resolvePartyFromDomain(member.userId, user?.displayName.orEmpty(), user?.email, user?.photoUrl)
@@ -136,14 +137,14 @@ class SettleUpViewModel
                         val meFlow = userRepository.observeUserById(me ?: "").map { user ->
                             resolvePartyFromDomain(me ?: "", user?.displayName.orEmpty(), user?.email, user?.photoUrl)
                         }
-                        combine(flows + meFlow) { it.toList().sortedBy { p -> p.displayName } }
+                        combine(flows + meFlow) { it.sortedBy { p -> p.displayName } }
                     }
                 }
             }
 
         private fun friendBalanceToDebts(
             viewerId: String,
-            friendBalance: com.splitease.app.data.balance.FriendBalanceUi,
+            friendBalance: FriendBalanceUi,
         ): List<LabeledDebt> {
             val friendId = friendBalance.friendUserId
             val friendLabel = friendBalance.displayName
@@ -266,18 +267,20 @@ class SettleUpViewModel
         ): SettlePartyUi {
             val user = userRepository.getUserById(userId)
             val friend = friendRepository.getByFriendUserId(userId)
+            val userName = user?.displayName?.trim()
+            val friendName = friend?.displayNameSnapshot?.trim()
             val name =
                 when {
                     userId == currentUserId.value -> youLabel
-                    !user?.displayName.isNullOrBlank() -> user!!.displayName.trim()
-                    !friend?.displayNameSnapshot.isNullOrBlank() ->
-                        friend!!.displayNameSnapshot.trim()
+                    !userName.isNullOrBlank() -> userName
+                    !friendName.isNullOrBlank() -> friendName
                     fallbackName.isNotBlank() && !fallbackName.equals(youLabel, ignoreCase = true) ->
                         fallbackName.trim()
                     else -> userId.take(8)
                 }
             val email =
                 listOfNotNull(user?.email, friend?.emailSnapshot)
+                    .asSequence()
                     .map { it.trim() }
                     .firstOrNull { ContactIdentifier.isRealEmail(it) }
             val photo = user?.photoUrl?.trim()?.takeIf { it.isNotEmpty() }

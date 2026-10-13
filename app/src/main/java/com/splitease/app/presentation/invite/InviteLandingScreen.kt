@@ -52,6 +52,7 @@ import com.splitease.app.domain.model.InvitePreviewMember
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeGroupIconTile
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
@@ -127,7 +128,7 @@ private fun InviteLandingContent(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = SeLayout.screenHorizontal),
             contentAlignment = Alignment.Center,
         ) {
             Column(

@@ -59,6 +59,7 @@ import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeFilledTextField
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
@@ -90,7 +91,7 @@ fun SignInAndContactScreen(
             SeBodySmall(
                 text = stringResource(R.string.account_sign_in_contact_caption),
                 color = SplitEaseColors.NavyMuted,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = SeLayout.screenHorizontal),
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -431,7 +432,7 @@ private fun SignInContactAccordionRow(
                 Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -477,7 +478,7 @@ private fun SignInContactAccordionRow(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 80.dp, end = 20.dp, bottom = 20.dp),
+                        .padding(start = 80.dp, end = SeLayout.screenHorizontal, bottom = 20.dp),
             ) {
                 content()
             }

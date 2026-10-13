@@ -54,10 +54,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.splitease.app.presentation.ui.SePullRefreshBox
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -88,6 +88,7 @@ import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeHeroBalancePair
 import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeMoneyTone
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePageHeader
@@ -138,11 +139,10 @@ fun GroupsHomeScreen(
         onOpenSearch = onOpenSearch,
         onRefresh = viewModel::refresh,
         onRetryHydrate = viewModel::retryInitialHydrate,
-        onChangeGroupPhoto = { groupId ->
-            photoTargetGroupId = groupId
-            groupPhotoPicker.launch()
-        },
-    )
+    ) { groupId ->
+        photoTargetGroupId = groupId
+        groupPhotoPicker.launch()
+    }
 }
 
 @Composable
@@ -158,16 +158,16 @@ private fun GroupsHomeScreenContent(
     onChangeGroupPhoto: (String) -> Unit,
 ) {
     var listFilter by remember { mutableStateOf(GroupsHomeFilter.OUTSTANDING) }
-    var showSettledGroups by remember { mutableStateOf(false) }
+    var showSettledGroups by remember { mutableStateOf(value = false) }
     val changePhotoCd = stringResource(R.string.cd_change_group_photo)
     val balances = ui.balances
     // Freeze amounts while balances catch up, during first-login hydrate, or while
     // pull-to-refresh is rewriting Room. Keep the last snapshot for filters / rows.
     val freezeAmounts =
-        ui.isLoading ||
-            balances == null ||
-            ui.syncState.shouldFreezeBalances ||
-            ui.isRefreshing
+        (ui.isLoading) ||
+            (balances == null) ||
+            (ui.syncState.shouldFreezeBalances) ||
+            (ui.isRefreshing)
     val groupRows =
         remember(ui.allGroups, balances) {
             ui.allGroups.map { group ->
@@ -186,11 +186,11 @@ private fun GroupsHomeScreenContent(
     val filteredGroups =
         remember(groupRows, listFilter) { groupRows.filter { it.matches(listFilter) } }
     val outstandingWithSettledHidden =
-        listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isNotEmpty()
+        (listFilter == GroupsHomeFilter.OUTSTANDING) && (filteredGroups.isNotEmpty())
     // If outstanding filter matches nothing, fall back to all groups (same as before).
     val visibleGroups =
         when {
-            listFilter == GroupsHomeFilter.OUTSTANDING && filteredGroups.isEmpty() -> groupRows
+            (listFilter == GroupsHomeFilter.OUTSTANDING) && (filteredGroups.isEmpty()) -> groupRows
             outstandingWithSettledHidden && showSettledGroups -> filteredGroups + settled
             else -> filteredGroups
         }
@@ -245,7 +245,9 @@ private fun GroupsHomeScreenContent(
         },
     ) { padding ->
         val layoutDirection = LocalLayoutDirection.current
-        Box(
+        SePullRefreshBox(
+            isRefreshing = ui.isRefreshing,
+            onRefresh = onRefresh,
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -263,7 +265,7 @@ private fun GroupsHomeScreenContent(
                     ),
             ) {
                     item {
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                             Crossfade(
                                 targetState = ui.syncState == SyncState.FAILED,
                                 label = "groups-hero-balances",
@@ -285,11 +287,10 @@ private fun GroupsHomeScreenContent(
                             }
                             GroupsFilterMenu(
                                 selectedFilter = listFilter,
-                                onFilterSelected = {
-                                    listFilter = it
-                                    showSettledGroups = false
-                                },
-                            )
+                            ) {
+                                listFilter = it
+                                showSettledGroups = false
+                            }
                         }
                     }
 
@@ -299,7 +300,7 @@ private fun GroupsHomeScreenContent(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 48.dp),
+                                    .padding(horizontal = SeLayout.screenHorizontal, vertical = 48.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 CircularProgressIndicator(
@@ -310,7 +311,7 @@ private fun GroupsHomeScreenContent(
                     } else {
                         if (ui.allGroups.isEmpty() && !showNonGroup) {
                             item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                                     SeEmptyState(
                                         message = stringResource(R.string.groups_empty_home),
                                         actionLabel = stringResource(R.string.action_create_group),
@@ -350,7 +351,7 @@ private fun GroupsHomeScreenContent(
 
                         if (hiddenSettledCount > 0) {
                             item {
-                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     SeBodySmall(
                                         text = stringResource(R.string.groups_hiding_settled),
@@ -370,7 +371,7 @@ private fun GroupsHomeScreenContent(
                             }
                         } else if (canHideSettled) {
                             item {
-                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = SeLayout.screenHorizontal)) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     SeTextButton(
                                         text = stringResource(R.string.groups_hide_settled),
@@ -414,7 +415,7 @@ private fun GroupsFilterMenu(
     selectedFilter: GroupsHomeFilter,
     onFilterSelected: (GroupsHomeFilter) -> Unit,
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(value = false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -492,7 +493,6 @@ private fun SeSplitMoneyLine(
     currencyCode: String,
     tone: SeMoneyTone,
     modifier: Modifier = Modifier,
-    style: TextStyle = MaterialTheme.typography.bodyMedium,
     useFullColor: Boolean = false,
 ) {
     val money = MoneyFormat.format(amount, currencyCode)
@@ -533,7 +533,7 @@ private fun GroupBalanceListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeGroupIconTile(
@@ -562,7 +562,8 @@ private fun GroupBalanceListItem(
             if (showAmounts) {
                 MyNetStatus(row.myNetByCurrency, currencyFallback)
                 row.simplifiedDebts
-                    .filter { it.fromLabel == "You" || it.toLabel == "You" }
+                    .asSequence()
+                    .filter { (it.fromLabel == "You") || (it.toLabel == "You") }
                     .take(3)
                     .forEach { debt ->
                         Spacer(modifier = Modifier.height(2.dp))
@@ -586,7 +587,7 @@ private fun NonGroupListItem(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = SeLayout.screenHorizontal, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         SeIconTile(
@@ -656,7 +657,6 @@ private fun DebtLine(debt: LabeledDebt) {
         amount = debt.amount,
         currencyCode = debt.currencyCode,
         tone = if (youOwe) SeMoneyTone.YOU_OWE else SeMoneyTone.OWED_TO_YOU,
-        style = MaterialTheme.typography.bodySmall,
     )
 }
 

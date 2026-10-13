@@ -50,6 +50,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTopBarActionButton
 import java.math.BigDecimal
@@ -78,7 +79,7 @@ fun WhoPaidScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
             ) {
                 participants.forEach { option ->
                     val selected = !isMultiplePeople && option.userId == selectedUserId
@@ -178,7 +179,7 @@ fun EnterPaidAmountsScreen(
                         Modifier
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 8.dp),
                 ) {
                     participants.forEach { option ->
                         PaidAmountRow(
@@ -198,7 +199,7 @@ fun EnterPaidAmountsScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                            .padding(horizontal = SeLayout.screenHorizontal, vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     SeTitleMedium(
