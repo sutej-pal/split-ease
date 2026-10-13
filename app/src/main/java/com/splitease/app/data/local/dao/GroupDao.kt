@@ -15,7 +15,7 @@ interface GroupDao {
     /** @param userId Member user id. @return Flow of groups the user belongs to. */
     @Query(
         """
-        SELECT g.* FROM groups g
+        SELECT g.* FROM `groups` g
         INNER JOIN group_members m ON m.groupId = g.id
         WHERE m.userId = :userId
         ORDER BY g.name ASC
@@ -24,15 +24,15 @@ interface GroupDao {
     fun observeGroupsForUser(userId: String): Flow<List<GroupEntity>>
 
     /** @return Flow of all groups ordered by name. */
-    @Query("SELECT * FROM groups ORDER BY name ASC")
+    @Query("SELECT * FROM `groups` ORDER BY name ASC")
     fun observeAll(): Flow<List<GroupEntity>>
 
     /** @param id Local UUID. @return Group or null. */
-    @Query("SELECT * FROM groups WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM `groups` WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): GroupEntity?
 
     /** @param id Local UUID. @return Flow of matching rows (0 or 1). */
-    @Query("SELECT * FROM groups WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM `groups` WHERE id = :id LIMIT 1")
     fun observeById(id: String): Flow<List<GroupEntity>>
 
     /** Inserts or replaces [group]. */
@@ -40,7 +40,7 @@ interface GroupDao {
     suspend fun upsert(group: GroupEntity)
 
     /** Deletes the group with [id] (members cascade). */
-    @Query("DELETE FROM groups WHERE id = :id")
+    @Query("DELETE FROM `groups` WHERE id = :id")
     suspend fun deleteById(id: String)
 
     /** @param groupId Parent group. @return Flow of members. */
@@ -77,7 +77,7 @@ interface GroupDao {
     /** @return Groups awaiting cloud upload. */
     @Query(
         """
-        SELECT * FROM groups
+        SELECT * FROM `groups`
         WHERE syncStatus IN ('PENDING', 'LOCAL_ONLY')
         ORDER BY updatedAtEpochMs ASC
         """,

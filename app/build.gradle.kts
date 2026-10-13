@@ -265,6 +265,7 @@ ksp {
 
 abstract class CopyChangelogAssetTask : DefaultTask() {
     @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
     abstract val changelogFile: RegularFileProperty
 
     @get:OutputDirectory
@@ -284,6 +285,8 @@ androidComponents {
             "copy${variant.name.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}ChangelogAsset"
         val copyTask =
             tasks.register<CopyChangelogAssetTask>(taskName) {
+                description = "Copies CHANGELOG.md into assets for ${variant.name}"
+                group = "build"
                 changelogFile.set(rootProject.file("CHANGELOG.md"))
                 outputDirectory.set(layout.buildDirectory.dir("generated/${variant.name}/changelogAsset"))
             }

@@ -44,7 +44,7 @@ fun SendReminderScreen(
     toLabel: String,
     amount: String,
     currencyCode: String,
-    @Suppress("UNUSED_PARAMETER") groupId: String?,
+    groupId: String?,
     groupName: String?,
     onBack: () -> Unit,
     onSent: () -> Unit,

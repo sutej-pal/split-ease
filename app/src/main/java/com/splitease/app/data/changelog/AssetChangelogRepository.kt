@@ -18,7 +18,7 @@ class AssetChangelogRepository
         @ApplicationContext private val context: Context,
     ) {
         /**
-         * Loads changelog markdown from assets.
+         * Loads changelog Markdown from assets.
          *
          * @return File contents, or empty when the asset is missing.
          */

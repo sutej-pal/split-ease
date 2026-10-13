@@ -210,7 +210,6 @@ class SendReminderViewModel
             return email.substringBefore("@").ifBlank { "SplitEase user" }
         }
 
-        @Suppress("ConvertCallChainIntoSequence")
         private suspend fun resolveEmails(vararg userIds: String): List<String> =
             userIds.mapNotNull { id -> resolveEmail(id) }.distinctBy { it.lowercase() }
 

@@ -108,7 +108,7 @@ data class ActivityUiItem(
     val relatedExpenseId: String? = null,
     /** Expense description to render semibold inside [title]. */
     val expenseTitle: String? = null,
-    /** False when this row is an unseen synced activity event. */
+    /** False when this row is an unseen-synced activity event. */
     val isSeen: Boolean = true,
     val annotatedTitle: AnnotatedString,
     /** Deleted (after restore) and restored rows open the expense editor. */

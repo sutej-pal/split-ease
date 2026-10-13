@@ -113,7 +113,6 @@ private class FakeAccountDeletionRepository(
     /**
      * @param clientClaimsSettled Ignored on purpose — the RPC must not trust a client flag.
      */
-    @Suppress("UNUSED_PARAMETER")
     fun deleteOwnAccount(clientClaimsSettled: Boolean = false): Result<Unit> {
         val blocked = AccountDeletionEligibility.blockingGroups(remoteSlices)
         if (blocked.isEmpty()) return Result.success(Unit)

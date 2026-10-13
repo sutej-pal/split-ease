@@ -476,7 +476,7 @@ fun SeSectionHeader(
     SeTitleSmall(
         text = text,
         modifier = modifier.padding(vertical = 8.dp),
-        color = SplitEaseColors.NavyMuted,
+        color = SplitEaseColors.Navy,
         fontWeight = FontWeight.SemiBold,
     )
 }
