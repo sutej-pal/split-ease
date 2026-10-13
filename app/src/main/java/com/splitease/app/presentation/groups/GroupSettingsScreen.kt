@@ -57,7 +57,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.splitease.app.presentation.ui.SeInsetCard
+import com.splitease.app.presentation.ui.SePreview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
@@ -326,6 +329,14 @@ fun GroupSettingsScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = SplitEaseColors.Outline)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
+                }
+
                 SettingsActionRow(
                     icon = Icons.Filled.Download,
                     title = stringResource(R.string.group_settings_export_csv),
@@ -342,14 +353,6 @@ fun GroupSettingsScreen(
                     onClick = { viewModel.exportGroupCsv(groupId) },
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = SplitEaseColors.Outline)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                    SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
-                }
-
                 SettingsToggleRow(
                     icon = Icons.Filled.AccountTree,
                     title = stringResource(R.string.group_settings_simplify_title),
@@ -359,13 +362,13 @@ fun GroupSettingsScreen(
                 SeBodyMedium(
                     text = stringResource(R.string.group_settings_simplify_body),
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 4.dp),
                 )
                 SeTextButton(
                     text = stringResource(R.string.action_learn_more),
                     onClick = { showSimplifyInfo = true },
                     emphasized = true,
-                    modifier = Modifier.padding(start = 46.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(start = 54.dp, bottom = 8.dp),
                 )
 
                 SettingsToggleRow(
@@ -377,7 +380,7 @@ fun GroupSettingsScreen(
                 SeBodyMedium(
                     text = stringResource(R.string.group_settings_mute_body),
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
+                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
                 )
 
                 SettingsActionRow(
@@ -390,7 +393,7 @@ fun GroupSettingsScreen(
                 SeBodyMedium(
                     text = stringResource(R.string.group_settings_default_split_body),
                     color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 58.dp, end = 20.dp, bottom = 12.dp),
+                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
                 )
 
                 SettingsActionRow(
@@ -412,13 +415,13 @@ fun GroupSettingsScreen(
                 }
 
                 uiState.errorMessage?.let {
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                         Spacer(modifier = Modifier.height(12.dp))
                         SeErrorText(it)
                     }
                 }
                 uiState.infoMessage?.let {
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                         Spacer(modifier = Modifier.height(12.dp))
                         SeInfoText(it)
                     }
@@ -844,7 +847,7 @@ private fun SettingsToggleRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = SplitEaseColors.IconDefault, modifier = Modifier.size(24.dp))
@@ -855,6 +858,7 @@ private fun SettingsToggleRow(
             fontWeight = FontWeight.SemiBold,
             color = SplitEaseColors.Navy,
         )
+        Spacer(modifier = Modifier.width(8.dp))
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -887,4 +891,126 @@ private fun GroupType.settingsLabelRes(): Int =
         GroupType.HOME -> R.string.group_type_home
         GroupType.OTHER -> R.string.group_type_other
     }
+
+@Preview(name = "Group Settings", showBackground = true, heightDp = 900)
+@Composable
+private fun GroupSettingsScreenPreview() {
+    SePreview {
+        SeScreen(
+            title = "Group settings",
+            onBack = {},
+            content = { padding ->
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding.values)
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 24.dp),
+                ) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeInsetCard(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        onClick = {},
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            SeGroupIconTile(
+                                photoUrl = null,
+                                fallbackIcon = Icons.Filled.Home,
+                                fallbackTint = SplitEaseColors.IconHome,
+                                size = 56,
+                            )
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                SeTitleMedium(text = "asda", fontWeight = FontWeight.SemiBold, color = SplitEaseColors.Navy)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                SeBodyMedium(text = "Home", color = SplitEaseColors.NavyMuted)
+                            }
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = null,
+                                tint = SplitEaseColors.IconDefault,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        SeSectionHeader(text = "Group members")
+                    }
+                    SettingsActionRow(
+                        icon = Icons.Filled.PersonAdd,
+                        title = "Add people to group",
+                        onClick = {},
+                        showDivider = true,
+                    )
+                    SettingsActionRow(
+                        icon = Icons.Filled.Link,
+                        title = "Invite via link",
+                        onClick = {},
+                        showDivider = true,
+                    )
+                    SeListRow(
+                        title = "Test User (you)",
+                        leading = { SeAvatarBadge(name = "Test User", photoUrl = null) },
+                        showDivider = false,
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = SplitEaseColors.Outline)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        SeSectionHeader(text = "Advanced settings")
+                    }
+
+                    SettingsActionRow(
+                        icon = Icons.Filled.Download,
+                        title = "Export as CSV",
+                        subtitle = "Expenses and payments with who paid and per-person amounts",
+                        onClick = {},
+                    )
+
+                    SettingsToggleRow(
+                        icon = Icons.Filled.AccountTree,
+                        title = "Simplify group debts",
+                        checked = true,
+                        onCheckedChange = {},
+                    )
+                    SeBodyMedium(
+                        text = "Automatically combines debts to reduce the total number of repayments between group members.",
+                        color = SplitEaseColors.NavyMuted,
+                        modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 4.dp),
+                    )
+                    SeTextButton(
+                        text = "Learn more",
+                        onClick = {},
+                        emphasized = true,
+                        modifier = Modifier.padding(start = 54.dp, bottom = 8.dp),
+                    )
+
+                    SettingsToggleRow(
+                        icon = Icons.Filled.NotificationsOff,
+                        title = "Mute notifications",
+                        checked = false,
+                        onCheckedChange = {},
+                    )
+                    SeBodyMedium(
+                        text = "Stop push notifications for this group. You will still see updates when you open the group.",
+                        color = SplitEaseColors.NavyMuted,
+                        modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
+                    )
+
+                    SettingsActionRow(
+                        icon = Icons.AutoMirrored.Filled.List,
+                        title = "Default split",
+                        subtitle = "Paid by you and split equally",
+                        trailingBadge = "PRO",
+                        onClick = {},
+                    )
+                }
+            },
+        )
+    }
+}
 

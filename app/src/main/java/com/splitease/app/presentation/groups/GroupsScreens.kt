@@ -516,7 +516,7 @@ fun GroupDetailScreen(
                         .nestedScroll(nestedScrollConnection),
                 contentPadding =
                     PaddingValues(
-                        top = 8.dp,
+                        top = 0.dp,
                         bottom = 8.dp + bottomBarScrollPadding(includeFab = true),
                     ),
             ) {

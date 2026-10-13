@@ -23,11 +23,16 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +60,7 @@ import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeIconTile
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
@@ -69,6 +75,7 @@ fun AccountScreen(
     onOpenSecurity: () -> Unit,
     onOpenSpending: () -> Unit,
     onOpenWhatsNew: () -> Unit,
+    onOpenHelpCenter: () -> Unit,
     onSignOut: () -> Unit = {},
     isSigningOut: Boolean = false,
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -86,6 +93,14 @@ fun AccountScreen(
         osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
     val notificationsOn = osNotificationsEnabled && !muteAll
+    val supportEmail = stringResource(R.string.support_email)
+    val supportSubject = stringResource(R.string.support_email_subject)
+    var showRateDialog by rememberSaveable { mutableStateOf(false) }
+    var mailErrorKey by remember { mutableIntStateOf(0) }
+
+    if (showRateDialog) {
+        RateAppDialog(onDismiss = { showRateDialog = false })
+    }
 
     AccountScreenContent(
         displayName = profile.displayName,
@@ -101,6 +116,13 @@ fun AccountScreen(
         onOpenSecurity = onOpenSecurity,
         onOpenSpending = onOpenSpending,
         onOpenWhatsNew = onOpenWhatsNew,
+        onOpenHelpCenter = onOpenHelpCenter,
+        onContactSupport = {
+            val opened = openSupportGmail(context, supportEmail, supportSubject)
+            if (!opened) mailErrorKey += 1
+        },
+        onRateApp = { showRateDialog = true },
+        mailErrorKey = mailErrorKey,
         onOpenAdPrivacy = {
             (context as? FragmentActivity)?.let { activity ->
                 AdConsentManager.showPrivacyOptionsForm(activity)
@@ -125,6 +147,10 @@ private fun AccountScreenContent(
     onOpenSecurity: () -> Unit,
     onOpenSpending: () -> Unit,
     onOpenWhatsNew: () -> Unit,
+    onOpenHelpCenter: () -> Unit,
+    onContactSupport: () -> Unit,
+    onRateApp: () -> Unit,
+    mailErrorKey: Int,
     onOpenAdPrivacy: () -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -132,6 +158,14 @@ private fun AccountScreenContent(
         title = stringResource(R.string.nav_account),
         onBack = onBack,
         contentWindowInsets = bottomBarContentWindowInsets(),
+        snackbarHost = {
+            SeMessageHost(
+                errorMessage =
+                    stringResource(R.string.error_no_email_app).takeIf { mailErrorKey > 0 },
+                infoMessage = null,
+                replayKey = mailErrorKey,
+            )
+        },
         content = { padding ->
             val layoutDirection = LocalLayoutDirection.current
             Column(
@@ -164,7 +198,7 @@ private fun AccountScreenContent(
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = null,
-                                tint = SplitEaseColors.IconDefault,
+                                tint = SplitEaseColors.NavyMuted,
                                 modifier = Modifier.size(16.dp),
                             )
                         },
@@ -242,6 +276,52 @@ private fun AccountScreenContent(
                         },
                         trailing = { AccountChevron() },
                         onClick = null,
+                        showDivider = false,
+                    )
+                }
+
+                SeSectionHeader(text = stringResource(R.string.settings_help_section))
+                AccountGroupCard {
+                    SeListRow(
+                        title = stringResource(R.string.settings_help_center),
+                        subtitle = stringResource(R.string.settings_help_center_subtitle),
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Outlined.HelpOutline,
+                                tint = SplitEaseColors.Primary,
+                                size = 40,
+                            )
+                        },
+                        trailing = { AccountChevron() },
+                        onClick = onOpenHelpCenter,
+                        showDivider = true,
+                    )
+                    SeListRow(
+                        title = stringResource(R.string.settings_contact_support),
+                        subtitle = stringResource(R.string.settings_contact_support_subtitle),
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Outlined.Email,
+                                tint = SplitEaseColors.Primary,
+                                size = 40,
+                            )
+                        },
+                        trailing = { AccountChevron() },
+                        onClick = onContactSupport,
+                        showDivider = true,
+                    )
+                    SeListRow(
+                        title = stringResource(R.string.settings_rate_app),
+                        subtitle = stringResource(R.string.settings_rate_app_subtitle),
+                        leading = {
+                            SeIconTile(
+                                icon = Icons.Outlined.StarBorder,
+                                tint = SplitEaseColors.Primary,
+                                size = 40,
+                            )
+                        },
+                        trailing = { AccountChevron() },
+                        onClick = onRateApp,
                         showDivider = false,
                     )
                 }
@@ -329,7 +409,7 @@ private fun AccountChevron() {
     Icon(
         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
         contentDescription = null,
-        tint = SplitEaseColors.IconDefault,
+        tint = SplitEaseColors.NavyMuted,
     )
 }
 
@@ -359,6 +439,10 @@ private fun AccountScreenPreview() {
             onOpenSecurity = {},
             onOpenSpending = {},
             onOpenWhatsNew = {},
+            onOpenHelpCenter = {},
+            onContactSupport = {},
+            onRateApp = {},
+            mailErrorKey = 0,
             onOpenAdPrivacy = {},
             onSignOut = {},
         )

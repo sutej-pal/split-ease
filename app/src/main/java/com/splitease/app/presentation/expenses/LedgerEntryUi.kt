@@ -139,7 +139,7 @@ fun LedgerEntryRow(
     ) {
         Column(
             modifier = Modifier.width(36.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.Start,
         ) {
             SeLabelSmall(
                 text = monthLabel,

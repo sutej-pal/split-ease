@@ -15,16 +15,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrightnessMedium
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
@@ -58,6 +63,8 @@ import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeContentArea
+import com.splitease.app.presentation.ui.SeContentCard
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
@@ -248,21 +255,24 @@ fun AppearanceSettingsScreen(
         title = stringResource(R.string.settings_appearance),
         onBack = onBack,
         content = { padding ->
-            Column(
+            SeContentArea(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values)
-                        .padding(horizontal = 16.dp),
+                        .padding(padding.values),
             ) {
-                SeSectionHeader(text = stringResource(R.string.settings_appearance_section))
-                ThemeMode.entries.forEachIndexed { index, mode ->
-                    ThemeModeRow(
-                        mode = mode,
-                        selected = selected == mode,
-                        onSelect = { viewModel.setThemeMode(mode) },
-                        showDivider = index < ThemeMode.entries.lastIndex,
-                    )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SeContentCard {
+                        ThemeMode.entries.forEachIndexed { index, mode ->
+                            ThemeModeRow(
+                                mode = mode,
+                                selected = selected == mode,
+                                onSelect = { viewModel.setThemeMode(mode) },
+                                showDivider = index < ThemeMode.entries.lastIndex,
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -493,21 +503,65 @@ private fun ThemeModeRow(
     onSelect: () -> Unit,
     showDivider: Boolean,
 ) {
-    SeListRow(
-        title = themeModeLabel(mode),
-        trailing = {
-            RadioButton(
-                selected = selected,
-                onClick = onSelect,
-                colors =
-                    RadioButtonDefaults.colors(
-                        selectedColor = SplitEaseColors.Primary,
-                    ),
+    val icon =
+        when (mode) {
+            ThemeMode.LIGHT -> Icons.Filled.WbSunny
+            ThemeMode.DARK -> Icons.Filled.DarkMode
+            ThemeMode.SYSTEM -> Icons.Filled.BrightnessMedium
+        }
+    val subtitle =
+        when (mode) {
+            ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system_subtitle)
+            else -> null
+        }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onSelect)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = SplitEaseColors.IconDefault,
+                modifier = Modifier.size(24.dp),
             )
-        },
-        onClick = onSelect,
-        showDivider = showDivider,
-    )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                SeTitleMedium(
+                    text = themeModeLabel(mode),
+                    fontWeight = FontWeight.SemiBold,
+                    color = SplitEaseColors.Navy,
+                )
+                if (subtitle != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    SeBodyMedium(
+                        text = subtitle,
+                        color = SplitEaseColors.NavyMuted,
+                    )
+                }
+            }
+            if (selected) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = SplitEaseColors.Primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                color = SplitEaseColors.Outline,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
+    }
 }
 
 @Composable

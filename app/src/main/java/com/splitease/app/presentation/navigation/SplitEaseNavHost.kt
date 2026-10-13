@@ -51,6 +51,7 @@ import androidx.navigation.navArgument
 import com.splitease.app.domain.model.AuthSession
 import com.splitease.app.domain.settings.AppSettingsRepository
 import com.splitease.app.presentation.account.AccountProfileSettingsScreen
+import com.splitease.app.presentation.account.HelpCenterScreen
 import com.splitease.app.presentation.account.SignInAndContactScreen
 import com.splitease.app.presentation.account.AccountScreen
 import com.splitease.app.presentation.account.CloseAccountScreen
@@ -128,6 +129,7 @@ object Routes {
     const val SIGN_IN_AND_CONTACT = "sign_in_and_contact"
     const val CLOSE_ACCOUNT = "close_account"
     const val WHATS_NEW = "whats_new"
+    const val HELP_CENTER = "help_center"
     const val DELETE_ACCOUNT = "delete_account"
     const val APPEARANCE_SETTINGS = "appearance_settings"
     const val SECURITY_SETTINGS = "security_settings"
@@ -772,6 +774,7 @@ private fun SignedInNavHost(
                     onOpenSecurity = { navController.navigate(Routes.SECURITY_SETTINGS) },
                     onOpenSpending = { navController.navigate(Routes.SPENDING) },
                     onOpenWhatsNew = { navController.navigate(Routes.WHATS_NEW) },
+                    onOpenHelpCenter = { navController.navigate(Routes.HELP_CENTER) },
                     onSignOut = onSignOut,
                     isSigningOut = isSigningOut,
                 )
@@ -798,6 +801,9 @@ private fun SignedInNavHost(
             }
             composable(Routes.WHATS_NEW) {
                 ChangelogScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.HELP_CENTER) {
+                HelpCenterScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.DELETE_ACCOUNT) {
                 DeleteAccountScreen(

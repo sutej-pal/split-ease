@@ -31,6 +31,18 @@ val SurfaceLight = Color.White // light cards and sheets
 /** Grouped rows, unfocused fields, chip idle fills. */
 val SurfaceMutedLight = Color(0xFFF1F3FF) // light muted surface
 
+/**
+ * Screen body behind an elevated card. White mixed slightly toward [IndigoLight]
+ * so the page reads as a soft primary shade, darker than the card.
+ */
+val ContentAreaLight = Color(0xFFE8E9F4) // light content area
+
+/** Dark-theme content area: a slight dark shade of primary, lighter than the canvas. */
+val ContentAreaDark = Color(0xFF17152E) // dark content area
+
+/** Elevated card on [ContentAreaDark]. One step lighter so the sheet still lifts. */
+val ContentCardDark = Color(0xFF242140) // dark content card
+
 /** Pastel detail-header banners. */
 val BannerFriendsLight = Color(0xFFC3CBFC) // light friends banner
 val BannerHomeLight = PrimaryContainerLight // light home banner (very light shade of primary)
@@ -102,7 +114,7 @@ val ErrorDark = Color(0xFFFF8A80) // dark error
 val TextPrimaryLight = Color(0xFF060424) // light primary text
 
 /** Captions, hints, timestamps, muted labels (light theme). */
-val TextSecondaryLight = Color(0xFF3A3F69) // light secondary text
+val TextSecondaryLight = Color(0xFF585C7E) // light secondary text
 
 /** Body/heading text on dark backgrounds. */
 val TextPrimaryDark = Color(0xFFEFF1FF) // dark primary text

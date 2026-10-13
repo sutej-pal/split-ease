@@ -422,7 +422,7 @@ fun SeListRow(
                             Modifier
                         },
                     )
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (leading != null) {
@@ -432,14 +432,14 @@ fun SeListRow(
             Column(modifier = Modifier.weight(1f)) {
                 when (labelStyle) {
                     SeListRowLabelStyle.Navigation -> {
-                        SeTitleMedium(
+                        SeTitleSmall(
                             text = title,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Normal,
                             color = SplitEaseColors.Navy,
                         )
                         if (subtitle != null) {
                             Spacer(modifier = Modifier.height(2.dp))
-                            SeBodyMedium(
+                            SeBodySmall(
                                 text = subtitle,
                                 color = SplitEaseColors.NavyMuted,
                             )
@@ -576,7 +576,7 @@ fun SeActionChip(
     Row(
         modifier =
             modifier
-                .height(44.dp)
+                .height(28.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(bg)
                 .border(1.dp, border, RoundedCornerShape(20.dp))
@@ -591,7 +591,7 @@ fun SeActionChip(
         SeLabelLarge(
             text = label,
             color = content,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Clip,
         )

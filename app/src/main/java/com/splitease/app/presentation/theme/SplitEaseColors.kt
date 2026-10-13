@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 private val bannerFriendsDarkToken = BannerFriendsDark
 private val bannerHomeDarkToken = BannerHomeDark
@@ -69,6 +70,33 @@ object SplitEaseColors {
     @get:ReadOnlyComposable
     val SurfaceMuted: Color
         get() = MaterialTheme.colorScheme.surfaceVariant
+
+    /**
+     * Body behind [com.splitease.app.presentation.ui.SeContentCard].
+     * Light: a slight dark shade of primary. Dark: a slight primary shade above the canvas.
+     */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val ContentArea: Color
+        get() = if (darkChrome()) ContentAreaDark else ContentAreaLight
+
+    /** Fill for [com.splitease.app.presentation.ui.SeContentCard]. */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val ContentCard: Color
+        get() = if (darkChrome()) ContentCardDark else SurfaceLight
+
+    /** Soft ambient shadow for [com.splitease.app.presentation.ui.SeContentCard]. */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val ContentCardShadowAmbient: Color
+        get() = if (darkChrome()) Color(0x66000000) else Color(0x241A1840)
+
+    /** Soft spot shadow for [com.splitease.app.presentation.ui.SeContentCard]. */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val ContentCardShadowSpot: Color
+        get() = if (darkChrome()) Color(0x80000000) else Color(0x401A1840)
 
     @get:Composable
     @get:ReadOnlyComposable
@@ -161,6 +189,10 @@ object SplitEaseColors {
     @get:ReadOnlyComposable
     val EmptyStateSecondaryBorder: Color
         get() = if (isSystemInDarkTheme()) TextPrimaryDark.copy(alpha = 0.25f) else EmptyStateSecondaryBorderLight
+
+    @Composable
+    @ReadOnlyComposable
+    private fun darkChrome(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
     /** Empty-state secondary button text (theme-aware). */
     @get:Composable
