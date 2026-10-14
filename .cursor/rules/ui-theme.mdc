@@ -22,6 +22,7 @@ Do **not** invent alternate looks (custom accent schemes, one-off dialog skins) 
 - Errors use `colorScheme.error`, never `OweRed`.
 - All inline error messages use bodySmall via `SeErrorText` / `seErrorTextStyle()`.
 - Screenshots or third-party UI mocks are **content/layout references** only; restyle them to the app theme unless the user says otherwise.
+- Settings-style screens use the flat list in [docs/settings-list.md](../../docs/settings-list.md): `AccountSettingsRow`, outline icons, and that divider. Do not rebuild it with `SeIconTile` or `SeListRow`.
 
 ## Exception
 

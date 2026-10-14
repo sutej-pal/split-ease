@@ -21,17 +21,19 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,13 +45,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
@@ -57,17 +68,12 @@ import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.presentation.media.ImagePickPresets
 import com.splitease.app.presentation.media.rememberImagePicker
-import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeIconTile
-import com.splitease.app.presentation.ui.SeListRow
-import com.splitease.app.presentation.ui.SeListRowLabelStyle
 import com.splitease.app.presentation.ui.SeScreen
-import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
 
@@ -143,7 +149,6 @@ fun AccountProfileSettingsScreen(
                     .fillMaxSize()
                     .padding(padding.values)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp),
         ) {
             AccountProfileHero(
@@ -156,88 +161,44 @@ fun AccountProfileSettingsScreen(
                 onChangePhoto = photoPicker::launch,
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
-            AccountSettingsCard {
-                SeListRow(
-                    title = stringResource(R.string.account_sign_in_contact_section),
-                    subtitle = profile.email.takeIf { it.isNotBlank() },
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Email,
-                            tint = SplitEaseColors.Primary,
-                            size = 40,
-                        )
-                    },
-                    trailing = { AccountSettingsChevron() },
-                    onClick = onOpenSignInAndContact,
-                    showDivider = false,
-                    labelStyle = SeListRowLabelStyle.Field,
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = accountSettingsDividerColor())
+            AccountSettingsRow(
+                title = stringResource(R.string.account_sign_in_contact_section),
+                subtitle = profile.email.takeIf { it.isNotBlank() },
+                onClick = onOpenSignInAndContact,
+                leading = { AccountSettingsIcon(icon = Icons.Outlined.Email) },
+            )
 
-            Spacer(modifier = Modifier.height(28.dp))
-            SeSectionHeader(text = stringResource(R.string.account_preferences_section))
-            AccountSettingsCard {
-                SeListRow(
-                    title = stringResource(R.string.settings_currency_item),
-                    subtitle = "$currency · $currencyLabel",
-                    leading = { CurrencyLeading(code = currency) },
-                    trailing = { AccountSettingsChevron() },
-                    onClick = onOpenCurrency,
-                    showDivider = false,
-                    labelStyle = SeListRowLabelStyle.Field,
-                )
-                SeListRow(
-                    title = stringResource(R.string.settings_language),
-                    subtitle = appLocaleLabel(locale),
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Translate,
-                            tint = SplitEaseColors.Primary,
-                            size = 40,
-                        )
-                    },
-                    trailing = { AccountSettingsChevron() },
-                    onClick = onOpenLanguage,
-                    showDivider = false,
-                    labelStyle = SeListRowLabelStyle.Field,
-                )
-            }
+            HorizontalDivider(color = accountSettingsDividerColor())
+            AccountSettingsSectionHeader(text = stringResource(R.string.account_preferences_section))
+            AccountSettingsRow(
+                title = stringResource(R.string.settings_currency_item),
+                subtitle = "$currency · $currencyLabel",
+                onClick = onOpenCurrency,
+                leading = { CurrencyLeading(code = currency) },
+            )
+            AccountSettingsRow(
+                title = stringResource(R.string.settings_language),
+                subtitle = appLocaleLabel(locale),
+                onClick = onOpenLanguage,
+                leading = { AccountSettingsIcon(icon = Icons.Outlined.Translate) },
+            )
 
-            Spacer(modifier = Modifier.height(28.dp))
-            SeSectionHeader(text = stringResource(R.string.account_advanced_section))
-            AccountSettingsCard {
-                SeListRow(
-                    title = stringResource(R.string.account_logout_all_title),
-                    subtitle = stringResource(R.string.account_logout_all_subtitle),
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.AutoMirrored.Filled.Logout,
-                            tint = SplitEaseColors.Primary,
-                            size = 40,
-                        )
-                    },
-                    trailing = { AccountSettingsChevron() },
-                    onClick = { showSignOutAllConfirm = true },
-                    showDivider = false,
-                    labelStyle = SeListRowLabelStyle.Field,
-                )
-                SeListRow(
-                    title = stringResource(R.string.account_close_title),
-                    subtitle = stringResource(R.string.account_close_subtitle),
-                    leading = {
-                        SeIconTile(
-                            icon = Icons.Filled.Delete,
-                            tint = SplitEaseColors.YouOwe,
-                            size = 40,
-                        )
-                    },
-                    trailing = { AccountSettingsChevron() },
-                    onClick = onOpenCloseAccount,
-                    showDivider = false,
-                    labelStyle = SeListRowLabelStyle.Field,
-                )
-            }
+            HorizontalDivider(color = accountSettingsDividerColor())
+            AccountSettingsSectionHeader(text = stringResource(R.string.account_advanced_section))
+            AccountSettingsRow(
+                title = stringResource(R.string.account_logout_all_title),
+                subtitle = stringResource(R.string.account_logout_all_subtitle),
+                onClick = { showSignOutAllConfirm = true },
+                leading = { AccountSettingsIcon(icon = Icons.AutoMirrored.Outlined.Logout) },
+            )
+            AccountSettingsRow(
+                title = stringResource(R.string.account_close_title),
+                subtitle = stringResource(R.string.account_close_subtitle),
+                onClick = onOpenCloseAccount,
+                leading = { AccountSettingsIcon(icon = Icons.Outlined.Delete) },
+            )
         }
     }
 
@@ -355,26 +316,123 @@ private fun AccountProfileHero(
     }
 }
 
+private val AccountSectionStyle =
+    TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.sp,
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+    )
+
+private val AccountTitleStyle =
+    TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.sp,
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+    )
+
+private val AccountSubtitleStyle =
+    TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.sp,
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+    )
+
 @Composable
-internal fun AccountSettingsCard(content: @Composable () -> Unit) {
-    Column(
+internal fun AccountSettingsSectionHeader(text: String) {
+    Text(
+        text = text,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(SplitEaseColors.Surface)
-                .padding(vertical = 4.dp),
-    ) {
-        content()
-    }
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+        style = AccountSectionStyle,
+        color = SplitEaseColors.NavyMuted,
+    )
 }
 
 @Composable
-private fun AccountSettingsChevron() {
+internal fun AccountSettingsRow(
+    title: String,
+    onClick: () -> Unit,
+    leading: @Composable () -> Unit,
+    subtitle: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    leadingSize: Dp = 24.dp,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(leadingSize),
+            contentAlignment = Alignment.Center,
+        ) {
+            leading()
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = AccountTitleStyle,
+                color = SplitEaseColors.Navy,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = AccountSubtitleStyle,
+                    color = SplitEaseColors.NavyMuted,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (trailing != null) {
+            Spacer(modifier = Modifier.width(12.dp))
+            trailing()
+        }
+    }
+}
+
+private val AccountSettingsIconLight = Color(0xFF424751)
+private val AccountSettingsIconDark = Color(0xFFC5C7CC)
+private val AccountSettingsDividerLight = Color(0xFFD8D9DE)
+private val AccountSettingsDividerDark = Color(0xFF3A3C41)
+
+@Composable
+private fun accountSettingsOnDark(): Boolean =
+    MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+@Composable
+internal fun accountSettingsIconColor(): Color =
+    if (accountSettingsOnDark()) AccountSettingsIconDark else AccountSettingsIconLight
+
+@Composable
+internal fun accountSettingsDividerColor(): Color =
+    if (accountSettingsOnDark()) AccountSettingsDividerDark else AccountSettingsDividerLight
+
+@Composable
+internal fun AccountSettingsIcon(icon: ImageVector) {
     Icon(
-        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        imageVector = icon,
         contentDescription = null,
-        tint = SplitEaseColors.IconDefault,
+        tint = accountSettingsIconColor(),
+        modifier = Modifier.size(24.dp),
     )
 }
 
@@ -382,24 +440,16 @@ private fun AccountSettingsChevron() {
 private fun CurrencyLeading(code: String) {
     val flag = currencyFlagEmoji(code)
     if (flag == null) {
-        SeIconTile(
-            icon = Icons.Filled.Payments,
-            tint = SplitEaseColors.Primary,
-            size = 40,
-        )
+        AccountSettingsIcon(icon = Icons.Outlined.Payments)
         return
     }
-    val fillAlpha = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) 0.16f else 0.28f
-    Box(
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(SplitEaseColors.Primary.copy(alpha = fillAlpha)),
-        contentAlignment = Alignment.Center,
-    ) {
-        SeBodyLarge(text = flag)
-    }
+    Text(
+        text = flag,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        textAlign = TextAlign.Center,
+        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+    )
 }
 
 private val CURRENCY_REGIONS =

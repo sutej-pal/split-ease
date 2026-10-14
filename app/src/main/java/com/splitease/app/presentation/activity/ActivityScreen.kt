@@ -573,7 +573,7 @@ private fun ActivityScreenPreview() {
                 ActivityUiItem(
                     id = "1",
                     kind = ActivityKind.EXPENSE,
-                    title = "Sutej Pal Hotmail added exp3 in Noida room",
+                    title = "Alex Johnson added exp3 in Noida room",
                     subtitle = "Aug 5, 2026, 6:12 PM",
                     amountLabel = "",
                     sortEpochMs = System.currentTimeMillis(),
@@ -581,7 +581,7 @@ private fun ActivityScreenPreview() {
                     balanceLabel = "You get back ₹100.00",
                     balanceTone = ActivityBalanceTone.POSITIVE,
                     expenseTitle = "exp3",
-                    annotatedTitle = AnnotatedString("Sutej Pal Hotmail added exp3 in Noida room"),
+                    annotatedTitle = AnnotatedString("Alex Johnson added exp3 in Noida room"),
                 ),
             )
             ActivityRow(

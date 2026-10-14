@@ -27,6 +27,7 @@ Use this order to stay fast and consistent.
 - FCM / Realtime ops: [fcm-setup.md](fcm-setup.md)
 - Wipe / re-apply Supabase for a fresh test: [supabase-reset.md](supabase-reset.md)
 - Design tokens: [design-tokens.md](design-tokens.md)
+- Settings list layout (reuse on settings screens): [settings-list.md](settings-list.md)
 - Locked UI (do not restyle): [locked-ui.md](locked-ui.md)
 - Mail server repo notes: [splitease-server-repo.md](splitease-server-repo.md)
 
