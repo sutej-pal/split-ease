@@ -29,6 +29,14 @@ object SeLayout {
     val screenHorizontal: Dp = 16.dp
 
     /**
+     * Content inset for a full-width list row.
+     * Apply this **inside** the clickable (padding after `clickable`), never as
+     * horizontal padding on the parent column. Parent padding stops the press
+     * highlight short of the screen edges.
+     */
+    val listInset: Dp = 24.dp
+
+    /**
      * Canonical content margin for group-detail-style screens: Activity, Balances,
      * Totals, ledger rows, chips. Material 3 default 16dp each side.
      */

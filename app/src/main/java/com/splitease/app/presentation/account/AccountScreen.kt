@@ -52,6 +52,7 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListCard
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeListSection
@@ -171,7 +172,6 @@ private fun AccountScreenContent(
                             end = padding.values.calculateEndPadding(layoutDirection),
                         )
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
                         .padding(bottom = bottomBarScrollPadding(includeFab = false)),
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -199,6 +199,7 @@ private fun AccountScreenContent(
                         },
                         onClick = onOpenAccountProfile,
                         showDivider = false,
+                        horizontalPadding = SeLayout.listInset,
                     )
                 }
 
@@ -215,7 +216,10 @@ private fun AccountScreenContent(
                 }
 
                 // Preferences Section
-                SeListSection(title = stringResource(R.string.settings_preferences_section)) {
+                SeListSection(
+                    title = stringResource(R.string.settings_preferences_section),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
                     SeListRow(
                         title = stringResource(R.string.settings_appearance),
                         subtitle = themeModeLabel(themeMode),
@@ -236,7 +240,10 @@ private fun AccountScreenContent(
                 }
 
                 // Security Section
-                SeListSection(title = stringResource(R.string.settings_security)) {
+                SeListSection(
+                    title = stringResource(R.string.settings_security),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
                     SeListRow(
                         title = stringResource(R.string.settings_security),
                         subtitle = stringResource(R.string.settings_security_item_subtitle),
@@ -246,7 +253,10 @@ private fun AccountScreenContent(
                 }
 
                 // Help Section
-                SeListSection(title = stringResource(R.string.settings_help_section)) {
+                SeListSection(
+                    title = stringResource(R.string.settings_help_section),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
                     SeListRow(
                         title = stringResource(R.string.settings_help_center),
                         subtitle = stringResource(R.string.settings_help_center_subtitle),
@@ -268,7 +278,10 @@ private fun AccountScreenContent(
                 }
 
                 // About Section
-                SeListSection(title = stringResource(R.string.settings_about_section)) {
+                SeListSection(
+                    title = stringResource(R.string.settings_about_section),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
                     SeListRow(
                         title = stringResource(R.string.whats_new_title),
                         subtitle = stringResource(R.string.whats_new_current_build, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
@@ -307,6 +320,7 @@ private fun AccountScreenContent(
                 SeOutlinedButton(
                     text = stringResource(R.string.action_sign_out),
                     onClick = { showSignOutConfirm = true },
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,

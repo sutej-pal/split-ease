@@ -394,7 +394,7 @@ fun SeListRow(
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
     showDivider: Boolean = true,
-    horizontalPadding: Dp = 12.dp,
+    horizontalPadding: Dp = 24.dp,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -501,10 +501,13 @@ fun SeListCard(
 fun SeListSection(
     title: String,
     modifier: Modifier = Modifier,
+    horizontalPadding: Dp = SeLayout.screenHorizontal,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    SeSectionHeader(text = title)
-    SeListCard(modifier = modifier, content = content)
+    Column(modifier = modifier.fillMaxWidth()) {
+        SeSectionHeader(text = title, horizontalPadding = horizontalPadding)
+        SeListCard(content = content)
+    }
 }
 
 /** Muted trailing chevron for navigation rows. Mirrors in RTL. */
@@ -527,17 +530,25 @@ fun SeSectionHeader(
     modifier: Modifier = Modifier,
     horizontalPadding: Dp = SeLayout.screenHorizontal,
 ) {
-    HorizontalDivider(
-        modifier = Modifier.fillMaxWidth().seFullBleed(horizontalPadding),
-        color = SplitEaseColors.Outline,
-    )
-    SeBodySmall(
-        text = text,
-        modifier = modifier.padding(vertical = 8.dp),
-        color = SplitEaseColors.Navy,
-        fontWeight = FontWeight.Normal,
-    )
-    Spacer(modifier = Modifier.height(4.dp))
+    Column(modifier = modifier.fillMaxWidth()) {
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            color = SplitEaseColors.Outline,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalPadding, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SeBodySmall(
+                text = text,
+                color = SplitEaseColors.Navy,
+                fontWeight = FontWeight.Normal,
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+    }
 }
 
 @Composable

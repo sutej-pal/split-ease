@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.FragmentActivity
@@ -58,8 +59,12 @@ import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
+import com.splitease.app.presentation.ui.SeListCard
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeListSection
 import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
@@ -93,6 +98,21 @@ fun NotificationsSettingsScreen(
         }
     val enabled = osNotificationsEnabled && !muteAll
 
+    val onToggle = { checked: Boolean ->
+        if (checked) {
+            if (!osNotificationsEnabled) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    openSystemNotificationSettings(context)
+                }
+            }
+            viewModel.setNotificationsMutedAll(false)
+        } else {
+            viewModel.setNotificationsMutedAll(true)
+        }
+    }
+
     SeScreen(
         title = stringResource(R.string.settings_notifications),
         onBack = onBack,
@@ -103,53 +123,37 @@ fun NotificationsSettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
                         .padding(bottom = 24.dp),
             ) {
-                SeSectionHeader(text = stringResource(R.string.settings_notifications_section))
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                SeListSection(
+                    title = stringResource(R.string.settings_notifications_section),
+                    horizontalPadding = SeLayout.listInset,
                 ) {
-                    SeTitleMedium(
-                        text = stringResource(R.string.settings_notifications_group_updates),
-                        modifier = Modifier.weight(1f),
-                        color = SplitEaseColors.Navy,
-                    )
-                    SeSwitch(
-                        checked = enabled,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                if (!osNotificationsEnabled) {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    } else {
-                                        openSystemNotificationSettings(context)
-                                    }
-                                }
-                                viewModel.setNotificationsMutedAll(false)
-                            } else {
-                                viewModel.setNotificationsMutedAll(true)
-                            }
+                    SeListRow(
+                        title = stringResource(R.string.settings_notifications_group_updates),
+                        subtitle = stringResource(R.string.settings_notifications_group_updates_body),
+                        trailing = {
+                            SeSwitch(
+                                checked = enabled,
+                                onCheckedChange = { checked -> onToggle(checked) },
+                            )
                         },
+                        onClick = { onToggle(!enabled) },
+                        showDivider = false,
+                        horizontalPadding = SeLayout.listInset,
                     )
                 }
-                SeBodyMedium(
-                    text = stringResource(R.string.settings_notifications_group_updates_body),
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
                 if (!osNotificationsEnabled) {
+                    Spacer(modifier = Modifier.height(12.dp))
                     SeBodyMedium(
                         text = stringResource(R.string.settings_notifications_permission_needed),
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        modifier = Modifier.padding(horizontal = SeLayout.listInset, vertical = 4.dp),
                     )
                     SeTextButton(
                         text = stringResource(R.string.settings_notifications_open_system),
                         onClick = { openSystemNotificationSettings(context) },
                         emphasized = true,
+                        modifier = Modifier.padding(horizontal = SeLayout.listInset),
                     )
                 }
             }
@@ -172,10 +176,12 @@ fun LanguageSettingsScreen(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values)
-                        .padding(horizontal = 16.dp),
+                        .padding(padding.values),
             ) {
-                SeSectionHeader(text = stringResource(R.string.settings_language_section))
+                SeSectionHeader(
+                    text = stringResource(R.string.settings_language_section),
+                    horizontalPadding = SeLayout.listInset,
+                )
                 AppLocale.entries.forEachIndexed { index, locale ->
                     LanguageRow(
                         locale = locale,
@@ -213,6 +219,7 @@ private fun LanguageRow(
         },
         onClick = onSelect,
         showDivider = showDivider,
+        horizontalPadding = SeLayout.listInset,
     )
 }
 
@@ -257,14 +264,13 @@ fun SecuritySettingsScreen(
                         .fillMaxSize()
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
                         .padding(bottom = 24.dp),
             ) {
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp),
+                            .padding(horizontal = SeLayout.listInset, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     SeTitleMedium(
@@ -304,12 +310,12 @@ fun SecuritySettingsScreen(
                 }
                 SeBodyMedium(
                     text = stringResource(R.string.settings_biometrics_body),
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset).padding(bottom = 8.dp),
                 )
                 if (enableError != null) {
                     SeErrorText(
                         text = enableError.orEmpty(),
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        modifier = Modifier.padding(horizontal = SeLayout.listInset).padding(bottom = 8.dp),
                     )
                 }
                 HorizontalDivider(color = SplitEaseColors.Outline)
@@ -331,9 +337,11 @@ fun SecuritySettingsScreen(
                     },
                     onClick = { showTimeoutPicker = true },
                     showDivider = false,
+                    horizontalPadding = SeLayout.listInset,
                 )
                 SeBodyMedium(
                     text = stringResource(R.string.settings_timeout_body),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset),
                 )
             }
         },
@@ -396,17 +404,18 @@ fun CurrencySettingsScreen(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values)
-                        .padding(horizontal = 16.dp),
+                        .padding(padding.values),
             ) {
                 SeBodyMedium(
                     text = stringResource(R.string.settings_currency_hint),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset),
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 SeTextField(
                     value = filter,
                     onValueChange = { filter = it },
                     label = stringResource(R.string.settings_currency_search),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -420,7 +429,7 @@ fun CurrencySettingsScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable(onClick = onSelect)
-                                    .padding(vertical = 8.dp),
+                                    .padding(horizontal = SeLayout.listInset, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(
@@ -455,3 +464,43 @@ private fun authTimeoutLabel(timeout: AuthTimeout): String =
         AuthTimeout.FIFTEEN_MINUTES -> stringResource(R.string.settings_timeout_15_minutes)
         AuthTimeout.ONE_HOUR -> stringResource(R.string.settings_timeout_1_hour)
     }
+
+@Preview(name = "Notifications Settings", showBackground = true, heightDp = 640)
+@Composable
+private fun NotificationsSettingsScreenPreview() {
+    SePreview {
+        SeScreen(
+            title = stringResource(R.string.settings_notifications),
+            onBack = {},
+            content = { padding ->
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding.values)
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 24.dp),
+                ) {
+                    SeListSection(
+                        title = stringResource(R.string.settings_notifications_section),
+                        horizontalPadding = SeLayout.listInset,
+                    ) {
+                        SeListRow(
+                            title = stringResource(R.string.settings_notifications_group_updates),
+                            subtitle = stringResource(R.string.settings_notifications_group_updates_body),
+                            trailing = {
+                                SeSwitch(
+                                    checked = true,
+                                    onCheckedChange = {},
+                                )
+                            },
+                            onClick = {},
+                            showDivider = false,
+                            horizontalPadding = SeLayout.listInset,
+                        )
+                    }
+                }
+            },
+        )
+    }
+}

@@ -136,7 +136,7 @@ private fun ThemeModeRow(
         },
         onClick = onSelect,
         showDivider = false,
-        horizontalPadding = SeLayout.screenHorizontal,
+        horizontalPadding = SeLayout.listInset,
     )
 }
 

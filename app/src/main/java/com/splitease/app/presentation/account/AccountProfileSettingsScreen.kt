@@ -195,7 +195,6 @@ fun AccountProfileSettingsContent(
                             end = padding.values.calculateEndPadding(layoutDirection),
                         )
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
                         .padding(bottom = bottomBarScrollPadding(includeFab = false)),
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
