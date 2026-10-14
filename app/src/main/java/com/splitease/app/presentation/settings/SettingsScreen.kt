@@ -22,19 +22,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import com.splitease.app.presentation.ui.SeSwitch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.FragmentActivity
@@ -58,13 +53,10 @@ import com.splitease.app.R
 import com.splitease.app.domain.settings.AppCurrencies
 import com.splitease.app.domain.settings.AppLocale
 import com.splitease.app.domain.settings.AuthTimeout
-import com.splitease.app.domain.settings.ThemeMode
 import com.splitease.app.presentation.security.BiometricAvailability
 import com.splitease.app.presentation.security.authenticateWithBiometrics
 import com.splitease.app.presentation.security.biometricAvailability
 import com.splitease.app.presentation.theme.SplitEaseColors
-import com.splitease.app.presentation.ui.SeContentArea
-import com.splitease.app.presentation.ui.SeContentCard
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeModal
@@ -127,7 +119,7 @@ fun NotificationsSettingsScreen(
                         modifier = Modifier.weight(1f),
                         color = SplitEaseColors.Navy,
                     )
-                    Switch(
+                    SeSwitch(
                         checked = enabled,
                         onCheckedChange = { checked ->
                             if (checked) {
@@ -143,11 +135,6 @@ fun NotificationsSettingsScreen(
                                 viewModel.setNotificationsMutedAll(true)
                             }
                         },
-                        colors =
-                            SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = SplitEaseColors.Primary,
-                            ),
                     )
                 }
                 SeBodyMedium(
@@ -244,40 +231,6 @@ private fun appLocaleLabel(locale: AppLocale): String =
         },
     )
 
-@Composable
-fun AppearanceSettingsScreen(
-    onBack: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel(),
-) {
-    val selected by viewModel.themeMode.collectAsStateWithLifecycle()
-
-    SeScreen(
-        title = stringResource(R.string.settings_appearance),
-        onBack = onBack,
-        content = { padding ->
-            SeContentArea(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding.values),
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    SeContentCard {
-                        ThemeMode.entries.forEachIndexed { index, mode ->
-                            ThemeModeRow(
-                                mode = mode,
-                                selected = selected == mode,
-                                onSelect = { viewModel.setThemeMode(mode) },
-                                showDivider = index < ThemeMode.entries.lastIndex,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-    )
-}
 
 @Composable
 fun SecuritySettingsScreen(
@@ -319,17 +272,17 @@ fun SecuritySettingsScreen(
                         modifier = Modifier.weight(1f),
                         color = SplitEaseColors.Navy,
                     )
-                    Switch(
+                    SeSwitch(
                         checked = biometricEnabled,
                         onCheckedChange = { checked ->
                             enableError = null
                             if (!checked) {
                                 viewModel.setBiometricLockEnabled(false)
-                                return@Switch
+                                return@SeSwitch
                             }
                             if (activity == null) {
                                 enableError = unavailable
-                                return@Switch
+                                return@SeSwitch
                             }
                             when (val availability = biometricAvailability(activity, unavailable)) {
                                 is BiometricAvailability.Unavailable -> {
@@ -347,11 +300,6 @@ fun SecuritySettingsScreen(
                                 }
                             }
                         },
-                        colors =
-                            SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = SplitEaseColors.Primary,
-                            ),
                     )
                 }
                 SeBodyMedium(
@@ -495,82 +443,6 @@ fun CurrencySettingsScreen(
         },
     )
 }
-
-@Composable
-private fun ThemeModeRow(
-    mode: ThemeMode,
-    selected: Boolean,
-    onSelect: () -> Unit,
-    showDivider: Boolean,
-) {
-    val icon =
-        when (mode) {
-            ThemeMode.LIGHT -> Icons.Filled.WbSunny
-            ThemeMode.DARK -> Icons.Filled.DarkMode
-            ThemeMode.SYSTEM -> Icons.Filled.BrightnessMedium
-        }
-    val subtitle =
-        when (mode) {
-            ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system_subtitle)
-            else -> null
-        }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onSelect)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = SplitEaseColors.IconDefault,
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                SeTitleMedium(
-                    text = themeModeLabel(mode),
-                    fontWeight = FontWeight.SemiBold,
-                    color = SplitEaseColors.Navy,
-                )
-                if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    SeBodyMedium(
-                        text = subtitle,
-                        color = SplitEaseColors.NavyMuted,
-                    )
-                }
-            }
-            if (selected) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = SplitEaseColors.Primary,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-        if (showDivider) {
-            HorizontalDivider(
-                color = SplitEaseColors.Outline,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun themeModeLabel(mode: ThemeMode): String =
-    when (mode) {
-        ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
-        ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
-        ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
-    }
 
 @Composable
 private fun authTimeoutLabel(timeout: AuthTimeout): String =

@@ -54,6 +54,7 @@ class SignInAndContactViewModelTest {
         every { context.getString(R.string.signup_error_password_short) } returns "Password short"
         every { context.getString(R.string.error_invalid_email) } returns "Invalid email"
         every { context.getString(R.string.error_password_required) } returns "Password required"
+        every { context.getString(R.string.error_new_password_required) } returns "New password required"
 
         viewModel =
             SignInAndContactViewModel(
@@ -127,5 +128,29 @@ class SignInAndContactViewModelTest {
             advanceUntilIdle()
 
             assertEquals("Invalid email", viewModel.uiState.value.emailError)
+        }
+
+    @Test
+    fun blank_current_password_sets_password_error() =
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            viewModel.onCurrentPasswordDraftChange("")
+            viewModel.onNewPasswordDraftChange("newpassword123")
+            viewModel.updatePassword()
+            advanceUntilIdle()
+
+            assertEquals("Password required", viewModel.uiState.value.passwordError)
+        }
+
+    @Test
+    fun blank_new_password_sets_password_error() =
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            viewModel.onCurrentPasswordDraftChange("currentpassword")
+            viewModel.onNewPasswordDraftChange("")
+            viewModel.updatePassword()
+            advanceUntilIdle()
+
+            assertEquals("New password required", viewModel.uiState.value.passwordError)
         }
 }

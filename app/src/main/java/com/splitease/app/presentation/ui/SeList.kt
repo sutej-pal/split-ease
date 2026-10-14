@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
@@ -78,7 +79,7 @@ fun SeIconTile(
     modifier: Modifier = Modifier,
     size: Int = 56,
 ) {
-    val fillAlpha = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) 0.16f else 0.28f
+    val fillAlpha = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) 0.08f else 0.16f
     Box(
         modifier =
             modifier
@@ -383,15 +384,6 @@ fun SeLedgerRow(
     }
 }
 
-/** How [SeListRow] lays out `title` and `subtitle`. */
-enum class SeListRowLabelStyle {
-    /** Bold title over muted subtitle (navigation lists). */
-    Navigation,
-
-    /** Small muted label over semibold value ([SeAccordionRow] settings fields). */
-    Field,
-}
-
 @Composable
 fun SeListRow(
     title: String,
@@ -402,7 +394,7 @@ fun SeListRow(
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
     showDivider: Boolean = true,
-    labelStyle: SeListRowLabelStyle = SeListRowLabelStyle.Navigation,
+    horizontalPadding: Dp = 12.dp,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -422,7 +414,7 @@ fun SeListRow(
                             Modifier
                         },
                     )
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = horizontalPadding, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (leading != null) {
@@ -430,31 +422,17 @@ fun SeListRow(
                 Spacer(modifier = Modifier.width(SeLayout.iconTileGap))
             }
             Column(modifier = Modifier.weight(1f)) {
-                when (labelStyle) {
-                    SeListRowLabelStyle.Navigation -> {
-                        SeTitleSmall(
-                            text = title,
-                            fontWeight = FontWeight.Normal,
-                            color = SplitEaseColors.Navy,
-                        )
-                        if (subtitle != null) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            SeBodySmall(
-                                text = subtitle,
-                                color = SplitEaseColors.NavyMuted,
-                            )
-                        }
-                    }
-                    SeListRowLabelStyle.Field -> {
-                        SeTitleMedium(text = title, fontWeight = FontWeight.Medium)
-                        if (subtitle != null) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            SeBodySmall(
-                                text = subtitle,
-                                color = SplitEaseColors.NavyMuted,
-                            )
-                        }
-                    }
+                SeTitleSmall(
+                    text = title,
+                    fontWeight = FontWeight.Normal,
+                    color = SplitEaseColors.Navy,
+                )
+                if (subtitle != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    SeBodySmall(
+                        text = subtitle,
+                        color = SplitEaseColors.NavyMuted,
+                    )
                 }
             }
             if (trailing != null) {
@@ -468,17 +446,98 @@ fun SeListRow(
     }
 }
 
+/**
+ * Navigation variant of [SeListRow]: 40dp tinted [SeIconTile], title / muted subtitle,
+ * trailing [SeChevron], no divider. Use inside [SeListCard] / [SeListSection].
+ */
+@Composable
+fun SeListRow(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    tint: Color = SplitEaseColors.Primary,
+    iconSize: Int = 40,
+    showDivider: Boolean = false,
+) {
+    SeListRow(
+        title = title,
+        modifier = modifier,
+        subtitle = subtitle,
+        leading = { SeIconTile(icon = icon, tint = tint, size = iconSize) },
+        trailing = { SeChevron() },
+        onClick = onClick,
+        showDivider = showDivider,
+    )
+}
+
+/**
+ * Full-width surface card that groups [SeListRow]s on a settings-style screen.
+ * Use [SeListSection] when the card needs a [SeSectionHeader] above it.
+ */
+@Composable
+fun SeListCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().background(SplitEaseColors.Surface),
+        content = content,
+    )
+}
+
+/**
+ * [SeSectionHeader] followed by a [SeListCard] of rows.
+ *
+ * ```
+ * SeListSection(title = stringResource(R.string.settings_help_section)) {
+ *     SeListRow(title = ..., icon = ..., onClick = ...)
+ *     SeListRow(title = ..., icon = ..., onClick = ...)
+ * }
+ * ```
+ */
+@Composable
+fun SeListSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    SeSectionHeader(text = title)
+    SeListCard(modifier = modifier, content = content)
+}
+
+/** Muted trailing chevron for navigation rows. Mirrors in RTL. */
+@Composable
+fun SeChevron(
+    modifier: Modifier = Modifier,
+    tint: Color = SplitEaseColors.NavyMuted,
+) {
+    Icon(
+        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier,
+    )
+}
+
 @Composable
 fun SeSectionHeader(
     text: String,
     modifier: Modifier = Modifier,
+    horizontalPadding: Dp = SeLayout.screenHorizontal,
 ) {
-    SeTitleSmall(
+    HorizontalDivider(
+        modifier = Modifier.fillMaxWidth().seFullBleed(horizontalPadding),
+        color = SplitEaseColors.Outline,
+    )
+    SeBodySmall(
         text = text,
         modifier = modifier.padding(vertical = 8.dp),
         color = SplitEaseColors.Navy,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Normal,
     )
+    Spacer(modifier = Modifier.height(4.dp))
 }
 
 @Composable

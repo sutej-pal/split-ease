@@ -81,7 +81,7 @@ fun SplitEaseBottomBar(
                     )
                     .clip(shape)
                     .background(SplitEaseColors.Surface)
-                    .padding(horizontal = 4.dp, vertical = 10.dp),
+                    .padding(horizontal = 0.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {

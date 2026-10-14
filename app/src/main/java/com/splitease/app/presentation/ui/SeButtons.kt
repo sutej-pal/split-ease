@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SeLabelLarge
@@ -57,11 +58,14 @@ fun SePrimaryButton(
     isLoading: Boolean = false,
     leadingIcon: ImageVector? = null,
     shape: Shape = ButtonShape,
+    fillMaxWidth: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 13.dp),
 ) {
     val interactive = enabled && !isLoading
+    val buttonModifier = if (fillMaxWidth) modifier.fillMaxWidth() else modifier
     Button(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp),
+        modifier = buttonModifier.heightIn(min = 48.dp),
         enabled = interactive,
         shape = shape,
         colors =
@@ -83,7 +87,7 @@ fun SePrimaryButton(
                         SplitEaseColors.Navy.copy(alpha = 0.55f)
                     },
             ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 13.dp),
+        contentPadding = contentPadding,
     ) {
         if (isLoading) {
             Row(
@@ -120,6 +124,7 @@ fun SePrimaryButton(
                     text = text,
                     fontWeight = FontWeight.Medium,
                     color = LocalContentColor.current,
+                    textAlign = TextAlign.Center,
                 )
             }
         }

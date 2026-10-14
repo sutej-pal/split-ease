@@ -69,7 +69,6 @@ fun SeAccordionRow(
             },
             onClick = onToggle,
             showDivider = false,
-            labelStyle = SeListRowLabelStyle.Field,
         )
         if (content != null) {
             AnimatedVisibility(

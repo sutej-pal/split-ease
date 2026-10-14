@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -60,7 +61,7 @@ object SeLayout {
     val iconTileSize: Dp = iconTile.dp
 
     /** Gap between a leading icon tile and the row text. */
-    val iconTileGap: Dp = 14.dp
+    val iconTileGap: Dp = 20.dp
 
     /** Inset from the row’s start to text after a leading icon tile (tile + gap). */
     val afterIconTile: Dp = iconTileSize + iconTileGap
@@ -77,6 +78,26 @@ object SeLayout {
  */
 fun Modifier.seDetailHorizontal(): Modifier =
     this.padding(horizontal = SeLayout.detailHorizontal)
+
+/**
+ * Lets a child escape its parent's horizontal padding so it spans edge to edge
+ * (full-bleed dividers / surface cards inside a column padded by [horizontalPadding]).
+ *
+ * No-op when the incoming width is unbounded (e.g. inside a horizontal scroller).
+ */
+fun Modifier.seFullBleed(horizontalPadding: Dp = SeLayout.screenHorizontal): Modifier =
+    this.layout { measurable, constraints ->
+        if (!constraints.hasBoundedWidth) {
+            val placeable = measurable.measure(constraints)
+            return@layout layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+        }
+        val bleedPx = horizontalPadding.roundToPx()
+        val width = constraints.maxWidth + bleedPx * 2
+        val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+        layout(constraints.maxWidth, placeable.height) {
+            placeable.placeRelative(-bleedPx, 0)
+        }
+    }
 
 /**
  * Canonical text style for secondary-screen titles (app bar / [SeTopBar] chrome).

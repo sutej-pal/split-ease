@@ -1,30 +1,25 @@
 package com.splitease.app.presentation.account
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -35,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -58,14 +52,13 @@ import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
-import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeListCard
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeListSection
 import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
-import com.splitease.app.presentation.ui.SeSectionHeader
-
 @Composable
 fun AccountScreen(
     onBack: (() -> Unit)? = null,
@@ -182,7 +175,9 @@ private fun AccountScreenContent(
                         .padding(bottom = bottomBarScrollPadding(includeFab = false)),
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
-                AccountGroupCard(onClick = onOpenAccountProfile) {
+
+                // Profile Card
+                SeListCard {
                     SeListRow(
                         title = stringResource(R.string.account_profile_settings_title),
                         subtitle = stringResource(R.string.settings_account_item_subtitle),
@@ -202,44 +197,30 @@ private fun AccountScreenContent(
                                 modifier = Modifier.size(16.dp),
                             )
                         },
-                        onClick = null,
+                        onClick = onOpenAccountProfile,
                         showDivider = false,
                     )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                AccountGroupCard(onClick = onOpenSpending) {
+
+                // Spending Hub Card
+                SeListCard {
                     SeListRow(
                         title = stringResource(R.string.spending_title),
                         subtitle = stringResource(R.string.spending_hub_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.AutoMirrored.Filled.ShowChart,
-                                tint = SplitEaseColors.OwedToYou,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
-                        onClick = null,
-                        showDivider = false,
+                        icon = Icons.AutoMirrored.Filled.ShowChart,
+                        onClick = onOpenSpending,
                     )
                 }
 
-                SeSectionHeader(text = stringResource(R.string.settings_preferences_section))
-                AccountGroupCard {
+                // Preferences Section
+                SeListSection(title = stringResource(R.string.settings_preferences_section)) {
                     SeListRow(
                         title = stringResource(R.string.settings_appearance),
                         subtitle = themeModeLabel(themeMode),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.DarkMode,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
+                        icon = Icons.Filled.DarkMode,
                         onClick = onOpenAppearance,
-                        showDivider = true,
                     )
                     SeListRow(
                         title = stringResource(R.string.settings_notifications),
@@ -249,98 +230,50 @@ private fun AccountScreenContent(
                             } else {
                                 stringResource(R.string.settings_notifications_off)
                             },
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Notifications,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
+                        icon = Icons.Filled.Notifications,
                         onClick = onOpenNotifications,
-                        showDivider = false,
                     )
                 }
 
-                SeSectionHeader(text = stringResource(R.string.settings_security))
-                AccountGroupCard(onClick = onOpenSecurity) {
+                // Security Section
+                SeListSection(title = stringResource(R.string.settings_security)) {
                     SeListRow(
                         title = stringResource(R.string.settings_security),
                         subtitle = stringResource(R.string.settings_security_item_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Lock,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
-                        onClick = null,
-                        showDivider = false,
+                        icon = Icons.Filled.Lock,
+                        onClick = onOpenSecurity,
                     )
                 }
 
-                SeSectionHeader(text = stringResource(R.string.settings_help_section))
-                AccountGroupCard {
+                // Help Section
+                SeListSection(title = stringResource(R.string.settings_help_section)) {
                     SeListRow(
                         title = stringResource(R.string.settings_help_center),
                         subtitle = stringResource(R.string.settings_help_center_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Outlined.HelpOutline,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
+                        icon = Icons.AutoMirrored.Outlined.HelpOutline,
                         onClick = onOpenHelpCenter,
-                        showDivider = true,
                     )
                     SeListRow(
                         title = stringResource(R.string.settings_contact_support),
                         subtitle = stringResource(R.string.settings_contact_support_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Outlined.Email,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
+                        icon = Icons.Outlined.Email,
                         onClick = onContactSupport,
-                        showDivider = true,
                     )
                     SeListRow(
                         title = stringResource(R.string.settings_rate_app),
                         subtitle = stringResource(R.string.settings_rate_app_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Outlined.StarBorder,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
+                        icon = Icons.Outlined.StarBorder,
                         onClick = onRateApp,
-                        showDivider = false,
                     )
                 }
 
-                SeSectionHeader(text = stringResource(R.string.settings_about_section))
-                AccountGroupCard(onClick = onOpenWhatsNew) {
+                // About Section
+                SeListSection(title = stringResource(R.string.settings_about_section)) {
                     SeListRow(
                         title = stringResource(R.string.whats_new_title),
                         subtitle = stringResource(R.string.whats_new_current_build, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.NewReleases,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountChevron() },
-                        onClick = null,
-                        showDivider = false,
+                        icon = Icons.Filled.NewReleases,
+                        onClick = onOpenWhatsNew,
                     )
                 }
 
@@ -384,32 +317,6 @@ private fun AccountScreenContent(
                 )
             }
         },
-    )
-}
-
-@Composable
-private fun AccountGroupCard(
-    onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(SplitEaseColors.Surface)
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun AccountChevron() {
-    Icon(
-        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = SplitEaseColors.NavyMuted,
     )
 }
 

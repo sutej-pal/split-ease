@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,9 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.domain.model.SecondaryEmail
 import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SeBodySmall
@@ -59,6 +62,7 @@ import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeFilledTextField
+import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
@@ -70,12 +74,64 @@ fun SignInAndContactScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val profile by viewModel.profile.collectAsStateWithLifecycle()
+
+    SignInAndContactContent(
+        uiState = uiState,
+        profile = profile,
+        onBack = onBack,
+        onToggleRow = viewModel::toggleRow,
+        onResendPrimaryVerification = viewModel::resendPrimaryVerification,
+        onPrimaryOtpDraftChange = viewModel::onPrimaryOtpDraftChange,
+        onVerifyPrimaryEmail = viewModel::verifyPrimaryEmail,
+        onResendSecondaryEmail = viewModel::resendSecondaryEmail,
+        onRemoveSecondaryEmail = viewModel::removeSecondaryEmail,
+        onSecondaryOtpDraftChange = viewModel::onSecondaryOtpDraftChange,
+        onVerifySecondaryEmail = viewModel::verifySecondaryEmail,
+        onToggleAddEmailForm = viewModel::toggleAddEmailForm,
+        onNewEmailDraftChange = viewModel::onNewEmailDraftChange,
+        onEmailPasswordDraftChange = viewModel::onEmailPasswordDraftChange,
+        onAddSecondaryEmail = viewModel::addSecondaryEmail,
+        onPhoneCountryCodeDraftChange = viewModel::onPhoneCountryCodeDraftChange,
+        onPhoneNumberDraftChange = viewModel::onPhoneNumberDraftChange,
+        onSavePhone = viewModel::savePhone,
+        onCurrentPasswordDraftChange = viewModel::onCurrentPasswordDraftChange,
+        onNewPasswordDraftChange = viewModel::onNewPasswordDraftChange,
+        onUpdatePassword = viewModel::updatePassword,
+    )
+}
+
+@Composable
+fun SignInAndContactContent(
+    uiState: SignInAndContactUiState,
+    profile: AccountProfileUi,
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onToggleRow: (AccountRow) -> Unit = {},
+    onResendPrimaryVerification: () -> Unit = {},
+    onPrimaryOtpDraftChange: (String) -> Unit = {},
+    onVerifyPrimaryEmail: () -> Unit = {},
+    onResendSecondaryEmail: (String) -> Unit = {},
+    onRemoveSecondaryEmail: (String) -> Unit = {},
+    onSecondaryOtpDraftChange: (String, String) -> Unit = { _, _ -> },
+    onVerifySecondaryEmail: (String) -> Unit = {},
+    onToggleAddEmailForm: () -> Unit = {},
+    onNewEmailDraftChange: (String) -> Unit = {},
+    onEmailPasswordDraftChange: (String) -> Unit = {},
+    onAddSecondaryEmail: () -> Unit = {},
+    onPhoneCountryCodeDraftChange: (String) -> Unit = {},
+    onPhoneNumberDraftChange: (String) -> Unit = {},
+    onSavePhone: () -> Unit = {},
+    onCurrentPasswordDraftChange: (String) -> Unit = {},
+    onNewPasswordDraftChange: (String) -> Unit = {},
+    onUpdatePassword: () -> Unit = {},
+) {
     var emailToRemoveId by remember { mutableStateOf<String?>(null) }
     var showDialCodePicker by remember { mutableStateOf(false) }
 
     SeScreen(
         title = stringResource(R.string.account_sign_in_contact_section),
         onBack = onBack,
+        modifier = modifier,
     ) { padding ->
         Column(
             modifier =
@@ -100,7 +156,7 @@ fun SignInAndContactScreen(
                 title = stringResource(R.string.account_email_label),
                 subtitle = emailValue,
                 expanded = uiState.expandedRow == AccountRow.EMAIL,
-                onToggle = { viewModel.toggleRow(AccountRow.EMAIL) },
+                onToggle = { onToggleRow(AccountRow.EMAIL) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Filled.Email,
@@ -137,7 +193,7 @@ fun SignInAndContactScreen(
                                 )
                                 SeTextButton(
                                     text = stringResource(R.string.account_resend_action),
-                                    onClick = viewModel::resendPrimaryVerification,
+                                    onClick = onResendPrimaryVerification,
                                 )
                             }
                         }
@@ -149,13 +205,13 @@ fun SignInAndContactScreen(
                             ) {
                                 SeFilledTextField(
                                     value = uiState.primaryOtpDraft,
-                                    onValueChange = viewModel::onPrimaryOtpDraftChange,
+                                    onValueChange = onPrimaryOtpDraftChange,
                                     placeholder = "6-digit code",
                                     modifier = Modifier.weight(1f),
                                 )
                                 SePrimaryButton(
                                     text = stringResource(R.string.account_verify_action),
-                                    onClick = viewModel::verifyPrimaryEmail,
+                                    onClick = onVerifyPrimaryEmail,
                                     isLoading = uiState.isEmailSaving,
                                 )
                             }
@@ -182,7 +238,7 @@ fun SignInAndContactScreen(
                                     if (!sec.isVerified) {
                                         SeTextButton(
                                             text = stringResource(R.string.account_resend_action),
-                                            onClick = { viewModel.resendSecondaryEmail(sec.id) },
+                                            onClick = { onResendSecondaryEmail(sec.id) },
                                         )
                                     }
                                     Icon(
@@ -210,13 +266,13 @@ fun SignInAndContactScreen(
                                 ) {
                                     SeFilledTextField(
                                         value = otp,
-                                        onValueChange = { viewModel.onSecondaryOtpDraftChange(sec.id, it) },
+                                        onValueChange = { onSecondaryOtpDraftChange(sec.id, it) },
                                         placeholder = "6-digit code",
                                         modifier = Modifier.weight(1f),
                                     )
                                     SePrimaryButton(
                                         text = stringResource(R.string.account_verify_action),
-                                        onClick = { viewModel.verifySecondaryEmail(sec.id) },
+                                        onClick = { onVerifySecondaryEmail(sec.id) },
                                         isLoading = uiState.isEmailSaving,
                                     )
                                 }
@@ -228,13 +284,13 @@ fun SignInAndContactScreen(
                     if (!uiState.showAddEmailForm) {
                         SeTextButton(
                             text = "+ " + stringResource(R.string.account_add_another_email),
-                            onClick = viewModel::toggleAddEmailForm,
+                            onClick = onToggleAddEmailForm,
                         )
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             SeFilledTextField(
                                 value = uiState.newEmailDraft,
-                                onValueChange = viewModel::onNewEmailDraftChange,
+                                onValueChange = onNewEmailDraftChange,
                                 placeholder = "name@company.com",
                                 isError = uiState.emailError != null,
                             )
@@ -244,26 +300,26 @@ fun SignInAndContactScreen(
                             if (!profile.isGoogleOnly) {
                                 SeFilledTextField(
                                     value = uiState.emailPasswordDraft,
-                                    onValueChange = viewModel::onEmailPasswordDraftChange,
+                                    onValueChange = onEmailPasswordDraftChange,
                                     placeholder = stringResource(R.string.account_current_password_label),
                                     visualTransformation = PasswordVisualTransformation(),
                                 )
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 SeTextButton(
                                     text = stringResource(R.string.action_cancel),
-                                    onClick = viewModel::toggleAddEmailForm,
+                                    onClick = onToggleAddEmailForm,
                                 )
-                                Spacer(modifier = Modifier.weight(1f))
                                 SePrimaryButton(
                                     text = stringResource(R.string.action_send_otp),
-                                    onClick = viewModel::addSecondaryEmail,
+                                    onClick = onAddSecondaryEmail,
                                     isLoading = uiState.isEmailSaving,
-                                    modifier = Modifier.weight(1f),
+                                    fillMaxWidth = false,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                 )
                             }
                         }
@@ -282,7 +338,7 @@ fun SignInAndContactScreen(
                 title = stringResource(R.string.account_phone_label),
                 subtitle = phoneDisplay,
                 expanded = uiState.expandedRow == AccountRow.PHONE,
-                onToggle = { viewModel.toggleRow(AccountRow.PHONE) },
+                onToggle = { onToggleRow(AccountRow.PHONE) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Filled.Phone,
@@ -300,26 +356,26 @@ fun SignInAndContactScreen(
                         phoneNumber = uiState.phoneNumberDraft,
                         enabled = !uiState.isPhoneSaving,
                         onDialClick = { showDialCodePicker = true },
-                        onPhoneChange = viewModel::onPhoneNumberDraftChange,
+                        onPhoneChange = onPhoneNumberDraftChange,
                     )
                     if (uiState.phoneError != null) {
                         SeErrorText(text = uiState.phoneError!!)
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth().height(48.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         SeTextButton(
                             text = stringResource(R.string.action_cancel),
-                            onClick = { viewModel.toggleRow(AccountRow.PHONE) },
+                            onClick = { onToggleRow(AccountRow.PHONE) },
                         )
-                        Spacer(modifier = Modifier.weight(1f))
                         SePrimaryButton(
                             text = stringResource(R.string.action_send_otp),
-                            onClick = viewModel::savePhone,
+                            onClick = onSavePhone,
                             isLoading = uiState.isPhoneSaving,
-                            modifier = Modifier.weight(1f),
+                            fillMaxWidth = false,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         )
                     }
                 }
@@ -331,7 +387,7 @@ fun SignInAndContactScreen(
                     title = stringResource(R.string.account_password_label),
                     subtitle = "Change",
                     expanded = uiState.expandedRow == AccountRow.PASSWORD,
-                    onToggle = { viewModel.toggleRow(AccountRow.PASSWORD) },
+                    onToggle = { onToggleRow(AccountRow.PASSWORD) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.Lock,
@@ -345,13 +401,13 @@ fun SignInAndContactScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SeFilledTextField(
                             value = uiState.currentPasswordDraft,
-                            onValueChange = viewModel::onCurrentPasswordDraftChange,
+                            onValueChange = onCurrentPasswordDraftChange,
                             placeholder = stringResource(R.string.account_current_password_label),
                             visualTransformation = PasswordVisualTransformation(),
                         )
                         SeFilledTextField(
                             value = uiState.newPasswordDraft,
-                            onValueChange = viewModel::onNewPasswordDraftChange,
+                            onValueChange = onNewPasswordDraftChange,
                             placeholder = stringResource(R.string.account_new_password_label),
                             visualTransformation = PasswordVisualTransformation(),
                         )
@@ -360,19 +416,19 @@ fun SignInAndContactScreen(
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth().height(48.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             SeTextButton(
                                 text = stringResource(R.string.action_cancel),
-                                onClick = { viewModel.toggleRow(AccountRow.PASSWORD) },
+                                onClick = { onToggleRow(AccountRow.PASSWORD) },
                             )
-                            Spacer(modifier = Modifier.weight(1f))
                             SePrimaryButton(
                                 text = stringResource(R.string.account_update_password_action),
-                                onClick = viewModel::updatePassword,
+                                onClick = onUpdatePassword,
                                 isLoading = uiState.isPasswordSaving,
-                                modifier = Modifier.weight(1f),
+                                fillMaxWidth = false,
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             )
                         }
                     }
@@ -385,7 +441,7 @@ fun SignInAndContactScreen(
                 selectedCode = uiState.phoneCountryCodeDraft,
                 selectedFlag = flagEmojiForDialCode(uiState.phoneCountryCodeDraft),
                 onSelect = { option ->
-                    viewModel.onPhoneCountryCodeDraftChange(option.code)
+                    onPhoneCountryCodeDraftChange(option.code)
                     showDialCodePicker = false
                 },
                 onDismiss = { showDialCodePicker = false },
@@ -400,7 +456,7 @@ fun SignInAndContactScreen(
                 confirmLabel = stringResource(R.string.account_remove_action),
                 onDismissRequest = { emailToRemoveId = null },
                 onConfirm = {
-                    viewModel.removeSecondaryEmail(id)
+                    onRemoveSecondaryEmail(id)
                     emailToRemoveId = null
                 },
                 tone = SeConfirmTone.Danger,
@@ -492,3 +548,100 @@ private fun SignInContactAccordionRow(
         }
     }
 }
+
+@Preview(name = "Sign-in & Contact · Default", showBackground = true, heightDp = 720)
+@Composable
+private fun SignInAndContactScreenPreview() {
+    SePreview {
+        SignInAndContactContent(
+            uiState =
+                SignInAndContactUiState(
+                    secondaryEmails =
+                        listOf(
+                            SecondaryEmail(id = "1", email = "alex.work@company.com", isVerified = true),
+                        ),
+                ),
+            profile =
+                AccountProfileUi(
+                    displayName = "Alex Rivera",
+                    email = "alex@example.com",
+                    emailConfirmed = true,
+                    phoneCountryCode = "+91",
+                    phoneNumber = "9876543210",
+                ),
+        )
+    }
+}
+
+@Preview(name = "Sign-in & Contact · Email expanded", showBackground = true, heightDp = 800)
+@Composable
+private fun SignInAndContactScreenEmailExpandedPreview() {
+    SePreview {
+        SignInAndContactContent(
+            uiState =
+                SignInAndContactUiState(
+                    expandedRow = AccountRow.EMAIL,
+                    secondaryEmails =
+                        listOf(
+                            SecondaryEmail(id = "1", email = "alex.work@company.com", isVerified = true),
+                            SecondaryEmail(id = "2", email = "alex.personal@gmail.com", isVerified = false),
+                        ),
+                    showAddEmailForm = true,
+                    newEmailDraft = "alex.backup@domain.com",
+                ),
+            profile =
+                AccountProfileUi(
+                    displayName = "Alex Rivera",
+                    email = "alex@example.com",
+                    emailConfirmed = false,
+                    phoneCountryCode = "+91",
+                    phoneNumber = "9876543210",
+                ),
+        )
+    }
+}
+
+@Preview(name = "Sign-in & Contact · Phone expanded", showBackground = true, heightDp = 720)
+@Composable
+private fun SignInAndContactScreenPhoneExpandedPreview() {
+    SePreview {
+        SignInAndContactContent(
+            uiState =
+                SignInAndContactUiState(
+                    expandedRow = AccountRow.PHONE,
+                    phoneCountryCodeDraft = "+91",
+                    phoneNumberDraft = "9876543210",
+                ),
+            profile =
+                AccountProfileUi(
+                    displayName = "Alex Rivera",
+                    email = "alex@example.com",
+                    emailConfirmed = true,
+                    phoneCountryCode = "+91",
+                    phoneNumber = "9876543210",
+                ),
+        )
+    }
+}
+
+@Preview(name = "Sign-in & Contact · Dark mode", showBackground = true, heightDp = 720)
+@Composable
+private fun SignInAndContactScreenDarkPreview() {
+    SePreview(darkTheme = true) {
+        SignInAndContactContent(
+            uiState =
+                SignInAndContactUiState(
+                    expandedRow = AccountRow.PASSWORD,
+                ),
+            profile =
+                AccountProfileUi(
+                    displayName = "Alex Rivera",
+                    email = "alex@example.com",
+                    emailConfirmed = true,
+                    phoneCountryCode = "+91",
+                    phoneNumber = "9876543210",
+                ),
+        )
+    }
+}
+

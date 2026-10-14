@@ -39,9 +39,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.splitease.app.presentation.ui.SeSwitch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -859,14 +858,9 @@ private fun SettingsToggleRow(
             color = SplitEaseColors.Navy,
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Switch(
+        SeSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors =
-                SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = SplitEaseColors.Primary,
-                ),
         )
     }
 }

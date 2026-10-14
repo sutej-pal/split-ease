@@ -493,6 +493,7 @@
     <string name="signup_error_phone_invalid">Enter a valid phone number (7–15 digits).</string>
     <string name="msg_profile_phone_saved">Phone number updated.</string>
     <string name="error_password_required">Enter your password.</string>
+    <string name="error_new_password_required">Enter the new password.</string>
     <string name="verify_email_success">Email verified successfully.</string>
     <string name="msg_email_removed">Email address removed.</string>
     <string name="msg_camera_permission_denied">Camera permission is needed to take a photo.</string>

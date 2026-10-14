@@ -119,19 +119,6 @@ class SignInAndContactViewModel
             }
         }
 
-        fun syncDraftsFromProfile() {
-            val prof = profile.value
-            _uiState.update {
-                it.copy(
-                    phoneCountryCodeDraft = prof.phoneCountryCode,
-                    phoneNumberDraft = prof.phoneNumber,
-                    isGoogleOnly = prof.isGoogleOnly,
-                    errorMessage = null,
-                    infoMessage = null,
-                )
-            }
-        }
-
         fun toggleRow(row: AccountRow) {
             _uiState.update { state ->
                 val nextExpanded = if (state.expandedRow == row) null else row
@@ -212,6 +199,10 @@ class SignInAndContactViewModel
             val newPass = _uiState.value.newPasswordDraft.trim()
             if (current.isBlank()) {
                 _uiState.update { it.copy(passwordError = appContext.getString(R.string.error_password_required)) }
+                return
+            }
+            if (newPass.isBlank()) {
+                _uiState.update { it.copy(passwordError = appContext.getString(R.string.error_new_password_required)) }
                 return
             }
             if (newPass.length < 8) {
