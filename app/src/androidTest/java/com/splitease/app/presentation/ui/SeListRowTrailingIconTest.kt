@@ -57,10 +57,10 @@ class SeListRowTrailingIconTest {
         }
 
         composeRule.waitForIdle()
-        val pencilBounds = composeRule.onNodeWithTag("pencil").fetchSemanticsNode().boundsInRoot
-        val chevronBounds = composeRule.onNodeWithTag("chevron").fetchSemanticsNode().boundsInRoot
-        val pencilRowBounds = composeRule.onNodeWithTag("pencilRow").fetchSemanticsNode().boundsInRoot
-        val chevronRowBounds = composeRule.onNodeWithTag("chevronRow").fetchSemanticsNode().boundsInRoot
+        val pencilBounds = composeRule.onNodeWithTag("pencil", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val chevronBounds = composeRule.onNodeWithTag("chevron", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val pencilRowBounds = composeRule.onNodeWithTag("pencilRow", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val chevronRowBounds = composeRule.onNodeWithTag("chevronRow", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
 
         assertEquals(chevronBounds.width, pencilBounds.width, 0.5f)
         assertEquals(chevronBounds.height, pencilBounds.height, 0.5f)
