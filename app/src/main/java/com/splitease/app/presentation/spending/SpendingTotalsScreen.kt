@@ -18,18 +18,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
+import com.splitease.app.domain.spending.CategorySpending
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeEmptyState
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeMoneyText
 import com.splitease.app.presentation.ui.SeMoneyTone
+import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.seDetailHorizontal
+import java.math.BigDecimal
 
 @Composable
 fun SpendingTotalsScreen(
@@ -39,6 +43,21 @@ fun SpendingTotalsScreen(
     val period by viewModel.period.collectAsStateWithLifecycle()
     val rows by viewModel.totals.collectAsStateWithLifecycle()
 
+    SpendingTotalsScreenContent(
+        period = period,
+        rows = rows,
+        onBack = onBack,
+        onSetPeriod = viewModel::setPeriod,
+    )
+}
+
+@Composable
+fun SpendingTotalsScreenContent(
+    period: SpendingPeriod,
+    rows: List<CategorySpending>,
+    onBack: () -> Unit,
+    onSetPeriod: (SpendingPeriod) -> Unit,
+) {
     SeScreen(
         title = stringResource(R.string.spending_title),
         onBack = onBack,
@@ -56,7 +75,7 @@ fun SpendingTotalsScreen(
                     SpendingPeriod.entries.forEach { option ->
                         FilterChip(
                             selected = period == option,
-                            onClick = { viewModel.setPeriod(option) },
+                            onClick = { onSetPeriod(option) },
                             label = {
                                 SeBodyMedium(
                                     when (option) {
@@ -108,3 +127,40 @@ fun SpendingTotalsScreen(
         },
     )
 }
+
+@Preview(name = "Spending Totals", showBackground = true, heightDp = 720)
+@Composable
+private fun SpendingTotalsScreenPreview() {
+    SePreview {
+        SpendingTotalsScreenContent(
+            period = SpendingPeriod.THIS_MONTH,
+            rows =
+                listOf(
+                    CategorySpending(
+                        categoryId = "1",
+                        categoryName = "Groceries",
+                        currencyCode = "USD",
+                        total = BigDecimal("142.50"),
+                        expenseCount = 4,
+                    ),
+                    CategorySpending(
+                        categoryId = "2",
+                        categoryName = "Dining Out",
+                        currencyCode = "USD",
+                        total = BigDecimal("89.00"),
+                        expenseCount = 3,
+                    ),
+                    CategorySpending(
+                        categoryId = "3",
+                        categoryName = "Entertainment",
+                        currencyCode = "USD",
+                        total = BigDecimal("45.20"),
+                        expenseCount = 2,
+                    ),
+                ),
+            onBack = {},
+            onSetPeriod = {},
+        )
+    }
+}
+

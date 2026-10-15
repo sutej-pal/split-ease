@@ -55,6 +55,7 @@ import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListCard
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeListRowTrailingIcon
 import com.splitease.app.presentation.ui.SeListSection
 import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SeOutlinedButton
@@ -185,16 +186,14 @@ private fun AccountScreenContent(
                             SeAvatarBadge(
                                 name = displayName.ifBlank { stringResource(R.string.account_name_fallback) },
                                 photoUrl = photoUrl,
-                                size = 36.dp,
+                                size = 40.dp,
                                 borderWidth = 0.dp,
                             )
                         },
                         trailing = {
-                            Icon(
+                            SeListRowTrailingIcon(
                                 imageVector = Icons.Filled.Edit,
-                                contentDescription = null,
                                 tint = SplitEaseColors.NavyMuted,
-                                modifier = Modifier.size(16.dp),
                             )
                         },
                         onClick = onOpenAccountProfile,

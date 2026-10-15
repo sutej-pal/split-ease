@@ -510,15 +510,29 @@ fun SeListSection(
     }
 }
 
+/** Same 24dp trailing icon slot as [SeChevron]. Parent row centers it. */
+@Composable
+fun SeListRowTrailingIcon(
+    imageVector: ImageVector,
+    tint: Color = SplitEaseColors.NavyMuted,
+    modifier: Modifier = Modifier,
+) {
+    Icon(
+        imageVector = imageVector,
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier,
+    )
+}
+
 /** Muted trailing chevron for navigation rows. Mirrors in RTL. */
 @Composable
 fun SeChevron(
     modifier: Modifier = Modifier,
     tint: Color = SplitEaseColors.NavyMuted,
 ) {
-    Icon(
+    SeListRowTrailingIcon(
         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
         tint = tint,
         modifier = modifier,
     )
