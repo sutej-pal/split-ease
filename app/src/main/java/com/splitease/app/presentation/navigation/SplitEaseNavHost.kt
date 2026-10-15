@@ -1087,18 +1087,6 @@ private fun SignedInNavHost(
                     onNavigateSettleSelection = { gid ->
                         navController.navigate(Routes.settleSelection(groupId = gid))
                     },
-                    onSettleDebt = { from, to, amount, currency, label ->
-                        navController.navigate(
-                            Routes.settleUp(
-                                fromUserId = from,
-                                toUserId = to,
-                                amount = amount,
-                                currency = currency,
-                                groupId = groupId,
-                                label = label,
-                            ),
-                        )
-                    },
                 )
             }
             composable(

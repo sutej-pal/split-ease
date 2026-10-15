@@ -42,8 +42,6 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -63,7 +61,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -124,7 +121,6 @@ import com.splitease.app.presentation.ui.SeExtendedFab
 import com.splitease.app.presentation.ui.SeGroupIconTile
 import com.splitease.app.presentation.ui.SeInfoText
 import com.splitease.app.presentation.ui.SeLayout
-import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeSecondaryButton
@@ -368,13 +364,6 @@ fun GroupDetailScreen(
     onOpenTotals: () -> Unit,
     onOpenPinBoard: () -> Unit,
     onNavigateSettleSelection: (groupId: String) -> Unit,
-    onSettleDebt: (
-        fromUserId: String,
-        toUserId: String,
-        amount: String,
-        currency: String,
-        counterpartyLabel: String,
-    ) -> Unit,
     viewModel: GroupsViewModel = hiltViewModel(),
     expensesViewModel: ExpensesViewModel = hiltViewModel(),
     balancesViewModel: BalancesViewModel = hiltViewModel(),
@@ -392,7 +381,6 @@ fun GroupDetailScreen(
     val group by remember(groupId) { viewModel.observeGroup(groupId) }
         .collectAsStateWithLifecycle()
     val userPhotoUrls by viewModel.userPhotoUrls.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val me = expensesViewModel.currentUserId()
     val isSolo = membersReady && (members.size <= 1)
     val nets = groupBalance?.myNetByCurrency
@@ -441,7 +429,7 @@ fun GroupDetailScreen(
             object : NestedScrollConnection {
                 override fun onPreScroll(
                     available: Offset,
-                    _source: NestedScrollSource,
+                    source: NestedScrollSource,
                 ): Offset {
                     // Collapse the banner before the list scrolls up.
                     if (available.y >= 0f) return Offset.Zero
@@ -453,9 +441,9 @@ fun GroupDetailScreen(
                 }
 
                 override fun onPostScroll(
-                    _consumed: Offset,
+                    consumed: Offset,
                     available: Offset,
-                    _source: NestedScrollSource,
+                    source: NestedScrollSource,
                 ): Offset {
                     // Expand the banner only after the list has reached the top.
                     if (available.y <= 0f || listState.canScrollBackward) return Offset.Zero
@@ -758,14 +746,6 @@ private fun GroupDetailBanner(
         }
     }
 }
-
-/** Soft drop shadow so the white group title stays readable on colored banners. */
-private val GroupDetailTitleShadow =
-    Shadow(
-        color = Color.Black.copy(alpha = 0.45f),
-        offset = Offset(0f, 2f),
-        blurRadius = 6f,
-    )
 
 /** Expanded height for the group detail header banner (includes status-bar inset and member chip). */
 private val GroupDetailBannerHeight = 220.dp

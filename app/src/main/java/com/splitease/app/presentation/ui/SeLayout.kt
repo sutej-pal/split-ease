@@ -74,6 +74,17 @@ object SeLayout {
     /** Inset from the row’s start to text after a leading icon tile (tile + gap). */
     val afterIconTile: Dp = iconTileSize + iconTileGap
 
+    /**
+     * Leading [SeIconTile] edge length on navigation / settings [SeListRow]s.
+     * Pass as [SeIconTile] `size` (Int dp).
+     */
+    const val listRowIconTile: Int = 40
+
+    val listRowIconTileSize: Dp = listRowIconTile.dp
+
+    /** Inset from the row's content start to text after a navigation [SeIconTile] (tile + gap). */
+    val afterListRowIconTile: Dp = listRowIconTileSize + iconTileGap
+
     /** Extra space above primary CTAs at the bottom of a form. */
     val ctaTopGap: Dp = 20.dp
 

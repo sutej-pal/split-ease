@@ -390,6 +390,7 @@ fun SeListRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     leading: @Composable (() -> Unit)? = null,
+    trailingIcon: ImageVector? = null,
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
@@ -435,9 +436,15 @@ fun SeListRow(
                     )
                 }
             }
-            if (trailing != null) {
-                Spacer(modifier = Modifier.width(8.dp))
-                trailing()
+            when {
+                trailing != null -> {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    trailing()
+                }
+                trailingIcon != null -> {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    SeListRowTrailingIcon(imageVector = trailingIcon)
+                }
             }
         }
         if (showDivider) {
@@ -458,7 +465,8 @@ fun SeListRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     tint: Color = SplitEaseColors.Primary,
-    iconSize: Int = 40,
+    iconSize: Int = SeLayout.listRowIconTile,
+    trailingIcon: ImageVector? = Icons.AutoMirrored.Filled.KeyboardArrowRight,
     showDivider: Boolean = false,
 ) {
     SeListRow(
@@ -466,7 +474,7 @@ fun SeListRow(
         modifier = modifier,
         subtitle = subtitle,
         leading = { SeIconTile(icon = icon, tint = tint, size = iconSize) },
-        trailing = { SeChevron() },
+        trailingIcon = trailingIcon,
         onClick = onClick,
         showDivider = showDivider,
     )
@@ -499,7 +507,7 @@ fun SeListCard(
  */
 @Composable
 fun SeListSection(
-    title: String,
+    title: String? = null,
     modifier: Modifier = Modifier,
     horizontalPadding: Dp = SeLayout.screenHorizontal,
     content: @Composable ColumnScope.() -> Unit,
@@ -509,6 +517,9 @@ fun SeListSection(
         SeListCard(content = content)
     }
 }
+
+/** Compact trailing action icon size (e.g. inline delete action in a list row). */
+val SeTrailingActionIconSize: Dp = 20.dp
 
 /** Same 24dp trailing icon slot as [SeChevron]. Parent row centers it. */
 @Composable
@@ -540,7 +551,7 @@ fun SeChevron(
 
 @Composable
 fun SeSectionHeader(
-    text: String,
+    text: String? = null,
     modifier: Modifier = Modifier,
     horizontalPadding: Dp = SeLayout.screenHorizontal,
 ) {
@@ -549,19 +560,21 @@ fun SeSectionHeader(
             modifier = Modifier.fillMaxWidth(),
             color = SplitEaseColors.Outline,
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = horizontalPadding, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SeBodySmall(
-                text = text,
-                color = SplitEaseColors.Navy,
-                fontWeight = FontWeight.Normal,
-            )
+        if (!text.isNullOrBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = horizontalPadding, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SeBodySmall(
+                    text = text,
+                    color = SplitEaseColors.Navy,
+                    fontWeight = FontWeight.Normal,
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
         }
-        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 

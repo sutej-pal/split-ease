@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -23,9 +22,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
@@ -69,15 +66,17 @@ import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
+import com.splitease.app.presentation.ui.SeChevron
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
 import com.splitease.app.presentation.ui.SeIconTile
+import com.splitease.app.presentation.ui.SeLayout
+import com.splitease.app.presentation.ui.SeListCard
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeListSection
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
-import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
 
@@ -209,93 +208,51 @@ fun AccountProfileSettingsContent(
                 )
 
                 Spacer(modifier = Modifier.height(28.dp))
-                AccountSettingsCard {
+                SeListCard {
                     SeListRow(
                         title = stringResource(R.string.account_sign_in_contact_section),
                         subtitle = profile.email.takeIf { it.isNotBlank() },
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Email,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountSettingsChevron() },
+                        icon = Icons.Filled.Email,
                         onClick = onOpenSignInAndContact,
-                        showDivider = false,
-                        horizontalPadding = 16.dp,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
-                SeListSection(title = stringResource(R.string.settings_help_section)) {
-                    SeListRow(
-                        title = stringResource(R.string.settings_help_center),
-                        subtitle = stringResource(R.string.settings_help_center_subtitle),
-                        icon = Icons.AutoMirrored.Outlined.HelpOutline,
-                        onClick = onOpenCurrency,
-                    )
-                }
-                SeSectionHeader(text = stringResource(R.string.account_preferences_section))
-                AccountSettingsCard {
+                SeListSection(
+                    title = stringResource(R.string.settings_preferences_section),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
                     SeListRow(
                         title = stringResource(R.string.settings_currency_item),
                         subtitle = "$currency · $currencyLabel",
                         leading = { CurrencyLeading(code = currency) },
-                        trailing = { AccountSettingsChevron() },
+                        trailing = { SeChevron() },
                         onClick = onOpenCurrency,
                         showDivider = false,
-                        horizontalPadding = 16.dp,
                     )
                     SeListRow(
                         title = stringResource(R.string.settings_language),
                         subtitle = appLocaleLabel(locale),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Translate,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountSettingsChevron() },
+                        icon = Icons.Filled.Translate,
                         onClick = onOpenLanguage,
-                        showDivider = false,
-                        horizontalPadding = 16.dp,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
-                SeSectionHeader(text = stringResource(R.string.account_advanced_section))
-                AccountSettingsCard {
+                SeListSection(
+                    title = stringResource(R.string.account_advanced_section),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
                     SeListRow(
                         title = stringResource(R.string.account_logout_all_title),
                         subtitle = stringResource(R.string.account_logout_all_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.AutoMirrored.Filled.Logout,
-                                tint = SplitEaseColors.Primary,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountSettingsChevron() },
+                        icon = Icons.AutoMirrored.Filled.Logout,
                         onClick = { showSignOutAllConfirm = true },
-                        showDivider = false,
-                        horizontalPadding = 16.dp,
                     )
                     SeListRow(
                         title = stringResource(R.string.account_close_title),
                         subtitle = stringResource(R.string.account_close_subtitle),
-                        leading = {
-                            SeIconTile(
-                                icon = Icons.Filled.Delete,
-                                tint = SplitEaseColors.YouOwe,
-                                size = 40,
-                            )
-                        },
-                        trailing = { AccountSettingsChevron() },
+                        icon = Icons.Filled.Delete,
+                        tint = SplitEaseColors.YouOwe,
                         onClick = onOpenCloseAccount,
-                        showDivider = false,
-                        horizontalPadding = 16.dp,
                     )
                 }
             }
@@ -340,7 +297,9 @@ private fun AccountProfileHero(
         )
 
     Column(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -440,36 +399,13 @@ private fun AccountProfileHero(
 }
 
 @Composable
-internal fun AccountSettingsCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .background(SplitEaseColors.Surface),
-        content = content,
-    )
-}
-
-@Composable
-private fun AccountSettingsChevron() {
-    Icon(
-        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = SplitEaseColors.IconDefault,
-    )
-}
-
-@Composable
 private fun CurrencyLeading(code: String) {
     val flag = currencyFlagEmoji(code)
     if (flag == null) {
         SeIconTile(
             icon = Icons.Filled.Payments,
             tint = SplitEaseColors.Primary,
-            size = 40,
+            size = SeLayout.listRowIconTile,
         )
         return
     }
@@ -477,7 +413,7 @@ private fun CurrencyLeading(code: String) {
     Box(
         modifier =
             Modifier
-                .size(40.dp)
+                .size(SeLayout.listRowIconTileSize)
                 .clip(RoundedCornerShape(16.dp))
                 .background(SplitEaseColors.Primary.copy(alpha = fillAlpha)),
         contentAlignment = Alignment.Center,

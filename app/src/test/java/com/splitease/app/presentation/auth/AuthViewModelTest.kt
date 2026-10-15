@@ -732,6 +732,7 @@ class AuthViewModelTest {
             assertNull(viewModel.formState.value.pendingConfirmationEmail)
             assertNull(viewModel.formState.value.pendingOtpPurpose)
             coVerify(exactly = 1) { repository.verifySignupOtp("a@b.com", "123456") }
+            coVerify(atLeast = 1) { appSettings.setPendingVerificationEmail(null) }
         }
 
     @Test

@@ -425,8 +425,7 @@ private fun SeTopBarBackButton(
             contentDescription = contentDescription,
             // Muted vs title so the chevron stays secondary chrome.
             tint = SplitEaseColors.IconDefault,
-            // ChevronLeft’s glyph sits slightly right in the 24dp viewport; nudge left.
-            modifier = Modifier.size(32.dp).offset(x = (-1).dp),
+            modifier = Modifier.size(32.dp),
         )
     }
 }

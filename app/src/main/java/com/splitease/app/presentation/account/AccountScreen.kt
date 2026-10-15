@@ -15,10 +15,10 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
@@ -48,19 +48,18 @@ import com.splitease.app.presentation.ads.AdConsentManager
 import com.splitease.app.presentation.navigation.bottomBarContentWindowInsets
 import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.settings.SettingsViewModel
-import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeAvatarBadge
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListCard
 import com.splitease.app.presentation.ui.SeListRow
-import com.splitease.app.presentation.ui.SeListRowTrailingIcon
 import com.splitease.app.presentation.ui.SeListSection
 import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SeOutlinedButton
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
+
 @Composable
 fun AccountScreen(
     onBack: (() -> Unit)? = null,
@@ -179,6 +178,7 @@ private fun AccountScreenContent(
 
                 // Profile Card
                 SeListCard {
+
                     SeListRow(
                         title = stringResource(R.string.account_profile_settings_title),
                         subtitle = stringResource(R.string.settings_account_item_subtitle),
@@ -190,22 +190,17 @@ private fun AccountScreenContent(
                                 borderWidth = 0.dp,
                             )
                         },
-                        trailing = {
-                            SeListRowTrailingIcon(
-                                imageVector = Icons.Filled.Edit,
-                                tint = SplitEaseColors.NavyMuted,
-                            )
-                        },
+                        trailingIcon = Icons.Outlined.Edit,
                         onClick = onOpenAccountProfile,
                         showDivider = false,
                         horizontalPadding = SeLayout.listInset,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Spending Hub Card
-                SeListCard {
+                SeListSection(
+                    horizontalPadding = SeLayout.listInset,
+                ) {
                     SeListRow(
                         title = stringResource(R.string.spending_title),
                         subtitle = stringResource(R.string.spending_hub_subtitle),
@@ -283,7 +278,11 @@ private fun AccountScreenContent(
                 ) {
                     SeListRow(
                         title = stringResource(R.string.whats_new_title),
-                        subtitle = stringResource(R.string.whats_new_current_build, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                        subtitle = stringResource(
+                            R.string.whats_new_current_build,
+                            BuildConfig.VERSION_NAME,
+                            BuildConfig.VERSION_CODE,
+                        ),
                         icon = Icons.Filled.NewReleases,
                         onClick = onOpenWhatsNew,
                     )

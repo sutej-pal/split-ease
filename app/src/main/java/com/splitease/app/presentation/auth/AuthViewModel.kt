@@ -214,7 +214,7 @@ class AuthViewModel
 
         /** Leaves the pending-confirmation screen without completing OTP. */
         fun clearPendingConfirmation() {
-            _formState.update {
+            updateFormState {
                 it.copy(
                     pendingConfirmationEmail = null,
                     pendingOtpPurpose = null,
@@ -506,7 +506,7 @@ class AuthViewModel
                 if (emailTaken) {
                     val resendRes = authRepository.resendSignupConfirmation(trimmedEmail)
                     if (resendRes.isSuccess) {
-                        _formState.update {
+                        updateFormState {
                             AuthFormState(
                                 isLoading = false,
                                 pendingConfirmationEmail = trimmedEmail,
@@ -612,7 +612,7 @@ class AuthViewModel
                             }
                             return@launch
                         }
-                        _formState.update {
+                        updateFormState {
                             it.copy(
                                 isLoading = false,
                                 infoMessage = msg(AuthMessages.VERIFY_EMAIL_SENT),
@@ -666,7 +666,7 @@ class AuthViewModel
                             authRepository.requestPasswordReset(email)
                         }
                     }
-                _formState.update { state ->
+                updateFormState { state ->
                     if (result.isSuccess) {
                         state.copy(
                             isLoading = false,
@@ -737,7 +737,7 @@ class AuthViewModel
                             appSettingsRepository.setPendingWelcomeEmailUserId(userId)
                         }
                     }
-                    _formState.update {
+                    updateFormState {
                         it.copy(
                             isLoading = false,
                             pendingConfirmationEmail = null,
@@ -811,7 +811,7 @@ class AuthViewModel
                     authRateLimiter.remainingLockMs(AuthRateAction.FORGOT_PASSWORD, trimmedEmail)
                 // Always open the OTP gate (privacy: unknown emails also look the same).
                 // Rate-limit / hook failures are surfaced so the user knows why no code arrived.
-                _formState.update {
+                updateFormState {
                     AuthFormState(
                         isLoading = false,
                         pendingConfirmationEmail = trimmedEmail,
@@ -938,7 +938,7 @@ class AuthViewModel
                 if (passwordResult.isSuccess) {
                     authRateLimiter.recordSuccess(AuthRateAction.RESET_PASSWORD, trimmedEmail)
                     authRateLimiter.recordSuccess(AuthRateAction.FORGOT_PASSWORD, trimmedEmail)
-                    _formState.update {
+                    updateFormState {
                         AuthFormState(
                             isLoading = false,
                             infoMessage = msg(AuthMessages.RESET_PASSWORD_SUCCESS),
@@ -977,7 +977,7 @@ class AuthViewModel
         fun signOut() {
             if (_isSigningOut.value) return
             _isSigningOut.value = true
-            _formState.update {
+            updateFormState {
                 it.copy(
                     pendingConfirmationEmail = null,
                     pendingOtpPurpose = null,

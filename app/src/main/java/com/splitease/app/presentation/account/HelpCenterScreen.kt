@@ -7,15 +7,13 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -27,15 +25,18 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
+import com.splitease.app.presentation.navigation.bottomBarScrollPadding
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.SeBodyMedium
+import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeListSection
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 
@@ -68,27 +69,22 @@ private fun HelpCenterContent(onBack: () -> Unit) {
         title = stringResource(R.string.help_center_title),
         onBack = onBack,
         content = { padding ->
+            val layoutDirection = LocalLayoutDirection.current
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(padding.values)
+                        .padding(
+                            top = padding.values.calculateTopPadding(),
+                            start = padding.values.calculateStartPadding(layoutDirection),
+                            end = padding.values.calculateEndPadding(layoutDirection),
+                        )
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 24.dp),
+                        .padding(bottom = bottomBarScrollPadding(includeFab = false)),
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
-                SeBodyMedium(
-                    text = stringResource(R.string.help_center_intro),
-                    color = SplitEaseColors.NavyMuted,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(SplitEaseColors.Surface),
+                SeListSection(
+                    title = stringResource(R.string.help_center_intro),
+                    horizontalPadding = SeLayout.listInset,
                 ) {
                     faqItems.forEachIndexed { index, item ->
                         FaqRow(
