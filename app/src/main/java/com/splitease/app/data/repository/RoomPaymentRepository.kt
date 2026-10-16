@@ -22,13 +22,49 @@ class RoomPaymentRepository
         private val paymentDao: PaymentDao,
     ) : PaymentRepository {
         override fun observePayments(groupId: String?): Flow<List<Payment>> {
-            val source = if (groupId == null) {
-                paymentDao.observeAll()
-            } else {
-                paymentDao.observeByGroup(groupId)
-            }
+            val source =
+                if (groupId == null) {
+                    paymentDao.observeAll()
+                } else {
+                    paymentDao.observeByGroup(groupId)
+                }
             return source.map { rows -> rows.map { it.toDomain() } }
         }
+
+        override fun observeBetweenUsers(userId: String, otherUserId: String): Flow<List<Payment>> =
+            paymentDao.observeBetweenUsers(userId, otherUserId).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeInvolvingUser(userId: String): Flow<List<Payment>> =
+            paymentDao.observeInvolvingUser(userId).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentInvolvingUser(
+            userId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao.observeRecentInvolvingUser(userId, limit).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentSharedWithUser(
+            userId: String,
+            otherUserId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao
+                .observeRecentSharedWithUser(userId, otherUserId, limit)
+                .map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentNonGroupInvolvingUser(
+            userId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao
+                .observeRecentNonGroupInvolvingUser(userId, limit)
+                .map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeRecentByGroup(
+            groupId: String,
+            limit: Int,
+        ): Flow<List<Payment>> =
+            paymentDao.observeRecentByGroup(groupId, limit).map { rows -> rows.map { it.toDomain() } }
 
         override suspend fun getById(id: String): Payment? = paymentDao.getById(id)?.toDomain()
 
@@ -39,4 +75,13 @@ class RoomPaymentRepository
         override suspend fun deleteById(id: String) {
             paymentDao.deleteById(id)
         }
+
+        override suspend fun getPendingSync(): List<Payment> =
+            paymentDao.getPendingSync().map { it.toDomain() }
+
+        override suspend fun getSyncedIdsByGroup(groupId: String): List<String> =
+            paymentDao.getSyncedIdsByGroup(groupId)
+
+        override suspend fun getSyncedNonGroupIdsInvolvingUser(userId: String): List<String> =
+            paymentDao.getSyncedNonGroupIdsInvolvingUser(userId)
     }

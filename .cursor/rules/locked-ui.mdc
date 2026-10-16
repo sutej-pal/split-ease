@@ -1,0 +1,30 @@
+---
+description: Frozen UI decisions — keep SeIconTile rounded; do not revert home/crop/currency/bar locks
+alwaysApply: true
+---
+
+# Locked UI — do not change unless the user asks
+
+Full list: `docs/locked-ui.md`. Tokens: `docs/design-tokens.md` (Locked shapes).
+
+## SeIconTile stays rounded
+
+`SeIconTile` is `RoundedCornerShape(16.dp)`. `SeGroupIconTile` photos are `RoundedCornerShape(14.dp)`. Do **not** remove those clips or make the tiles square. Keep the Groups home icon skeleton at 16.dp rounded. Avatars stay circular.
+
+```kotlin
+// BAD — square
+.size(size.dp)
+.background(tint.copy(alpha = fillAlpha))
+
+// GOOD
+.size(size.dp)
+.clip(RoundedCornerShape(16.dp))
+.background(tint.copy(alpha = fillAlpha))
+```
+
+## Do not revert these either
+
+- Groups home: list skeleton only when `isLoading && allGroups.isEmpty()`; freeze amounts per row, do not hide cached groups.
+- Crop dialog: keep title/body, rotate control, `remember(rotationTurns)` for pan/zoom.
+- `AppCurrencies.symbol` overrides (AED/SAR/EGP codes; INR/USD/EUR/GBP glyphs) and `MoneyFormat` routing through them.
+- Bottom bar fade via `drawBehind` (no extra Scaffold bar height).

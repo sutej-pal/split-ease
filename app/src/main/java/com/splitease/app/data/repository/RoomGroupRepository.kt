@@ -22,13 +22,16 @@ class RoomGroupRepository
     constructor(
         private val groupDao: GroupDao,
     ) : GroupRepository {
+        override fun observeGroupsForUser(userId: String): Flow<List<Group>> =
+            groupDao.observeGroupsForUser(userId).map { rows -> rows.map { it.toDomain() } }
+
         override fun observeGroups(): Flow<List<Group>> =
-            groupDao.observeAll().map {
-                    rows ->
-                rows.map { it.toDomain() }
-            }
+            groupDao.observeAll().map { rows -> rows.map { it.toDomain() } }
 
         override suspend fun getGroupById(id: String): Group? = groupDao.getById(id)?.toDomain()
+
+        override fun observeGroupById(id: String): Flow<Group?> =
+            groupDao.observeById(id).map { rows -> rows.firstOrNull()?.toDomain() }
 
         override suspend fun upsertGroup(group: Group) {
             groupDao.upsert(group.toEntity())
@@ -48,4 +51,18 @@ class RoomGroupRepository
         override suspend fun deleteMemberById(memberId: String) {
             groupDao.deleteMemberById(memberId)
         }
+
+        override suspend fun remapMemberUserId(fromUserId: String, toUserId: String) {
+            if (fromUserId == toUserId) return
+            groupDao.remapMemberUserId(fromUserId, toUserId)
+        }
+
+        override suspend fun getMember(groupId: String, userId: String): GroupMember? =
+            groupDao.getMember(groupId, userId)?.toDomain()
+
+        override suspend fun getPendingGroups(): List<Group> =
+            groupDao.getPendingGroups().map { it.toDomain() }
+
+        override suspend fun getPendingMembers(): List<GroupMember> =
+            groupDao.getPendingMembers().map { it.toDomain() }
     }
