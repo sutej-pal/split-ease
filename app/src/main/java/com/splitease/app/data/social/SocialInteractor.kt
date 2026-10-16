@@ -924,6 +924,7 @@ class SocialInteractor
             val fromUser = userRepository.getUserById(fromUserId)
             expenseRepository.remapUserId(fromUserId, toUserId)
             groupRepository.remapMemberUserId(fromUserId, toUserId)
+            friendRepository.remapFriendUserId(fromUserId, toUserId)
             if (fromUser != null) {
                 val cleanName = fromUser.displayName.removeSuffix(" (invited)").removeSuffix("(invited)").trim()
                 if (cleanName.isNotBlank() && !cleanName.equals("Member", ignoreCase = true)) {

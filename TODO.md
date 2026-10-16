@@ -42,6 +42,18 @@ Account help/support, appearance card, and shared list/theme edits (staged on `d
 - [ ] **TODO(faq-split-copy)** — Help answer `faq_add_expense_a` says “exact amounts”; the split screen label is “Unequally.”
 - [ ] **TODO(group-settings-preview)** — `GroupSettingsScreenPreview` is a hand-copied layout and uses the placeholder name “asda”, so it can drift from the real screen.
 
+## Review follow-ups (2026-10-16)
+
+Sign-in & Contact error handling, secondary email Edge Function, OTP flows, and dialog vertical actions.
+
+- [ ] **TODO(password-row-duplicate-error)** — In `SignInAndContactViewModel.updatePassword()`, when the current password is blank or fails verification, both `currentPasswordError` and `passwordError` are set. Because `SignInAndContactScreen` checks `uiState.passwordError != null` on the New Password field and renders `else if (uiState.passwordError != null)` when `newPasswordError == null`, the New Password field is outlined in red and the current-password error message renders twice.
+- [ ] **TODO(secondary-email-rpc-error-check)** — In `supabase/functions/secondary-email/index.ts` (`emailTaken`), `registeredError` from `auth_email_registered` is logged but excluded from the final `if (profileError || secondaryError) return "error"` check. Once `service_role` execute grant is applied on Supabase, include `registeredError` so a failed RPC does not allow an unconfirmed `auth.users` email through as `"free"`.
+- [ ] **TODO(secondary-email-db-error-masking)** — `supabase/functions/secondary-email/index.ts` (lines 65, 89, 110, 129) and `SignInAndContactViewModel.addSecondaryEmail()` map unexpected DB/Edge Function errors (`existingError`, `updateError`, non-`23505` `insertError`, and `"Failed to add email address."`) to HTTP 400 / `"That email can't be added."`, masking transient server or schema errors as an invalid-email error.
+- [ ] **TODO(signin-contact-unused-inset)** — Remove unused `private val BodyStartInset` in `SignInAndContactScreen.kt` after `AccordionSection` switched to `SeLayout.listInset + 8.dp`.
+- [ ] **TODO(dialog-vertical-actions-tone)** — In `SeModal.kt` (`SeDialogActions`), when `verticalActions = true`, `SePrimaryButton` always uses `SplitEaseColors.Primary` and ignores `confirmColor` (so `SeConfirmTone.Danger` / `Warning` won't tint the confirm button).
+- [ ] **TODO(password-error-heuristic)** — In `SignInAndContactViewModel.isPasswordRelatedError()`, `lower.contains("right")` is redundant with `lower.contains("password")` (for `"That password isn't right."`) and can false-positive on unrelated messages containing `"right"`.
+- [ ] **TODO(auth-unconfirmed-fallback-otp)** — In `AuthViewModel.kt`, when login hits `email_not_confirmed` and `resendSignupConfirmation` fails, the fallback `authRepository.sendLoginOtp(trimmedEmail)` result is ignored; if it also fails, the user is still navigated to the OTP screen without an error.
+
 ## Invites & App Links
 
 - [x] **Invite email delivery** — Add people / Review sends invite mail via mail-service when the contact is an email; phone contacts still fall back to the share sheet.

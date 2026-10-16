@@ -39,6 +39,7 @@ fun GroupExpenseMembersConfirmDialog(
         onDismissClick = onEditGroupMembers,
         icon = Icons.Filled.Group,
         tone = SeConfirmTone.Primary,
+        verticalActions = true,
     )
 }
 

@@ -104,6 +104,7 @@ fun SeModal(
     /** When true, confirm shows a spinner and dismiss/confirm cannot be pressed. */
     confirmBusy: Boolean = false,
     confirmTone: SeConfirmTone? = null,
+    verticalActions: Boolean = false,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val showConfirm = !confirmLabel.isNullOrBlank() && onConfirm != null
@@ -158,6 +159,7 @@ fun SeModal(
                 confirmEnabled = confirmEnabled,
                 confirmBusy = confirmBusy,
                 confirmColor = confirmColor,
+                verticalActions = verticalActions,
             )
         }
     }
@@ -252,34 +254,67 @@ fun SeDialogActions(
     confirmEnabled: Boolean = true,
     confirmBusy: Boolean = false,
     confirmColor: Color = SplitEaseColors.Primary,
+    verticalActions: Boolean = false,
 ) {
     val showConfirm = !confirmLabel.isNullOrBlank() && onConfirm != null
 
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (dismissLabel.isNotBlank()) {
-            SeTextButton(
-                text = dismissLabel,
-                onClick = onDismissClick,
-                enabled = !confirmBusy,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-            )
+    if (verticalActions) {
+        Column(
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (showConfirm) {
+                SePrimaryButton(
+                    text = confirmLabel,
+                    onClick = onConfirm,
+                    enabled = confirmEnabled,
+                    isLoading = confirmBusy,
+                    fillMaxWidth = true,
+                    minHeight = 38.dp,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+            if (dismissLabel.isNotBlank()) {
+                SeTextButton(
+                    text = dismissLabel,
+                    onClick = onDismissClick,
+                    enabled = !confirmBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
         }
-        if (showConfirm) {
-            SeTextButton(
-                text = confirmLabel,
-                onClick = onConfirm,
-                enabled = confirmEnabled,
-                isLoading = confirmBusy,
-                color = confirmColor,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-            )
+    } else {
+        Row(
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (dismissLabel.isNotBlank()) {
+                SeTextButton(
+                    text = dismissLabel,
+                    onClick = onDismissClick,
+                    enabled = !confirmBusy,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+            if (showConfirm) {
+                SeTextButton(
+                    text = confirmLabel,
+                    onClick = onConfirm,
+                    enabled = confirmEnabled,
+                    isLoading = confirmBusy,
+                    color = confirmColor,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
         }
     }
 }
@@ -366,6 +401,7 @@ private fun SeModalPreview() {
             icon = Icons.Filled.Category,
             body = "Pick a category for this expense.",
             dismissLabel = stringResource(R.string.action_close),
+            confirmLabel = stringResource(R.string.action_save)
         ) {
             SeBodyMedium(
                 text = "Content slot",

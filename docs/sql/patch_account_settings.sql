@@ -80,7 +80,7 @@ as $$
 $$;
 
 revoke all on function public.auth_email_registered(text) from public;
-grant execute on function public.auth_email_registered(text) to anon, authenticated;
+grant execute on function public.auth_email_registered(text) to anon, authenticated, service_role;
 
 -- Phone lookup. Signed-in callers are excluded via auth.uid(); anon cannot
 -- pass another user's id. Drops the 3-arg overload so PostgREST is not ambiguous.
@@ -131,7 +131,7 @@ as $$
 $$;
 
 revoke all on function public.auth_phone_registered(text, text) from public;
-grant execute on function public.auth_phone_registered(text, text) to anon, authenticated;
+grant execute on function public.auth_phone_registered(text, text) to anon, authenticated, service_role;
 
 -- Manual reactivation for admin/support (SQL editor runs as the database owner):
 --   update auth.users set banned_until = null where id = '<user_uuid>';

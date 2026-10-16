@@ -62,10 +62,7 @@ Deno.serve(async (req) => {
       }
 
       const taken = await emailTaken(adminClient, email);
-      if (taken === "error") {
-        return json({ error: "Failed to add email address." }, 500);
-      }
-      if (taken === "taken") {
+      if (taken === "error" || taken === "taken") {
         return json({ error: "That email can't be added." }, 400);
       }
 
@@ -89,7 +86,7 @@ Deno.serve(async (req) => {
         .limit(1);
       if (existingError) {
         console.error("Query existing user_emails error:", existingError);
-        return json({ error: "Failed to add email address." }, 500);
+        return json({ error: "That email can't be added." }, 400);
       }
       const existing = existingRows?.[0];
       if (existing?.verified_at) {
@@ -110,7 +107,7 @@ Deno.serve(async (req) => {
           .eq("user_id", userId);
         if (updateError) {
           console.error("Update user_emails error:", updateError);
-          return json({ error: "Failed to add email address." }, 500);
+          return json({ error: "That email can't be added." }, 400);
         }
       } else {
         if (await unverifiedCount(adminClient, userId) >= MAX_UNVERIFIED) {
@@ -129,11 +126,7 @@ Deno.serve(async (req) => {
           .select("id");
         if (insertError || !insertedRows || insertedRows.length === 0) {
           console.error("Insert user_emails error:", insertError);
-          const duplicate = (insertError as { code?: string } | null)?.code === "23505";
-          return json(
-            { error: duplicate ? "That email can't be added." : "Failed to add email address." },
-            duplicate ? 400 : 500,
-          );
+          return json({ error: "That email can't be added." }, 400);
         }
         rowId = insertedRows[0].id;
         insertedNew = true;
@@ -392,7 +385,7 @@ async function emailTaken(
     return "taken";
   }
 
-  if (registeredError && profileError && secondaryError) {
+  if (profileError || secondaryError) {
     return "error";
   }
   return "free";
@@ -462,8 +455,9 @@ async function sendVerificationEmail(toEmail: string, code: string): Promise<voi
     },
     body: JSON.stringify({
       to: toEmail,
+      otp: code,
+      purpose: "verify",
       subject: "Verify your email - SplitEase",
-      text: `Your SplitEase email verification code is: ${code}. It expires in 10 minutes.`,
       fromName: "SplitEase",
     }),
   });

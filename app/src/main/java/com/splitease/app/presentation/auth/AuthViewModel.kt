@@ -283,12 +283,19 @@ class AuthViewModel
                     val err = result.exceptionOrNull()
                     val lower = collectAuthErrorText(err).lowercase()
                     if ("email_not_confirmed" in lower || "email not confirmed" in lower || "not confirmed" in lower) {
-                        authRepository.sendLoginOtp(trimmedEmail)
+                        val resendResult = authRepository.resendSignupConfirmation(trimmedEmail)
+                        val purpose =
+                            if (resendResult.isSuccess) {
+                                PendingOtpPurpose.SIGNUP
+                            } else {
+                                authRepository.sendLoginOtp(trimmedEmail)
+                                PendingOtpPurpose.LOGIN
+                            }
                         updateFormState {
                             AuthFormState(
                                 isLoading = false,
                                 pendingConfirmationEmail = trimmedEmail,
-                                pendingOtpPurpose = PendingOtpPurpose.LOGIN,
+                                pendingOtpPurpose = purpose,
                                 infoMessage = msg(R.string.msg_verify_email_continue),
                                 lastSendTimestampMs = System.currentTimeMillis(),
                             )
@@ -657,6 +664,8 @@ class AuthViewModel
                 _formState.update {
                     it.copy(isLoading = true, errorMessage = null, infoMessage = null)
                 }
+                // Count every resend toward the throttle (email spam protection).
+                authRateLimiter.recordFailure(rateAction, trimmedEmail)
                 val result =
                     when (purpose) {
                         PendingOtpPurpose.SIGNUP -> authRepository.resendSignupConfirmation(email)

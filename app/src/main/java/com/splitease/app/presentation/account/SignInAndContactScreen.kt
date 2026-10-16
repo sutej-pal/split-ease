@@ -53,14 +53,15 @@ import com.splitease.app.presentation.ui.SeAssistChip
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeListSection
+import com.splitease.app.presentation.ui.SeMessageHost
 import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SePrimaryButton
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTrailingActionIconSize
 
 private const val ACCORDION_TRANSITION_MS = 200
@@ -131,6 +132,12 @@ fun SignInAndContactContent(
         title = stringResource(R.string.account_sign_in_contact_section),
         onBack = onBack,
         modifier = modifier,
+        snackbarHost = {
+            SeMessageHost(
+                errorMessage = uiState.errorMessage,
+                infoMessage = uiState.infoMessage,
+            )
+        },
     ) { padding ->
         Column(
             modifier =
@@ -173,7 +180,7 @@ fun SignInAndContactContent(
                         ) {
                             SeBodyMedium(
                                 text = profile.email,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Normal,
                                 color = SplitEaseColors.Navy,
                             )
                             if (profile.emailConfirmed) {
@@ -213,6 +220,7 @@ fun SignInAndContactContent(
                                         text = stringResource(R.string.account_verify_action),
                                         onClick = onVerifyPrimaryEmail,
                                         isLoading = uiState.isEmailSaving,
+                                        fillMaxWidth = false,
                                         minHeight = 38.dp,
                                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                     )
@@ -277,6 +285,7 @@ fun SignInAndContactContent(
                                             text = stringResource(R.string.account_verify_action),
                                             onClick = { onVerifySecondaryEmail(sec.id) },
                                             isLoading = uiState.isEmailSaving,
+                                            fillMaxWidth = false,
                                             minHeight = 38.dp,
                                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                         )
@@ -287,6 +296,9 @@ fun SignInAndContactContent(
 
                         // Add new email form toggle / panel
                         if (!uiState.showAddEmailForm) {
+                            if (uiState.emailError != null) {
+                                SeErrorText(text = uiState.emailError)
+                            }
                             SeTextButton(
                                 text = stringResource(R.string.account_add_another_email_action),
                                 onClick = onToggleAddEmailForm,
@@ -310,9 +322,13 @@ fun SignInAndContactContent(
                                         onValueChange = onEmailPasswordDraftChange,
                                         placeholder = stringResource(R.string.account_current_password_label),
                                         visualTransformation = PasswordVisualTransformation(),
+                                        isError = uiState.emailPasswordError != null,
                                         cornerRadius = 8.dp,
                                         fieldHeight = 38.dp,
                                     )
+                                    if (uiState.emailPasswordError != null) {
+                                        SeErrorText(text = uiState.emailPasswordError)
+                                    }
                                 }
                                 Row(
                                     modifier = Modifier.fillMaxWidth().height(38.dp),
@@ -379,7 +395,7 @@ fun SignInAndContactContent(
                                 onClick = { onToggleRow(AccountRow.PHONE) },
                             )
                             SePrimaryButton(
-                                text = stringResource(R.string.action_send_otp),
+                                text = stringResource(R.string.action_save),
                                 onClick = onSavePhone,
                                 isLoading = uiState.isPhoneSaving,
                                 fillMaxWidth = false,
@@ -410,18 +426,25 @@ fun SignInAndContactContent(
                                 onValueChange = onCurrentPasswordDraftChange,
                                 placeholder = stringResource(R.string.account_current_password_label),
                                 visualTransformation = PasswordVisualTransformation(),
+                                isError = uiState.currentPasswordError != null,
                                 cornerRadius = 8.dp,
                                 fieldHeight = 38.dp,
                             )
+                            if (uiState.currentPasswordError != null) {
+                                SeErrorText(text = uiState.currentPasswordError)
+                            }
                             SeTextField(
                                 value = uiState.newPasswordDraft,
                                 onValueChange = onNewPasswordDraftChange,
                                 placeholder = stringResource(R.string.account_new_password_label),
                                 visualTransformation = PasswordVisualTransformation(),
+                                isError = uiState.newPasswordError != null || uiState.passwordError != null,
                                 cornerRadius = 8.dp,
                                 fieldHeight = 38.dp,
                             )
-                            if (uiState.passwordError != null) {
+                            if (uiState.newPasswordError != null) {
+                                SeErrorText(text = uiState.newPasswordError)
+                            } else if (uiState.passwordError != null) {
                                 SeErrorText(text = uiState.passwordError)
                             }
                             Row(
@@ -513,7 +536,7 @@ private fun AccordionSection(
                 Modifier
                     .fillMaxWidth()
                     .padding(
-                        start = BodyStartInset,
+                        start = SeLayout.listInset + 8.dp,
                         end = SeLayout.listInset,
                         bottom = SeLayout.ctaTopGap,
                     ),

@@ -45,6 +45,7 @@ data class SignInAndContactUiState(
     val showPrimaryOtpInput: Boolean = false,
     val isEmailSaving: Boolean = false,
     val emailError: String? = null,
+    val emailPasswordError: String? = null,
 
     // Phone row drafts
     val phoneCountryCodeDraft: String = "+91",
@@ -56,6 +57,8 @@ data class SignInAndContactUiState(
     val currentPasswordDraft: String = "",
     val newPasswordDraft: String = "",
     val isPasswordSaving: Boolean = false,
+    val currentPasswordError: String? = null,
+    val newPasswordError: String? = null,
     val passwordError: String? = null,
 
     val errorMessage: String? = null,
@@ -126,7 +129,10 @@ class SignInAndContactViewModel
                 state.copy(
                     expandedRow = nextExpanded,
                     emailError = null,
+                    emailPasswordError = null,
                     phoneError = null,
+                    currentPasswordError = null,
+                    newPasswordError = null,
                     passwordError = null,
                     showAddEmailForm = false,
                     newEmailDraft = "",
@@ -186,11 +192,11 @@ class SignInAndContactViewModel
 
         // Password row
         fun onCurrentPasswordDraftChange(pass: String) {
-            _uiState.update { it.copy(currentPasswordDraft = pass, passwordError = null) }
+            _uiState.update { it.copy(currentPasswordDraft = pass, currentPasswordError = null, passwordError = null) }
         }
 
         fun onNewPasswordDraftChange(pass: String) {
-            _uiState.update { it.copy(newPasswordDraft = pass, passwordError = null) }
+            _uiState.update { it.copy(newPasswordDraft = pass, newPasswordError = null, passwordError = null) }
         }
 
         fun updatePassword() {
@@ -198,25 +204,60 @@ class SignInAndContactViewModel
             val current = _uiState.value.currentPasswordDraft.trim()
             val newPass = _uiState.value.newPasswordDraft.trim()
             if (current.isBlank()) {
-                _uiState.update { it.copy(passwordError = appContext.getString(R.string.error_password_required)) }
+                val err = appContext.getString(R.string.error_password_required)
+                _uiState.update {
+                    it.copy(
+                        currentPasswordError = err,
+                        newPasswordError = null,
+                        passwordError = err,
+                    )
+                }
                 return
             }
             if (newPass.isBlank()) {
-                _uiState.update { it.copy(passwordError = appContext.getString(R.string.error_new_password_required)) }
+                val err = appContext.getString(R.string.error_new_password_required)
+                _uiState.update {
+                    it.copy(
+                        newPasswordError = err,
+                        currentPasswordError = null,
+                        passwordError = err,
+                    )
+                }
                 return
             }
             if (newPass.length < 8) {
-                _uiState.update { it.copy(passwordError = appContext.getString(R.string.signup_error_password_short)) }
+                val err = appContext.getString(R.string.signup_error_password_short)
+                _uiState.update {
+                    it.copy(
+                        newPasswordError = err,
+                        currentPasswordError = null,
+                        passwordError = err,
+                    )
+                }
                 return
             }
             viewModelScope.launch {
-                _uiState.update { it.copy(isPasswordSaving = true, passwordError = null) }
+                _uiState.update {
+                    it.copy(
+                        isPasswordSaving = true,
+                        currentPasswordError = null,
+                        newPasswordError = null,
+                        passwordError = null,
+                    )
+                }
                 val verifyRes = authRepository.verifyCurrentPassword(current)
                 if (verifyRes.isFailure) {
+                    val errText = ErrorMessages.message(
+                        appContext,
+                        TAG,
+                        verifyRes.exceptionOrNull() ?: Exception("Failed"),
+                    )
                     _uiState.update {
                         it.copy(
                             isPasswordSaving = false,
-                            passwordError = appContext.getString(R.string.error_invalid_credentials),
+                            currentPasswordError = errText,
+                            newPasswordError = null,
+                            passwordError = errText,
                         )
                     }
                     return@launch
@@ -233,10 +274,17 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
+                    val errText = ErrorMessages.message(
+                        appContext,
+                        TAG,
+                        updateRes.exceptionOrNull() ?: Exception("Failed"),
+                    )
                     _uiState.update {
                         it.copy(
                             isPasswordSaving = false,
-                            passwordError = ErrorMessages.message(appContext, TAG, updateRes.exceptionOrNull() ?: Exception("Failed")),
+                            newPasswordError = errText,
+                            currentPasswordError = null,
+                            passwordError = errText,
                         )
                     }
                 }
@@ -251,6 +299,7 @@ class SignInAndContactViewModel
                     newEmailDraft = "",
                     emailPasswordDraft = "",
                     emailError = null,
+                    emailPasswordError = null,
                 )
             }
         }
@@ -260,7 +309,7 @@ class SignInAndContactViewModel
         }
 
         fun onEmailPasswordDraftChange(pass: String) {
-            _uiState.update { it.copy(emailPasswordDraft = pass, emailError = null) }
+            _uiState.update { it.copy(emailPasswordDraft = pass, emailPasswordError = null) }
         }
 
         fun addSecondaryEmail() {
@@ -268,15 +317,31 @@ class SignInAndContactViewModel
             val email = _uiState.value.newEmailDraft.trim()
             val pass = _uiState.value.emailPasswordDraft.trim()
             if (email.isBlank() || !email.contains("@")) {
-                _uiState.update { it.copy(emailError = appContext.getString(R.string.error_invalid_email)) }
+                _uiState.update {
+                    it.copy(
+                        emailError = appContext.getString(R.string.error_invalid_email),
+                        emailPasswordError = null,
+                    )
+                }
                 return
             }
             if (!_uiState.value.isGoogleOnly && pass.isBlank()) {
-                _uiState.update { it.copy(emailError = appContext.getString(R.string.error_password_required)) }
+                _uiState.update {
+                    it.copy(
+                        emailPasswordError = appContext.getString(R.string.error_password_required),
+                        emailError = null,
+                    )
+                }
                 return
             }
             viewModelScope.launch {
-                _uiState.update { it.copy(isEmailSaving = true, emailError = null) }
+                _uiState.update {
+                    it.copy(
+                        isEmailSaving = true,
+                        emailError = null,
+                        emailPasswordError = null,
+                    )
+                }
                 val result = authRepository.addSecondaryEmail(email, pass.takeIf { !_uiState.value.isGoogleOnly })
                 if (result.isSuccess) {
                     _uiState.update {
@@ -289,14 +354,34 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
+                    val rawErr = ErrorMessages.message(
+                        appContext,
+                        TAG,
+                        result.exceptionOrNull() ?: Exception("Failed"),
+                    )
+                    val errText = if (rawErr.equals("Failed to add email address.", ignoreCase = true) ||
+                        rawErr.equals("Secondary email operation failed.", ignoreCase = true) ||
+                        rawErr.equals("Failed", ignoreCase = true)
+                    ) {
+                        appContext.getString(R.string.error_email_cannot_be_added)
+                    } else {
+                        rawErr
+                    }
+                    val isPassErr = isPasswordRelatedError(errText)
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
-                            emailError = ErrorMessages.message(appContext, TAG, result.exceptionOrNull() ?: Exception("Failed")),
+                            emailError = if (isPassErr) null else errText,
+                            emailPasswordError = if (isPassErr) errText else null,
                         )
                     }
                 }
             }
+        }
+
+        private fun isPasswordRelatedError(msg: String): Boolean {
+            val lower = msg.lowercase()
+            return lower.contains("password") || lower.contains("credential") || lower.contains("right")
         }
 
         fun resendPrimaryVerification() {

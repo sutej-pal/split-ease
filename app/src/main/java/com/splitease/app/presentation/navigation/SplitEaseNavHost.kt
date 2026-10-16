@@ -435,7 +435,14 @@ fun SplitEaseNavHost(
                         onBackToLogin = {
                             authViewModel.clearPendingConfirmation()
                             authViewModel.clearMessages()
-                            navController.popBackStack()
+                            if (!navController.popBackStack(Routes.LOGIN, inclusive = false) &&
+                                !navController.popBackStack(Routes.SIGN_UP, inclusive = false)
+                            ) {
+                                navController.navigate(Routes.LOGIN) {
+                                    popUpTo(Routes.WELCOME) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
                         },
                     )
                 }
@@ -456,7 +463,12 @@ fun SplitEaseNavHost(
                         onBackToLogin = {
                             authViewModel.clearPendingConfirmation()
                             authViewModel.clearMessages()
-                            navController.popBackStack()
+                            if (!navController.popBackStack(Routes.LOGIN, inclusive = false)) {
+                                navController.navigate(Routes.LOGIN) {
+                                    popUpTo(Routes.WELCOME) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
                         },
                     )
                 }

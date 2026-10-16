@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -124,6 +125,10 @@ fun ResetPasswordOtpScreen(
                 append(wrongEmailLabel)
             }
         }
+
+    BackHandler(enabled = !formState.isLoading) {
+        onBackToLogin()
+    }
 
     AuthScaffold(
         title = stringResource(R.string.reset_password_title),

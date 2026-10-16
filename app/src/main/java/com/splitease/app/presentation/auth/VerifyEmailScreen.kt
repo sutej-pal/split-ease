@@ -1,5 +1,6 @@
 package com.splitease.app.presentation.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -74,6 +75,10 @@ fun VerifyEmailScreen(
                 }
             }
         }
+
+    BackHandler(enabled = !formState.isLoading) {
+        onBackToLogin()
+    }
 
     AuthScaffold(
         title = stringResource(R.string.verify_email_title),

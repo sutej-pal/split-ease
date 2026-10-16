@@ -491,6 +491,9 @@ class SupabaseAuthRepository
                     "Please enter a valid email address."
                 }
                 val currentUser = supabase.auth.currentUserOrNull() ?: error("Not signed in.")
+                val currentEmail = currentUser.email?.trim()?.lowercase().orEmpty()
+                require(trimmedEmail != currentEmail) { "That email can't be added." }
+
                 val isGoogleOnly = currentUser.identities?.let { list ->
                     list.any { it.provider.equals("google", ignoreCase = true) } &&
                         list.none { it.provider.equals("email", ignoreCase = true) }
@@ -926,6 +929,7 @@ class SupabaseAuthRepository
                     } ?: ""
                     val responseJson = runCatching { JSONObject(responseText) }.getOrNull()
                     if (status !in 200..299) {
+                        android.util.Log.e("AuthRepo", "Secondary email $action failed (status $status): $responseText")
                         val err = responseJson?.optString("error")?.takeIf { it.isNotBlank() }
                             ?: responseJson?.optString("msg")?.takeIf { it.isNotBlank() }
                             ?: "Secondary email operation failed."

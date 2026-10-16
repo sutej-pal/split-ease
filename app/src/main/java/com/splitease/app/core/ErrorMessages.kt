@@ -77,24 +77,18 @@ object ErrorMessages {
                 ("wrong_otp" in lower) ||
                 ("otp_expired" in lower) ||
                 ("otp_invalid" in lower) ||
-                ("invalid token" in lower) ||
-                ("invalid_token" in lower) ||
-                ("token is invalid" in lower) ||
-                ("token is expired" in lower) ||
-                ("token expired" in lower) ||
-                ("bad_code_verifier" in lower) ||
-                ("invalid_grant" in lower) ||
-                ("invalid grant" in lower) ||
+                ("otp is invalid" in lower) ||
+                ("otp is expired" in lower) ||
+                ("otp expired" in lower) ||
                 ("invalid verification code" in lower) ||
                 ("verification code is invalid" in lower) ||
+                ("verification code has expired" in lower) ||
                 ("code is invalid" in lower) ||
                 ("confirmation code is invalid" in lower) ||
-                (("invalid" in lower) && ("code" in lower)) ||
-                (("invalid" in lower) && ("token" in lower)) ||
                 (("invalid" in lower) && ("otp" in lower)) ||
                 (("expired" in lower) && ("otp" in lower)) ||
-                (("expired" in lower) && ("code" in lower)) ||
-                (("expired" in lower) && ("token" in lower))
+                (("invalid" in lower) && ("verification code" in lower)) ||
+                (("expired" in lower) && ("verification code" in lower))
         )
     }
 

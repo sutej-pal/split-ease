@@ -58,6 +58,7 @@ fun SeConfirmDialog(
     typedConfirmationPhrase: String? = null,
     typedConfirmationLabel: String? = null,
     confirmBusy: Boolean = false,
+    verticalActions: Boolean = false,
 ) {
     val showConfirm = !confirmLabel.isNullOrBlank() && onConfirm != null
     val phrase = typedConfirmationPhrase?.trim().orEmpty()
@@ -95,6 +96,7 @@ fun SeConfirmDialog(
         confirmEnabled = typedMatches && !confirmBusy,
         confirmBusy = confirmBusy,
         confirmTone = tone,
+        verticalActions = verticalActions,
     ) {
         if (requiresTyping && fieldLabel != null) {
             Spacer(modifier = Modifier.height(4.dp))

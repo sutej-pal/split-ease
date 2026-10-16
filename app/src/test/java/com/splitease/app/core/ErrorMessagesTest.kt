@@ -67,7 +67,8 @@ class ErrorMessagesTest {
     fun supabase_invalid_otp_error_detected_by_is_invalid_otp() {
         assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("Token has expired or is invalid")))
         assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("Invalid OTP")))
-        assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("invalid_grant")))
+        assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("Invalid verification code.")))
+        assertFalse(ErrorMessages.isInvalidOtp(RuntimeException("JWT token expired")))
     }
 
     @Test

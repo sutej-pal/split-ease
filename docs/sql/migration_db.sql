@@ -1559,7 +1559,7 @@ as $$
 $$;
 
 revoke all on function public.auth_email_registered(text) from public;
-grant execute on function public.auth_email_registered(text) to anon, authenticated;
+grant execute on function public.auth_email_registered(text) to anon, authenticated, service_role;
 
 -- A signed-in caller is excluded automatically (auth.uid()). Anon callers cannot
 -- exclude anyone. Do not accept a client-supplied user id here.
@@ -1610,7 +1610,7 @@ as $$
 $$;
 
 revoke all on function public.auth_phone_registered(text, text) from public;
-grant execute on function public.auth_phone_registered(text, text) to anon, authenticated;
+grant execute on function public.auth_phone_registered(text, text) to anon, authenticated, service_role;
 
 -- ============================================
 -- Account deletion (soft-delete / anonymize)
@@ -1983,7 +1983,7 @@ as $$
 $$;
 
 revoke all on function public.auth_email_registered(text) from public;
-grant execute on function public.auth_email_registered(text) to anon, authenticated;
+grant execute on function public.auth_email_registered(text) to anon, authenticated, service_role;
 
 alter table public.user_emails enable row level security;
 

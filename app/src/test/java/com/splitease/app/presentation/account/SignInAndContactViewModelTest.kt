@@ -7,6 +7,7 @@ import com.splitease.app.domain.model.AuthUser
 import com.splitease.app.domain.model.SecondaryEmail
 import com.splitease.app.domain.repository.AuthRepository
 import com.splitease.app.domain.repository.UserRepository
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -152,5 +153,39 @@ class SignInAndContactViewModelTest {
             advanceUntilIdle()
 
             assertEquals("New password required", viewModel.uiState.value.passwordError)
+        }
+
+    @Test
+    fun add_secondary_email_handles_repository_error() =
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            coEvery { authRepository.addSecondaryEmail("taken@example.com", any()) } returns
+                Result.failure(IllegalStateException("That email can't be added."))
+
+            viewModel.onNewEmailDraftChange("taken@example.com")
+            viewModel.onEmailPasswordDraftChange("password123")
+            viewModel.addSecondaryEmail()
+            advanceUntilIdle()
+
+            assertEquals("That email can't be added.", viewModel.uiState.value.emailError)
+            assertNull(viewModel.uiState.value.emailPasswordError)
+            assertFalse(viewModel.uiState.value.isEmailSaving)
+        }
+
+    @Test
+    fun add_secondary_email_wrong_password_sets_email_password_error() =
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            coEvery { authRepository.addSecondaryEmail("test@example.com", any()) } returns
+                Result.failure(IllegalArgumentException("That password isn't right."))
+
+            viewModel.onNewEmailDraftChange("test@example.com")
+            viewModel.onEmailPasswordDraftChange("wrongpass")
+            viewModel.addSecondaryEmail()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.emailError)
+            assertEquals("That password isn't right.", viewModel.uiState.value.emailPasswordError)
+            assertFalse(viewModel.uiState.value.isEmailSaving)
         }
 }
