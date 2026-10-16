@@ -53,7 +53,7 @@ import com.splitease.app.presentation.ui.SeAssistChip
 import com.splitease.app.presentation.ui.SeConfirmDialog
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeErrorText
-import com.splitease.app.presentation.ui.SeFilledTextField
+import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeLayout
 import com.splitease.app.presentation.ui.SeListRow
 import com.splitease.app.presentation.ui.SeListSection
@@ -158,6 +158,12 @@ fun SignInAndContactContent(
                     icon = Icons.Filled.Email,
                     expanded = uiState.expandedRow == AccountRow.EMAIL,
                     onToggle = { onToggleRow(AccountRow.EMAIL) },
+                    statusLabel =
+                        if (!profile.emailConfirmed) {
+                            stringResource(R.string.account_unconfirmed_chip)
+                        } else {
+                            null
+                        },
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(SeLayout.sectionGap)) {
                         // Primary email item
@@ -195,16 +201,20 @@ fun SignInAndContactContent(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(SeLayout.itemGap),
                                 ) {
-                                    SeFilledTextField(
+                                    SeTextField(
                                         value = uiState.primaryOtpDraft,
                                         onValueChange = onPrimaryOtpDraftChange,
-                                        placeholder = "6-digit code",
+                                        placeholder = stringResource(R.string.account_otp_placeholder),
                                         modifier = Modifier.weight(1f),
+                                        cornerRadius = 8.dp,
+                                        fieldHeight = 38.dp,
                                     )
                                     SePrimaryButton(
                                         text = stringResource(R.string.account_verify_action),
                                         onClick = onVerifyPrimaryEmail,
                                         isLoading = uiState.isEmailSaving,
+                                        minHeight = 38.dp,
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                     )
                                 }
                             }
@@ -255,16 +265,20 @@ fun SignInAndContactContent(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(SeLayout.itemGap),
                                     ) {
-                                        SeFilledTextField(
+                                        SeTextField(
                                             value = otp,
                                             onValueChange = { onSecondaryOtpDraftChange(sec.id, it) },
-                                            placeholder = "6-digit code",
+                                            placeholder = stringResource(R.string.account_otp_placeholder),
                                             modifier = Modifier.weight(1f),
+                                            cornerRadius = 8.dp,
+                                            fieldHeight = 38.dp,
                                         )
                                         SePrimaryButton(
                                             text = stringResource(R.string.account_verify_action),
                                             onClick = { onVerifySecondaryEmail(sec.id) },
                                             isLoading = uiState.isEmailSaving,
+                                            minHeight = 38.dp,
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                         )
                                     }
                                 }
@@ -274,30 +288,34 @@ fun SignInAndContactContent(
                         // Add new email form toggle / panel
                         if (!uiState.showAddEmailForm) {
                             SeTextButton(
-                                text = "+ " + stringResource(R.string.account_add_another_email),
+                                text = stringResource(R.string.account_add_another_email_action),
                                 onClick = onToggleAddEmailForm,
                             )
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(SeLayout.itemGap)) {
-                                SeFilledTextField(
+                                SeTextField(
                                     value = uiState.newEmailDraft,
                                     onValueChange = onNewEmailDraftChange,
-                                    placeholder = "name@company.com",
+                                    placeholder = stringResource(R.string.account_email_placeholder),
                                     isError = uiState.emailError != null,
+                                    cornerRadius = 8.dp,
+                                    fieldHeight = 38.dp,
                                 )
                                 if (uiState.emailError != null) {
                                     SeErrorText(text = uiState.emailError)
                                 }
                                 if (!profile.isGoogleOnly) {
-                                    SeFilledTextField(
+                                    SeTextField(
                                         value = uiState.emailPasswordDraft,
                                         onValueChange = onEmailPasswordDraftChange,
                                         placeholder = stringResource(R.string.account_current_password_label),
                                         visualTransformation = PasswordVisualTransformation(),
+                                        cornerRadius = 8.dp,
+                                        fieldHeight = 38.dp,
                                     )
                                 }
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    modifier = Modifier.fillMaxWidth().height(38.dp),
                                     horizontalArrangement = Arrangement.spacedBy(SeLayout.itemGap, Alignment.End),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -310,10 +328,11 @@ fun SignInAndContactContent(
                                         onClick = onAddSecondaryEmail,
                                         isLoading = uiState.isEmailSaving,
                                         fillMaxWidth = false,
+                                        minHeight = 38.dp,
                                         contentPadding =
                                             PaddingValues(
                                                 horizontal = SeLayout.detailHorizontal,
-                                                vertical = SeLayout.itemGap,
+                                                vertical = 8.dp,
                                             ),
                                     )
                                 }
@@ -344,12 +363,14 @@ fun SignInAndContactContent(
                             enabled = !uiState.isPhoneSaving,
                             onDialClick = { showDialCodePicker = true },
                             onPhoneChange = onPhoneNumberDraftChange,
+                            cornerRadius = 8.dp,
+                            fieldHeight = 38.dp,
                         )
                         if (uiState.phoneError != null) {
                             SeErrorText(text = uiState.phoneError)
                         }
                         Row(
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            modifier = Modifier.fillMaxWidth().height(38.dp),
                             horizontalArrangement = Arrangement.spacedBy(SeLayout.itemGap, Alignment.End),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -362,10 +383,11 @@ fun SignInAndContactContent(
                                 onClick = onSavePhone,
                                 isLoading = uiState.isPhoneSaving,
                                 fillMaxWidth = false,
+                                minHeight = 38.dp,
                                 contentPadding =
                                     PaddingValues(
                                         horizontal = SeLayout.detailHorizontal,
-                                        vertical = SeLayout.itemGap,
+                                        vertical = 8.dp,
                                     ),
                             )
                         }
@@ -376,29 +398,34 @@ fun SignInAndContactContent(
                 if (!profile.isGoogleOnly) {
                     AccordionSection(
                         title = stringResource(R.string.account_password_label),
-                        subtitle = "Change",
+                        subtitle = stringResource(R.string.account_password_change_value),
                         icon = Icons.Filled.Lock,
                         expanded = uiState.expandedRow == AccountRow.PASSWORD,
                         onToggle = { onToggleRow(AccountRow.PASSWORD) },
                     ) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(SeLayout.itemGap)) {
-                            SeFilledTextField(
+                            SeTextField(
                                 value = uiState.currentPasswordDraft,
                                 onValueChange = onCurrentPasswordDraftChange,
                                 placeholder = stringResource(R.string.account_current_password_label),
                                 visualTransformation = PasswordVisualTransformation(),
+                                cornerRadius = 8.dp,
+                                fieldHeight = 38.dp,
                             )
-                            SeFilledTextField(
+                            SeTextField(
                                 value = uiState.newPasswordDraft,
                                 onValueChange = onNewPasswordDraftChange,
                                 placeholder = stringResource(R.string.account_new_password_label),
                                 visualTransformation = PasswordVisualTransformation(),
+                                cornerRadius = 8.dp,
+                                fieldHeight = 38.dp,
                             )
                             if (uiState.passwordError != null) {
                                 SeErrorText(text = uiState.passwordError)
                             }
                             Row(
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                modifier = Modifier.fillMaxWidth().height(38.dp),
                                 horizontalArrangement = Arrangement.spacedBy(SeLayout.itemGap, Alignment.End),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -411,10 +438,11 @@ fun SignInAndContactContent(
                                     onClick = onUpdatePassword,
                                     isLoading = uiState.isPasswordSaving,
                                     fillMaxWidth = false,
+                                    minHeight = 38.dp,
                                     contentPadding =
                                         PaddingValues(
                                             horizontal = SeLayout.detailHorizontal,
-                                            vertical = SeLayout.itemGap,
+                                            vertical = 8.dp,
                                         ),
                                 )
                             }
@@ -460,6 +488,7 @@ private fun AccordionSection(
     icon: ImageVector,
     expanded: Boolean,
     onToggle: () -> Unit,
+    statusLabel: String? = null,
     body: @Composable () -> Unit,
 ) {
     SeListRow(
@@ -467,6 +496,7 @@ private fun AccordionSection(
         subtitle = subtitle,
         icon = icon,
         onClick = onToggle,
+        statusLabel = statusLabel,
         trailingIcon = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
     )
     AnimatedVisibility(
@@ -493,7 +523,7 @@ private fun AccordionSection(
     }
 }
 
-@Preview(name = "Sign-in & Contact · Default", showBackground = true, heightDp = 720)
+@Preview(name = "Sign-in & Contact · Default (Confirmed)", showBackground = true, heightDp = 720)
 @Composable
 private fun SignInAndContactScreenPreview() {
     SePreview {
@@ -510,6 +540,24 @@ private fun SignInAndContactScreenPreview() {
                     displayName = "Alex Rivera",
                     email = "alex@example.com",
                     emailConfirmed = true,
+                    phoneCountryCode = "+91",
+                    phoneNumber = "9876543210",
+                ),
+        )
+    }
+}
+
+@Preview(name = "Sign-in & Contact · Email unconfirmed collapsed", showBackground = true, heightDp = 720)
+@Composable
+private fun SignInAndContactScreenEmailUnconfirmedPreview() {
+    SePreview {
+        SignInAndContactContent(
+            uiState = SignInAndContactUiState(),
+            profile =
+                AccountProfileUi(
+                    displayName = "Alex Rivera",
+                    email = "alex@example.com",
+                    emailConfirmed = false,
                     phoneCountryCode = "+91",
                     phoneNumber = "9876543210",
                 ),

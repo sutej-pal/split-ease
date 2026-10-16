@@ -48,6 +48,8 @@ Track development phases. Always check this file at the start of a session to de
 
 **Post-phase:** Group Totals screen fixes (2026-10-04) — Added top bar title ("Totals"), removed unbounded ripple from chart tap, kept the chart always showing three months (even for new groups), and fixed the "%%" percentage caption formatting using `%1$s` and `signum()` zero checks across main and currency breakdown rows.
 
+**Post-phase:** Compact form fields & buttons on Sign in and contact (2026-10-09) — Applied 38.dp compact height and 8.dp corner radius to all text fields (`SeTextField` and `PhoneNumberRow`) and action buttons across Email, Phone, and Password accordions on `SignInAndContactScreen`. Added `fieldHeight` support to `PhoneNumberRow` and `minHeight: Dp = 48.dp` to `SePrimaryButton`.
+
 **Post-phase:** Empty-group card restyled (2026-09-30) — Group detail solo empty state restyled with theme-aware background/border, indigo soft shadow, 52dp circle icon, title/hint text, and filled primary + outlined secondary buttons.
 
 ### Docs map

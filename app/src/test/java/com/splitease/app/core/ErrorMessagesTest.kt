@@ -1,5 +1,10 @@
 package com.splitease.app.core
 
+import android.content.Context
+import com.splitease.app.R
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -63,5 +68,23 @@ class ErrorMessagesTest {
         assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("Token has expired or is invalid")))
         assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("Invalid OTP")))
         assertTrue(ErrorMessages.isInvalidOtp(RuntimeException("invalid_grant")))
+    }
+
+    @Test
+    fun user_facing_messages_retained_by_message() {
+        val mockContext = mockk<Context>(relaxed = true)
+        every { mockContext.getString(R.string.error_generic) } returns "Generic error"
+
+        val msg1 = ErrorMessages.message(mockContext, "TAG", IllegalStateException("Failed to add email address."))
+        Assertions.assertEquals("Failed to add email address.", msg1)
+
+        val msg2 = ErrorMessages.message(mockContext, "TAG", IllegalStateException("That email can't be added."))
+        Assertions.assertEquals("That email can't be added.", msg2)
+
+        val msg3 = ErrorMessages.message(mockContext, "TAG", IllegalStateException("Session expired. Please sign in again."))
+        Assertions.assertEquals("Session expired. Please sign in again.", msg3)
+
+        val genericMsg = ErrorMessages.message(mockContext, "TAG", IllegalStateException("PGRST116: JSON object requested"))
+        Assertions.assertEquals("Generic error", genericMsg)
     }
 }

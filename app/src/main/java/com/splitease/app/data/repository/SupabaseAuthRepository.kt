@@ -892,11 +892,7 @@ class SupabaseAuthRepository
             params: Map<String, String>,
         ) {
             withContext(Dispatchers.IO) {
-                val session = supabase.auth.currentSessionOrNull()
-                    ?: (supabase.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session
-                    ?: error("Not signed in.")
-                val accessToken = session.accessToken.takeIf { it.isNotBlank() }
-                    ?: error("Not signed in.")
+                val accessToken = freshAccessTokenOrThrow()
                 val baseUrl = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
                 val anonKey = BuildConfig.SUPABASE_ANON_KEY.trim()
                 val url = URL("$baseUrl/functions/v1/secondary-email")

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,11 +33,9 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,14 +47,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.splitease.app.data.media.AvatarImageIO
 import com.splitease.app.presentation.theme.SeBodyMedium
@@ -146,31 +144,6 @@ fun SeGroupIconTile(
             tint = fallbackTint,
             modifier = modifier,
             size = size,
-        )
-    }
-}
-
-/**
- * Expense-style icon tile with a small actor avatar badge at the bottom-end corner.
- */
-@Composable
-fun SeIconTileWithAvatar(
-    icon: ImageVector,
-    tint: Color,
-    actorName: String,
-    actorPhotoUrl: String?,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier.size(44.dp)) {
-        SeIconTile(icon = icon, tint = tint, size = 44)
-        SeAvatarBadge(
-            name = actorName,
-            photoUrl = actorPhotoUrl,
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 2.dp, y = 2.dp),
-            size = 18.dp,
         )
     }
 }
@@ -389,6 +362,7 @@ fun SeListRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    statusLabel: String? = null,
     leading: @Composable (() -> Unit)? = null,
     trailingIcon: ImageVector? = null,
     trailing: @Composable (() -> Unit)? = null,
@@ -397,7 +371,22 @@ fun SeListRow(
     showDivider: Boolean = true,
     horizontalPadding: Dp = 24.dp,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    val rowModifier =
+        if (statusLabel != null) {
+            modifier
+                .fillMaxWidth()
+                .semantics {
+                    contentDescription =
+                        listOfNotNull(
+                            title,
+                            subtitle,
+                            statusLabel.lowercase(),
+                        ).joinToString(", ")
+                }
+        } else {
+            modifier.fillMaxWidth()
+        }
+    Column(modifier = rowModifier) {
         Row(
             modifier =
                 Modifier
@@ -436,6 +425,14 @@ fun SeListRow(
                     )
                 }
             }
+            if (statusLabel != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                SeAssistChip(
+                    text = statusLabel,
+                    modifier = Modifier.clearAndSetSemantics { },
+                    onClick = { onClick?.invoke() },
+                )
+            }
             when {
                 trailing != null -> {
                     Spacer(modifier = Modifier.width(8.dp))
@@ -464,6 +461,7 @@ fun SeListRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    statusLabel: String? = null,
     tint: Color = SplitEaseColors.Primary,
     iconSize: Int = SeLayout.listRowIconTile,
     trailingIcon: ImageVector? = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -473,6 +471,7 @@ fun SeListRow(
         title = title,
         modifier = modifier,
         subtitle = subtitle,
+        statusLabel = statusLabel,
         leading = { SeIconTile(icon = icon, tint = tint, size = iconSize) },
         trailingIcon = trailingIcon,
         onClick = onClick,

@@ -2,9 +2,12 @@ package com.splitease.app.presentation.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -13,21 +16,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.LocalAutofillHighlightBrush
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,20 +39,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
-import com.splitease.app.presentation.theme.*
 import com.splitease.app.core.DialCodeOption
 import com.splitease.app.core.DialCodes
+import com.splitease.app.presentation.theme.SeBodyLarge
+import com.splitease.app.presentation.theme.SeBodyMedium
 import com.splitease.app.presentation.theme.SplitEaseColors
-
-private val FieldShape = RoundedCornerShape(10.dp)
 
 /**
  * Signup-style phone field: flag and dial code as the leading control, national number beside it.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhoneNumberRow(
     dialFlag: String,
@@ -59,66 +66,128 @@ fun PhoneNumberRow(
     onDialClick: () -> Unit,
     onPhoneChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    cornerRadius: Dp = 10.dp,
+    fieldHeight: Dp? = null,
 ) {
-    OutlinedTextField(
-        value = phoneNumber,
-        onValueChange = onPhoneChange,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clip(FieldShape),
-        label = { SeBodyMedium(stringResource(R.string.label_phone_number)) },
-        enabled = enabled,
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, autoCorrectEnabled = false),
-        leadingIcon = {
-            Row(
+    val shape = RoundedCornerShape(cornerRadius)
+    val colors =
+        OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = SplitEaseColors.Primary,
+            unfocusedBorderColor = SplitEaseColors.OutlineStrong,
+            disabledBorderColor = SplitEaseColors.OutlineStrong.copy(alpha = 0.5f),
+            focusedLabelColor = SplitEaseColors.Primary,
+            unfocusedLabelColor = SplitEaseColors.NavyMuted,
+            cursorColor = SplitEaseColors.Primary,
+            focusedTextColor = SplitEaseColors.Navy,
+            unfocusedTextColor = SplitEaseColors.Navy,
+            disabledTextColor = SplitEaseColors.Navy.copy(alpha = 0.55f),
+            focusedContainerColor = SplitEaseColors.Surface,
+            unfocusedContainerColor = SplitEaseColors.Surface,
+            disabledContainerColor = SplitEaseColors.Surface,
+            errorContainerColor = SplitEaseColors.Surface,
+        )
+
+    val leadingIconContent: @Composable () -> Unit = {
+        Row(
+            modifier =
+                Modifier
+                    .clickable(enabled = enabled, onClick = onDialClick)
+                    .padding(start = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SeBodyLarge(
+                text = "$dialFlag $dialCode",
+                color = if (enabled) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
+            )
+            Icon(
+                imageVector = Icons.Outlined.KeyboardArrowDown,
+                contentDescription = stringResource(R.string.signup_pick_country_title),
+                tint = SplitEaseColors.IconDefault,
+                modifier = Modifier.size(20.dp),
+            )
+            Box(
                 modifier =
                     Modifier
-                        .clickable(enabled = enabled, onClick = onDialClick)
-                        .padding(start = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SeBodyLarge(
-                    text = "$dialFlag $dialCode",
-                    color = if (enabled) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
-                )
-                Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = stringResource(R.string.signup_pick_country_title),
-                    tint = SplitEaseColors.IconDefault,
-                    modifier = Modifier.size(20.dp),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .padding(start = 8.dp, end = 4.dp)
-                            .width(1.dp)
-                            .height(28.dp)
-                            .background(SplitEaseColors.OutlineStrong),
-                )
-            }
-        },
-        shape = FieldShape,
-        colors =
-            OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = SplitEaseColors.Primary,
-                unfocusedBorderColor = SplitEaseColors.OutlineStrong,
-                disabledBorderColor = SplitEaseColors.OutlineStrong.copy(alpha = 0.5f),
-                focusedLabelColor = SplitEaseColors.Primary,
-                unfocusedLabelColor = SplitEaseColors.NavyMuted,
-                cursorColor = SplitEaseColors.Primary,
-                focusedTextColor = SplitEaseColors.Navy,
-                unfocusedTextColor = SplitEaseColors.Navy,
-                focusedContainerColor = SplitEaseColors.Surface,
-                unfocusedContainerColor = SplitEaseColors.Surface,
-                disabledContainerColor = SplitEaseColors.Surface,
-                errorContainerColor = SplitEaseColors.Surface,
-            ),
-    )
+                        .padding(start = 8.dp, end = 4.dp)
+                        .width(1.dp)
+                        .height(if (fieldHeight != null) 18.dp else 28.dp)
+                        .background(SplitEaseColors.OutlineStrong),
+            )
+        }
+    }
+
+    if (fieldHeight == null) {
+        OutlinedTextField(
+            value = phoneNumber,
+            onValueChange = onPhoneChange,
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .clip(shape),
+            label = { SeBodyMedium(stringResource(R.string.label_phone_number)) },
+            enabled = enabled,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, autoCorrectEnabled = false),
+            leadingIcon = leadingIconContent,
+            shape = shape,
+            colors = colors,
+        )
+    } else {
+        val interactionSource = remember { MutableInteractionSource() }
+        val textColor = if (enabled) SplitEaseColors.Navy else SplitEaseColors.Navy.copy(alpha = 0.55f)
+        val mergedTextStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor)
+
+        CompositionLocalProvider(LocalAutofillHighlightBrush provides SolidColor(Color.Transparent)) {
+            BasicTextField(
+                value = phoneNumber,
+                onValueChange = onPhoneChange,
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(fieldHeight)
+                        .clip(shape),
+                enabled = enabled,
+                singleLine = true,
+                interactionSource = interactionSource,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, autoCorrectEnabled = false),
+                textStyle = mergedTextStyle,
+                cursorBrush = SolidColor(SplitEaseColors.Primary),
+                decorationBox = { innerTextField ->
+                    OutlinedTextFieldDefaults.DecorationBox(
+                        value = phoneNumber,
+                        innerTextField = innerTextField,
+                        enabled = enabled,
+                        singleLine = true,
+                        visualTransformation = VisualTransformation.None,
+                        interactionSource = interactionSource,
+                        isError = false,
+                        label = null,
+                        placeholder = {
+                            SeBodyMedium(
+                                text = stringResource(R.string.account_phone_label),
+                                color = SplitEaseColors.NavyMuted,
+                            )
+                        },
+                        leadingIcon = leadingIconContent,
+                        supportingText = null,
+                        colors = colors,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        container = {
+                            OutlinedTextFieldDefaults.Container(
+                                enabled = enabled,
+                                isError = false,
+                                interactionSource = interactionSource,
+                                colors = colors,
+                                shape = shape,
+                            )
+                        },
+                    )
+                },
+            )
+        }
+    }
 }
 
-/** Same country list used on the signup screen. */
 @Composable
 fun DialCodePickerDialog(
     selectedCode: String,
@@ -126,58 +195,65 @@ fun DialCodePickerDialog(
     onSelect: (DialCodeOption) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var filter by rememberSaveable { mutableStateOf("") }
-    val options =
-        remember(filter) {
-            val query = filter.trim().lowercase()
-            if (query.isEmpty()) {
-                DialCodes.options
-            } else {
-                DialCodes.options.filter {
-                    it.code.lowercase().contains(query) ||
-                        it.label.lowercase().contains(query) ||
-                        it.flag.contains(query)
-                }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val filteredOptions =
+        remember(searchQuery) {
+            DialCodes.options.filter { option ->
+                searchQuery.isBlank() ||
+                    option.label.contains(searchQuery, ignoreCase = true) ||
+                    option.code.contains(searchQuery, ignoreCase = true)
             }
         }
+
     SeModal(
-        onDismissRequest = onDismiss,
         title = stringResource(R.string.signup_pick_country_title),
-        icon = Icons.Filled.Public,
-        dismissLabel = stringResource(R.string.action_cancel),
+        onDismissRequest = onDismiss,
     ) {
-        SeTextField(
-            value = filter,
-            onValueChange = { filter = it },
-            label = stringResource(R.string.settings_country_search),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 320.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .padding(horizontal = SeLayout.screenHorizontal),
         ) {
-            options.forEach { option ->
-                val selected = option.code == selectedCode && option.flag == selectedFlag
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(option) }
-                            .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(
-                        selected = selected,
-                        onClick = { onSelect(option) },
-                        colors = RadioButtonDefaults.colors(selectedColor = SplitEaseColors.Primary),
-                    )
-                    SeBodyLarge(
-                        text = "${option.flag}  ${option.code}  ${option.label}",
-                        color = SplitEaseColors.Navy,
-                    )
+            SeTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = stringResource(R.string.settings_country_search),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+            ) {
+                filteredOptions.forEach { option ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(option) }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SeBodyLarge(
+                            text = "${option.flag} ${option.label}",
+                            modifier = Modifier.weight(1f),
+                        )
+                        SeBodyMedium(
+                            text = option.code,
+                            color = SplitEaseColors.NavyMuted,
+                        )
+                        RadioButton(
+                            selected = option.code == selectedCode,
+                            onClick = { onSelect(option) },
+                            colors =
+                                RadioButtonDefaults.colors(
+                                    selectedColor = SplitEaseColors.Primary,
+                                ),
+                        )
+                    }
                 }
             }
         }

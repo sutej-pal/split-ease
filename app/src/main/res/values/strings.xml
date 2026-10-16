@@ -484,6 +484,9 @@
     <string name="account_remove_email_title">Remove secondary email</string>
     <string name="account_remove_email_body">Are you sure you want to remove %1$s?</string>
     <string name="account_send_verification_action">Send verification</string>
+    <string name="account_otp_placeholder">6-digit code</string>
+    <string name="account_email_placeholder">name@company.com</string>
+    <string name="account_add_another_email_action">+ Add another email</string>
     <string name="action_send_otp">Send OTP</string>
     <string name="account_current_password_label">Current password</string>
     <string name="account_new_password_label">New password</string>

@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,12 +61,13 @@ fun SePrimaryButton(
     shape: Shape = ButtonShape,
     fillMaxWidth: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 13.dp),
+    minHeight: Dp = 48.dp,
 ) {
     val interactive = enabled && !isLoading
     val buttonModifier = if (fillMaxWidth) modifier.fillMaxWidth() else modifier
     Button(
         onClick = onClick,
-        modifier = buttonModifier.heightIn(min = 48.dp),
+        modifier = buttonModifier.heightIn(min = minHeight),
         enabled = interactive,
         shape = shape,
         colors =

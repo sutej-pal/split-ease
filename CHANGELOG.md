@@ -11,8 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unverified signup and login now resume OTP verification, and reopening the app mid-verification returns to the OTP screen.
 - Change-email returns to the previous screen; unverified signup resumes OTP verification; Resend code no longer fires duplicate requests and its cooldown matches the server and survives app restarts.
 - Send OTP while adding a secondary email failed with `Unauthorized`: password re-check called GoTrue `POST /logout` without `scope=local`, which defaults to **global** and revoked the app session before the `secondary-email` Edge Function ran. Logout of the one-off verify session now uses `scope=local`; the client refreshes the access token before the Edge Function call and maps auth failures to a clear session-expired message.
+- Extracted hardcoded UI strings on `SignInAndContactScreen` to `strings.xml` (`account_otp_placeholder`, `account_email_placeholder`, `account_add_another_email_action`, and existing `account_password_change_value`).
 
 ### Added
+- Compact input and button styling across all three accordions (Email, Phone, Password) on `SignInAndContactScreen` using 38.dp high `SeTextField` / `PhoneNumberRow` fields (`cornerRadius = 8.dp`) and `SePrimaryButton` (`minHeight = 38.dp`).
+- "Unconfirmed" status tag on the collapsed Email row of the "Sign in and contact" screen when primary email is unconfirmed, with TalkBack semantics.
 - `SeAssistChip` custom component wrapping Material 3 `AssistChip` for status badges ("Primary", "Unconfirmed", etc.).
 - Account settings borderless design with inline accordion rows for Email, Phone number, and Password.
 - Secondary email management with 6-digit verification code sent via `secondary-email` Edge Function.

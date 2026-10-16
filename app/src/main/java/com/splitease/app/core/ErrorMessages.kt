@@ -29,7 +29,29 @@ object ErrorMessages {
         if (isInvalidOtp(throwable)) {
             return context.getString(R.string.error_invalid_otp)
         }
+        val msg = throwable.message?.trim().orEmpty()
+        if (msg.isNotEmpty() && isUserFacingMessage(msg)) {
+            return msg
+        }
         return context.getString(GENERIC)
+    }
+
+    private fun isUserFacingMessage(msg: String): Boolean {
+        if (msg.contains("Exception") || msg.contains("HTTP ") || msg.contains("JSONObject") || msg.contains("{") || msg.contains("}")) {
+            return false
+        }
+        val lower = msg.lowercase()
+        return lower.contains("email") ||
+            lower.contains("password") ||
+            lower.contains("code") ||
+            lower.contains("session") ||
+            lower.contains("unauthorized") ||
+            lower.contains("too many") ||
+            lower.contains("invalid") ||
+            lower.contains("expired") ||
+            lower.contains("failed") ||
+            lower.contains("registered") ||
+            lower.contains("not right")
     }
 
     /**

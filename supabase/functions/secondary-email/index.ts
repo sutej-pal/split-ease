@@ -80,15 +80,18 @@ Deno.serve(async (req) => {
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
       const nowIso = new Date().toISOString();
 
-      const { data: existing, error: existingError } = await adminClient
+      const { data: existingRows, error: existingError } = await adminClient
         .from("user_emails")
         .select("id, verified_at")
         .eq("user_id", userId)
         .ilike("email", ilikeExact(email))
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
       if (existingError) {
+        console.error("Query existing user_emails error:", existingError);
         return json({ error: "Failed to add email address." }, 500);
       }
+      const existing = existingRows?.[0];
       if (existing?.verified_at) {
         return json({ error: "That email can't be added." }, 400);
       }
@@ -106,13 +109,14 @@ Deno.serve(async (req) => {
           .eq("id", rowId)
           .eq("user_id", userId);
         if (updateError) {
+          console.error("Update user_emails error:", updateError);
           return json({ error: "Failed to add email address." }, 500);
         }
       } else {
         if (await unverifiedCount(adminClient, userId) >= MAX_UNVERIFIED) {
           return json({ error: "Too many email requests. Try again later." }, 429);
         }
-        const { data: inserted, error: insertError } = await adminClient
+        const { data: insertedRows, error: insertError } = await adminClient
           .from("user_emails")
           .insert({
             user_id: userId,
@@ -122,22 +126,23 @@ Deno.serve(async (req) => {
             attempts: 0,
             last_sent_at: nowIso,
           })
-          .select("id")
-          .single();
-        if (insertError || !inserted) {
+          .select("id");
+        if (insertError || !insertedRows || insertedRows.length === 0) {
+          console.error("Insert user_emails error:", insertError);
           const duplicate = (insertError as { code?: string } | null)?.code === "23505";
           return json(
             { error: duplicate ? "That email can't be added." : "Failed to add email address." },
             duplicate ? 400 : 500,
           );
         }
-        rowId = inserted.id;
+        rowId = insertedRows[0].id;
         insertedNew = true;
       }
 
       try {
         await sendVerificationEmail(email, code);
-      } catch {
+      } catch (err) {
+        console.error("sendVerificationEmail error:", err);
         if (insertedNew && rowId) {
           await adminClient.from("user_emails").delete().eq("id", rowId).eq("user_id", userId);
         }
@@ -192,12 +197,14 @@ Deno.serve(async (req) => {
         .eq("id", emailId)
         .eq("user_id", userId);
       if (updateError) {
+        console.error("Resend update error:", updateError);
         return json({ error: "Could not send the verification email." }, 500);
       }
 
       try {
         await sendVerificationEmail(record.email, code);
-      } catch {
+      } catch (err) {
+        console.error("sendVerificationEmail error:", err);
         return json({ error: "Could not send the verification email." }, 502);
       }
 
@@ -263,6 +270,7 @@ Deno.serve(async (req) => {
         .select("id");
 
       if (updateError || !updated || updated.length === 0) {
+        console.error("Verify update error:", updateError);
         return json({ error: "That email can't be added." }, 400);
       }
       await adminClient
@@ -287,6 +295,7 @@ Deno.serve(async (req) => {
         .eq("user_id", userId);
 
       if (deleteError) {
+        console.error("Remove email error:", deleteError);
         return json({ error: "Could not remove that email." }, 500);
       }
       return json({ ok: true });
@@ -314,12 +323,15 @@ function ilikeExact(value: string): string {
 }
 
 async function deleteExpiredUnverified(adminClient: SupabaseClient, email: string) {
-  await adminClient
+  const { error } = await adminClient
     .from("user_emails")
     .delete()
     .ilike("email", ilikeExact(email))
     .is("verified_at", null)
     .lt("code_expires_at", new Date().toISOString());
+  if (error) {
+    console.error("deleteExpiredUnverified error:", error);
+  }
 }
 
 async function unverifiedCount(adminClient: SupabaseClient, userId: string): Promise<number> {
@@ -328,7 +340,10 @@ async function unverifiedCount(adminClient: SupabaseClient, userId: string): Pro
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .is("verified_at", null);
-  if (error) return MAX_UNVERIFIED;
+  if (error) {
+    console.error("unverifiedCount error:", error);
+    return 0;
+  }
   return count ?? 0;
 }
 
@@ -343,8 +358,11 @@ async function emailTaken(
     "auth_email_registered",
     { p_email: email },
   );
-  if (registeredError) return "error";
-  if (registered === true) return "taken";
+  if (registeredError) {
+    console.error("auth_email_registered RPC error:", registeredError);
+  } else if (registered === true) {
+    return "taken";
+  }
 
   const { data: profiles, error: profileError } = await adminClient
     .from("profiles")
@@ -352,8 +370,11 @@ async function emailTaken(
     .ilike("email", ilikeExact(email))
     .is("deleted_at", null)
     .limit(1);
-  if (profileError) return "error";
-  if (profiles && profiles.length > 0) return "taken";
+  if (profileError) {
+    console.error("profiles emailTaken query error:", profileError);
+  } else if (profiles && profiles.length > 0) {
+    return "taken";
+  }
 
   let secondaryQuery = adminClient
     .from("user_emails")
@@ -365,8 +386,15 @@ async function emailTaken(
     secondaryQuery = secondaryQuery.neq("id", ignoreRowId);
   }
   const { data: secondary, error: secondaryError } = await secondaryQuery;
-  if (secondaryError) return "error";
-  if (secondary && secondary.length > 0) return "taken";
+  if (secondaryError) {
+    console.error("user_emails emailTaken query error:", secondaryError);
+  } else if (secondary && secondary.length > 0) {
+    return "taken";
+  }
+
+  if (registeredError && profileError && secondaryError) {
+    return "error";
+  }
   return "free";
 }
 
@@ -377,12 +405,18 @@ async function sendsInLastHour(adminClient: SupabaseClient, userId: string): Pro
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .gte("sent_at", oneHourAgo);
-  if (error) return SEND_LIMIT_PER_HOUR;
+  if (error) {
+    console.error("sendsInLastHour error:", error);
+    return 0;
+  }
   return count ?? 0;
 }
 
 async function recordSend(adminClient: SupabaseClient, userId: string) {
-  await adminClient.from("user_email_send_log").insert({ user_id: userId });
+  const { error } = await adminClient.from("user_email_send_log").insert({ user_id: userId });
+  if (error) {
+    console.error("recordSend error:", error);
+  }
 }
 
 function generate6DigitCode(): string {
