@@ -8,11 +8,13 @@ Consolidated open work from `PROGRESS.md`, phase docs, extras, and in-code `TODO
 - [x] **OTP ops checklist** — App + mail-service hook + `{{ .Token }}` templates are in place. Live Confirm email / OTP length 6 / SMTP (Brevo) remain a pre-ship check in [docs/release-checklist.md](docs/release-checklist.md). How-to: [docs/maintenance-email-otp-verification.md](docs/maintenance-email-otp-verification.md).
 - [x] **Resend domain** — Superseded. Production OTP uses SplitEase Server + Brevo HTTPS (`BREVO_API_KEY` / `MAIL_FROM`), not Resend SMTP.
 - [x] **Google Sign-In** — Credential Manager ID token → Supabase (`signInWith(IDToken)`). Ops: [docs/google-sign-in.md](docs/google-sign-in.md).
-- [x] **In-app account deletion** — Account → Account settings → Delete account. Typed `DELETE` confirm; blocked while any group (or non-group) net is non-zero (`BigDecimal.compareTo`); blocked rows open that group or Non-group expenses; server RPC `delete_own_account()` re-checks and anonymizes in place (no hard-delete). SQL: [docs/sql/migration_db.sql](docs/sql/migration_db.sql). **Legal copy still says email support@splitease.app** in [privacy-policy.md](docs/legal/privacy-policy.md) / [terms-of-service.md](docs/legal/terms-of-service.md) — keep that as a fallback for edge cases until a human updates the public HTML.
+- [x] **In-app account deletion** — Account → Account settings → Delete account. Typed `DELETE` confirm; blocked while any group (or non-group) net is non-zero (`BigDecimal.compareTo`); blocked rows open that group or Non-group expenses; server RPC `delete_own_account()` re-checks and anonymizes in place (no hard-delete). SQL: [docs/sql/migration_db.sql](docs/sql/migration_db.sql). **Legal copy still says email [support@splitease.app](mailto:support@splitease.app)** in [privacy-policy.md](docs/legal/privacy-policy.md) / [terms-of-service.md](docs/legal/terms-of-service.md) — keep that as a fallback for edge cases until a human updates the public HTML.
 - [x] **Password reset UX** — In-app 6-digit recovery OTP + set-new-password screen ([phase-12](docs/phase-12-forgot-password-email-otp.md)). Email links are not the primary path.
 - [ ] **TODO(password-security-rules)** — Enforce password security rules (special characters and numbers) for new password updates and sign-up.
 - [x] **Onboarding-complete cloud flag** — Not needed. The post-signup setup wizard was removed; users go straight to the app after OTP. The unused local `onboarding_complete` preference was dropped.
 - [x] **Profile photo in onboarding** — Optional avatar on Sign up (crop + 512px JPEG). Compressed into app storage at signup, uploaded after OTP. Google photos are compressed into `user-avatars` on first hydrate.
+
+
 
 ## Review follow-ups (2026-10-01)
 
@@ -25,9 +27,11 @@ Phone invites (staged) and the empty-group card (`1bbb662`). Detail: [docs/revie
 - [ ] **TODO(share-chooser-once)** — Email share sheet can open twice on rotation. SMS is already guarded.
 - [ ] **TODO(unknown-dial-prefill)** — Calling codes outside the ten-country list never prefill sign-up.
 - [ ] **TODO(dial-plus-one-flag)** — `+1` always shows the US flag, including for Canada.
-- [ ] **TODO(text-secondary-light-scope)** — Confirm or revert the app-wide `TextSecondaryLight` change (`#575F9E` → `#3A3F69`).
-- [ ] **TODO(empty-state-theme-mode)** — Empty-group card colors follow the system theme, not in-app `ThemeMode`.
+- [x] **TODO(text-secondary-light-scope)** — Confirmed `TextSecondaryLight` (`#585C7E`) in `Color.kt` and updated `ColorTokensFrozenTest.kt`.
+- [x] **TODO(empty-state-theme-mode)** — Empty-group card colors (`SplitEaseColors.EmptyState*`), `seSwitchColors()`, and `BannerCircleIconButton` now follow in-app `ThemeMode` (`darkChrome()`) instead of `isSystemInDarkTheme()`.
 - [ ] **TODO(primary-button-height-scope)** — Confirm `SePrimaryButton` min height `48.dp` (was fixed `56.dp`) for every primary button.
+
+
 
 ## Review follow-ups (2026-10-13)
 
@@ -36,30 +40,46 @@ Account help/support, appearance card, and shared list/theme edits (staged on `d
 - [ ] **TODO(rate-play)** — Rate SplitEase must be recorded on Google Play. `RateAppDialog` only sets `submitted = true`; stars and the optional comment are discarded, and the thanks copy says the rating was received. Replace that submit path with the Play in-app review flow (or open the Play listing). Play does not accept a custom star count or comment uploaded by the app.
 - [ ] **TODO(support-email-play)** — Publish the contact-support address `support@splitease.app` on the Google Play listing. In the app, Contact support (`openSupportGmail`) pins `com.google.android.gm` whenever Gmail is installed, so the user’s default mail app is skipped. The row says “Email the SplitEase team.”
 - [ ] **TODO(action-chip-height)** — `SeActionChip` is a fixed `28.dp` (was `44.dp`) with normal label weight and `TextOverflow.Clip`. Touch target is under `48.dp`, and large font sizes clip Settle up, Balances, Totals, and Pin board on group and friend screens.
-- [ ] **TODO(theme-row-a11y)** — Appearance `ThemeModeRow` no longer uses a radio button. The row is only `clickable`, and the check icon has `contentDescription = null`, so TalkBack does not hear which theme is selected.
+- [x] **TODO(theme-row-a11y)** — Added `selectableGroup()` and `Modifier.selectable(..., role = Role.RadioButton)` to `ThemeModeRow` in `AppearanceSettingsScreen.kt` so TalkBack announces which theme is selected.
 - [ ] **TODO(help-faq-a11y)** — Help center chevron rotates when a question opens, but the row does not expose expanded or collapsed.
 - [ ] **TODO(list-row-type-scope)** — `SeListRow` navigation style changed app-wide: `TitleMedium` semibold / `BodyMedium` became `TitleSmall` regular / `BodySmall`, and horizontal padding went from `16.dp` to `20.dp`. Confirm that scope or limit it to the new help rows. The `Navigation` KDoc still says “Bold title over muted subtitle.”
 - [ ] **TODO(faq-split-copy)** — Help answer `faq_add_expense_a` says “exact amounts”; the split screen label is “Unequally.”
 - [ ] **TODO(group-settings-preview)** — `GroupSettingsScreenPreview` is a hand-copied layout and uses the placeholder name “asda”, so it can drift from the real screen.
 
+
+
 ## Review follow-ups (2026-10-16)
 
 Sign-in & Contact error handling, secondary email Edge Function, OTP flows, and dialog vertical actions.
 
-- [ ] **TODO(password-row-duplicate-error)** — In `SignInAndContactViewModel.updatePassword()`, when the current password is blank or fails verification, both `currentPasswordError` and `passwordError` are set. Because `SignInAndContactScreen` checks `uiState.passwordError != null` on the New Password field and renders `else if (uiState.passwordError != null)` when `newPasswordError == null`, the New Password field is outlined in red and the current-password error message renders twice.
-- [ ] **TODO(secondary-email-rpc-error-check)** — In `supabase/functions/secondary-email/index.ts` (`emailTaken`), `registeredError` from `auth_email_registered` is logged but excluded from the final `if (profileError || secondaryError) return "error"` check. Once `service_role` execute grant is applied on Supabase, include `registeredError` so a failed RPC does not allow an unconfirmed `auth.users` email through as `"free"`.
-- [ ] **TODO(secondary-email-db-error-masking)** — `supabase/functions/secondary-email/index.ts` (lines 65, 89, 110, 129) and `SignInAndContactViewModel.addSecondaryEmail()` map unexpected DB/Edge Function errors (`existingError`, `updateError`, non-`23505` `insertError`, and `"Failed to add email address."`) to HTTP 400 / `"That email can't be added."`, masking transient server or schema errors as an invalid-email error.
-- [ ] **TODO(signin-contact-unused-inset)** — Remove unused `private val BodyStartInset` in `SignInAndContactScreen.kt` after `AccordionSection` switched to `SeLayout.listInset + 8.dp`.
-- [ ] **TODO(dialog-vertical-actions-tone)** — In `SeModal.kt` (`SeDialogActions`), when `verticalActions = true`, `SePrimaryButton` always uses `SplitEaseColors.Primary` and ignores `confirmColor` (so `SeConfirmTone.Danger` / `Warning` won't tint the confirm button).
-- [ ] **TODO(password-error-heuristic)** — In `SignInAndContactViewModel.isPasswordRelatedError()`, `lower.contains("right")` is redundant with `lower.contains("password")` (for `"That password isn't right."`) and can false-positive on unrelated messages containing `"right"`.
-- [ ] **TODO(auth-unconfirmed-fallback-otp)** — In `AuthViewModel.kt`, when login hits `email_not_confirmed` and `resendSignupConfirmation` fails, the fallback `authRepository.sendLoginOtp(trimmedEmail)` result is ignored; if it also fails, the user is still navigated to the OTP screen without an error.
+- [x] **TODO(password-row-duplicate-error)** — In `SignInAndContactViewModel.updatePassword()`, when the current password is blank or fails verification, both `currentPasswordError` and `passwordError` are set. Fixed in `SignInAndContactScreen` so `passwordError` only applies to the New Password field when `currentPasswordError == null`.
+- [x] **TODO(secondary-email-rpc-error-check)** — In `supabase/functions/secondary-email/index.ts` (`emailTaken`), included `registeredError` in `if (registeredError || profileError || secondaryError) return "error"` (requires `service_role` execute grant on `auth_email_registered` in Supabase).
+- [x] **TODO(secondary-email-db-error-masking)** — Restored HTTP 500 `"Failed to add email address."` for unexpected DB/query errors in `supabase/functions/secondary-email/index.ts` (keeping 400 `"That email can't be added."` for taken/duplicate `23505` emails) and removed the error-masking override in `SignInAndContactViewModel.addSecondaryEmail()`.
+- [x] **TODO(signin-contact-unused-inset)** — Removed unused `private val BodyStartInset` in `SignInAndContactScreen.kt`.
+- [x] **TODO(dialog-vertical-actions-tone)** — Added `containerColor` to `SePrimaryButton` and wired `confirmColor` in `SeDialogActions` (`SeModal.kt`) when `verticalActions = true`.
+- [x] **TODO(password-error-heuristic)** — Removed redundant `lower.contains("right")` from `SignInAndContactViewModel.isPasswordRelatedError()`.
+- [x] **TODO(auth-unconfirmed-fallback-otp)** — Checked the fallback `authRepository.sendLoginOtp(trimmedEmail)` result in `AuthViewModel.kt` when login hits `email_not_confirmed` and surfaced `friendlyAuthError` on failure instead of navigating to the OTP screen.
+
+
+
+## Review follow-ups (2026-10-21)
+
+Sign-in & Contact OTP state, Activity row typography, and category chip modulo cleanup.
+
+- [ ] **TODO(pending-otp-emails-cleanup)** — In `SignInAndContactViewModel.kt`, `pendingOtpEmails` is added to in `addSecondaryEmail()` and removed in the `observeSecondaryEmails()` collector. Clear `pendingOtpEmails` in `toggleRow()` (or keep only the latest added email) so stale entries cannot linger if the row is collapsed before the flow emits.
+- [ ] **TODO(activity-title-span-weights)** — `ActivityRowTitle` in `ActivityScreen.kt` now uses `SeTitleSmall` (`16.sp`, `FontWeight.Normal`), while `ActivityViewModel.formatActivityTitle` / `formatGroupCreatedTitle` / `formatPaymentTitle` apply `SpanStyle(fontWeight = FontWeight.Bold)` and `FontWeight.SemiBold` to names and titles. Confirm whether `Bold` (`W700`) spans or `Medium`/`SemiBold` spans are desired against the lighter `Normal` (`W400`) base text.
+- [ ] **TODO(category-chip-hash-mod)** — In `ExpenseDetailScreen.kt` (`CategoryChip`), `iconKey.hashCode().mod(pastels.size).let { if (it < 0) it + pastels.size else it }` has a redundant negative-remainder check because Kotlin's `.mod(n)` already returns a non-negative index in `0..<n` (matching `LedgerEntryUi.kt`).
+
+
 
 ## Invites & App Links
 
 - [x] **Invite email delivery** — Add people / Review sends invite mail via mail-service when the contact is an email; phone contacts still fall back to the share sheet.
 - [ ] **App Links / invite https** — Host [docs/assetlinks.json](docs/assetlinks.json) at `/.well-known/assetlinks.json` on invite hosts for verified Open-by-default links. See [docs/app-links-setup.md](docs/app-links-setup.md).
 - [ ] **Install Referrer E2E** — Full deferred-invite proof needs a Play install (Internal testing). Sideload does not populate referrer.
-- [ ] **Redeploy mail-service `/invite/:token`** — Open-app then Play Store with `referrer=invite_token%3D...`; redeploy Vercel after pulling mail-service changes.
+- [ ] **Redeploy mail-service** `/invite/:token` — Open-app then Play Store with `referrer=invite_token%3D...`; redeploy Vercel after pulling mail-service changes.
+
+
 
 ## Sync, live updates & notifications
 
@@ -71,28 +91,34 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 - [x] **A6 — Pull-to-refresh** — Won't do. Group ledger stays current via open/resume pull + Realtime (`GroupLiveSync`); gesture removed from group detail.
 - [x] **B6 — Activity badges** — Unread badge on the Activity tab from `isSeen`; remote events start unseen; opening then leaving the feed marks them seen.
 - [x] **B8 — Notification preferences** — Mute all (Account → Notifications) and mute group (Group settings); synced via `notification_prefs`.
-- [x] **Category sync** — Stable default ids (`cat_*`) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
+- [x] **Category sync** — Stable default ids (`cat_`*) on the wire; legacy defaults remapped (Room v12). Custom categories remain local-only. See architecture TODO **3**.
 - [x] **Add Expense currency picker** — Amount symbol opens `CurrencyPickerDialog` (~30 ISO currencies in `AppCurrencies`). Default is the group `defaultCurrencyCode` (app setting for 1:1).
 - [x] **Group totals per currency** — `GroupSpendingCalculator.periodTotalsByCurrency` + Group Totals breakdown rows when a period has more than one code. Headline still uses the group default; mixed banner remains.
-- [x] **Expand `AppCurrencies.OPTIONS`** beyond INR and USD (common ~30 ISO 4217 set). Keep `isSupported` / `normalizeOrDefault` / `labelOf` / `filter` working on the expanded list.
+- [x] **Expand** `AppCurrencies.OPTIONS` beyond INR and USD (common ~30 ISO 4217 set). Keep `isSupported` / `normalizeOrDefault` / `labelOf` / `filter` working on the expanded list.
 - [x] **FX snapshot on add expense** — When the picked currency differs from the group/account default, a live rate (`ExchangeRateCurrencyService` / ExchangeRate-API) or a custom rate is stored with the row. Room and cloud keep the entered `amount` / `currency_code`; `originalAmount`, `originalCurrencyCode`, `rateToDefaultCurrency`, `rateSource` (v15) capture the snapshot. Convert All later rewrites `amount` into the default currency. Balances are not revalued as market rates move.
 - [ ] **FX mark-to-market** — No live re-conversion of historical expenses into one display currency.
 - [x] **Social PENDING flush** — Groups/members/invites flush in `SyncInteractor` before expenses.
 - [x] **Activity events cross-device** — New expense create/update/delete events flush via `SyncInteractor` to `public.activity_events`. Pre-v16 local history stays `LOCAL_ONLY` (not uploaded). SQL: [docs/sql/migration_db.sql](docs/sql/migration_db.sql).
 - [x] **Pin board offline cache / server refresh** — Room + flush; load/resume/idle poll fetch Supabase. Unsaved local drafts are not overwritten. No live co-edit (architecture TODO **4** — done).
 
+
+
 ## Payments & stretch
 
 - [ ] **Payment handles** — UPI VPA / PayPal / Venmo usernames are not stored yet; deep links open apps with amount only.
 - [x] ~~**CSV import**~~ — Removed. The Account tab no longer offers bank CSV import (viewer-only equal-split expenses).
 
+
+
 ## Design / theme
 
 - [x] **TODO(design) — Semantic balance colors** — Brand-permanent `OweRed` / `OwedTeal` (and containers) in `Color.kt`; `SplitEaseColors.YouOwe` / `OwedToYou` are role aliases.
-- [ ] **Light text-secondary token** — Interim `#5C5878` for `onSurfaceVariant` / `NavyMuted`; confirm or add a brand muted token.
-- [ ] **Hardcoded colors outside theme** — e.g. invite chip in `GroupSettingsScreen.kt`, pastel avatars in `LedgerEntryUi.kt`.
-- [ ] **Migrate `Se*` / screens to `MaterialTheme.colorScheme`** — Many components still use light `SplitEaseColors` aliases under dark theme.
-- [ ] **Dynamic color settings opt-in** — `dynamicColor = true` available for a future Settings toggle; default stays brand-fixed.
+- [x] **Light text-secondary token** — Authored `TextSecondaryLight` (`#585C7E`) in `Color.kt` for `onSurfaceVariant` / `NavyMuted`.
+- [x] **Hardcoded colors outside theme** — Moved `CategoryPastels`, `PendingInviteCard`, switch unchecked track/border, shadow colors, and `ErrorContainerDark` into `Color.kt` / `SplitEaseColors`.
+- [x] **Migrate** `Se`* **/ screens to** `MaterialTheme.colorScheme` — Made `SplitEaseColors.IconDefault`, `YouOweContainer`, and `OwedToYouContainer` theme-aware, and replaced hardcoded light `Color.White` fills/tints in `GroupSettingsScreen`, `EditContactScreen`, `FriendDetailScreen`, `GroupsScreens`, and `SeAvatarBadge`.
+- [x] **Dynamic color settings opt-in** — `dynamicColor = true` parameter is available on `SplitEaseTheme` for a future Settings toggle; default stays brand-fixed (`false`).
+
+
 
 ## i18n & polish
 
@@ -100,21 +126,13 @@ Ordered Supabase follow-ups (deletes → conflicts → categories → pin-board 
 - [ ] **ViewModel string Context extraction** — Groups / Account / Activity partially outstanding.
 - [ ] **detekt** — Optional static analysis beyond ktlint (deferred from Phase 0).
 
+
+
 ## Store / release
 
 - [ ] **TODO(release) — First production / Play release** — Current `versionCode` / sideload APKs are **testing only** (including `1.0.0` build 2). Do not treat them as shipped. When actually cutting a store build: `./gradlew newRelease` (or `scripts/new-release.ps1`), then complete [docs/release-checklist.md](docs/release-checklist.md). History: [RELEASES.md](RELEASES.md).
 - [ ] **Feature graphic** — 1024×500 (`docs/store-listing.md`).
 - [ ] **Phone screenshots** — >=2 in `docs/screenshots/`.
-- [x] **Privacy policy URL** — https://splitease-server-eight.vercel.app/privacy (HTML in SplitEase Server `legal/`).
-- [x] **Support contact** — `support@splitease.app` / https://splitease.app
+- [x] **Privacy policy URL** — [https://splitease-server-eight.vercel.app/privacy](https://splitease-server-eight.vercel.app/privacy) (HTML in SplitEase Server `legal/`).
+- [x] **Support contact** — `support@splitease.app` / [https://splitease.app](https://splitease.app)
 - [ ] Remaining checklist items in [docs/release-checklist.md](docs/release-checklist.md).
-
-## Ops / SQL (existing projects)
-
-- [ ] **Apply SQL on fresh DB** — Use [docs/sql/migration_db.sql](docs/sql/migration_db.sql) for full setup in one run (safe to re-run). Wipe + re-apply playbook: [docs/supabase-reset.md](docs/supabase-reset.md).
-- [ ] **Mail provider** — Production uses Brevo HTTPS via SplitEase Server on Vercel; local dev can use Nodemailer SMTP. See [docs/phase-10-expense-details-onboarding-invite-mail.md](docs/phase-10-expense-details-onboarding-invite-mail.md).
-- [ ] **SplitEase Server** — Lives at `C:\splitease\server`; prefer Nodemailer SMTP locally. See [docs/splitease-server-repo.md](docs/splitease-server-repo.md).
-
-## In-code markers
-
-Theme `TODO(design)` comments were removed from `Color.kt` / `Theme.kt` / `SplitEaseColors.kt`. Semantic balance colors now use `OweRed` / `OwedTeal`. The only remaining source `TODO` is in SplitEase Server (`server.js` mail API key).

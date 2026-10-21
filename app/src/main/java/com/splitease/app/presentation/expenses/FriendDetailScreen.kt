@@ -265,7 +265,7 @@ private fun FriendDetailHeader(
                 Modifier
                     .size(88.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(SplitEaseColors.Surface)
                     .border(3.dp, MaterialTheme.colorScheme.background, CircleShape),
             contentAlignment = Alignment.Center,
         ) {

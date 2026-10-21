@@ -173,13 +173,13 @@ fun GroupSettingsScreen(
     SeScreen(
         title = stringResource(R.string.group_settings_title),
         onBack = onBack,
-        topBarContainerColor = Color.White,
+        topBarContainerColor = SplitEaseColors.Surface,
         content = { padding ->
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(Color.White)
+                        .background(SplitEaseColors.Surface)
                         .padding(padding.values)
                         .verticalScroll(rememberScrollState())
                         .padding(bottom = 24.dp),
@@ -820,7 +820,7 @@ private fun SettingsActionRow(
                 ) {
                     SeLabelSmall(
                         text = trailingBadge,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,
                     )
                 }

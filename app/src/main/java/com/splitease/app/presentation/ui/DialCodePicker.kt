@@ -51,6 +51,7 @@ import com.splitease.app.core.DialCodeOption
 import com.splitease.app.core.DialCodes
 import com.splitease.app.presentation.theme.SeBodyLarge
 import com.splitease.app.presentation.theme.SeBodyMedium
+import com.splitease.app.presentation.theme.SeBodySmall
 import com.splitease.app.presentation.theme.SplitEaseColors
 
 /**
@@ -88,6 +89,7 @@ fun PhoneNumberRow(
         )
 
     val leadingIconContent: @Composable () -> Unit = {
+        val dialColor = if (enabled) SplitEaseColors.Navy else SplitEaseColors.NavyMuted
         Row(
             modifier =
                 Modifier
@@ -95,15 +97,22 @@ fun PhoneNumberRow(
                     .padding(start = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SeBodyLarge(
-                text = "$dialFlag $dialCode",
-                color = if (enabled) SplitEaseColors.Navy else SplitEaseColors.NavyMuted,
-            )
+            if (fieldHeight != null) {
+                SeBodySmall(
+                    text = "$dialFlag $dialCode",
+                    color = dialColor,
+                )
+            } else {
+                SeBodyLarge(
+                    text = "$dialFlag $dialCode",
+                    color = dialColor,
+                )
+            }
             Icon(
                 imageVector = Icons.Outlined.KeyboardArrowDown,
                 contentDescription = stringResource(R.string.signup_pick_country_title),
                 tint = SplitEaseColors.IconDefault,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(if (fieldHeight != null) 18.dp else 20.dp),
             )
             Box(
                 modifier =
@@ -135,7 +144,7 @@ fun PhoneNumberRow(
     } else {
         val interactionSource = remember { MutableInteractionSource() }
         val textColor = if (enabled) SplitEaseColors.Navy else SplitEaseColors.Navy.copy(alpha = 0.55f)
-        val mergedTextStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor)
+        val mergedTextStyle = MaterialTheme.typography.bodySmall.copy(color = textColor)
 
         CompositionLocalProvider(LocalAutofillHighlightBrush provides SolidColor(Color.Transparent)) {
             BasicTextField(
@@ -163,7 +172,7 @@ fun PhoneNumberRow(
                         isError = false,
                         label = null,
                         placeholder = {
-                            SeBodyMedium(
+                            SeBodySmall(
                                 text = stringResource(R.string.account_phone_label),
                                 color = SplitEaseColors.NavyMuted,
                             )

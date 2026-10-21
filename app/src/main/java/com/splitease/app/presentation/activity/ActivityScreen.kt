@@ -518,9 +518,8 @@ private fun ActivityRow(
                 }
                 if (showsBalanceSlot) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    SeBodyMedium(
+                    SeBodySmall(
                         text = item.balanceLabel.orEmpty(),
-                        fontWeight = FontWeight.SemiBold,
                         color =
                             if (item.balanceLabel.isNullOrBlank()) {
                                 Color.Transparent
@@ -554,9 +553,10 @@ private fun ActivityRowTitle(
     item: ActivityUiItem,
     modifier: Modifier = Modifier,
 ) {
-    SeTitleMedium(
+    SeTitleSmall(
         text = item.annotatedTitle,
-        color = MaterialTheme.colorScheme.onBackground,
+        fontWeight = FontWeight.Normal,
+        color = SplitEaseColors.Navy,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,

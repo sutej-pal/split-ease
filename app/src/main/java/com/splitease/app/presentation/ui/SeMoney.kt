@@ -35,8 +35,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.splitease.app.R
 import com.splitease.app.presentation.common.MoneyFormat
-import com.splitease.app.presentation.theme.OweContainer
-import com.splitease.app.presentation.theme.OwedContainer
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import java.math.BigDecimal
@@ -229,8 +227,8 @@ private fun SeHeroTile(
     val fill =
         when {
             isZeroState -> SplitEaseColors.SurfaceMuted
-            tone == SeMoneyTone.YOU_OWE -> OweContainer
-            else -> OwedContainer
+            tone == SeMoneyTone.YOU_OWE -> SplitEaseColors.YouOweContainer
+            else -> SplitEaseColors.OwedToYouContainer
         }
     val pip =
         when {

@@ -76,8 +76,8 @@ fun SplitEaseBottomBar(
                     .shadow(
                         elevation = 14.dp,
                         shape = shape,
-                        ambientColor = Color(0x241A1840),
-                        spotColor = Color(0x331A1840),
+                        ambientColor = SplitEaseColors.ContentCardShadowAmbient,
+                        spotColor = SplitEaseColors.ContentCardShadowSpot,
                     )
                     .clip(shape)
                     .background(SplitEaseColors.Surface)

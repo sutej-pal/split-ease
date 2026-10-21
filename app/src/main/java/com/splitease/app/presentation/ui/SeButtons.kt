@@ -60,6 +60,7 @@ fun SePrimaryButton(
     leadingIcon: ImageVector? = null,
     shape: Shape = ButtonShape,
     fillMaxWidth: Boolean = true,
+    containerColor: Color = SplitEaseColors.Primary,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 13.dp),
     minHeight: Dp = 48.dp,
 ) {
@@ -72,14 +73,16 @@ fun SePrimaryButton(
         shape = shape,
         colors =
             ButtonDefaults.buttonColors(
-                containerColor = SplitEaseColors.Primary,
+                containerColor = containerColor,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 // Keep brand fill while loading so the spinner stays readable.
                 disabledContainerColor =
                     if (isLoading) {
-                        SplitEaseColors.Primary
-                    } else {
+                        containerColor
+                    } else if (containerColor == SplitEaseColors.Primary) {
                         SplitEaseColors.PrimarySoft
+                    } else {
+                        containerColor.copy(alpha = 0.25f)
                     },
                 disabledContentColor =
                     if (isLoading) {

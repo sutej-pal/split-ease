@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -762,13 +761,13 @@ internal fun BannerCircleIconButton(
     imageVector: ImageVector,
     contentDescription: String,
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Box(
         modifier =
             Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(SplitEaseColors.Surface)
                 .then(if (isDark) Modifier else Modifier.border(1.dp, SplitEaseColors.Outline, CircleShape))
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,

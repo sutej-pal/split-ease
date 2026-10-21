@@ -1,6 +1,5 @@
 package com.splitease.app.presentation.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -10,6 +9,7 @@ import androidx.compose.ui.graphics.luminance
 private val bannerFriendsDarkToken = BannerFriendsDark
 private val bannerHomeDarkToken = BannerHomeDark
 private val bannerOtherDarkToken = BannerOtherDark
+private val iconDefaultLightToken = IconDefault
 
 /**
  * Convenience aliases for screens and `Se*` components.
@@ -90,13 +90,13 @@ object SplitEaseColors {
     @get:Composable
     @get:ReadOnlyComposable
     val ContentCardShadowAmbient: Color
-        get() = if (darkChrome()) Color(0x66000000) else Color(0x241A1840)
+        get() = if (darkChrome()) CardShadowAmbientDark else CardShadowAmbientLight
 
     /** Soft spot shadow for [com.splitease.app.presentation.ui.SeContentCard]. */
     @get:Composable
     @get:ReadOnlyComposable
     val ContentCardShadowSpot: Color
-        get() = if (darkChrome()) Color(0x80000000) else Color(0x401A1840)
+        get() = if (darkChrome()) CardShadowSpotDark else CardShadowSpotLight
 
     @get:Composable
     @get:ReadOnlyComposable
@@ -111,19 +111,42 @@ object SplitEaseColors {
     /** "You owe". */
     val YouOwe = OweRed
 
+    /** "You owe" container fill (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val YouOweContainer: Color
+        get() = if (darkChrome()) OweContainerDark else OweContainer
+
     /** "You're owed" / positive. */
     val OwedToYou = OwedTeal
+
+    /** "You're owed" container fill (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val OwedToYouContainer: Color
+        get() = if (darkChrome()) OwedContainerDark else OwedContainer
 
     @get:Composable
     @get:ReadOnlyComposable
     val Settled: Color
         get() = MaterialTheme.colorScheme.onSurfaceVariant
 
+    /** Default icon tint (theme-aware so icons stay readable in dark mode). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val IconDefault: Color
+        get() = if (darkChrome()) IconDefaultDark else iconDefaultLightToken
+
+    /** Glyph tint on light pastel category tiles ([CategoryPastels]). */
+    val CategoryGlyph: Color = iconDefaultLightToken
+
+    /** Pastel category icon tile palette. */
+    val CategoryPastels: List<Color> = CategoryPastelPalette
+
     // Group type tiles (glyph color; [SeIconTile] washes these into a pastel fill)
-    val IconDefault = Color(0xFF353B3E)
     val IconFriends = IndigoLight
     val IconHome = AmberLight
-    val IconOther = Color(0xFF5F68C5) // other-group glyph
+    val IconOther = IconOtherGroup // other-group glyph
 
     // Light detail-header banners
     val BannerFriends = BannerFriendsLight
@@ -142,53 +165,71 @@ object SplitEaseColors {
     /** Positive fill. */
     val Positive = OwedTeal
 
+    /** Switch unchecked track (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val SwitchUncheckedTrack: Color
+        get() = if (darkChrome()) SwitchUncheckedTrackDark else SwitchUncheckedTrackLight
+
+    /** Switch unchecked border (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val SwitchUncheckedBorder: Color
+        get() = if (darkChrome()) SwitchUncheckedBorderDark else SwitchUncheckedBorderLight
+
+    /** Pending-invite banner card background (theme-aware). */
+    @get:Composable
+    @get:ReadOnlyComposable
+    val PendingInviteCard: Color
+        get() = if (darkChrome()) PendingInviteCardDark else PendingInviteCardLight
+
     /** Empty-state card background (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateTint: Color
-        get() = if (isSystemInDarkTheme()) SurfaceDark else EmptyStateTintLight
+        get() = if (darkChrome()) SurfaceDark else EmptyStateTintLight
 
     /** Empty-state card border (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateBorder: Color
-        get() = if (isSystemInDarkTheme()) EmptyStateBorderDark else EmptyStateBorderLight
+        get() = if (darkChrome()) EmptyStateBorderDark else EmptyStateBorderLight
 
     /** Empty-state icon circle background (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateIconBg: Color
-        get() = if (isSystemInDarkTheme()) BackgroundDark else Color.White
+        get() = if (darkChrome()) BackgroundDark else SurfaceLight
 
     /** Empty-state icon tint (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateIconTint: Color
-        get() = if (isSystemInDarkTheme()) IndigoDark else IndigoLight
+        get() = if (darkChrome()) IndigoDark else IndigoLight
 
     /** Empty-state title color (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateTitle: Color
-        get() = if (isSystemInDarkTheme()) TextPrimaryDark else Color(0xFF1E1B4B)
+        get() = if (darkChrome()) TextPrimaryDark else EmptyStateTitleLight
 
     /** Empty-state hint color (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateHint: Color
-        get() = if (isSystemInDarkTheme()) TextSecondaryDark else EmptyStateHintLight
+        get() = if (darkChrome()) TextSecondaryDark else EmptyStateHintLight
 
     /** Empty-state secondary button background (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateSecondaryBg: Color
-        get() = if (isSystemInDarkTheme()) Color.Transparent else Color.White
+        get() = if (darkChrome()) Color.Transparent else SurfaceLight
 
     /** Empty-state secondary button border (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateSecondaryBorder: Color
-        get() = if (isSystemInDarkTheme()) TextPrimaryDark.copy(alpha = 0.25f) else EmptyStateSecondaryBorderLight
+        get() = if (darkChrome()) TextPrimaryDark.copy(alpha = 0.25f) else EmptyStateSecondaryBorderLight
 
     @Composable
     @ReadOnlyComposable
@@ -198,11 +239,11 @@ object SplitEaseColors {
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateSecondaryText: Color
-        get() = if (isSystemInDarkTheme()) IndigoDark else EmptyStateSecondaryTextLight
+        get() = if (darkChrome()) IndigoDark else EmptyStateSecondaryTextLight
 
     /** Empty-state shadow color (theme-aware). */
     @get:Composable
     @get:ReadOnlyComposable
     val EmptyStateShadowColor: Color
-        get() = if (isSystemInDarkTheme()) Color.Black.copy(alpha = 0.30f) else Color(0xFF4F46E5).copy(alpha = 0.12f)
+        get() = if (darkChrome()) Color.Black.copy(alpha = 0.30f) else IndigoLight.copy(alpha = 0.12f)
 }

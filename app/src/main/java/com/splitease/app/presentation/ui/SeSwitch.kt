@@ -1,7 +1,6 @@
 package com.splitease.app.presentation.ui
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,9 +24,8 @@ import com.splitease.app.presentation.theme.SplitEaseColors
  */
 @Composable
 fun seSwitchColors(): SwitchColors {
-    val isDark = isSystemInDarkTheme()
-    val uncheckedTrack = if (isDark) Color(0xFF1E2138) else Color(0xFFDCE0ED)
-    val uncheckedBorder = if (isDark) Color(0xFF4A4E68) else Color(0xFFB2B6C5)
+    val uncheckedTrack = SplitEaseColors.SwitchUncheckedTrack
+    val uncheckedBorder = SplitEaseColors.SwitchUncheckedBorder
 
     return SwitchDefaults.colors(
         checkedThumbColor = Color.White,

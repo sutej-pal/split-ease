@@ -85,11 +85,17 @@ val OweRed = Color(0xFFC43D5A) // you-owe balance
 /** You-owe container. Also, the light-theme error container. */
 val OweContainer = Color(0xFFFDE8EC) // you-owe container
 
+/** You-owe container (dark theme). */
+val OweContainerDark = Color(0xFF3B1520)
+
 /** "You're owed" / positive — teal. */
 val OwedTeal = Color(0xFF1B8A6B) // you're-owed balance
 
 /** Positive container. */
 val OwedContainer = Color(0xFFDDF6EE) // positive container
+
+/** Positive container (dark theme). */
+val OwedContainerDark = Color(0xFF0E3328)
 
 /**
  * Error text and icons in light theme.
@@ -102,6 +108,9 @@ val ErrorLight = Color(0xFFB3261E) // light error
  * Contrast: 9.18:1 on BackgroundDark, 8.98:1 on SurfaceDark.
  */
 val ErrorDark = Color(0xFFFF8A80) // dark error
+
+/** Error container in dark theme. */
+val ErrorContainerDark = Color(0xFF8C1D18)
 
 // ============================================================
 // TEXT & SEPARATOR COLORS
@@ -137,6 +146,9 @@ val EmptyStateBorderLight = Color(0xFFE1E4F8)
 /** Empty-state card border (dark theme). */
 val EmptyStateBorderDark = Color(0xFF2E2A45)
 
+/** Empty-state title text (light theme). */
+val EmptyStateTitleLight = Color(0xFF1E1B4B)
+
 /** Empty-state hint text (light theme). */
 val EmptyStateHintLight = Color(0xFF5B5880)
 
@@ -152,5 +164,45 @@ val OutlineDark = Color(0xFF4B465C) // dark resting border
 /** Hairline / card edges (dark theme). */
 val OutlineVariantDark = Color(0xFF3A3552) // dark hairline
 
-/** Default icon color app-wide. */
+/** Default icon color app-wide (light theme). */
 val IconDefault = Color(0xFF353B3E)
+
+/** Default icon color app-wide (dark theme). */
+val IconDefaultDark = Color(0xFFD5DAFA)
+
+/** Other-group icon glyph color. */
+val IconOtherGroup = Color(0xFF5F68C5)
+
+/** Switch unchecked track & border colors. */
+val SwitchUncheckedTrackLight = Color(0xFFDCE0ED)
+val SwitchUncheckedTrackDark = Color(0xFF1E2138)
+val SwitchUncheckedBorderLight = Color(0xFFB2B6C5)
+val SwitchUncheckedBorderDark = Color(0xFF4A4E68)
+
+/** Pending invite banner card fills. */
+val PendingInviteCardLight = Color(0xFFFFF3E0)
+val PendingInviteCardDark = Color(0xFF2B2214)
+
+/** Elevated card / bottom bar shadow colors. */
+val CardShadowAmbientLight = Color(0x241A1840)
+val CardShadowSpotLight = Color(0x401A1840)
+val CardShadowAmbientDark = Color(0x66000000)
+val CardShadowSpotDark = Color(0x80000000)
+
+/** Category chip / ledger icon tile pastels. */
+val CategoryPastelPink = Color(0xFFFFE0E6)
+val CategoryPastelMint = Color(0xFFE0F5E9)
+val CategoryPastelLavender = Color(0xFFE8E0F5)
+val CategoryPastelCream = Color(0xFFFFF3D6)
+val CategoryPastelSky = Color(0xFFE0F0FF)
+val CategoryPastelPeach = Color(0xFFFFE8D6)
+
+val CategoryPastelPalette =
+    listOf(
+        CategoryPastelPink,
+        CategoryPastelMint,
+        CategoryPastelLavender,
+        CategoryPastelCream,
+        CategoryPastelSky,
+        CategoryPastelPeach,
+    )

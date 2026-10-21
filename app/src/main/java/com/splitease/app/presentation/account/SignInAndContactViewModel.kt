@@ -12,6 +12,8 @@ import com.splitease.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +43,7 @@ data class SignInAndContactUiState(
     val emailPasswordDraft: String = "",
     val primaryOtpDraft: String = "",
     val secondaryOtpDrafts: Map<String, String> = emptyMap(),
+    val activeSecondaryOtpIds: Set<String> = emptySet(),
     val showAddEmailForm: Boolean = false,
     val showPrimaryOtpInput: Boolean = false,
     val isEmailSaving: Boolean = false,
@@ -104,20 +107,37 @@ class SignInAndContactViewModel
         private val _uiState = MutableStateFlow(SignInAndContactUiState())
         val uiState: StateFlow<SignInAndContactUiState> = _uiState.asStateFlow()
 
+        private var primaryOtpExpiryJob: Job? = null
+        private val secondaryOtpExpiryJobs = mutableMapOf<String, Job>()
+        private val pendingOtpEmails = mutableSetOf<String>()
+
         init {
             viewModelScope.launch {
                 combine(
                     authRepository.observeSecondaryEmails(),
                     profile,
                 ) { secondaries, prof ->
+                    val newlyAddedIds = mutableSetOf<String>()
+                    secondaries.forEach { sec ->
+                        val lower = sec.email.lowercase()
+                        if (!sec.isVerified && pendingOtpEmails.remove(lower)) {
+                            newlyAddedIds.add(sec.id)
+                        }
+                    }
                     _uiState.update {
+                        val validUnverifiedIds =
+                            secondaries.asSequence().filter { s -> !s.isVerified }.map { s -> s.id }.toSet()
+                        val nextActiveIds =
+                            (it.activeSecondaryOtpIds intersect validUnverifiedIds) + newlyAddedIds
                         it.copy(
                             secondaryEmails = secondaries,
+                            activeSecondaryOtpIds = nextActiveIds,
                             isGoogleOnly = prof.isGoogleOnly,
                             phoneCountryCodeDraft = if (it.expandedRow != AccountRow.PHONE) prof.phoneCountryCode else it.phoneCountryCodeDraft,
                             phoneNumberDraft = if (it.expandedRow != AccountRow.PHONE) prof.phoneNumber else it.phoneNumberDraft,
                         )
                     }
+                    newlyAddedIds.forEach { id -> scheduleSecondaryOtpExpiry(id) }
                 }.collect {}
             }
         }
@@ -342,8 +362,18 @@ class SignInAndContactViewModel
                         emailPasswordError = null,
                     )
                 }
+                val lowerEmail = email.lowercase()
+                pendingOtpEmails.add(lowerEmail)
                 val result = authRepository.addSecondaryEmail(email, pass.takeIf { !_uiState.value.isGoogleOnly })
                 if (result.isSuccess) {
+                    val existingMatch =
+                        _uiState.value.secondaryEmails.firstOrNull {
+                            !it.isVerified && it.email.equals(email, ignoreCase = true)
+                        }
+                    if (existingMatch != null) {
+                        pendingOtpEmails.remove(lowerEmail)
+                        activateSecondaryOtp(existingMatch.id)
+                    }
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
@@ -354,19 +384,12 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
-                    val rawErr = ErrorMessages.message(
+                    pendingOtpEmails.remove(lowerEmail)
+                    val errText = ErrorMessages.message(
                         appContext,
                         TAG,
                         result.exceptionOrNull() ?: Exception("Failed"),
                     )
-                    val errText = if (rawErr.equals("Failed to add email address.", ignoreCase = true) ||
-                        rawErr.equals("Secondary email operation failed.", ignoreCase = true) ||
-                        rawErr.equals("Failed", ignoreCase = true)
-                    ) {
-                        appContext.getString(R.string.error_email_cannot_be_added)
-                    } else {
-                        rawErr
-                    }
                     val isPassErr = isPasswordRelatedError(errText)
                     _uiState.update {
                         it.copy(
@@ -381,7 +404,68 @@ class SignInAndContactViewModel
 
         private fun isPasswordRelatedError(msg: String): Boolean {
             val lower = msg.lowercase()
-            return lower.contains("password") || lower.contains("credential") || lower.contains("right")
+            return lower.contains("password") || lower.contains("credential")
+        }
+
+        private fun isOtpExpiredOrExhaustedError(throwable: Throwable?): Boolean {
+            val lower = throwable?.message?.lowercase() ?: return false
+            return lower.contains("verification code has expired") ||
+                lower.contains("request a new code") ||
+                lower.contains("too many failed attempts") ||
+                lower.contains("otp_expired") ||
+                lower.contains("token has expired")
+        }
+
+        private fun schedulePrimaryOtpExpiry() {
+            primaryOtpExpiryJob?.cancel()
+            primaryOtpExpiryJob =
+                viewModelScope.launch {
+                    delay(OTP_VALIDITY_TIMEOUT_MS)
+                    _uiState.update {
+                        it.copy(
+                            showPrimaryOtpInput = false,
+                            primaryOtpDraft = "",
+                        )
+                    }
+                }
+        }
+
+        private fun activateSecondaryOtp(id: String) {
+            _uiState.update {
+                val nextDrafts = it.secondaryOtpDrafts.toMutableMap().apply { remove(id) }
+                it.copy(
+                    activeSecondaryOtpIds = it.activeSecondaryOtpIds + id,
+                    secondaryOtpDrafts = nextDrafts,
+                )
+            }
+            scheduleSecondaryOtpExpiry(id)
+        }
+
+        private fun deactivateSecondaryOtp(id: String) {
+            secondaryOtpExpiryJobs.remove(id)?.cancel()
+            _uiState.update {
+                val nextDrafts = it.secondaryOtpDrafts.toMutableMap().apply { remove(id) }
+                it.copy(
+                    activeSecondaryOtpIds = it.activeSecondaryOtpIds - id,
+                    secondaryOtpDrafts = nextDrafts,
+                )
+            }
+        }
+
+        private fun scheduleSecondaryOtpExpiry(id: String) {
+            secondaryOtpExpiryJobs.remove(id)?.cancel()
+            secondaryOtpExpiryJobs[id] =
+                viewModelScope.launch {
+                    delay(OTP_VALIDITY_TIMEOUT_MS)
+                    secondaryOtpExpiryJobs.remove(id)
+                    _uiState.update {
+                        val nextDrafts = it.secondaryOtpDrafts.toMutableMap().apply { remove(id) }
+                        it.copy(
+                            activeSecondaryOtpIds = it.activeSecondaryOtpIds - id,
+                            secondaryOtpDrafts = nextDrafts,
+                        )
+                    }
+                }
         }
 
         fun resendPrimaryVerification() {
@@ -389,14 +473,18 @@ class SignInAndContactViewModel
             if (email.isBlank()) return
             viewModelScope.launch {
                 val res = authRepository.resendSignupConfirmation(email)
-                _uiState.update {
-                    if (res.isSuccess) {
+                if (res.isSuccess) {
+                    _uiState.update {
                         it.copy(
                             showPrimaryOtpInput = true,
+                            primaryOtpDraft = "",
                             emailError = null,
                             infoMessage = appContext.getString(R.string.verify_email_sent),
                         )
-                    } else {
+                    }
+                    schedulePrimaryOtpExpiry()
+                } else {
+                    _uiState.update {
                         it.copy(
                             emailError = ErrorMessages.message(
                                 appContext,
@@ -422,6 +510,8 @@ class SignInAndContactViewModel
                 _uiState.update { it.copy(isEmailSaving = true, emailError = null) }
                 val res = authRepository.verifySignupOtp(email, code)
                 if (res.isSuccess) {
+                    primaryOtpExpiryJob?.cancel()
+                    primaryOtpExpiryJob = null
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
@@ -431,10 +521,19 @@ class SignInAndContactViewModel
                         )
                     }
                 } else {
+                    val ex = res.exceptionOrNull()
+                    val errText = ErrorMessages.message(appContext, TAG, ex ?: Exception("Failed"))
+                    val expired = isOtpExpiredOrExhaustedError(ex)
+                    if (expired) {
+                        primaryOtpExpiryJob?.cancel()
+                        primaryOtpExpiryJob = null
+                    }
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
-                            emailError = ErrorMessages.message(appContext, TAG, res.exceptionOrNull() ?: Exception("Failed")),
+                            showPrimaryOtpInput = if (expired) false else it.showPrimaryOtpInput,
+                            primaryOtpDraft = if (expired) "" else it.primaryOtpDraft,
+                            emailError = errText,
                         )
                     }
                 }
@@ -444,11 +543,21 @@ class SignInAndContactViewModel
         fun resendSecondaryEmail(id: String) {
             viewModelScope.launch {
                 val res = authRepository.resendSecondaryEmail(id)
-                _uiState.update {
-                    it.copy(
-                        infoMessage = if (res.isSuccess) appContext.getString(R.string.verify_email_sent) else null,
-                        emailError = ErrorMessages.messageOrNull(appContext, TAG, res.exceptionOrNull()),
-                    )
+                if (res.isSuccess) {
+                    activateSecondaryOtp(id)
+                    _uiState.update {
+                        it.copy(
+                            infoMessage = appContext.getString(R.string.verify_email_sent),
+                            emailError = null,
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            infoMessage = null,
+                            emailError = ErrorMessages.messageOrNull(appContext, TAG, res.exceptionOrNull()),
+                        )
+                    }
                 }
             }
         }
@@ -467,19 +576,23 @@ class SignInAndContactViewModel
                 _uiState.update { it.copy(isEmailSaving = true, emailError = null) }
                 val res = authRepository.verifySecondaryEmail(id, code)
                 if (res.isSuccess) {
+                    deactivateSecondaryOtp(id)
                     _uiState.update {
-                        val nextMap = it.secondaryOtpDrafts.toMutableMap().apply { remove(id) }
                         it.copy(
                             isEmailSaving = false,
-                            secondaryOtpDrafts = nextMap,
                             infoMessage = appContext.getString(R.string.verify_email_success),
                         )
                     }
                 } else {
+                    val ex = res.exceptionOrNull()
+                    val errText = ErrorMessages.message(appContext, TAG, ex ?: Exception("Failed"))
+                    if (isOtpExpiredOrExhaustedError(ex)) {
+                        deactivateSecondaryOtp(id)
+                    }
                     _uiState.update {
                         it.copy(
                             isEmailSaving = false,
-                            emailError = ErrorMessages.message(appContext, TAG, res.exceptionOrNull() ?: Exception("Failed")),
+                            emailError = errText,
                         )
                     }
                 }
@@ -489,6 +602,9 @@ class SignInAndContactViewModel
         fun removeSecondaryEmail(id: String) {
             viewModelScope.launch {
                 val res = authRepository.removeSecondaryEmail(id)
+                if (res.isSuccess) {
+                    deactivateSecondaryOtp(id)
+                }
                 _uiState.update {
                     it.copy(
                         infoMessage = if (res.isSuccess) appContext.getString(R.string.msg_email_removed) else null,
@@ -498,7 +614,8 @@ class SignInAndContactViewModel
             }
         }
 
-        private companion object {
+        internal companion object {
             const val TAG = "SignInAndContactViewModel"
+            const val OTP_VALIDITY_TIMEOUT_MS = 10 * 60 * 1_000L
         }
     }

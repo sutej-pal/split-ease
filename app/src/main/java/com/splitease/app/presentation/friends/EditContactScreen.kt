@@ -310,7 +310,7 @@ private fun PhoneConfirmDialog(
     val canContinue = ContactIdentifier.isConfirmablePhoneLength(state.dialCode, state.number)
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = SplitEaseColors.Surface,
         titleContentColor = SplitEaseColors.Navy,
         textContentColor = SplitEaseColors.Navy,
         title = {

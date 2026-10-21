@@ -65,7 +65,6 @@ import com.splitease.app.presentation.ui.SeTextField
 import com.splitease.app.presentation.ui.SeTrailingActionIconSize
 
 private const val ACCORDION_TRANSITION_MS = 200
-private val BodyStartInset = SeLayout.listInset + SeLayout.afterListRowIconTile
 
 @Composable
 fun SignInAndContactScreen(
@@ -241,7 +240,7 @@ fun SignInAndContactContent(
                                 ) {
                                     SeBodyMedium(
                                         text = sec.email,
-                                        fontWeight = FontWeight.Medium,
+                                        fontWeight = FontWeight.Normal,
                                         color = SplitEaseColors.Navy,
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(SeLayout.itemGap)) {
@@ -267,7 +266,7 @@ fun SignInAndContactContent(
                                 } else {
                                     SeAssistChip(text = stringResource(R.string.account_unconfirmed_chip))
                                 }
-                                if (!sec.isVerified) {
+                                if (!sec.isVerified && sec.id in uiState.activeSecondaryOtpIds) {
                                     val otp = uiState.secondaryOtpDrafts[sec.id].orEmpty()
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -419,7 +418,7 @@ fun SignInAndContactContent(
                         expanded = uiState.expandedRow == AccountRow.PASSWORD,
                         onToggle = { onToggleRow(AccountRow.PASSWORD) },
                     ) {
-                        Spacer(modifier = Modifier.height(8.dp))
+
                         Column(verticalArrangement = Arrangement.spacedBy(SeLayout.itemGap)) {
                             SeTextField(
                                 value = uiState.currentPasswordDraft,
@@ -433,19 +432,20 @@ fun SignInAndContactContent(
                             if (uiState.currentPasswordError != null) {
                                 SeErrorText(text = uiState.currentPasswordError)
                             }
+                            val newFieldError =
+                                uiState.newPasswordError
+                                    ?: uiState.passwordError?.takeIf { uiState.currentPasswordError == null }
                             SeTextField(
                                 value = uiState.newPasswordDraft,
                                 onValueChange = onNewPasswordDraftChange,
                                 placeholder = stringResource(R.string.account_new_password_label),
                                 visualTransformation = PasswordVisualTransformation(),
-                                isError = uiState.newPasswordError != null || uiState.passwordError != null,
+                                isError = newFieldError != null,
                                 cornerRadius = 8.dp,
                                 fieldHeight = 38.dp,
                             )
-                            if (uiState.newPasswordError != null) {
-                                SeErrorText(text = uiState.newPasswordError)
-                            } else if (uiState.passwordError != null) {
-                                SeErrorText(text = uiState.passwordError)
+                            if (newFieldError != null) {
+                                SeErrorText(text = newFieldError)
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth().height(38.dp),
@@ -536,6 +536,7 @@ private fun AccordionSection(
                 Modifier
                     .fillMaxWidth()
                     .padding(
+                        top = 12.dp,
                         start = SeLayout.listInset + 8.dp,
                         end = SeLayout.listInset,
                         bottom = SeLayout.ctaTopGap,

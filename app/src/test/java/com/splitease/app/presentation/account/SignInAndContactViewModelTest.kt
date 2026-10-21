@@ -15,8 +15,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -56,6 +58,7 @@ class SignInAndContactViewModelTest {
         every { context.getString(R.string.error_invalid_email) } returns "Invalid email"
         every { context.getString(R.string.error_password_required) } returns "Password required"
         every { context.getString(R.string.error_new_password_required) } returns "New password required"
+        every { context.getString(R.string.error_invalid_otp) } returns "That code is invalid or expired."
 
         viewModel =
             SignInAndContactViewModel(
@@ -187,5 +190,109 @@ class SignInAndContactViewModelTest {
             assertNull(viewModel.uiState.value.emailError)
             assertEquals("That password isn't right.", viewModel.uiState.value.emailPasswordError)
             assertFalse(viewModel.uiState.value.isEmailSaving)
+        }
+
+    @Test
+    fun unconfirmed_secondary_email_hides_otp_input_until_resend_and_expires_after_timeout() =
+        runTest(dispatcher) {
+            secondaryEmailsFlow.value =
+                listOf(
+                    SecondaryEmail(id = "sec-1", email = "pending@example.com", isVerified = false),
+                )
+            advanceUntilIdle()
+
+            // Opening the screen should NOT show OTP field for existing unconfirmed email
+            assertTrue(viewModel.uiState.value.activeSecondaryOtpIds.isEmpty())
+
+            coEvery { authRepository.resendSecondaryEmail("sec-1") } returns Result.success(Unit)
+            viewModel.resendSecondaryEmail("sec-1")
+            runCurrent()
+
+            assertTrue("sec-1" in viewModel.uiState.value.activeSecondaryOtpIds)
+            viewModel.onSecondaryOtpDraftChange("sec-1", "123456")
+            assertEquals("123456", viewModel.uiState.value.secondaryOtpDrafts["sec-1"])
+
+            // Advance past the 10-minute OTP validity window
+            advanceTimeBy(SignInAndContactViewModel.OTP_VALIDITY_TIMEOUT_MS)
+            runCurrent()
+
+            assertFalse("sec-1" in viewModel.uiState.value.activeSecondaryOtpIds)
+            assertNull(viewModel.uiState.value.secondaryOtpDrafts["sec-1"])
+        }
+
+    @Test
+    fun add_secondary_email_activates_otp_input_for_new_row() =
+        runTest(dispatcher) {
+            runCurrent()
+            coEvery { authRepository.addSecondaryEmail("new@example.com", "password123") } coAnswers {
+                secondaryEmailsFlow.value =
+                    listOf(
+                        SecondaryEmail(id = "sec-new", email = "new@example.com", isVerified = false),
+                    )
+                Result.success(Unit)
+            }
+
+            viewModel.onNewEmailDraftChange("new@example.com")
+            viewModel.onEmailPasswordDraftChange("password123")
+            viewModel.addSecondaryEmail()
+            runCurrent()
+
+            assertTrue("sec-new" in viewModel.uiState.value.activeSecondaryOtpIds)
+
+            advanceTimeBy(SignInAndContactViewModel.OTP_VALIDITY_TIMEOUT_MS)
+            runCurrent()
+
+            assertFalse("sec-new" in viewModel.uiState.value.activeSecondaryOtpIds)
+        }
+
+    @Test
+    fun verify_secondary_email_expired_error_hides_otp_input() =
+        runTest(dispatcher) {
+            secondaryEmailsFlow.value =
+                listOf(
+                    SecondaryEmail(id = "sec-1", email = "pending@example.com", isVerified = false),
+                )
+            runCurrent()
+
+            coEvery { authRepository.resendSecondaryEmail("sec-1") } returns Result.success(Unit)
+            viewModel.resendSecondaryEmail("sec-1")
+            runCurrent()
+            assertTrue("sec-1" in viewModel.uiState.value.activeSecondaryOtpIds)
+
+            coEvery { authRepository.verifySecondaryEmail("sec-1", "123456") } returns
+                Result.failure(IllegalStateException("Verification code has expired. Request a new code."))
+
+            viewModel.onSecondaryOtpDraftChange("sec-1", "123456")
+            viewModel.verifySecondaryEmail("sec-1")
+            runCurrent()
+
+            assertFalse("sec-1" in viewModel.uiState.value.activeSecondaryOtpIds)
+            assertNull(viewModel.uiState.value.secondaryOtpDrafts["sec-1"])
+            assertEquals("That code is invalid or expired.", viewModel.uiState.value.emailError)
+        }
+
+    @Test
+    fun resend_primary_verification_shows_otp_input_and_expires_after_timeout() =
+        runTest(dispatcher) {
+            sessionFlow.value =
+                AuthSession.SignedIn(
+                    AuthUser("u1", "bob@example.com", "Bob", emailConfirmed = false, isGoogleOnly = false),
+                )
+            runCurrent()
+            assertFalse(viewModel.uiState.value.showPrimaryOtpInput)
+
+            coEvery { authRepository.resendSignupConfirmation("bob@example.com") } returns Result.success(Unit)
+            viewModel.resendPrimaryVerification()
+            runCurrent()
+
+            assertTrue(viewModel.uiState.value.showPrimaryOtpInput)
+            viewModel.onPrimaryOtpDraftChange("654321")
+            assertEquals("654321", viewModel.uiState.value.primaryOtpDraft)
+
+            advanceTimeBy(SignInAndContactViewModel.OTP_VALIDITY_TIMEOUT_MS)
+            runCurrent()
+
+            assertFalse(viewModel.uiState.value.showPrimaryOtpInput)
+            assertEquals("", viewModel.uiState.value.primaryOtpDraft)
         }
 }

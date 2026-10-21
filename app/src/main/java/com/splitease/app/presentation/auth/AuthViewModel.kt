@@ -288,7 +288,20 @@ class AuthViewModel
                             if (resendResult.isSuccess) {
                                 PendingOtpPurpose.SIGNUP
                             } else {
-                                authRepository.sendLoginOtp(trimmedEmail)
+                                val loginOtpResult = authRepository.sendLoginOtp(trimmedEmail)
+                                if (loginOtpResult.isFailure) {
+                                    val sendErr = loginOtpResult.exceptionOrNull() ?: resendResult.exceptionOrNull()
+                                    _formState.update {
+                                        it.copy(
+                                            isLoading = false,
+                                            errorMessage = friendlyAuthError(sendErr),
+                                            holdSignedInForOtp = false,
+                                            pendingConfirmationEmail = null,
+                                            pendingOtpPurpose = null,
+                                        )
+                                    }
+                                    return@launch
+                                }
                                 PendingOtpPurpose.LOGIN
                             }
                         updateFormState {

@@ -274,6 +274,7 @@ fun SeDialogActions(
                     enabled = confirmEnabled,
                     isLoading = confirmBusy,
                     fillMaxWidth = true,
+                    containerColor = confirmColor,
                     minHeight = 38.dp,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 )

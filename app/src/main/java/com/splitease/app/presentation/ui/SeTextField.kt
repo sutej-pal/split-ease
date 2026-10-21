@@ -126,7 +126,7 @@ fun SeTextField(
         } else {
             val interactionSource = remember { MutableInteractionSource() }
             val textColor = if (enabled) SplitEaseColors.Navy else SplitEaseColors.Navy.copy(alpha = 0.55f)
-            val mergedTextStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor)
+            val mergedTextStyle = MaterialTheme.typography.bodySmall.copy(color = textColor)
 
             BasicTextField(
                 value = value,
@@ -156,7 +156,7 @@ fun SeTextField(
                         placeholder =
                             placeholder?.let { text ->
                                 {
-                                    SeBodyMedium(text = text, color = SplitEaseColors.NavyMuted)
+                                    SeBodySmall(text = text, color = SplitEaseColors.NavyMuted)
                                 }
                             },
                         leadingIcon = leadingIcon,

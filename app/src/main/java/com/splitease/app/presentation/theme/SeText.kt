@@ -262,6 +262,28 @@ fun SeTitleSmall(
 }
 
 @Composable
+fun SeTitleSmall(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    color: Color = SplitEaseColors.Navy,
+    fontWeight: FontWeight = FontWeight.SemiBold,
+    textAlign: TextAlign? = null,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = fontWeight,
+        color = color,
+        modifier = modifier,
+        textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = overflow,
+    )
+}
+
+@Composable
 fun SeBodyLarge(
     text: String,
     modifier: Modifier = Modifier,
@@ -360,6 +382,7 @@ fun SeBodySmall(
     color: Color = SplitEaseColors.NavyMuted,
     fontWeight: FontWeight = FontWeight.Normal,
     textAlign: TextAlign? = null,
+    minLines: Int = 1,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
 ) {
@@ -370,6 +393,7 @@ fun SeBodySmall(
         color = color,
         modifier = modifier,
         textAlign = textAlign,
+        minLines = minLines,
         maxLines = maxLines,
         overflow = overflow,
     )

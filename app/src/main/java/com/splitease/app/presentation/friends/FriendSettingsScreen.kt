@@ -49,7 +49,6 @@ import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
 import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.invite.InviteDeliveryPolicy
-import com.splitease.app.presentation.theme.AmberLight
 import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.theme.*
 import com.splitease.app.presentation.ui.SeAvatarBadge
@@ -63,8 +62,6 @@ import com.splitease.app.presentation.ui.SePreview
 import com.splitease.app.presentation.ui.SeScreen
 import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.seEntityHeaderStyle
-
-private val PendingInviteCardBg = Color(0xFFFFF3E0)
 
 @Composable
 fun FriendSettingsScreen(
@@ -313,7 +310,7 @@ private fun PendingInviteCard(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(PendingInviteCardBg)
+                .background(SplitEaseColors.PendingInviteCard)
                 .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -372,7 +369,7 @@ private fun PendingInviteAction(
                 .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = AmberLight, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = SplitEaseColors.Accent, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(12.dp))
         SeTitleMedium(
             text = label,

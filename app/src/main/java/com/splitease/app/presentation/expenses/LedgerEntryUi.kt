@@ -55,16 +55,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val CategoryPastels =
-    listOf(
-        Color(0xFFFFE0E6),
-        Color(0xFFE0F5E9),
-        Color(0xFFE8E0F5),
-        Color(0xFFFFF3D6),
-        Color(0xFFE0F0FF),
-        Color(0xFFFFE8D6),
-    )
-
 /**
  * Inserts month headers + [LedgerEntryRow] items into a [LazyListScope].
  *
@@ -118,9 +108,10 @@ fun LedgerEntryRow(
     onClick: (() -> Unit)? = null,
 ) {
     val icon = categoryIcon(item.categoryIconKey)
+    val pastels = SplitEaseColors.CategoryPastels
     val pastel =
-        CategoryPastels[
-            (item.categoryIconKey ?: item.id).hashCode().mod(CategoryPastels.size),
+        pastels[
+            (item.categoryIconKey ?: item.id).hashCode().mod(pastels.size),
         ]
     val (monthLabel, dayLabel) =
         remember(item.sortEpochMs) {
@@ -165,7 +156,7 @@ fun LedgerEntryRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = SplitEaseColors.IconDefault.copy(alpha = 0.65f),
+                tint = SplitEaseColors.CategoryGlyph.copy(alpha = 0.65f),
                 modifier = Modifier.size(22.dp),
             )
         }

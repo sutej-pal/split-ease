@@ -62,7 +62,10 @@ Deno.serve(async (req) => {
       }
 
       const taken = await emailTaken(adminClient, email);
-      if (taken === "error" || taken === "taken") {
+      if (taken === "error") {
+        return json({ error: "Failed to add email address." }, 500);
+      }
+      if (taken === "taken") {
         return json({ error: "That email can't be added." }, 400);
       }
 
@@ -86,7 +89,7 @@ Deno.serve(async (req) => {
         .limit(1);
       if (existingError) {
         console.error("Query existing user_emails error:", existingError);
-        return json({ error: "That email can't be added." }, 400);
+        return json({ error: "Failed to add email address." }, 500);
       }
       const existing = existingRows?.[0];
       if (existing?.verified_at) {
@@ -107,7 +110,7 @@ Deno.serve(async (req) => {
           .eq("user_id", userId);
         if (updateError) {
           console.error("Update user_emails error:", updateError);
-          return json({ error: "That email can't be added." }, 400);
+          return json({ error: "Failed to add email address." }, 500);
         }
       } else {
         if (await unverifiedCount(adminClient, userId) >= MAX_UNVERIFIED) {
@@ -126,7 +129,11 @@ Deno.serve(async (req) => {
           .select("id");
         if (insertError || !insertedRows || insertedRows.length === 0) {
           console.error("Insert user_emails error:", insertError);
-          return json({ error: "That email can't be added." }, 400);
+          const duplicate = (insertError as { code?: string } | null)?.code === "23505";
+          return json(
+            { error: duplicate ? "That email can't be added." : "Failed to add email address." },
+            duplicate ? 400 : 500,
+          );
         }
         rowId = insertedRows[0].id;
         insertedNew = true;
@@ -385,7 +392,7 @@ async function emailTaken(
     return "taken";
   }
 
-  if (profileError || secondaryError) {
+  if (registeredError || profileError || secondaryError) {
     return "error";
   }
   return "free";

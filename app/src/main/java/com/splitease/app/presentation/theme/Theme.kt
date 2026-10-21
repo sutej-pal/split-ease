@@ -79,7 +79,7 @@ private val DarkColorScheme =
         outlineVariant = OutlineVariantDark,
         error = ErrorDark,
         onError = BackgroundDark,
-        errorContainer = Color(0xFF8C1D18),
+        errorContainer = ErrorContainerDark,
         onErrorContainer = OweContainer,
     )
 

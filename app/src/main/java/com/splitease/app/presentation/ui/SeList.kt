@@ -158,7 +158,7 @@ fun SeAvatarBadge(
     modifier: Modifier = Modifier,
     size: Dp = 18.dp,
     borderWidth: Dp = 1.5.dp,
-    borderColor: Color = Color.White,
+    borderColor: Color = SplitEaseColors.Surface,
 ) {
     val context = LocalContext.current
     // Include file mtime so overwriting the same path still reloads the bitmap.
@@ -201,7 +201,7 @@ fun SeAvatarBadge(
         } else {
             SeLabelSmall(
                 text = initialsOf(name),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.Bold,
             )
         }

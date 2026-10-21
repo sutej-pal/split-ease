@@ -94,16 +94,6 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val CategoryPastels =
-    listOf(
-        Color(0xFFFFE0E6),
-        Color(0xFFE0F5E9),
-        Color(0xFFE8E0F5),
-        Color(0xFFFFF3D6),
-        Color(0xFFE0F0FF),
-        Color(0xFFFFE8D6),
-    )
-
 /**
  * Expense detail: summary, payer/owes, attachments, comments, optional group spending trends.
  */
@@ -563,9 +553,10 @@ private fun CategoryChip(
     iconKey: String,
     onClick: () -> Unit,
 ) {
+    val pastels = SplitEaseColors.CategoryPastels
     val pastel =
-        CategoryPastels[
-            iconKey.hashCode().mod(CategoryPastels.size).let { if (it < 0) it + CategoryPastels.size else it },
+        pastels[
+            iconKey.hashCode().mod(pastels.size).let { if (it < 0) it + pastels.size else it },
         ]
     val interaction = remember { MutableInteractionSource() }
     Row(
@@ -591,7 +582,7 @@ private fun CategoryChip(
             Icon(
                 imageVector = categoryIcon(iconKey),
                 contentDescription = stringResource(R.string.cd_expense_category),
-                tint = SplitEaseColors.IconDefault.copy(alpha = 0.7f),
+                tint = SplitEaseColors.CategoryGlyph.copy(alpha = 0.7f),
                 modifier = Modifier.size(20.dp),
             )
         }
