@@ -1,5 +1,6 @@
 package com.splitease.app.data.activity
 
+import com.splitease.app.data.push.GroupUpdateNotifier
 import com.splitease.app.data.remote.ActivityRemoteDataSource
 import com.splitease.app.data.remote.dto.ActivityEventDto
 import com.splitease.app.domain.model.ActivityEvent
@@ -26,6 +27,8 @@ class ActivityInteractor
         private val activityEventRepository: ActivityEventRepository,
         private val activityRemoteDataSource: ActivityRemoteDataSource,
         private val expenseRepository: ExpenseRepository,
+        private val notifyCursor: ActivityNotifyCursor,
+        private val groupUpdateNotifier: GroupUpdateNotifier,
     ) {
         /**
          * Pushes [SyncStatus.PENDING] events. Historical [SyncStatus.LOCAL_ONLY] rows stay local.
@@ -63,15 +66,53 @@ class ActivityInteractor
         suspend fun refreshForUser(userId: String) =
             withContext(Dispatchers.IO) {
                 val dtos = activityRemoteDataSource.fetchRecentForUser(userId)
+                val existingIds = mutableSetOf<String>()
+                val incoming = mutableListOf<ActivityNotice>()
                 dtos.forEach { dto ->
                     val existing = activityEventRepository.getById(dto.id)
+                    if (existing != null) existingIds += dto.id
                     if (existing != null && existing.syncStatus != SyncStatus.SYNCED) {
                         return@forEach
                     }
                     activityEventRepository.upsert(dto.toDomain(existing))
+                    incoming += dto.toNotice()
+                }
+                val plan =
+                    planActivityNotifications(
+                        incoming = incoming,
+                        existingIds = existingIds,
+                        currentUserId = userId,
+                        watermarkEpochMs = notifyCursor.get(userId),
+                        nowEpochMs = System.currentTimeMillis(),
+                    )
+                notifyCursor.set(userId, plan.watermarkEpochMs)
+                plan.notifications.forEach { notice ->
+                    val groupId = notice.groupId ?: return@forEach
+                    groupUpdateNotifier.show(
+                        groupId = groupId,
+                        title = notice.title,
+                        body = notice.body,
+                    )
                 }
             }
     }
+
+/** Tray copy for a cloud activity row. Group name is the title; the description is the body. */
+internal fun ActivityEventDto.toNotice(): ActivityNotice {
+    val description = snapshotDescription?.takeIf { it.isNotBlank() } ?: title
+    val body =
+        listOf(description, amountLabel)
+            .filter { it.isNotBlank() }
+            .joinToString(" · ")
+    return ActivityNotice(
+        id = id,
+        actorUserId = actorUserId,
+        sortEpochMs = sortEpochMs,
+        groupId = snapshotGroupId?.trim()?.takeIf { it.isNotEmpty() },
+        title = snapshotGroupName?.trim().orEmpty(),
+        body = body,
+    )
+}
 
 /**
  * Maps a local activity event for PostgREST upsert.

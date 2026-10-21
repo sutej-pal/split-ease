@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -111,6 +112,7 @@ fun AccountScreen(
         onOpenSpending = onOpenSpending,
         onOpenWhatsNew = onOpenWhatsNew,
         onOpenHelpCenter = onOpenHelpCenter,
+        onOpenPrivacyPolicy = { context.openPrivacyPolicy() },
         onContactSupport = {
             val opened = openSupportGmail(context, supportEmail, supportSubject)
             if (!opened) mailErrorKey += 1
@@ -142,6 +144,7 @@ private fun AccountScreenContent(
     onOpenSpending: () -> Unit,
     onOpenWhatsNew: () -> Unit,
     onOpenHelpCenter: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
     onContactSupport: () -> Unit,
     onRateApp: () -> Unit,
     mailErrorKey: Int,
@@ -286,6 +289,13 @@ private fun AccountScreenContent(
                         icon = Icons.Filled.NewReleases,
                         onClick = onOpenWhatsNew,
                     )
+                    SeListRow(
+                        title = stringResource(R.string.signup_privacy_policy),
+                        subtitle = stringResource(R.string.signup_privacy_url),
+                        icon = Icons.Outlined.Policy,
+                        onClick = onOpenPrivacyPolicy,
+                        showDivider = false,
+                    )
                 }
 
                 if (privacyOptionsRequired) {
@@ -359,6 +369,7 @@ private fun AccountScreenPreview() {
             onOpenSpending = {},
             onOpenWhatsNew = {},
             onOpenHelpCenter = {},
+            onOpenPrivacyPolicy = {},
             onContactSupport = {},
             onRateApp = {},
             mailErrorKey = 0,

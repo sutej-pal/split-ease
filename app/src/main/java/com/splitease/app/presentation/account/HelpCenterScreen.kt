@@ -8,15 +8,18 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -26,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,6 +69,7 @@ fun HelpCenterScreen(onBack: () -> Unit) {
 @Composable
 private fun HelpCenterContent(onBack: () -> Unit) {
     var expandedIndex by rememberSaveable { mutableIntStateOf(-1) }
+    val context = LocalContext.current
     SeScreen(
         title = stringResource(R.string.help_center_title),
         onBack = onBack,
@@ -97,6 +102,19 @@ private fun HelpCenterContent(onBack: () -> Unit) {
                             showDivider = index != faqItems.lastIndex,
                         )
                     }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                SeListSection(
+                    title = stringResource(R.string.help_center_legal),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
+                    SeListRow(
+                        title = stringResource(R.string.signup_privacy_policy),
+                        subtitle = stringResource(R.string.signup_privacy_url),
+                        icon = Icons.Outlined.Policy,
+                        onClick = { context.openPrivacyPolicy() },
+                        showDivider = false,
+                    )
                 }
             }
         },

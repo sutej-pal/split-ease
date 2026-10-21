@@ -1,8 +1,10 @@
 package com.splitease.app.data.sync
 
+import com.splitease.app.data.activity.ActivityInteractor
 import com.splitease.app.data.expense.ExpenseInteractor
 import com.splitease.app.data.payment.PaymentInteractor
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
@@ -10,12 +12,14 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,6 +36,7 @@ class GroupLiveSync
         private val supabase: SupabaseClient,
         private val expenseInteractor: ExpenseInteractor,
         private val paymentInteractor: PaymentInteractor,
+        private val activityInteractor: ActivityInteractor,
     ) {
         private var channel: RealtimeChannel? = null
         private var jobs: Job? = null
@@ -69,9 +74,15 @@ class GroupLiveSync
                 merge(expenseFlow, paymentFlow)
                     .debounce(DEBOUNCE_MS.milliseconds)
                     .onEach {
-                        runCatching {
-                            expenseInteractor.refreshGroupExpenses(trimmed)
-                            paymentInteractor.refreshGroupPayments(trimmed)
+                        withContext(Dispatchers.IO) {
+                            runCatching {
+                                expenseInteractor.refreshGroupExpenses(trimmed)
+                                paymentInteractor.refreshGroupPayments(trimmed)
+                                val userId = supabase.auth.currentUserOrNull()?.id
+                                if (!userId.isNullOrBlank()) {
+                                    activityInteractor.refreshForUser(userId)
+                                }
+                            }
                         }
                     }.launchIn(scope)
 

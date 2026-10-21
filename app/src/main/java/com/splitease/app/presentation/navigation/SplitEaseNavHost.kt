@@ -618,6 +618,8 @@ private fun SignedInNavHost(
     SideEffect {
         bottomBarSelectedRoute?.let { lastSelectedTabRoute = it }
     }
+    val tabsViewModel: MainTabsViewModel = hiltViewModel()
+    val activityUnreadCount by tabsViewModel.activityUnreadCount.collectAsStateWithLifecycle()
     NotificationPermissionEffect()
     WhatsNewPrompt(
         onSeeAll = { navController.navigate(Routes.WHATS_NEW) },
@@ -707,6 +709,7 @@ private fun SignedInNavHost(
                 ) {
                     SplitEaseBottomBar(
                         currentRoute = bottomBarSelectedRoute ?: lastSelectedTabRoute,
+                        activityUnreadCount = activityUnreadCount,
                         onTabSelected = { tab ->
                             navController.navigate(tab.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
