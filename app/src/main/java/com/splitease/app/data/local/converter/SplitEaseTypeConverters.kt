@@ -1,6 +1,10 @@
 package com.splitease.app.data.local.converter
 
 import androidx.room.TypeConverter
+import com.splitease.app.domain.model.ExchangeRateSource
+import com.splitease.app.domain.model.GroupType
+import com.splitease.app.domain.model.InviteKind
+import com.splitease.app.domain.model.InviteStatus
 import com.splitease.app.domain.model.MemberRole
 import com.splitease.app.domain.model.RecurrenceFrequency
 import com.splitease.app.domain.model.SplitType
@@ -49,6 +53,15 @@ class SplitEaseTypeConverters {
 
     /** @param value Enum to store. @return Name string. */
     @TypeConverter
+    fun fromGroupType(value: GroupType): String = value.name
+
+    /** @param value Stored name. @return [GroupType]. */
+    @TypeConverter
+    fun toGroupType(value: String): GroupType =
+        runCatching { GroupType.valueOf(value) }.getOrDefault(GroupType.OTHER)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
     fun fromSyncStatus(value: SyncStatus): String = value.name
 
     /** @param value Stored name. @return [SyncStatus]. */
@@ -62,4 +75,29 @@ class SplitEaseTypeConverters {
     /** @param value Stored name. @return [RecurrenceFrequency]. */
     @TypeConverter
     fun toRecurrenceFrequency(value: String): RecurrenceFrequency = RecurrenceFrequency.valueOf(value)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
+    fun fromInviteKind(value: InviteKind): String = value.name
+
+    /** @param value Stored name. @return [InviteKind]. */
+    @TypeConverter
+    fun toInviteKind(value: String): InviteKind = InviteKind.valueOf(value)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
+    fun fromInviteStatus(value: InviteStatus): String = value.name
+
+    /** @param value Stored name. @return [InviteStatus]. */
+    @TypeConverter
+    fun toInviteStatus(value: String): InviteStatus = InviteStatus.valueOf(value)
+
+    /** @param value Enum to store. @return Name string. */
+    @TypeConverter
+    fun fromExchangeRateSource(value: ExchangeRateSource?): String? = value?.name
+
+    /** @param value Stored name. @return [ExchangeRateSource]. */
+    @TypeConverter
+    fun toExchangeRateSource(value: String?): ExchangeRateSource? =
+        value?.let { ExchangeRateSource.valueOf(it) }
 }

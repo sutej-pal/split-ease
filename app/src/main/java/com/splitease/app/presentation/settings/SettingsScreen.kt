@@ -1,0 +1,506 @@
+package com.splitease.app.presentation.settings
+
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Text
+import com.splitease.app.presentation.ui.SeSwitch
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.splitease.app.R
+import com.splitease.app.domain.settings.AppCurrencies
+import com.splitease.app.domain.settings.AppLocale
+import com.splitease.app.domain.settings.AuthTimeout
+import com.splitease.app.presentation.security.BiometricAvailability
+import com.splitease.app.presentation.security.authenticateWithBiometrics
+import com.splitease.app.presentation.security.biometricAvailability
+import com.splitease.app.presentation.theme.SplitEaseColors
+import com.splitease.app.presentation.ui.SeErrorText
+import com.splitease.app.presentation.ui.SeLayout
+import com.splitease.app.presentation.ui.SeListCard
+import com.splitease.app.presentation.ui.SeListRow
+import com.splitease.app.presentation.ui.SeListSection
+import com.splitease.app.presentation.ui.SeModal
+import com.splitease.app.presentation.ui.SePreview
+import com.splitease.app.presentation.ui.SeScreen
+import com.splitease.app.presentation.ui.SeSectionHeader
+import com.splitease.app.presentation.ui.SeTextButton
+import com.splitease.app.presentation.ui.SeTextField
+import com.splitease.app.presentation.theme.*
+
+private fun openSystemNotificationSettings(context: Context) {
+    val intent =
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+    context.startActivity(intent)
+}
+
+@Composable
+fun NotificationsSettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val context = LocalContext.current
+    val muteAll by viewModel.notificationsMutedAll.collectAsStateWithLifecycle()
+    var osNotificationsEnabled by remember {
+        mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            osNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        }
+    val enabled = osNotificationsEnabled && !muteAll
+
+    val onToggle = { checked: Boolean ->
+        if (checked) {
+            if (!osNotificationsEnabled) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    openSystemNotificationSettings(context)
+                }
+            }
+            viewModel.setNotificationsMutedAll(false)
+        } else {
+            viewModel.setNotificationsMutedAll(true)
+        }
+    }
+
+    SeScreen(
+        title = stringResource(R.string.settings_notifications),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 24.dp),
+            ) {
+                SeListSection(
+                    title = stringResource(R.string.settings_notifications_section),
+                    horizontalPadding = SeLayout.listInset,
+                ) {
+                    SeListRow(
+                        title = stringResource(R.string.settings_notifications_group_updates),
+                        subtitle = stringResource(R.string.settings_notifications_group_updates_body),
+                        trailing = {
+                            SeSwitch(
+                                checked = enabled,
+                                onCheckedChange = { checked -> onToggle(checked) },
+                            )
+                        },
+                        onClick = { onToggle(!enabled) },
+                        showDivider = false,
+                        horizontalPadding = SeLayout.listInset,
+                    )
+                }
+                if (!osNotificationsEnabled) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SeBodyMedium(
+                        text = stringResource(R.string.settings_notifications_permission_needed),
+                        modifier = Modifier.padding(horizontal = SeLayout.listInset, vertical = 4.dp),
+                    )
+                    SeTextButton(
+                        text = stringResource(R.string.settings_notifications_open_system),
+                        onClick = { openSystemNotificationSettings(context) },
+                        emphasized = true,
+                        modifier = Modifier.padding(horizontal = SeLayout.listInset),
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+fun LanguageSettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val selected by viewModel.appLocale.collectAsStateWithLifecycle()
+
+    SeScreen(
+        title = stringResource(R.string.settings_language),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values),
+            ) {
+                SeSectionHeader(
+                    text = stringResource(R.string.settings_language_section),
+                    horizontalPadding = SeLayout.listInset,
+                )
+                AppLocale.entries.forEachIndexed { index, locale ->
+                    LanguageRow(
+                        locale = locale,
+                        selected = selected == locale,
+                        onSelect = {
+                            viewModel.setAppLocale(locale)
+                            onBack()
+                        },
+                        showDivider = index < AppLocale.entries.lastIndex,
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun LanguageRow(
+    locale: AppLocale,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    showDivider: Boolean,
+) {
+    SeListRow(
+        title = appLocaleLabel(locale),
+        leading = {
+            RadioButton(
+                selected = selected,
+                onClick = onSelect,
+                colors =
+                    RadioButtonDefaults.colors(
+                        selectedColor = SplitEaseColors.Primary,
+                    ),
+            )
+        },
+        onClick = onSelect,
+        showDivider = showDivider,
+        horizontalPadding = SeLayout.listInset,
+    )
+}
+
+@Composable
+private fun appLocaleLabel(locale: AppLocale): String =
+    stringResource(
+        when (locale) {
+            AppLocale.SYSTEM -> R.string.settings_language_system
+            AppLocale.ENGLISH -> R.string.settings_language_en
+            AppLocale.SPANISH -> R.string.settings_language_es
+            AppLocale.FRENCH -> R.string.settings_language_fr
+            AppLocale.GERMAN -> R.string.settings_language_de
+            AppLocale.PORTUGUESE -> R.string.settings_language_pt
+            AppLocale.HINDI -> R.string.settings_language_hi
+            AppLocale.JAPANESE -> R.string.settings_language_ja
+        },
+    )
+
+
+@Composable
+fun SecuritySettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val biometricEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    val timeout by viewModel.authTimeout.collectAsStateWithLifecycle()
+    var showTimeoutPicker by rememberSaveable { mutableStateOf(false) }
+    var enableError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    val unlockTitle = stringResource(R.string.security_unlock_title)
+    val unlockSubtitle = stringResource(R.string.settings_biometrics_body)
+    val unavailable = stringResource(R.string.security_biometrics_unavailable)
+
+    SeScreen(
+        title = stringResource(R.string.settings_security),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 24.dp),
+            ) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = SeLayout.listInset, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SeTitleMedium(
+                        text = stringResource(R.string.settings_biometrics_title),
+                        modifier = Modifier.weight(1f),
+                        color = SplitEaseColors.Navy,
+                    )
+                    SeSwitch(
+                        checked = biometricEnabled,
+                        onCheckedChange = { checked ->
+                            enableError = null
+                            if (!checked) {
+                                viewModel.setBiometricLockEnabled(false)
+                                return@SeSwitch
+                            }
+                            if (activity == null) {
+                                enableError = unavailable
+                                return@SeSwitch
+                            }
+                            when (val availability = biometricAvailability(activity, unavailable)) {
+                                is BiometricAvailability.Unavailable -> {
+                                    enableError = availability.message
+                                }
+                                BiometricAvailability.Ready -> {
+                                    authenticateWithBiometrics(
+                                        activity = activity,
+                                        title = unlockTitle,
+                                        subtitle = unlockSubtitle,
+                                        onSuccess = { viewModel.setBiometricLockEnabled(true) },
+                                        onError = { message -> enableError = message },
+                                        onUnavailable = { enableError = unavailable },
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
+                SeBodyMedium(
+                    text = stringResource(R.string.settings_biometrics_body),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset).padding(bottom = 8.dp),
+                )
+                if (enableError != null) {
+                    SeErrorText(
+                        text = enableError.orEmpty(),
+                        modifier = Modifier.padding(horizontal = SeLayout.listInset).padding(bottom = 8.dp),
+                    )
+                }
+                HorizontalDivider(color = SplitEaseColors.Outline)
+
+                SeListRow(
+                    title = stringResource(R.string.settings_timeout_title),
+                    trailing = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            SeBodyLarge(
+                                text = authTimeoutLabel(timeout),
+                                color = SplitEaseColors.NavyMuted,
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = SplitEaseColors.IconDefault,
+                            )
+                        }
+                    },
+                    onClick = { showTimeoutPicker = true },
+                    showDivider = false,
+                    horizontalPadding = SeLayout.listInset,
+                )
+                SeBodyMedium(
+                    text = stringResource(R.string.settings_timeout_body),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset),
+                )
+            }
+        },
+    )
+
+    if (showTimeoutPicker) {
+        SeModal(
+            onDismissRequest = { showTimeoutPicker = false },
+            title = stringResource(R.string.settings_timeout_title),
+            icon = Icons.Filled.Timer,
+            dismissLabel = stringResource(R.string.action_cancel),
+        ) {
+            AuthTimeout.entries.forEach { option ->
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.setAuthTimeout(option)
+                                showTimeoutPicker = false
+                            }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = timeout == option,
+                        onClick = {
+                            viewModel.setAuthTimeout(option)
+                            showTimeoutPicker = false
+                        },
+                        colors =
+                            RadioButtonDefaults.colors(
+                                selectedColor = SplitEaseColors.Primary,
+                            ),
+                    )
+                    SeBodyLarge(
+                        text = authTimeoutLabel(option),
+                        color = SplitEaseColors.Navy,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CurrencySettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val selected by viewModel.currencyCode.collectAsStateWithLifecycle()
+    var filter by rememberSaveable { mutableStateOf("") }
+    val options = AppCurrencies.filter(filter)
+
+    SeScreen(
+        title = stringResource(R.string.settings_currency_item),
+        onBack = onBack,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding.values),
+            ) {
+                SeBodyMedium(
+                    text = stringResource(R.string.settings_currency_hint),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SeTextField(
+                    value = filter,
+                    onValueChange = { filter = it },
+                    label = stringResource(R.string.settings_currency_search),
+                    modifier = Modifier.padding(horizontal = SeLayout.listInset),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(options, key = { it.first }) { (code, label) ->
+                        val onSelect = {
+                            viewModel.setCurrency(code)
+                            onBack()
+                        }
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable(onClick = onSelect)
+                                    .padding(horizontal = SeLayout.listInset, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = selected == code,
+                                onClick = onSelect,
+                                colors =
+                                    RadioButtonDefaults.colors(
+                                        selectedColor = SplitEaseColors.Primary,
+                                    ),
+                            )
+                            Column(modifier = Modifier.padding(start = 8.dp)) {
+                                SeTitleSmall(text = code)
+                                SeBodyMedium(text = label)
+                            }
+                        }
+                        HorizontalDivider(color = SplitEaseColors.Outline)
+                    }
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun authTimeoutLabel(timeout: AuthTimeout): String =
+    when (timeout) {
+        AuthTimeout.IMMEDIATE -> stringResource(R.string.settings_timeout_immediate)
+        AuthTimeout.FIVE_SECONDS -> stringResource(R.string.settings_timeout_5_seconds)
+        AuthTimeout.FIFTEEN_SECONDS -> stringResource(R.string.settings_timeout_15_seconds)
+        AuthTimeout.ONE_MINUTE -> stringResource(R.string.settings_timeout_1_minute)
+        AuthTimeout.FIVE_MINUTES -> stringResource(R.string.settings_timeout_5_minutes)
+        AuthTimeout.FIFTEEN_MINUTES -> stringResource(R.string.settings_timeout_15_minutes)
+        AuthTimeout.ONE_HOUR -> stringResource(R.string.settings_timeout_1_hour)
+    }
+
+@Preview(name = "Notifications Settings", showBackground = true, heightDp = 640)
+@Composable
+private fun NotificationsSettingsScreenPreview() {
+    SePreview {
+        SeScreen(
+            title = stringResource(R.string.settings_notifications),
+            onBack = {},
+            content = { padding ->
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding.values)
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 24.dp),
+                ) {
+                    SeListSection(
+                        title = stringResource(R.string.settings_notifications_section),
+                        horizontalPadding = SeLayout.listInset,
+                    ) {
+                        SeListRow(
+                            title = stringResource(R.string.settings_notifications_group_updates),
+                            subtitle = stringResource(R.string.settings_notifications_group_updates_body),
+                            trailing = {
+                                SeSwitch(
+                                    checked = true,
+                                    onCheckedChange = {},
+                                )
+                            },
+                            onClick = {},
+                            showDivider = false,
+                            horizontalPadding = SeLayout.listInset,
+                        )
+                    }
+                }
+            },
+        )
+    }
+}

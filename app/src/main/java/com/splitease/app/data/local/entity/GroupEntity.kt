@@ -3,6 +3,7 @@ package com.splitease.app.data.local.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.splitease.app.domain.model.GroupType
 import com.splitease.app.domain.model.SyncStatus
 
 /**
@@ -16,6 +17,8 @@ data class GroupEntity(
     @PrimaryKey val id: String,
     val name: String,
     val defaultCurrencyCode: String,
+    val groupType: GroupType = GroupType.OTHER,
+    val photoUrl: String? = null,
     val createdByUserId: String,
     val remoteId: String? = null,
     val createdAtEpochMs: Long,
