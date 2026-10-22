@@ -1,109 +1,106 @@
 package com.splitease.app.presentation.account
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.KeyboardOptions
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import com.google.android.play.core.review.ReviewManagerFactory
 import com.splitease.app.R
-import com.splitease.app.presentation.theme.SplitEaseColors
 import com.splitease.app.presentation.ui.SeConfirmTone
 import com.splitease.app.presentation.ui.SeModal
 import com.splitease.app.presentation.ui.SePreview
-import com.splitease.app.presentation.ui.SeTextField
 
-private const val RATE_COMMENT_MAX = 280
+private const val PLAY_STORE_PACKAGE = "com.android.vending"
 
 @Composable
 fun RateAppDialog(onDismiss: () -> Unit) {
-    var stars by rememberSaveable { mutableIntStateOf(0) }
-    var comment by rememberSaveable { mutableStateOf("") }
-    var submitted by rememberSaveable { mutableStateOf(false) }
-
-    if (submitted) {
-        SeModal(
-            onDismissRequest = onDismiss,
-            title = stringResource(R.string.rate_app_thanks_title),
-            body = stringResource(R.string.rate_app_thanks_body),
-            icon = Icons.Filled.Star,
-            tone = SeConfirmTone.Primary,
-            dismissLabel = stringResource(R.string.action_done),
-        )
-        return
-    }
+    val context = LocalContext.current
+    var launching by remember { mutableStateOf(false) }
 
     SeModal(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!launching) onDismiss() },
         title = stringResource(R.string.rate_app_title),
         body = stringResource(R.string.rate_app_body),
         icon = Icons.Filled.Star,
         tone = SeConfirmTone.Primary,
-        confirmLabel = stringResource(R.string.action_submit),
-        onConfirm = { submitted = true },
-        confirmEnabled = stars in 1..5,
-        content = {
-            RatingStars(
-                rating = stars,
-                onRatingChange = { stars = it },
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            SeTextField(
-                value = comment,
-                onValueChange = { next ->
-                    if (next.length <= RATE_COMMENT_MAX) comment = next
-                },
-                label = stringResource(R.string.rate_app_comment_label),
-                placeholder = stringResource(R.string.rate_app_comment_placeholder),
-                singleLine = false,
-                keyboardOptions =
-                    KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                    ),
-            )
+        confirmLabel = stringResource(R.string.action_rate_on_play),
+        confirmBusy = launching,
+        onConfirm = {
+            if (!launching) {
+                launching = true
+                launchPlayReviewOrStore(context) {
+                    launching = false
+                    onDismiss()
+                }
+            }
         },
+        dismissLabel = stringResource(R.string.action_cancel),
     )
 }
 
-@Composable
-private fun RatingStars(
-    rating: Int,
-    onRatingChange: (Int) -> Unit,
+internal fun launchPlayReviewOrStore(
+    context: Context,
+    onComplete: () -> Unit = {},
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        for (star in 1..5) {
-            val selected = star <= rating
-            IconButton(onClick = { onRatingChange(star) }) {
-                Icon(
-                    imageVector = if (selected) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = stringResource(R.string.cd_rate_star, star),
-                    tint = if (selected) SplitEaseColors.Accent else SplitEaseColors.IconDefault,
-                    modifier = Modifier.size(28.dp),
-                )
+    val activity = context.findActivity()
+    if (activity == null || activity.isFinishing || activity.isDestroyed) {
+        openPlayListing(context)
+        onComplete()
+        return
+    }
+    val manager = ReviewManagerFactory.create(activity)
+    manager
+        .requestReviewFlow()
+        .addOnCompleteListener { request ->
+            if (activity.isFinishing || activity.isDestroyed) {
+                onComplete()
+                return@addOnCompleteListener
+            }
+            if (request.isSuccessful) {
+                manager
+                    .launchReviewFlow(activity, request.result)
+                    .addOnCompleteListener {
+                        onComplete()
+                    }
+            } else {
+                openPlayListing(context)
+                onComplete()
             }
         }
-    }
 }
+
+internal fun openPlayListing(context: Context): Boolean {
+    val pkg = context.packageName
+    val marketIntent =
+        Intent(Intent.ACTION_VIEW, "market://details?id=$pkg".toUri()).apply {
+            setPackage(PLAY_STORE_PACKAGE)
+        }
+    if (runCatching { context.startActivity(marketIntent) }.isSuccess) return true
+    val webIntent =
+        Intent(
+            Intent.ACTION_VIEW,
+            "https://play.google.com/store/apps/details?id=$pkg".toUri(),
+        )
+    return runCatching { context.startActivity(webIntent) }.isSuccess
+}
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
 @Preview(name = "Rate SplitEase", showBackground = true)
 @Composable

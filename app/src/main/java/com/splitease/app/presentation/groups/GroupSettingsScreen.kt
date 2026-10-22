@@ -58,15 +58,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.splitease.app.presentation.ui.SeInsetCard
 import com.splitease.app.presentation.ui.SePreview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.splitease.app.R
 import com.splitease.app.data.balance.GroupBalanceUi
 import com.splitease.app.data.social.ContactIdentifier
+import com.splitease.app.domain.model.Friend
 import com.splitease.app.domain.model.Group
+import com.splitease.app.domain.model.GroupMember
 import com.splitease.app.domain.model.GroupType
+import com.splitease.app.domain.model.MemberRole
 import com.splitease.app.presentation.balances.BalancesViewModel
 import com.splitease.app.presentation.invite.InviteDeliveryHandler
 import com.splitease.app.presentation.media.ImagePickPresets
@@ -91,7 +93,7 @@ import com.splitease.app.presentation.ui.SeSectionHeader
 import com.splitease.app.presentation.ui.SeTextButton
 import java.math.BigDecimal
 
-private data class SelectedGroupMember(
+internal data class SelectedGroupMember(
     val userId: String,
     val displayName: String,
     val email: String?,
@@ -170,263 +172,35 @@ fun GroupSettingsScreen(
         viewModel.consumeFileShare()
     }
 
-    SeScreen(
-        title = stringResource(R.string.group_settings_title),
+    GroupSettingsContent(
+        group = group,
+        members = members,
+        friends = friends,
+        userDisplayNames = userDisplayNames,
+        userPhotoUrls = userPhotoUrls,
+        groupBalance = groupBalance,
+        currentUserId = me,
+        isOwner = isOwner,
+        simplifyDebts = simplifyDebts,
+        groupMuted = groupMuted,
+        isExporting = uiState.isExporting,
+        errorMessage = uiState.errorMessage,
+        infoMessage = uiState.infoMessage,
         onBack = onBack,
-        topBarContainerColor = SplitEaseColors.Surface,
-        content = { padding ->
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(SplitEaseColors.Surface)
-                        .padding(padding.values)
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 24.dp),
-            ) {
-                GroupSettingsHeader(
-                    group = group,
-                    onEdit = onEditGroup,
-                    onChangePhoto = { photoPicker.launch() },
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(color = SplitEaseColors.Outline)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    SeSectionHeader(text = stringResource(R.string.group_settings_members_section))
-                }
-                SettingsActionRow(
-                    icon = Icons.Filled.PersonAdd,
-                    title = stringResource(R.string.action_add_people_to_group),
-                    onClick = onAddPeople,
-                )
-                SettingsActionRow(
-                    icon = Icons.Filled.Link,
-                    title = stringResource(R.string.action_invite_via_link),
-                    onClick = onInviteViaLink,
-                )
-                members.forEach { member ->
-                    val friend = friends.firstOrNull { it.friendUserId == member.userId }
-                    val isYou = member.userId == me
-                    val pending =
-                        friend?.displayNameSnapshot?.contains("(invited)", ignoreCase = true) == true
-                    val rawName =
-                        friend?.displayNameSnapshot
-                            ?.removeSuffix(" (invited)")
-                            ?.trim()
-                            .orEmpty()
-                            .takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
-                            ?: userDisplayNames[member.userId]?.takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
-                            ?: friend?.emailSnapshot?.substringBefore("@")?.takeIf { it.isNotBlank() && !it.startsWith("local+") }
-                            ?: "Member"
-                    val title =
-                        if (isYou) {
-                            stringResource(
-                                R.string.member_you_label,
-                                friend?.displayNameSnapshot
-                                    ?.removeSuffix(" (invited)")
-                                    ?.trim()
-                                    ?.ifBlank { null }
-                                    ?: userDisplayNames[member.userId]
-                                    ?: stringResource(R.string.you_label),
-                            )
-                        } else if (pending) {
-                            friend.displayNameSnapshot
-                        } else {
-                            rawName
-                        }
-                    val memberNets = memberNets(groupBalance, member.userId)
-                    SeListRow(
-                        title = title,
-                        subtitle =
-                            when {
-                                pending ->
-                                    listOfNotNull(
-                                        friend.emailSnapshot
-                                            .let { ContactIdentifier.displayContact(it) }
-                                            .takeIf { it.isNotBlank() },
-                                        stringResource(R.string.invite_pending_label),
-                                    ).joinToString(" · ")
-                                else ->
-                                    friend?.emailSnapshot?.let { ContactIdentifier.displayContact(it) }
-                            },
-                        leading = {
-                            SeAvatarBadge(
-                                name =
-                                    if (isYou) {
-                                        stringResource(R.string.you_label)
-                                    } else {
-                                        rawName.ifBlank { title }
-                                    },
-                                photoUrl = userPhotoUrls[member.userId],
-                                size = 40.dp,
-                                borderWidth = 0.dp,
-                            )
-                        },
-                        trailing =
-                            when {
-                                pending -> {
-                                    {
-                                        Row {
-                                            IconButton(
-                                                onClick = {
-                                                    viewModel.copyInviteLinkForMember(member.userId)
-                                                },
-                                            ) {
-                                                Icon(
-                                                    Icons.Filled.ContentCopy,
-                                                    contentDescription =
-                                                        stringResource(R.string.cd_copy_invite_link),
-                                                    tint = SplitEaseColors.Primary,
-                                                )
-                                            }
-                                            IconButton(
-                                                onClick = {
-                                                    viewModel.shareInviteAgainForMember(member.userId)
-                                                },
-                                            ) {
-                                                Icon(
-                                                    Icons.Filled.Share,
-                                                    contentDescription =
-                                                        stringResource(R.string.cd_share_invite_again),
-                                                    tint = SplitEaseColors.Primary,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                !isYou -> {
-                                    {
-                                        MemberNetStatus(
-                                            netByCurrency = memberNets,
-                                            currencyFallback = currencyFallback,
-                                        )
-                                    }
-                                }
-                                else -> null
-                            },
-                        onClick =
-                            if (!isYou) {
-                                {
-                                    selectedMember =
-                                        SelectedGroupMember(
-                                            userId = member.userId,
-                                            displayName = rawName.ifBlank { title },
-                                            email =
-                                                friend?.emailSnapshot?.let {
-                                                    ContactIdentifier.displayContact(it)
-                                                },
-                                            pending = pending,
-                                            photoUrl = userPhotoUrls[member.userId],
-                                        )
-                                }
-                            } else {
-                                null
-                            },
-                        showDivider = false,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = SplitEaseColors.Outline)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
-                }
-
-                SettingsActionRow(
-                    icon = Icons.Filled.Download,
-                    title = stringResource(R.string.group_settings_export_csv),
-                    subtitle =
-                        stringResource(
-                            if (uiState.isExporting) {
-                                R.string.group_settings_export_csv_working
-                            } else {
-                                R.string.group_settings_export_csv_subtitle
-                            },
-                        ),
-                    enabled = !uiState.isExporting,
-                    showProgress = uiState.isExporting,
-                    onClick = { viewModel.exportGroupCsv(groupId) },
-                )
-
-                SettingsToggleRow(
-                    icon = Icons.Filled.AccountTree,
-                    title = stringResource(R.string.group_settings_simplify_title),
-                    checked = simplifyDebts,
-                    onCheckedChange = { viewModel.setSimplifyDebts(groupId, it) },
-                )
-                SeBodyMedium(
-                    text = stringResource(R.string.group_settings_simplify_body),
-                    color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 4.dp),
-                )
-                SeTextButton(
-                    text = stringResource(R.string.action_learn_more),
-                    onClick = { showSimplifyInfo = true },
-                    emphasized = true,
-                    modifier = Modifier.padding(start = 54.dp, bottom = 8.dp),
-                )
-
-                SettingsToggleRow(
-                    icon = Icons.Filled.NotificationsOff,
-                    title = stringResource(R.string.group_settings_mute_title),
-                    checked = groupMuted,
-                    onCheckedChange = { viewModel.setGroupNotificationsMuted(groupId, it) },
-                )
-                SeBodyMedium(
-                    text = stringResource(R.string.group_settings_mute_body),
-                    color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
-                )
-
-                SettingsActionRow(
-                    icon = Icons.AutoMirrored.Filled.List,
-                    title = stringResource(R.string.group_settings_default_split),
-                    subtitle = stringResource(R.string.group_settings_default_split_subtitle),
-                    trailingBadge = stringResource(R.string.badge_pro),
-                    onClick = { showDefaultSplitInfo = true },
-                )
-                SeBodyMedium(
-                    text = stringResource(R.string.group_settings_default_split_body),
-                    color = SplitEaseColors.NavyMuted,
-                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
-                )
-
-                SettingsActionRow(
-                    icon = Icons.AutoMirrored.Filled.ExitToApp,
-                    title = stringResource(R.string.action_leave_group),
-                    titleColor = SplitEaseColors.YouOwe,
-                    iconTint = SplitEaseColors.YouOwe,
-                    onClick = { showLeaveConfirm = true },
-                )
-                if (isOwner) {
-                    SettingsActionRow(
-                        icon = Icons.Filled.Delete,
-                        title = stringResource(R.string.action_delete_group),
-                        titleColor = SplitEaseColors.YouOwe,
-                        iconTint = SplitEaseColors.YouOwe,
-                        onClick = { showDeleteConfirm = true },
-                        showDivider = false,
-                    )
-                }
-
-                uiState.errorMessage?.let {
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SeErrorText(it)
-                    }
-                }
-                uiState.infoMessage?.let {
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SeInfoText(it)
-                    }
-                }
-            }
-        },
+        onEditGroup = onEditGroup,
+        onChangePhoto = { photoPicker.launch() },
+        onAddPeople = onAddPeople,
+        onInviteViaLink = onInviteViaLink,
+        onCopyInviteLink = viewModel::copyInviteLinkForMember,
+        onShareInviteAgain = viewModel::shareInviteAgainForMember,
+        onSelectMember = { selectedMember = it },
+        onExportCsv = { viewModel.exportGroupCsv(groupId) },
+        onSimplifyDebtsChange = { viewModel.setSimplifyDebts(groupId, it) },
+        onShowSimplifyInfo = { showSimplifyInfo = true },
+        onGroupMutedChange = { viewModel.setGroupNotificationsMuted(groupId, it) },
+        onShowDefaultSplitInfo = { showDefaultSplitInfo = true },
+        onLeaveGroup = { showLeaveConfirm = true },
+        onDeleteGroup = { showDeleteConfirm = true },
     )
 
     if (showLeaveConfirm) {
@@ -886,124 +660,354 @@ private fun GroupType.settingsLabelRes(): Int =
         GroupType.OTHER -> R.string.group_type_other
     }
 
+@Composable
+internal fun GroupSettingsContent(
+    group: Group?,
+    members: List<GroupMember>,
+    friends: List<Friend>,
+    userDisplayNames: Map<String, String>,
+    userPhotoUrls: Map<String, String?>,
+    groupBalance: GroupBalanceUi?,
+    currentUserId: String?,
+    isOwner: Boolean,
+    simplifyDebts: Boolean,
+    groupMuted: Boolean,
+    isExporting: Boolean,
+    errorMessage: String?,
+    infoMessage: String?,
+    onBack: () -> Unit,
+    onEditGroup: () -> Unit,
+    onChangePhoto: () -> Unit,
+    onAddPeople: () -> Unit,
+    onInviteViaLink: () -> Unit,
+    onCopyInviteLink: (String) -> Unit,
+    onShareInviteAgain: (String) -> Unit,
+    onSelectMember: (SelectedGroupMember) -> Unit,
+    onExportCsv: () -> Unit,
+    onSimplifyDebtsChange: (Boolean) -> Unit,
+    onShowSimplifyInfo: () -> Unit,
+    onGroupMutedChange: (Boolean) -> Unit,
+    onShowDefaultSplitInfo: () -> Unit,
+    onLeaveGroup: () -> Unit,
+    onDeleteGroup: () -> Unit,
+) {
+    val currencyFallback = group?.defaultCurrencyCode.orEmpty()
+    SeScreen(
+        title = stringResource(R.string.group_settings_title),
+        onBack = onBack,
+        topBarContainerColor = SplitEaseColors.Surface,
+        content = { padding ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(SplitEaseColors.Surface)
+                        .padding(padding.values)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 24.dp),
+            ) {
+                GroupSettingsHeader(
+                    group = group,
+                    onEdit = onEditGroup,
+                    onChangePhoto = onChangePhoto,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = SplitEaseColors.Outline)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    SeSectionHeader(text = stringResource(R.string.group_settings_members_section))
+                }
+                SettingsActionRow(
+                    icon = Icons.Filled.PersonAdd,
+                    title = stringResource(R.string.action_add_people_to_group),
+                    onClick = onAddPeople,
+                )
+                SettingsActionRow(
+                    icon = Icons.Filled.Link,
+                    title = stringResource(R.string.action_invite_via_link),
+                    onClick = onInviteViaLink,
+                )
+                members.forEach { member ->
+                    val friend = friends.firstOrNull { it.friendUserId == member.userId }
+                    val isYou = member.userId == currentUserId
+                    val pending =
+                        friend?.displayNameSnapshot?.contains("(invited)", ignoreCase = true) == true
+                    val rawName =
+                        friend?.displayNameSnapshot
+                            ?.removeSuffix(" (invited)")
+                            ?.trim()
+                            .orEmpty()
+                            .takeIf { it.isNotBlank() && !it.equals("Member", ignoreCase = true) }
+                            ?: userDisplayNames[member.userId]?.takeIf {
+                                it.isNotBlank() && !it.equals("Member", ignoreCase = true)
+                            }
+                            ?: friend?.emailSnapshot?.substringBefore("@")?.takeIf {
+                                it.isNotBlank() && !it.startsWith("local+")
+                            }
+                            ?: "Member"
+                    val title =
+                        if (isYou) {
+                            stringResource(
+                                R.string.member_you_label,
+                                friend?.displayNameSnapshot
+                                    ?.removeSuffix(" (invited)")
+                                    ?.trim()
+                                    ?.ifBlank { null }
+                                    ?: userDisplayNames[member.userId]
+                                    ?: stringResource(R.string.you_label),
+                            )
+                        } else if (pending) {
+                            friend.displayNameSnapshot
+                        } else {
+                            rawName
+                        }
+                    val memberNets = memberNets(groupBalance, member.userId)
+                    SeListRow(
+                        title = title,
+                        subtitle =
+                            when {
+                                pending ->
+                                    listOfNotNull(
+                                        friend.emailSnapshot
+                                            .let { ContactIdentifier.displayContact(it) }
+                                            .takeIf { it.isNotBlank() },
+                                        stringResource(R.string.invite_pending_label),
+                                    ).joinToString(" · ")
+                                else ->
+                                    friend?.emailSnapshot?.let { ContactIdentifier.displayContact(it) }
+                            },
+                        leading = {
+                            SeAvatarBadge(
+                                name =
+                                    if (isYou) {
+                                        stringResource(R.string.you_label)
+                                    } else {
+                                        rawName.ifBlank { title }
+                                    },
+                                photoUrl = userPhotoUrls[member.userId],
+                                size = 40.dp,
+                                borderWidth = 0.dp,
+                            )
+                        },
+                        trailing =
+                            when {
+                                pending -> {
+                                    {
+                                        Row {
+                                            IconButton(
+                                                onClick = {
+                                                    onCopyInviteLink(member.userId)
+                                                },
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.ContentCopy,
+                                                    contentDescription =
+                                                        stringResource(R.string.cd_copy_invite_link),
+                                                    tint = SplitEaseColors.Primary,
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    onShareInviteAgain(member.userId)
+                                                },
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.Share,
+                                                    contentDescription =
+                                                        stringResource(R.string.cd_share_invite_again),
+                                                    tint = SplitEaseColors.Primary,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                !isYou -> {
+                                    {
+                                        MemberNetStatus(
+                                            netByCurrency = memberNets,
+                                            currencyFallback = currencyFallback,
+                                        )
+                                    }
+                                }
+                                else -> null
+                            },
+                        onClick =
+                            if (!isYou) {
+                                {
+                                    onSelectMember(
+                                        SelectedGroupMember(
+                                            userId = member.userId,
+                                            displayName = rawName.ifBlank { title },
+                                            email =
+                                                friend?.emailSnapshot?.let {
+                                                    ContactIdentifier.displayContact(it)
+                                                },
+                                            pending = pending,
+                                            photoUrl = userPhotoUrls[member.userId],
+                                        ),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                        showDivider = false,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = SplitEaseColors.Outline)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    SeSectionHeader(text = stringResource(R.string.group_settings_advanced_section))
+                }
+
+                SettingsActionRow(
+                    icon = Icons.Filled.Download,
+                    title = stringResource(R.string.group_settings_export_csv),
+                    subtitle =
+                        stringResource(
+                            if (isExporting) {
+                                R.string.group_settings_export_csv_working
+                            } else {
+                                R.string.group_settings_export_csv_subtitle
+                            },
+                        ),
+                    enabled = !isExporting,
+                    showProgress = isExporting,
+                    onClick = onExportCsv,
+                )
+
+                SettingsToggleRow(
+                    icon = Icons.Filled.AccountTree,
+                    title = stringResource(R.string.group_settings_simplify_title),
+                    checked = simplifyDebts,
+                    onCheckedChange = onSimplifyDebtsChange,
+                )
+                SeBodyMedium(
+                    text = stringResource(R.string.group_settings_simplify_body),
+                    color = SplitEaseColors.NavyMuted,
+                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 4.dp),
+                )
+                SeTextButton(
+                    text = stringResource(R.string.action_learn_more),
+                    onClick = onShowSimplifyInfo,
+                    emphasized = true,
+                    modifier = Modifier.padding(start = 54.dp, bottom = 8.dp),
+                )
+
+                SettingsToggleRow(
+                    icon = Icons.Filled.NotificationsOff,
+                    title = stringResource(R.string.group_settings_mute_title),
+                    checked = groupMuted,
+                    onCheckedChange = onGroupMutedChange,
+                )
+                SeBodyMedium(
+                    text = stringResource(R.string.group_settings_mute_body),
+                    color = SplitEaseColors.NavyMuted,
+                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
+                )
+
+                SettingsActionRow(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    title = stringResource(R.string.group_settings_default_split),
+                    subtitle = stringResource(R.string.group_settings_default_split_subtitle),
+                    trailingBadge = stringResource(R.string.badge_pro),
+                    onClick = onShowDefaultSplitInfo,
+                )
+                SeBodyMedium(
+                    text = stringResource(R.string.group_settings_default_split_body),
+                    color = SplitEaseColors.NavyMuted,
+                    modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
+                )
+
+                SettingsActionRow(
+                    icon = Icons.AutoMirrored.Filled.ExitToApp,
+                    title = stringResource(R.string.action_leave_group),
+                    titleColor = SplitEaseColors.YouOwe,
+                    iconTint = SplitEaseColors.YouOwe,
+                    onClick = onLeaveGroup,
+                )
+                if (isOwner) {
+                    SettingsActionRow(
+                        icon = Icons.Filled.Delete,
+                        title = stringResource(R.string.action_delete_group),
+                        titleColor = SplitEaseColors.YouOwe,
+                        iconTint = SplitEaseColors.YouOwe,
+                        onClick = onDeleteGroup,
+                        showDivider = false,
+                    )
+                }
+
+                errorMessage?.let {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeErrorText(it)
+                    }
+                }
+                infoMessage?.let {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SeInfoText(it)
+                    }
+                }
+            }
+        },
+    )
+}
+
 @Preview(name = "Group Settings", showBackground = true, heightDp = 900)
 @Composable
 private fun GroupSettingsScreenPreview() {
     SePreview {
-        SeScreen(
-            title = "Group settings",
+        GroupSettingsContent(
+            group =
+                Group(
+                    id = "group-1",
+                    name = "Trip to Goa",
+                    defaultCurrencyCode = "INR",
+                    groupType = GroupType.HOME,
+                    createdByUserId = "user-1",
+                    createdAtEpochMs = 0L,
+                    updatedAtEpochMs = 0L,
+                ),
+            members =
+                listOf(
+                    GroupMember(
+                        id = "member-1",
+                        groupId = "group-1",
+                        userId = "user-1",
+                        role = MemberRole.OWNER,
+                        joinedAtEpochMs = 0L,
+                    ),
+                ),
+            friends = emptyList(),
+            userDisplayNames = mapOf("user-1" to "Alex Rivera"),
+            userPhotoUrls = emptyMap(),
+            groupBalance = null,
+            currentUserId = "user-1",
+            isOwner = true,
+            simplifyDebts = true,
+            groupMuted = false,
+            isExporting = false,
+            errorMessage = null,
+            infoMessage = null,
             onBack = {},
-            content = { padding ->
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(padding.values)
-                            .verticalScroll(rememberScrollState())
-                            .padding(bottom = 24.dp),
-                ) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    SeInsetCard(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        onClick = {},
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            SeGroupIconTile(
-                                photoUrl = null,
-                                fallbackIcon = Icons.Filled.Home,
-                                fallbackTint = SplitEaseColors.IconHome,
-                                size = 56,
-                            )
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                SeTitleMedium(text = "asda", fontWeight = FontWeight.SemiBold, color = SplitEaseColors.Navy)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                SeBodyMedium(text = "Home", color = SplitEaseColors.NavyMuted)
-                            }
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = null,
-                                tint = SplitEaseColors.IconDefault,
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        SeSectionHeader(text = "Group members")
-                    }
-                    SettingsActionRow(
-                        icon = Icons.Filled.PersonAdd,
-                        title = "Add people to group",
-                        onClick = {},
-                        showDivider = true,
-                    )
-                    SettingsActionRow(
-                        icon = Icons.Filled.Link,
-                        title = "Invite via link",
-                        onClick = {},
-                        showDivider = true,
-                    )
-                    SeListRow(
-                        title = "Test User (you)",
-                        leading = { SeAvatarBadge(name = "Test User", photoUrl = null) },
-                        showDivider = false,
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = SplitEaseColors.Outline)
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        SeSectionHeader(text = "Advanced settings")
-                    }
-
-                    SettingsActionRow(
-                        icon = Icons.Filled.Download,
-                        title = "Export as CSV",
-                        subtitle = "Expenses and payments with who paid and per-person amounts",
-                        onClick = {},
-                    )
-
-                    SettingsToggleRow(
-                        icon = Icons.Filled.AccountTree,
-                        title = "Simplify group debts",
-                        checked = true,
-                        onCheckedChange = {},
-                    )
-                    SeBodyMedium(
-                        text = "Automatically combines debts to reduce the total number of repayments between group members.",
-                        color = SplitEaseColors.NavyMuted,
-                        modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 4.dp),
-                    )
-                    SeTextButton(
-                        text = "Learn more",
-                        onClick = {},
-                        emphasized = true,
-                        modifier = Modifier.padding(start = 54.dp, bottom = 8.dp),
-                    )
-
-                    SettingsToggleRow(
-                        icon = Icons.Filled.NotificationsOff,
-                        title = "Mute notifications",
-                        checked = false,
-                        onCheckedChange = {},
-                    )
-                    SeBodyMedium(
-                        text = "Stop push notifications for this group. You will still see updates when you open the group.",
-                        color = SplitEaseColors.NavyMuted,
-                        modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
-                    )
-
-                    SettingsActionRow(
-                        icon = Icons.AutoMirrored.Filled.List,
-                        title = "Default split",
-                        subtitle = "Paid by you and split equally",
-                        trailingBadge = "PRO",
-                        onClick = {},
-                    )
-                }
-            },
+            onEditGroup = {},
+            onChangePhoto = {},
+            onAddPeople = {},
+            onInviteViaLink = {},
+            onCopyInviteLink = {},
+            onShareInviteAgain = {},
+            onSelectMember = {},
+            onExportCsv = {},
+            onSimplifyDebtsChange = {},
+            onShowSimplifyInfo = {},
+            onGroupMutedChange = {},
+            onShowDefaultSplitInfo = {},
+            onLeaveGroup = {},
+            onDeleteGroup = {},
         )
     }
 }

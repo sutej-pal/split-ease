@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.splitease.app.presentation.theme.SplitEaseColors
 
 /**
- * Accordion list row for settings: label over value using [SeListRow] with [SeListRowLabelStyle.Field],
+ * Accordion list row for settings: label over value using [SeListRow],
  * optional leading icon tile, optional trailing chip, rotating chevron, and an expandable filled panel below.
  */
 @Composable

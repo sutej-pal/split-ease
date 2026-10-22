@@ -41,6 +41,7 @@ Current `versionName` / sideload APKs are **testing only**. First production Pla
 
 ## Store
 - [ ] Short/full descriptions from `docs/store-listing.md`
+- [ ] Contact support email `support@splitease.app` published on the Google Play listing
 - [ ] Feature graphic + screenshots (phone) prepared
 - [ ] Privacy policy URL live at https://splitease-server-eight.vercel.app/privacy (and Terms at https://splitease-server-eight.vercel.app/terms)
 - [ ] Content rating questionnaire completed

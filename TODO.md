@@ -26,20 +26,6 @@ Phone invites (staged) and the empty-group card (`1bbb662`). Detail: [docs/revie
 
 
 
-## Review follow-ups (2026-10-13)
-
-Account help/support, appearance card, and shared list/theme edits (staged on `develop`).
-
-- [ ] **TODO(rate-play)** — Rate SplitEase must be recorded on Google Play. `RateAppDialog` only sets `submitted = true`; stars and the optional comment are discarded, and the thanks copy says the rating was received. Replace that submit path with the Play in-app review flow (or open the Play listing). Play does not accept a custom star count or comment uploaded by the app.
-- [ ] **TODO(support-email-play)** — Publish the contact-support address `support@splitease.app` on the Google Play listing. In the app, Contact support (`openSupportGmail`) pins `com.google.android.gm` whenever Gmail is installed, so the user’s default mail app is skipped. The row says “Email the SplitEase team.”
-- [ ] **TODO(action-chip-height)** — `SeActionChip` is a fixed `28.dp` (was `44.dp`) with normal label weight and `TextOverflow.Clip`. Touch target is under `48.dp`, and large font sizes clip Settle up, Balances, Totals, and Pin board on group and friend screens.
-- [ ] **TODO(help-faq-a11y)** — Help center chevron rotates when a question opens, but the row does not expose expanded or collapsed.
-- [ ] **TODO(list-row-type-scope)** — `SeListRow` navigation style changed app-wide: `TitleMedium` semibold / `BodyMedium` became `TitleSmall` regular / `BodySmall`, and horizontal padding went from `16.dp` to `20.dp`. Confirm that scope or limit it to the new help rows. The `Navigation` KDoc still says “Bold title over muted subtitle.”
-- [ ] **TODO(faq-split-copy)** — Help answer `faq_add_expense_a` says “exact amounts”; the split screen label is “Unequally.”
-- [ ] **TODO(group-settings-preview)** — `GroupSettingsScreenPreview` is a hand-copied layout and uses the placeholder name “asda”, so it can drift from the real screen.
-
-
-
 ## Review follow-ups (2026-10-21)
 
 Sign-in & Contact OTP state, Activity row typography, and category chip modulo cleanup.

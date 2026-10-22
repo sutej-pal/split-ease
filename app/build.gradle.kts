@@ -207,6 +207,7 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     implementation(libs.androidx.biometric)
     implementation(libs.play.install.referrer)
+    implementation(libs.play.review.ktx)
 
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)

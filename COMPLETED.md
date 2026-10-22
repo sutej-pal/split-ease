@@ -15,6 +15,13 @@ Checked on `emulator-5554` (`com.splitease.app` 1.0.0, build 2) while signed in.
 ## Review follow-ups (2026-10-13)
 
 - [x] **TODO(theme-row-a11y)** — Appearance rows are exposed as checkable controls. The selected theme’s row was `checked=true` (Light, then Dark).
+- [x] **TODO(rate-play)** — `RateAppDialog` now uses Google Play In-App Review (`com.google.android.play:review-ktx`) with a fallback to the Google Play Store listing (`market://details?id=com.splitease.app` / `https://play.google.com/store/apps/details?id=com.splitease.app`), removing the discarded local star and comment inputs.
+- [x] **TODO(support-email-play)** — `openSupportEmail` in `SupportEmail.kt` launches a standard `ACTION_SENDTO` `mailto:support@splitease.app` intent without pinning `com.google.android.gm`, respecting the user's default mail app (and `support@splitease.app` is tracked in `docs/store-listing.md` and `docs/release-checklist.md`).
+- [x] **TODO(action-chip-height)** — `SeActionChip` now uses `heightIn(min = 44.dp)`, `FontWeight.SemiBold`, and `TextOverflow.Ellipsis`, preserving a >=44.dp height and preventing text clipping at 1.5x font scale across Settle up, Balances, Totals, and Pin Board chips.
+- [x] **TODO(help-faq-a11y)** — Help center `FaqRow` exposes `stateDescription` (`Collapsed` / `Expanded`) and `expand` / `collapse` semantics actions on the clickable row.
+- [x] **TODO(list-row-type-scope)** — Confirmed app-wide `SeListRow` navigation typography (`SeTitleSmall` `FontWeight.Normal` / `SeBodySmall`, `24.dp` `SeLayout.listInset`) and removed the stale `[SeListRowLabelStyle.Field]` KDoc reference in `SeAccordionRow.kt`.
+- [x] **TODO(faq-split-copy)** — `faq_add_expense_a` in `strings.xml` now says “unequally” to match the `split_tab_unequally` label on the split screen.
+- [x] **TODO(group-settings-preview)** — Extracted `GroupSettingsContent` in `GroupSettingsScreen.kt` and wired `GroupSettingsScreenPreview` to render the real screen composable with sample group data (`Trip to Goa` / `Alex Rivera (you)`) instead of a hand-copied layout with `"asda"`.
 
 ## Review follow-ups (2026-10-16)
 

@@ -48,8 +48,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.collapse
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -368,6 +371,9 @@ fun SeListRow(
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
+    stateDescription: String? = null,
+    expanded: Boolean? = null,
+    onExpandOrCollapse: (() -> Unit)? = null,
     showDivider: Boolean = true,
     horizontalPadding: Dp = 24.dp,
 ) {
@@ -391,6 +397,32 @@ fun SeListRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .then(
+                        if (stateDescription != null || (expanded != null && onExpandOrCollapse != null)) {
+                            Modifier.semantics(
+                                properties = {
+                                    if (stateDescription != null) {
+                                        this.stateDescription = stateDescription
+                                    }
+                                    if (expanded != null && onExpandOrCollapse != null) {
+                                        if (expanded) {
+                                            collapse {
+                                                onExpandOrCollapse()
+                                                true
+                                            }
+                                        } else {
+                                            expand {
+                                                onExpandOrCollapse()
+                                                true
+                                            }
+                                        }
+                                    }
+                                },
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
                     .then(
                         if (onClick != null) {
                             Modifier
@@ -672,12 +704,12 @@ fun SeActionChip(
     Row(
         modifier =
             modifier
-                .height(28.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .heightIn(min = 44.dp)
+                .clip(RoundedCornerShape(22.dp))
                 .background(bg)
-                .border(1.dp, border, RoundedCornerShape(20.dp))
+                .border(1.dp, border, RoundedCornerShape(22.dp))
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -687,9 +719,9 @@ fun SeActionChip(
         SeLabelLarge(
             text = label,
             color = content,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
-            overflow = TextOverflow.Clip,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

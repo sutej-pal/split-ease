@@ -133,9 +133,16 @@ private fun FaqRow(
         targetValue = if (expanded) 90f else 0f,
         label = "faqChevron",
     )
+    val stateLabel =
+        stringResource(
+            if (expanded) R.string.state_expanded else R.string.state_collapsed,
+        )
     Column(modifier = Modifier.fillMaxWidth()) {
         SeListRow(
             title = question,
+            stateDescription = stateLabel,
+            onExpandOrCollapse = onToggle,
+            expanded = expanded,
             trailing = {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

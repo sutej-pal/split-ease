@@ -114,7 +114,7 @@ fun AccountScreen(
         onOpenHelpCenter = onOpenHelpCenter,
         onOpenPrivacyPolicy = { context.openPrivacyPolicy() },
         onContactSupport = {
-            val opened = openSupportGmail(context, supportEmail, supportSubject)
+            val opened = openSupportEmail(context, supportEmail, supportSubject)
             if (!opened) mailErrorKey += 1
         },
         onRateApp = { showRateDialog = true },
